@@ -1,35 +1,68 @@
 "use client";
+
 import { useSection } from "@/features/navigation/model/useSection";
-import { FiMenu, FiSearch, FiBell } from "react-icons/fi";
+import { FiMenu, FiSearch, FiBell, FiSettings } from "react-icons/fi";
+
+// Títulos descriptivos para cada sección del sistema
 const titles: Record<string, string> = {
-  dashboard: "Dashboard",
+  dashboard: "Bienvenido al Panel Administrativo",
   cotizaciones: "Gestión de Cotizaciones",
-  clientes: "Gestión de Clientes",
+  clientes: "Gestión de Clientes", 
   catalogo: "Catálogo de Productos",
   reportes: "Reportes y Análisis",
 };
 
+// Subtítulos informativos que aparecen debajo del título principal
+const subtitles: Record<string, string> = {
+  dashboard: "Resumen general de tu sistema de cotizaciones",
+  cotizaciones: "Administra y controla todas tus cotizaciones",
+  clientes: "Gestiona tu base de datos de clientes",
+  catalogo: "Organiza tu inventario de productos",
+  reportes: "Analiza el rendimiento de tu negocio",
+};
+
 export function Header() {
   const { section, setSidebarOpen } = useSection();
+
   return (
-    <header className="sticky top-0 z-30 bg-white border-b shadow-sm">
-      <div className="flex items-center justify-between px-4 py-3">
-        <div className="flex items-center gap-3">
-          <button className="lg:hidden p-2 rounded hover:bg-slate-100" onClick={() => setSidebarOpen(true)}>
-            <FiMenu />
+    <header className="sticky top-0 z-30 bg-white border-b border-gray-100">
+      <div className="flex items-center justify-between h-16 px-4 lg:px-6">
+        {/* Sección izquierda: Menú móvil + Títulos */}
+        <div className="flex items-center gap-3 min-w-0 flex-1">
+          <button 
+            className="lg:hidden btn-icon flex-shrink-0" 
+            onClick={() => setSidebarOpen(true)}
+            aria-label="Abrir menú"
+          >
+            <FiMenu className="w-5 h-5" />
           </button>
-          <h1 className="text-xl font-bold">{titles[section] ?? "Dashboard"}</h1>
-        </div>
-        <div className="flex items-center gap-3">
-          <div className="relative">
-            <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-            <input className="pl-10 pr-3 py-2 rounded-xl border bg-slate-50 focus:outline-none focus:ring-2 focus:ring-indigo-200"
-                   placeholder="Buscar..." />
+          
+          <div className="min-w-0">
+            <h1 className="text-lg font-bold text-gray-900 truncate">
+              {titles[section] ?? "Dashboard"}
+            </h1>
+            <p className="text-xs text-gray-500 truncate">
+              {subtitles[section] ?? "Bienvenido al sistema"}
+            </p>
           </div>
-          <button className="relative p-2 rounded-full hover:bg-slate-100">
-            <FiBell />
-            <span className="absolute -top-1 -right-1 text-[10px] bg-rose-500 text-white h-4 w-4 rounded-full grid place-content-center">3</span>
+        </div>
+
+        {/* Sección derecha: Acciones responsivas */}
+        <div className="flex items-center gap-3 flex-shrink-0">
+          {/* Notificaciones con indicador visual */}
+          <button className="relative btn-icon">
+            <FiBell className="w-5 h-5" />
+            <span className="absolute -top-1 -right-1 h-3 w-3 bg-red-500 rounded-full flex items-center justify-center">
+              <span className="text-xs font-bold text-white">1</span>
+            </span>
           </button>
+
+          {/* Avatar del usuario con información */}
+          <div className="flex items-center gap-2 pl-3 border-l border-gray-200">
+            <div className="h-8 w-8 rounded-full bg-gradient-to-br from-purple-600 to-purple-700 flex items-center justify-center text-white text-sm font-medium">
+              A
+            </div>
+          </div>
         </div>
       </div>
     </header>
