@@ -1,7 +1,8 @@
 "use client";
 
 import { useSection } from "@/features/navigation/model/useSection";
-import { FiMenu, FiSearch, FiBell, FiSettings } from "react-icons/fi";
+import { useAuth } from "@/features/auth/model/useAuth";
+import { FiMenu, FiSearch, FiBell, FiSettings, FiLogOut } from "react-icons/fi";
 
 // Títulos descriptivos para cada sección del sistema
 const titles: Record<string, string> = {
@@ -23,6 +24,7 @@ const subtitles: Record<string, string> = {
 
 export function Header() {
   const { section, setSidebarOpen } = useSection();
+  const { logout, user } = useAuth();
 
   return (
     <header className="sticky top-0 z-30 bg-white border-b border-gray-100">
@@ -57,10 +59,23 @@ export function Header() {
             </span>
           </button>
 
-          {/* Avatar del usuario con información */}
+          {/* Avatar del usuario con menú */}
           <div className="flex items-center gap-2 pl-3 border-l border-gray-200">
-            <div className="h-8 w-8 rounded-full bg-gradient-to-br from-purple-600 to-purple-700 flex items-center justify-center text-white text-sm font-medium">
-              A
+            <div className="flex items-center gap-3">
+              <div className="text-right hidden sm:block">
+                <p className="text-sm font-medium text-gray-900">{user?.name || "Usuario"}</p>
+                <p className="text-xs text-gray-500">{user?.role || "Invitado"}</p>
+              </div>
+              <div className="h-8 w-8 rounded-full bg-gradient-to-br from-purple-600 to-purple-700 flex items-center justify-center text-white text-sm font-medium">
+                {user?.name?.charAt(0).toUpperCase() || "A"}
+              </div>
+              <button
+                onClick={logout}
+                className="btn-icon text-gray-500 hover:text-red-600 hover:bg-red-50"
+                title="Cerrar sesión"
+              >
+                <FiLogOut className="w-4 h-4" />
+              </button>
             </div>
           </div>
         </div>

@@ -10,8 +10,9 @@ import { QuotesTable } from "@/features/quotes/ui/QuotesTable";
 import { FiltersBar } from "@/features/quotes/ui/FiltersBar";
 import { NewQuoteModal } from "@/features/quotes/ui/NewQuoteModal";
 import { ToastHost } from "@/shared/ui/Toast";
+import { AuthWrapper } from "@/components/AuthWrapper";
 
-export default function HomePage() {
+function DashboardContent() {
   const { section } = useSection();
 
   return (
@@ -203,5 +204,13 @@ export default function HomePage() {
       <NewQuoteModal.Root />
       <ToastHost />
     </div>
+  );
+}
+
+export default function HomePage() {
+  return (
+    <AuthWrapper>
+      <DashboardContent />
+    </AuthWrapper>
   );
 }
