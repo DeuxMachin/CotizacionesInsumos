@@ -1,56 +1,57 @@
 "use client";
 
-import { FiPlus, FiUsers, FiSettings, FiBarChart2 } from "react-icons/fi";
+import { useState } from "react";
+import { FiPlusCircle, FiUserPlus, FiBox, FiTrendingUp } from "react-icons/fi";
 import { useSection } from "@/features/navigation/model/useSection";
+import { quotesData } from "@/features/quotes/model/mock";
+import { quotesToCSV, downloadCSV } from "@/shared/lib/csv";
+import { Toast } from "@/shared/ui/Toast";
+import { NewQuoteModal } from "@/features/quotes/ui/NewQuoteModal";
 
-// Configuración de acciones rápidas con navegación inteligente
+// Acciones rápidas inspiradas en el HTML de referencia
 const quickActions = [
   {
-    icon: <FiPlus className="w-6 h-6" />,
-    title: "Nueva Cotización", 
-    description: "Crear nueva cotización",
+    icon: <FiPlusCircle className="w-7 h-7 text-orange-600" />,
+    title: "Nueva Cotización",
+    description: "Crear una nueva cotización para un cliente",
     action: "create-quote",
-    isPrimary: true,
   },
   {
-    icon: <FiUsers className="w-6 h-6" />,
-    title: "Ver Clientes",
-    description: "Gestionar clientes",
-    action: "view-clients",
-    isPrimary: false,
+    icon: <FiUserPlus className="w-7 h-7 text-orange-600" />,
+    title: "Agregar Cliente",
+    description: "Registrar un nuevo cliente en el sistema",
+    action: "go-clients",
   },
   {
-    icon: <FiSettings className="w-6 h-6" />,
-    title: "Gestionar Catálogo", 
-    description: "Administrar productos",
-    action: "manage-catalog",
-    isPrimary: false,
+    icon: <FiBox className="w-7 h-7 text-orange-600" />,
+    title: "Gestionar Productos",
+    description: "Administrar catálogo de productos",
+    action: "go-catalog",
   },
   {
-    icon: <FiBarChart2 className="w-6 h-6" />,
+    icon: <FiTrendingUp className="w-7 h-7 text-orange-600" />,
     title: "Ver Reportes",
-    description: "Análisis y métricas", 
-    action: "view-reports",
-    isPrimary: false,
+    description: "Analizar métricas y rendimiento",
+    action: "go-reports",
   },
 ];
 
 export function QuickActions() {
   const { setSection } = useSection();
+  const [openNew, setOpenNew] = useState(false);
 
   const handleActionClick = (action: string) => {
     switch (action) {
       case "create-quote":
-        // Aquí podrías abrir un modal o navegar a crear cotización
-        console.log("Abrir modal de nueva cotización");
+        setOpenNew(true);
         break;
-      case "view-clients":
+      case "go-clients":
         setSection("clientes");
         break;
-      case "manage-catalog":
+      case "go-catalog":
         setSection("catalogo");
         break;
-      case "view-reports":
+      case "go-reports":
         setSection("reportes");
         break;
     }
@@ -59,8 +60,8 @@ export function QuickActions() {
   return (
     <div className="bg-white rounded-xl border border-gray-100 p-6">
       {/* Header de la sección */}
-      <div className="mb-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-1">
+      <div className="mb-4 sm:mb-6">
+        <h3 className="section-title text-xl font-semibold text-gray-900 mb-1">
           Acciones Rápidas
         </h3>
         <p className="text-sm text-gray-600">
@@ -68,44 +69,56 @@ export function QuickActions() {
         </p>
       </div>
 
-      {/* Grid de acciones con diseño responsivo */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        {quickActions.map((action, index) => (
+      {/* Grid de acciones */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        {quickActions.map((a, idx) => (
           <button
-            key={action.action}
-            onClick={() => handleActionClick(action.action)}
-            className={`
-              ${action.isPrimary ? 'quick-action-primary' : 'quick-action'}
-              animate-slideUp
-            `}
-            style={{ animationDelay: `${index * 100}ms` }}
+            key={a.action}
+            onClick={() => handleActionClick(a.action)}
+            className="group text-left bg-white border-2 border-gray-200 rounded-xl p-5 hover:border-orange-500 hover:shadow-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2"
+            style={{ animationDelay: `${idx * 60}ms` }}
           >
-            {/* Icono con efecto hover */}
-            <div className={`
-              mb-3 transition-transform duration-200 group-hover:scale-110
-              ${action.isPrimary ? 'text-white' : 'text-gray-700'}
-            `}>
-              {action.icon}
+            <div className="flex flex-col items-center text-center">
+              <div className="mb-3">
+                {a.icon}
+              </div>
+              <h4 className="font-semibold text-gray-900 mb-1">
+                {a.title}
+              </h4>
+              <p className="text-sm text-gray-600">
+                {a.description}
+              </p>
             </div>
-            
-            {/* Título de la acción */}
-            <h4 className={`
-              font-semibold text-sm mb-1
-              ${action.isPrimary ? 'text-white' : 'text-gray-900'}
-            `}>
-              {action.title}
-            </h4>
-            
-            {/* Descripción opcional */}
-            <p className={`
-              text-xs
-              ${action.isPrimary ? 'text-purple-100' : 'text-gray-500'}
-            `}>
-              {action.description}
-            </p>
           </button>
         ))}
       </div>
+
+      {/* Chips secundarios */}
+      <div className="mt-4 flex flex-wrap gap-2">
+        <button
+          onClick={() => {
+            const csv = quotesToCSV(quotesData);
+            downloadCSV(csv, "cotizaciones.csv");
+            Toast?.success?.("Cotizaciones exportadas");
+          }}
+          className="px-3 py-1.5 rounded-full border border-gray-200 text-gray-700 hover:border-orange-400 hover:bg-orange-50 text-sm"
+        >
+          Exportar CSV
+        </button>
+        <button
+          onClick={() => Toast?.info?.("Importación próximamente")}
+          className="px-3 py-1.5 rounded-full border border-gray-200 text-gray-700 hover:border-orange-400 hover:bg-orange-50 text-sm"
+        >
+          Importar CSV
+        </button>
+        <button
+          onClick={() => Toast?.info?.("Atajos: N nueva cotización, / buscar, G ir a sección")}
+          className="px-3 py-1.5 rounded-full border border-gray-200 text-gray-700 hover:border-orange-400 hover:bg-orange-50 text-sm"
+        >
+          Atajos del teclado
+        </button>
+      </div>
+      <NewQuoteModal.Root controlledOpen={openNew} onClose={() => setOpenNew(false)} />
     </div>
   );
 }

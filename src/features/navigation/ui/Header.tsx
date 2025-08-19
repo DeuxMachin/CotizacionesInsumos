@@ -3,6 +3,8 @@
 import { useSection } from "@/features/navigation/model/useSection";
 import { useAuth } from "@/features/auth/model/useAuth";
 import { FiMenu, FiSearch, FiBell, FiSettings, FiLogOut } from "react-icons/fi";
+import { Logo } from "@/shared/ui/Logo";
+import { BRAND } from "@/shared/ui/brand";
 
 // Títulos descriptivos para cada sección del sistema
 const titles: Record<string, string> = {
@@ -28,7 +30,7 @@ export function Header() {
 
   return (
     <header className="sticky top-0 z-30 bg-white border-b border-gray-100">
-      <div className="flex items-center justify-between h-16 px-4 lg:px-6">
+      <div className="flex items-center justify-between h-16 px-4 lg:px-6 max-w-7xl mx-auto">
         {/* Sección izquierda: Menú móvil + Títulos */}
         <div className="flex items-center gap-3 min-w-0 flex-1">
           <button 
@@ -38,9 +40,12 @@ export function Header() {
           >
             <FiMenu className="w-5 h-5" />
           </button>
+          <div className="lg:hidden">
+            <Logo height={24} className="opacity-90" />
+          </div>
           
           <div className="min-w-0">
-            <h1 className="text-lg font-bold text-gray-900 truncate">
+            <h1 className="text-lg font-bold text-gray-900 truncate display-font">
               {titles[section] ?? "Dashboard"}
             </h1>
             <p className="text-xs text-gray-500 truncate">
@@ -66,7 +71,7 @@ export function Header() {
                 <p className="text-sm font-medium text-gray-900">{user?.name || "Usuario"}</p>
                 <p className="text-xs text-gray-500">{user?.role || "Invitado"}</p>
               </div>
-              <div className="h-8 w-8 rounded-full bg-gradient-to-br from-purple-600 to-purple-700 flex items-center justify-center text-white text-sm font-medium">
+              <div className={`h-8 w-8 rounded-full bg-gradient-to-br ${BRAND.accentFrom} ${BRAND.accentTo} flex items-center justify-center text-white text-sm font-medium`}>
                 {user?.name?.charAt(0).toUpperCase() || "A"}
               </div>
               <button

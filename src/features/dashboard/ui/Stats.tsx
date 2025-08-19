@@ -10,7 +10,7 @@ const statsData = [
     value: "24",
     change: "+12% desde el mes pasado",
     changeType: "positive" as const,
-    color: "bg-purple-100 text-purple-600"
+  color: "bg-orange-100 text-orange-600"
   },
   {
     icon: <FiUsers className="w-6 h-6" />,

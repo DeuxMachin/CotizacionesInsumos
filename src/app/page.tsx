@@ -5,7 +5,7 @@ import { Sidebar } from "@/features/navigation/ui/Sidebar";
 import { Header } from "@/features/navigation/ui/Header";
 import { Stats } from "@/features/dashboard/ui/Stats";
 import { QuickActions } from "@/features/dashboard/ui/QuickActions";
-import { RecentQuotes } from "@/features/dashboard/ui/RecentQuotes";
+import { RecentActivity } from "@/features/dashboard/ui/RecentActivity";
 import { QuotesTable } from "@/features/quotes/ui/QuotesTable";
 import { FiltersBar } from "@/features/quotes/ui/FiltersBar";
 import { NewQuoteModal } from "@/features/quotes/ui/NewQuoteModal";
@@ -27,7 +27,8 @@ function DashboardContent() {
         
         {/* Contenido scrolleable */}
         <main className="flex-1 overflow-auto">
-          <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
+          <div className="p-4 sm:p-6">
+            <div className="max-w-7xl mx-auto space-y-4 sm:space-y-6">
             
             {/* Dashboard - Página principal con métricas */}
             {section === "dashboard" && (
@@ -40,9 +41,9 @@ function DashboardContent() {
                 
                 {/* Grid de contenido secundario */}
                 <div className="grid gap-4 sm:gap-6 xl:grid-cols-2">
-                  {/* Cotizaciones recientes */}
-                  <RecentQuotes />
-                  
+                  {/* Actividad reciente */}
+                  <RecentActivity />
+
                   {/* Placeholder para gráfico futuro */}
                   <div className="bg-white rounded-xl border border-gray-100 p-6 min-h-[300px] sm:min-h-[350px] flex items-center justify-center">
                     <div className="text-center space-y-4">
@@ -69,7 +70,7 @@ function DashboardContent() {
                 {/* Header de sección con acciones */}
                 <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
                   <div>
-                    <h2 className="text-xl sm:text-2xl font-bold text-gray-900">
+                    <h2 className="text-xl sm:text-2xl font-bold text-gray-900 display-font">
                       Gestión de Cotizaciones
                     </h2>
                     <p className="text-gray-600 mt-1 text-sm sm:text-base">
@@ -97,7 +98,7 @@ function DashboardContent() {
               <div className="space-y-4 sm:space-y-6 animate-fadeIn">
                 <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
                   <div>
-                    <h2 className="text-xl sm:text-2xl font-bold text-gray-900">
+                    <h2 className="text-xl sm:text-2xl font-bold text-gray-900 display-font">
                       Gestión de Clientes
                     </h2>
                     <p className="text-gray-600 mt-1 text-sm sm:text-base">
@@ -132,7 +133,7 @@ function DashboardContent() {
               <div className="space-y-4 sm:space-y-6 animate-fadeIn">
                 <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
                   <div>
-                    <h2 className="text-xl sm:text-2xl font-bold text-gray-900">
+                    <h2 className="text-xl sm:text-2xl font-bold text-gray-900 display-font">
                       Catálogo de Productos
                     </h2>
                     <p className="text-gray-600 mt-1 text-sm sm:text-base">
@@ -167,7 +168,7 @@ function DashboardContent() {
               <div className="space-y-4 sm:space-y-6 animate-fadeIn">
                 <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
                   <div>
-                    <h2 className="text-xl sm:text-2xl font-bold text-gray-900">
+                    <h2 className="text-xl sm:text-2xl font-bold text-gray-900 display-font">
                       Reportes y Análisis
                     </h2>
                     <p className="text-gray-600 mt-1 text-sm sm:text-base">
@@ -196,6 +197,7 @@ function DashboardContent() {
                 </div>
               </div>
             )}
+            </div>
           </div>
         </main>
       </div>

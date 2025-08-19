@@ -2,6 +2,8 @@
 
 import { useSection } from "../model/useSection";
 import { FiHome, FiFileText, FiUsers, FiBox, FiBarChart2, FiX } from "react-icons/fi";
+import { Logo } from "@/shared/ui/Logo";
+import { BRAND } from "@/shared/ui/brand";
 
 // Elementos de navegación con iconos más profesionales y descriptivos
 const navigationItems = [
@@ -35,14 +37,12 @@ export function Sidebar() {
         lg:translate-x-0
       `}>
         {/* Header del sidebar - alineado con header principal */}
-        <div className="flex items-center justify-between h-16 px-6 border-b border-gray-100 flex-shrink-0">
-          <div className="flex items-center gap-3">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-purple-600 to-purple-700 text-white font-bold text-sm">
-              PA
-            </div>
-            <div className="flex flex-col">
-              <span className="font-bold text-gray-900 text-sm">Panel Admin</span>
-              <span className="text-xs text-gray-500">Sistema v1.0</span>
+        <div className="flex items-center justify-between h-16 px-4 border-b border-gray-100 flex-shrink-0">
+          <div className="flex items-center gap-3 min-w-0">
+            <Logo height={26} className="shrink-0" />
+            <div className="flex flex-col min-w-0">
+              <span className="font-bold text-gray-900 text-sm truncate">Panel Admin</span>
+              <span className="text-xs text-gray-500 truncate">Sistema v1.0</span>
             </div>
           </div>
           
@@ -70,17 +70,17 @@ export function Sidebar() {
                   className={`
                     w-full flex items-center gap-3 px-4 py-3 rounded-lg font-medium text-sm transition-all duration-200
                     ${isActive
-                      ? 'bg-purple-50 text-purple-700 border-l-4 border-purple-600 pl-2'
+                      ? `${BRAND.accentBgSoft} ${BRAND.accentText} border-l-4 pl-2 border-orange-500`
                       : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900 border-l-4 border-transparent'
                     }
                   `}
                 >
-                  <div className={`${isActive ? 'text-purple-600' : ''}`}>
+                  <div className={`${isActive ? 'text-orange-600' : ''}`}>
                     {item.icon}
                   </div>
                   <span className="flex-1 text-left">{item.label}</span>
                   {isActive && (
-                    <div className="w-2 h-2 rounded-full bg-purple-600"></div>
+                    <div className="w-2 h-2 rounded-full bg-orange-600"></div>
                   )}
                 </button>
               );

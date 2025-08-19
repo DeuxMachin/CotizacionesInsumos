@@ -17,7 +17,7 @@ export function RecentQuotes() {
             Últimas cotizaciones generadas en el sistema
           </p>
         </div>
-        <button className="flex items-center gap-2 text-sm text-purple-600 font-medium hover:text-purple-700 transition-colors">
+  <button className="flex items-center gap-2 text-sm text-orange-600 font-medium hover:text-orange-700 transition-colors">
           <FiEye className="w-4 h-4" />
           Ver Todas
         </button>
