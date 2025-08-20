@@ -40,7 +40,7 @@ const statsData = [
 
 export function Stats() {
   return (
-    <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
+    <div className="grid gap-3 sm:gap-4 lg:gap-6 grid-cols-2 lg:grid-cols-4">
       {statsData.map((stat, index) => (
         <div 
           key={stat.label}
@@ -49,25 +49,27 @@ export function Stats() {
         >
           {/* Icono con fondo colorido */}
           <div className={`
-            inline-flex h-12 w-12 items-center justify-center rounded-lg mb-4 
+            inline-flex h-8 w-8 sm:h-10 sm:w-10 lg:h-12 lg:w-12 items-center justify-center rounded-lg mb-3 sm:mb-4 
             ${stat.color} group-hover:scale-110 transition-transform duration-200
           `}>
-            {stat.icon}
+            <div className="w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6">
+              {stat.icon}
+            </div>
           </div>
           
           {/* Valor principal */}
-          <div className="stat-number mb-1">
+          <div className="stat-number mb-1 text-lg sm:text-xl lg:text-2xl">
             {stat.value}
           </div>
           
           {/* Etiqueta descriptiva */}
-          <div className="stat-label mb-3">
+          <div className="stat-label mb-2 sm:mb-3 text-xs sm:text-sm">
             {stat.label}
           </div>
           
-          {/* Indicador de cambio */}
+          {/* Indicador de cambio - oculto en mobile */}
           <div className={`
-            stat-change 
+            stat-change hidden sm:block
             ${stat.changeType === 'positive' 
               ? 'stat-change-positive' 
               : 'stat-change-negative'

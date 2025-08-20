@@ -11,27 +11,27 @@ h1, h2, .display-font { font-family: var(--font-display); }
 
 @layer components {
   .section-title { @apply font-semibold; font-family: var(--font-display); }
-  /* Botones principales */
-  .btn-primary { @apply inline-flex items-center justify-center gap-2 px-6 py-3 rounded-lg bg-gradient-to-r from-orange-500 to-orange-600 text-white font-medium hover:from-orange-600 hover:to-orange-700 shadow-lg hover:shadow-xl transition-all duration-200; }
-  .btn-secondary { @apply inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg border border-gray-200 bg-white text-gray-700 font-medium hover:bg-gray-50 hover:border-gray-300 transition-all duration-200; }
-  .btn-ghost { @apply inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-gray-600 font-medium hover:bg-gray-100 transition-all duration-200; }
-  .btn-icon { @apply h-10 w-10 flex items-center justify-center rounded-lg text-gray-600 hover:bg-gray-100 hover:text-gray-900 transition-all duration-200; }
+  /* Botones principales - mobile responsive */
+  .btn-primary { @apply inline-flex items-center justify-center gap-2 px-4 py-2.5 sm:px-6 sm:py-3 rounded-lg bg-gradient-to-r from-orange-500 to-orange-600 text-white font-medium hover:from-orange-600 hover:to-orange-700 shadow-lg hover:shadow-xl transition-all duration-200 text-sm sm:text-base; }
+  .btn-secondary { @apply inline-flex items-center justify-center gap-2 px-3 py-2 sm:px-4 sm:py-2 rounded-lg border border-gray-200 bg-white text-gray-700 font-medium hover:bg-gray-50 hover:border-gray-300 transition-all duration-200 text-sm sm:text-base; }
+  .btn-ghost { @apply inline-flex items-center justify-center gap-2 px-3 py-2 sm:px-4 sm:py-2 rounded-lg text-gray-600 font-medium hover:bg-gray-100 transition-all duration-200 text-sm sm:text-base; }
+  .btn-icon { @apply h-8 w-8 sm:h-10 sm:w-10 flex items-center justify-center rounded-lg text-gray-600 hover:bg-gray-100 hover:text-gray-900 transition-all duration-200; }
   
-  /* Formularios */
-  .form-input { @apply w-full px-3 py-2 rounded-lg border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-orange-200 focus:border-orange-400 transition-colors; }
-  .form-label { @apply block text-sm font-medium text-gray-700 mb-1; }
+  /* Formularios - mobile responsive */
+  .form-input { @apply w-full px-3 py-2.5 sm:px-3 sm:py-2 rounded-lg border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-orange-200 focus:border-orange-400 transition-colors text-sm sm:text-base; }
+  .form-label { @apply block text-xs sm:text-sm font-medium text-gray-700 mb-1; }
   
-  /* Tarjetas de estadísticas */
-  .stat-card { @apply bg-white rounded-xl p-6 border border-gray-100 hover:shadow-xl transition-all duration-200 relative overflow-hidden; }
+  /* Tarjetas de estadísticas - mobile responsive */
+  .stat-card { @apply bg-white rounded-xl p-4 sm:p-6 border border-gray-100 hover:shadow-xl transition-all duration-200 relative overflow-hidden; }
   .stat-card::before { content: ""; @apply absolute left-0 top-0 h-1 w-full bg-orange-500/80; }
-  .stat-number { @apply text-2xl font-bold text-gray-900; }
-  .stat-label { @apply text-sm font-medium text-gray-600 mt-1; }
+  .stat-number { @apply text-lg sm:text-2xl font-bold text-gray-900; }
+  .stat-label { @apply text-xs sm:text-sm font-medium text-gray-600 mt-1; }
   .stat-change { @apply text-xs font-medium mt-1; }
   .stat-change-positive { @apply text-green-600; }
   .stat-change-negative { @apply text-red-600; }
   
-  /* Acciones rápidas */
-  .quick-action { @apply flex flex-col items-center justify-center p-6 rounded-lg border border-gray-200 hover:border-orange-300 hover:bg-orange-50 transition-all duration-200 cursor-pointer; }
+  /* Acciones rápidas - mobile responsive */
+  .quick-action { @apply flex flex-col items-center justify-center p-4 sm:p-6 rounded-lg border border-gray-200 hover:border-orange-300 hover:bg-orange-50 transition-all duration-200 cursor-pointer; }
   .quick-action-primary { @apply bg-gradient-to-br from-orange-500 to-orange-600 text-white hover:from-orange-600 hover:to-orange-700; }
 }
 

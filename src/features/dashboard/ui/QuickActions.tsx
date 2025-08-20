@@ -58,34 +58,36 @@ export function QuickActions() {
   };
 
   return (
-    <div className="bg-white rounded-xl border border-gray-100 p-6">
+    <div className="bg-white rounded-xl border border-gray-100 p-4 sm:p-6">
       {/* Header de la sección */}
-      <div className="mb-4 sm:mb-6">
-        <h3 className="section-title text-xl font-semibold text-gray-900 mb-1">
+      <div className="mb-3 sm:mb-4 lg:mb-6">
+        <h3 className="section-title text-lg sm:text-xl font-semibold text-gray-900 mb-1">
           Acciones Rápidas
         </h3>
-        <p className="text-sm text-gray-600">
+        <p className="text-xs sm:text-sm text-gray-600">
           Accede rápidamente a las funciones más utilizadas
         </p>
       </div>
 
       {/* Grid de acciones */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 lg:gap-4">
         {quickActions.map((a, idx) => (
           <button
             key={a.action}
             onClick={() => handleActionClick(a.action)}
-            className="group text-left bg-white border-2 border-gray-200 rounded-xl p-5 hover:border-orange-500 hover:shadow-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2"
+            className="group text-left bg-white border-2 border-gray-200 rounded-xl p-3 sm:p-4 lg:p-5 hover:border-orange-500 hover:shadow-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2"
             style={{ animationDelay: `${idx * 60}ms` }}
           >
             <div className="flex flex-col items-center text-center">
-              <div className="mb-3">
-                {a.icon}
+              <div className="mb-2 sm:mb-3">
+                <div className="w-5 h-5 sm:w-6 sm:h-6 lg:w-7 lg:h-7 text-orange-600">
+                  {a.icon}
+                </div>
               </div>
-              <h4 className="font-semibold text-gray-900 mb-1">
+              <h4 className="font-semibold text-gray-900 mb-1 text-sm sm:text-base">
                 {a.title}
               </h4>
-              <p className="text-sm text-gray-600">
+              <p className="text-xs sm:text-sm text-gray-600 hidden sm:block">
                 {a.description}
               </p>
             </div>
@@ -93,27 +95,27 @@ export function QuickActions() {
         ))}
       </div>
 
-      {/* Chips secundarios */}
-      <div className="mt-4 flex flex-wrap gap-2">
+      {/* Chips secundarios - responsive */}
+      <div className="mt-3 sm:mt-4 flex flex-wrap gap-1.5 sm:gap-2">
         <button
           onClick={() => {
             const csv = quotesToCSV(quotesData);
             downloadCSV(csv, "cotizaciones.csv");
             Toast?.success?.("Cotizaciones exportadas");
           }}
-          className="px-3 py-1.5 rounded-full border border-gray-200 text-gray-700 hover:border-orange-400 hover:bg-orange-50 text-sm"
+          className="px-2 py-1 sm:px-3 sm:py-1.5 rounded-full border border-gray-200 text-gray-700 hover:border-orange-400 hover:bg-orange-50 text-xs sm:text-sm"
         >
           Exportar CSV
         </button>
         <button
           onClick={() => Toast?.info?.("Importación próximamente")}
-          className="px-3 py-1.5 rounded-full border border-gray-200 text-gray-700 hover:border-orange-400 hover:bg-orange-50 text-sm"
+          className="px-2 py-1 sm:px-3 sm:py-1.5 rounded-full border border-gray-200 text-gray-700 hover:border-orange-400 hover:bg-orange-50 text-xs sm:text-sm"
         >
           Importar CSV
         </button>
         <button
           onClick={() => Toast?.info?.("Atajos: N nueva cotización, / buscar, G ir a sección")}
-          className="px-3 py-1.5 rounded-full border border-gray-200 text-gray-700 hover:border-orange-400 hover:bg-orange-50 text-sm"
+          className="px-2 py-1 sm:px-3 sm:py-1.5 rounded-full border border-gray-200 text-gray-700 hover:border-orange-400 hover:bg-orange-50 text-xs sm:text-sm hidden sm:inline-flex"
         >
           Atajos del teclado
         </button>

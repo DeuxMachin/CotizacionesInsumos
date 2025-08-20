@@ -45,7 +45,7 @@ const mockUsers = [
 
 export const useAuth = create<AuthState>()(
   persist(
-    (set, get) => ({
+    (set) => ({
       user: null,
       isAuthenticated: false,
       isLoading: false,
@@ -61,7 +61,8 @@ export const useAuth = create<AuthState>()(
         );
 
         if (user) {
-          const { password: _, ...userWithoutPassword } = user;
+          const { password: _pw, ...userWithoutPassword } = user;
+          void _pw;
           set({ 
             user: userWithoutPassword, 
             isAuthenticated: true, 
