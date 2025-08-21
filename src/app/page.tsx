@@ -11,6 +11,7 @@ import { FiltersBar } from "@/features/quotes/ui/FiltersBar";
 import { NewQuoteModal } from "@/features/quotes/ui/NewQuoteModal";
 import { ToastHost } from "@/shared/ui/Toast";
 import { ClientsPage } from "@/features/clients/ui/ClientsPage";
+import StockPage from "@/features/stock/ui/StockPage";
 import { AuthWrapper } from "@/components/AuthWrapper";
 
 function DashboardContent() {
@@ -96,28 +97,11 @@ function DashboardContent() {
             )}
 
             {/* Catálogo de Productos */}
-            {section === "catalogo" && (
-              <div className="space-y-4 sm:space-y-6 animate-fadeIn">
-                {/* Acciones de sección (evitar duplicar títulos del Header) */}
-                <div className="flex items-start justify-end">
-                  <button className="btn-primary flex-shrink-0"><span>Nuevo Producto</span></button>
-                </div>
-                {/* Placeholder para contenido de catálogo */}
-                <div className="bg-white rounded-xl border border-gray-100 p-6 sm:p-8 text-center">
-                  <div className="max-w-md mx-auto">
-                    <div className="w-16 h-16 mx-auto bg-gray-100 rounded-full flex items-center justify-center mb-4">
-                      <div className="w-8 h-8 bg-gray-300 rounded animate-pulse"></div>
-                    </div>
-                    <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                      Catálogo de Productos
-                    </h3>
-                    <p className="text-gray-500 text-sm sm:text-base">
-                      Esta sección estará disponible próximamente. 
-                      Aquí podrás gestionar tu inventario.
-                    </p>
-                  </div>
-                </div>
-              </div>
+            {/* Catálogo eliminado, Stock asume su función */}
+
+            {/* Control de Stock */}
+            {section === "stock" && (
+              <StockPage />
             )}
 
             {/* Reportes y Análisis */}

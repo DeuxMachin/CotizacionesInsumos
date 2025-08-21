@@ -2,7 +2,7 @@
 
 import { useSection } from "../model/useSection";
 import type { Section } from "../model/useSection";
-import { FiHome, FiFileText, FiUsers, FiBox, FiBarChart2, FiX } from "react-icons/fi";
+import { FiHome, FiFileText, FiUsers, FiBox, FiPackage, FiBarChart2, FiX } from "react-icons/fi";
 import { Logo } from "@/shared/ui/Logo";
 import { BRAND } from "@/shared/ui/brand";
 
@@ -11,7 +11,7 @@ const navigationItems = [
   { key: "dashboard", icon: <FiHome className="w-5 h-5" />, label: "Dashboard" },
   { key: "cotizaciones", icon: <FiFileText className="w-5 h-5" />, label: "Cotizaciones" },
   { key: "clientes", icon: <FiUsers className="w-5 h-5" />, label: "Clientes" },
-  { key: "catalogo", icon: <FiBox className="w-5 h-5" />, label: "Catálogo" },
+  { key: "stock", icon: <FiPackage className="w-5 h-5" />, label: "Stock" },
   { key: "reportes", icon: <FiBarChart2 className="w-5 h-5" />, label: "Reportes" },
 ] as const;
 

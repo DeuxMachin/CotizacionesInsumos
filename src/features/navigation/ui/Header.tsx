@@ -12,6 +12,7 @@ const titles: Record<string, string> = {
   cotizaciones: "Gestión de Cotizaciones",
   clientes: "Gestión de Clientes", 
   catalogo: "Catálogo de Productos",
+  stock: "Control de Stock",
   reportes: "Reportes y Análisis",
 };
 
@@ -21,6 +22,7 @@ const subtitles: Record<string, string> = {
   cotizaciones: "Administra y controla todas tus cotizaciones",
   clientes: "Gestiona tu base de datos de clientes",
   catalogo: "Organiza tu inventario de productos",
+  stock: "Gestiona inventario y valorización",
   reportes: "Analiza el rendimiento de tu negocio",
 };
 
