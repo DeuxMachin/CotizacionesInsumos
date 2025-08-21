@@ -1,13 +1,14 @@
 "use client";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { FullscreenModal } from "@/shared/ui/FullscreenModal";
+import { BRAND } from "@/shared/ui/brand";
 import { products as allProducts } from "@/features/quotes/model/products";
 import { clients as mockClients, type Client } from "@/features/clients/model/clients";
 import { QuoteAmountCalculator } from "@/entities/quote/model/types";
 
 export const NewQuoteModal = {
   Trigger() {
-    const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(false);
     return (
       <>
         <button className="btn-primary" onClick={()=>setOpen(true)}>Nueva Cotización</button>
@@ -36,23 +37,49 @@ export const NewQuoteModal = {
   const [contactoNombre, setContactoNombre] = useState("");
   const [contactoEmail, setContactoEmail] = useState("");
   const [contactoTelefono, setContactoTelefono] = useState("");
-    const [dueDate, setDueDate] = useState<string>(() => new Date().toISOString().split("T")[0]);
-    const [notes, setNotes] = useState("");
+  const [dueDate, setDueDate] = useState<string>("");
+    const [createdDate, setCreatedDate] = useState<string>("");
+  const [docType, setDocType] = useState<string>("");
+    const [validDaysStr, setValidDaysStr] = useState<string>("");
+    const [paymentMethod, setPaymentMethod] = useState<string>("");
+    const [currency, setCurrency] = useState<"CLP" | "USD" | "">("");
+  const [paymentNotes, setPaymentNotes] = useState<string>("");
+  const [folio, setFolio] = useState<string>("");
+    // helper: add days
+    const addDays = (dateStr: string, days: number) => {
+      const d = new Date(dateStr);
+      d.setDate(d.getDate() + days);
+      return d.toISOString().split("T")[0];
+    };
+    useEffect(() => {
+      // Sync due date only if both fields are present
+      const days = parseInt(validDaysStr);
+      if (createdDate && !isNaN(days)) {
+        setDueDate(addDays(createdDate, days));
+      } else {
+        setDueDate("");
+      }
+    }, [createdDate, validDaysStr]);
+  // Notas rápidas eliminadas: se mantienen sólo términos en paso 3
 
-    const [search, setSearch] = useState("");
+  const [search, setSearch] = useState("");
     const [selected, setSelected] = useState<Record<string, number>>({}); // id -> qty
+  const [collapsed, setCollapsed] = useState<boolean>(true);
+  const [globalDiscountPct, setGlobalDiscountPct] = useState<number>(0);
+  const [exentoAmount, setExentoAmount] = useState<number>(0);
 
     // Borrador local (guardar y reanudar)
     type Draft = {
       step: 1|2|3;
       client: string; selectedClientId?: string;
-      clientRut: string; clientRazonSocial: string; clientGiro: string; clientDireccion: string; clientRegion: string; clientCiudad: string; clientComuna: string; clientTipoEmpresa: Client["tipoEmpresa"]; contactoNombre: string; contactoEmail: string; contactoTelefono: string;
-      dueDate: string; notes: string;
+    clientRut: string; clientRazonSocial: string; clientGiro: string; clientDireccion: string; clientRegion: string; clientCiudad: string; clientComuna: string; clientTipoEmpresa: Client["tipoEmpresa"]; contactoNombre: string; contactoEmail: string; contactoTelefono: string;
+  createdDate: string; docType: string; validDaysStr: string; paymentMethod: string; currency: "CLP"|"USD"|""; paymentNotes: string;
+  dueDate: string; globalDiscountPct: number; exentoAmount: number;
       selected: Record<string, number>;
     };
     const DRAFT_KEY = "quote_draft_v1";
     const saveDraft = () => {
-      const d: Draft = { step, client, selectedClientId, clientRut, clientRazonSocial, clientGiro, clientDireccion, clientRegion, clientCiudad, clientComuna, clientTipoEmpresa, contactoNombre, contactoEmail, contactoTelefono, dueDate, notes, selected };
+  const d: Draft = { step, client, selectedClientId, clientRut, clientRazonSocial, clientGiro, clientDireccion, clientRegion, clientCiudad, clientComuna, clientTipoEmpresa, contactoNombre, contactoEmail, contactoTelefono, createdDate, docType, validDaysStr, paymentMethod, currency, paymentNotes, dueDate, globalDiscountPct, exentoAmount, selected };
       try { localStorage.setItem(DRAFT_KEY, JSON.stringify(d)); } catch {}
     };
     const loadDraft = () => {
@@ -62,9 +89,10 @@ export const NewQuoteModal = {
         const d: Draft = JSON.parse(s);
   setStep(d.step); setClient(d.client); setSelectedClientId(d.selectedClientId);
         setClientRut(d.clientRut); setClientRazonSocial(d.clientRazonSocial); setClientGiro(d.clientGiro); setClientDireccion(d.clientDireccion);
-        setClientRegion(d.clientRegion); setClientCiudad(d.clientCiudad); setClientComuna(d.clientComuna); setClientTipoEmpresa(d.clientTipoEmpresa);
+    setClientRegion(d.clientRegion); setClientCiudad(d.clientCiudad); setClientComuna(d.clientComuna); setClientTipoEmpresa(d.clientTipoEmpresa);
         setContactoNombre(d.contactoNombre); setContactoEmail(d.contactoEmail); setContactoTelefono(d.contactoTelefono);
-        setDueDate(d.dueDate); setNotes(d.notes); setSelected(d.selected);
+  setCreatedDate(d.createdDate); setDocType(d.docType); setValidDaysStr(d.validDaysStr); setPaymentMethod(d.paymentMethod); setCurrency(d.currency); setPaymentNotes(d.paymentNotes);
+    setDueDate(d.dueDate); setGlobalDiscountPct(d.globalDiscountPct); setExentoAmount(d.exentoAmount); setSelected(d.selected);
         return true;
       } catch { return false; }
     };
@@ -77,8 +105,13 @@ export const NewQuoteModal = {
       return acc + (prod ? prod.price * qty : 0);
     }, 0), [selected]);
 
-    const tax = QuoteAmountCalculator.calculateTax(subtotal, 0.19);
-    const total = subtotal + tax;
+    const discountAmount = useMemo(() => {
+      const pct = Math.min(100, Math.max(0, globalDiscountPct));
+      return (subtotal * pct) / 100;
+    }, [subtotal, globalDiscountPct]);
+    const taxableBase = Math.max(0, subtotal - discountAmount);
+    const tax = QuoteAmountCalculator.calculateTax(taxableBase, 0.19);
+    const total = taxableBase + exentoAmount + tax;
 
     const updateQty = (id: string, delta: number) => {
       setSelected(prev => {
@@ -93,9 +126,29 @@ export const NewQuoteModal = {
   setStep(1); setClient(""); setSelectedClientId(undefined);
       setClientRut(""); setClientRazonSocial(""); setClientGiro(""); setClientDireccion(""); setClientRegion(""); setClientCiudad(""); setClientComuna(""); setClientTipoEmpresa("Ltda.");
       setContactoNombre(""); setContactoEmail(""); setContactoTelefono("");
-      setDueDate(new Date().toISOString().split("T")[0]); setNotes(""); setSearch(""); setSelected({});
+  setCreatedDate(""); setDocType(""); setValidDaysStr(""); setPaymentMethod(""); setCurrency(""); setPaymentNotes("");
+      setDueDate(""); setSearch(""); setSelected({}); setCollapsed(true); setGlobalDiscountPct(0); setExentoAmount(0); setFolio("");
       clearDraft();
       close();
+    };
+
+    const clearAll = () => {
+      setStep(1); setClient(""); setSelectedClientId(undefined);
+      setClientRut(""); setClientRazonSocial(""); setClientGiro(""); setClientDireccion(""); setClientRegion(""); setClientCiudad(""); setClientComuna(""); setClientTipoEmpresa("Ltda.");
+      setContactoNombre(""); setContactoEmail(""); setContactoTelefono("");
+  setCreatedDate(""); setDocType(""); setValidDaysStr(""); setPaymentMethod(""); setCurrency(""); setPaymentNotes("");
+  setDueDate(""); setSearch(""); setSelected({}); setCollapsed(true); setGlobalDiscountPct(0); setExentoAmount(0); setFolio("");
+      clearDraft();
+    };
+
+    const startManualEntry = () => {
+      // Limpiar datos de cliente por completo y expandir para ingreso manual
+      setSelectedClientId(undefined);
+      setClient("");
+      setClientRut(""); setClientRazonSocial(""); setClientGiro("");
+      setClientDireccion(""); setClientRegion(""); setClientCiudad(""); setClientComuna("");
+      setClientTipoEmpresa("Ltda."); setContactoNombre(""); setContactoEmail(""); setContactoTelefono("");
+      setCollapsed(false);
     };
 
     return (
@@ -104,6 +157,7 @@ export const NewQuoteModal = {
           <span className="text-base sm:text-lg font-semibold truncate">Nueva Cotización</span>
           <div className="flex gap-1 sm:gap-2 ml-2">
             <button className="btn-secondary text-xs sm:text-sm px-2 py-1 sm:px-3 sm:py-1.5" onClick={saveDraft}>Guardar</button>
+            <button className="btn-ghost text-xs sm:text-sm px-2 py-1 sm:px-3 sm:py-1.5" onClick={clearAll}>Limpiar</button>
             <button className="btn-ghost text-xs sm:text-sm px-2 py-1 sm:px-3 sm:py-1.5" onClick={loadDraft}>Reanudar</button>
           </div>
         </div>
@@ -111,113 +165,170 @@ export const NewQuoteModal = {
         <div className="grid lg:grid-cols-[1fr_320px] xl:grid-cols-[1fr_360px] h-full">
           {/* Left: wizard steps */}
           <div className="p-3 sm:p-4 lg:p-6 space-y-4 sm:space-y-6">
-            {/* Stepper */}
-            <div className="flex items-center gap-2 sm:gap-3 text-xs sm:text-sm overflow-x-auto pb-2">
-              {[1,2,3].map(n => (
-                <div key={n} className={`inline-flex items-center gap-1.5 sm:gap-2 whitespace-nowrap ${step===n? 'text-orange-600 font-semibold':'text-gray-500'}`}>
-                  <span className={`h-5 w-5 sm:h-6 sm:w-6 inline-flex items-center justify-center rounded-full border text-xs ${step===n? 'border-orange-500 bg-orange-50':'border-gray-300'}`}>{n}</span>
-                  {n===1? 'Datos': n===2? 'Productos':'Términos'}
-                </div>
-              ))}
-            </div>
-
             {step === 1 && (
               <div className="space-y-4 sm:space-y-5">
-                <div>
-                  <label className="form-label">Cliente existente (opcional)</label>
-                  <div className="flex items-stretch gap-2">
-                    <select className="form-input flex-1" value={selectedClientId ?? ""} onChange={(e)=>{
-                      const id = e.target.value || undefined; setSelectedClientId(id);
-                      if (id) {
-                        const c = mockClients.find(x=>x.id===id)!;
-                        setClient(c.razonSocial);
-                        setClientRut(c.rut); setClientRazonSocial(c.razonSocial); setClientGiro(c.giro);
-                        setClientDireccion(c.direccion); setClientRegion(c.region); setClientCiudad(c.ciudad); setClientComuna(c.comuna);
-                        setClientTipoEmpresa(c.tipoEmpresa); setContactoNombre(c.contactoNombre); setContactoEmail(c.contactoEmail); setContactoTelefono(c.contactoTelefono);
-                      }
-                    }}>
-                      <option value="">Seleccionar cliente...</option>
-                      {mockClients.map(c => (
-                        <option key={c.id} value={c.id}>{c.razonSocial} - {c.rut}</option>
-                      ))}
-                    </select>
-                    {selectedClientId && (
-                      <button type="button" className="btn-ghost text-xs sm:text-sm px-2 sm:px-3" onClick={()=>{ setSelectedClientId(undefined); }}>Desvincular</button>
+                <div className="grid lg:grid-cols-2 gap-4">
+                  {/* Panel Cliente */}
+                  <div className="rounded-xl p-3 sm:p-4 bg-white border border-gray-100 shadow-sm">
+                    <div className="flex items-center justify-between mb-3">
+                      <h3 className="font-semibold text-gray-900">Datos del cliente</h3>
+                      <div className="flex gap-1 sm:gap-2">
+                        <button className="btn-secondary text-xs sm:text-sm px-2 py-1" onClick={()=>setCollapsed(c=>!c)}>{collapsed? 'Editar datos':'Contraer'}</button>
+                        <button className="btn-ghost text-xs sm:text-sm px-2 py-1" onClick={startManualEntry}>Rellenar manualmente</button>
+                      </div>
+                    </div>
+                    {/* Selector existente */}
+                    <div className="mb-3">
+                      <label className="form-label">Cliente existente (opcional)</label>
+                      <div className="flex items-stretch gap-2">
+                        <select className="form-input flex-1" value={selectedClientId ?? ""} onChange={(e)=>{
+                          const id = e.target.value || undefined; setSelectedClientId(id);
+                          if (id) {
+                            const c = mockClients.find(x=>x.id===id)!;
+                            setClient(c.razonSocial);
+                            setClientRut(c.rut); setClientRazonSocial(c.razonSocial); setClientGiro(c.giro);
+                            setClientDireccion(c.direccion); setClientRegion(c.region); setClientCiudad(c.ciudad); setClientComuna(c.comuna);
+                            setClientTipoEmpresa(c.tipoEmpresa); setContactoNombre(c.contactoNombre); setContactoEmail(c.contactoEmail); setContactoTelefono(c.contactoTelefono);
+                            setCollapsed(true);
+                          }
+                        }}>
+                          <option value="">Seleccionar cliente...</option>
+                          {mockClients.map(c => (
+                            <option key={c.id} value={c.id}>{c.razonSocial} - {c.rut}</option>
+                          ))}
+                        </select>
+                        {selectedClientId && (
+                          <button type="button" className="btn-ghost text-xs sm:text-sm px-2 sm:px-3" onClick={()=>{ setSelectedClientId(undefined); }}>Desvincular</button>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Vista compacta */}
+                    {collapsed ? (
+                      <div className="text-sm text-gray-700 space-y-1">
+                        <div className="flex justify-between"><span className="text-gray-600">Cliente</span><span className="font-medium truncate ml-2">{client || '—'}</span></div>
+                        <div className="flex justify-between"><span className="text-gray-600">Contacto</span><span className="truncate ml-2">{contactoNombre || '—'}</span></div>
+                        <div className="flex justify-between"><span className="text-gray-600">RUT</span><span>{clientRut || '—'}</span></div>
+                        <div className="flex justify-between"><span className="text-gray-600">Dirección</span><span className="truncate ml-2">{clientDireccion || '—'}</span></div>
+                      </div>
+                    ) : (
+                      <div className="space-y-3 sm:space-y-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          <div>
+                            <label className="form-label">RUT</label>
+                            <input className="form-input" placeholder="12.345.678-9" value={clientRut} onChange={(e)=>setClientRut(e.target.value)} />
+                          </div>
+                          <div>
+                            <label className="form-label">Tipo de Empresa</label>
+                            <select
+                              className="form-input"
+                              value={clientTipoEmpresa}
+                              onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
+                                setClientTipoEmpresa(e.target.value as Client["tipoEmpresa"]) }
+                            >
+                              <option>Ltda.</option><option>S.A.</option><option>SpA</option><option>E.I.R.L.</option><option>Otra</option>
+                            </select>
+                          </div>
+                        </div>
+                        <div>
+                          <label className="form-label">Razón Social</label>
+                          <input className="form-input" value={clientRazonSocial} onChange={(e)=>{ setClientRazonSocial(e.target.value); setClient(e.target.value); }} placeholder="Nombre de la empresa" />
+                        </div>
+                        <div>
+                          <label className="form-label">Giro</label>
+                          <input className="form-input" value={clientGiro} onChange={(e)=>setClientGiro(e.target.value)} placeholder="Actividad económica" />
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          <div>
+                            <label className="form-label">Región</label>
+                            <input className="form-input" value={clientRegion} onChange={(e)=>setClientRegion(e.target.value)} />
+                          </div>
+                          <div>
+                            <label className="form-label">Ciudad</label>
+                            <input className="form-input" value={clientCiudad} onChange={(e)=>setClientCiudad(e.target.value)} />
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          <div>
+                            <label className="form-label">Comuna</label>
+                            <input className="form-input" value={clientComuna} onChange={(e)=>setClientComuna(e.target.value)} />
+                          </div>
+                          <div>
+                            <label className="form-label">Dirección</label>
+                            <input className="form-input" value={clientDireccion} onChange={(e)=>setClientDireccion(e.target.value)} />
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                          <div>
+                            <label className="form-label">Contacto</label>
+                            <input className="form-input" value={contactoNombre} onChange={(e)=>setContactoNombre(e.target.value)} placeholder="Nombre y apellido" />
+                          </div>
+                          <div>
+                            <label className="form-label">Email</label>
+                            <input className="form-input" type="email" value={contactoEmail} onChange={(e)=>setContactoEmail(e.target.value)} />
+                          </div>
+                          <div>
+                            <label className="form-label">Teléfono</label>
+                            <input className="form-input" value={contactoTelefono} onChange={(e)=>setContactoTelefono(e.target.value)} />
+                          </div>
+                        </div>
+                      </div>
                     )}
                   </div>
-                  <p className="text-xs text-gray-500 mt-1">Si seleccionas un cliente, los campos se completarán automáticamente. Puedes editar cualquier dato.</p>
-                </div>
-                <div className="space-y-3 sm:space-y-4 p-3 sm:p-4 border rounded-lg">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div>
-                      <label className="form-label">RUT</label>
-                      <input className="form-input" placeholder="12.345.678-9" value={clientRut} onChange={(e)=>setClientRut(e.target.value)} />
-                    </div>
-                    <div>
-                      <label className="form-label">Tipo de Empresa</label>
-                      <select
-                        className="form-input"
-                        value={clientTipoEmpresa}
-                        onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
-                          setClientTipoEmpresa(e.target.value as Client["tipoEmpresa"]) }
-                      >
-                        <option>Ltda.</option><option>S.A.</option><option>SpA</option><option>E.I.R.L.</option><option>Otra</option>
-                      </select>
-                    </div>
-                  </div>
-                  <div>
-                    <label className="form-label">Razón Social</label>
-                    <input className="form-input" value={clientRazonSocial} onChange={(e)=>{ setClientRazonSocial(e.target.value); setClient(e.target.value); }} placeholder="Nombre de la empresa" />
-                  </div>
-                  <div>
-                    <label className="form-label">Giro</label>
-                    <input className="form-input" value={clientGiro} onChange={(e)=>setClientGiro(e.target.value)} placeholder="Actividad económica" />
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div>
-                      <label className="form-label">Región</label>
-                      <input className="form-input" value={clientRegion} onChange={(e)=>setClientRegion(e.target.value)} />
-                    </div>
-                    <div>
-                      <label className="form-label">Ciudad</label>
-                      <input className="form-input" value={clientCiudad} onChange={(e)=>setClientCiudad(e.target.value)} />
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div>
-                      <label className="form-label">Comuna</label>
-                      <input className="form-input" value={clientComuna} onChange={(e)=>setClientComuna(e.target.value)} />
-                    </div>
-                    <div>
-                      <label className="form-label">Dirección</label>
-                      <input className="form-input" value={clientDireccion} onChange={(e)=>setClientDireccion(e.target.value)} />
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                    <div>
-                      <label className="form-label">Contacto</label>
-                      <input className="form-input" value={contactoNombre} onChange={(e)=>setContactoNombre(e.target.value)} placeholder="Nombre y apellido" />
-                    </div>
-                    <div>
-                      <label className="form-label">Email</label>
-                      <input className="form-input" type="email" value={contactoEmail} onChange={(e)=>setContactoEmail(e.target.value)} />
-                    </div>
-                    <div>
-                      <label className="form-label">Teléfono</label>
-                      <input className="form-input" value={contactoTelefono} onChange={(e)=>setContactoTelefono(e.target.value)} />
+
+                  {/* Panel de Configuración de la cotización */}
+                  <div className="rounded-xl p-3 sm:p-4 bg-white border border-gray-100 shadow-sm">
+                    <h3 className="font-semibold text-gray-900 mb-3">Configuración</h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="form-label">Folio</label>
+        <input className="form-input" value={"Se asigna al emitir"} readOnly disabled />
+                      </div>
+                      <div>
+                        <label className="form-label">Tipo documento</label>
+                        <select className="form-input" value={docType} onChange={(e)=>setDocType(e.target.value)}>
+                          <option value="" disabled>Seleccione tipo...</option>
+                          <option value="Cotización">Cotización</option>
+                          <option value="Proforma">Proforma</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="form-label">Fecha de creación</label>
+                        <input type="date" className="form-input" value={createdDate} onChange={(e)=>setCreatedDate(e.target.value)} />
+                      </div>
+                      <div>
+                        <label className="form-label">Válida por (días)</label>
+                        <input type="number" min={0} className="form-input" value={validDaysStr} onChange={(e)=>setValidDaysStr(e.target.value)} placeholder="Ej: 30" />
+                        <p className="text-xs text-gray-500 mt-1">Vence el <span className="font-medium">{dueDate || '—'}</span></p>
+                      </div>
+                      <div>
+                        <label className="form-label">Forma de pago</label>
+                        <select className="form-input" value={paymentMethod} onChange={(e)=>setPaymentMethod(e.target.value)}>
+                          <option value="" disabled>Seleccione forma...</option>
+                          <option value="Transferencia">Transferencia</option>
+                          <option value="Cheque adjunto a la OC">Cheque adjunto a la OC</option>
+                          <option value="Tarjeta">Tarjeta</option>
+                          <option value="Efectivo">Efectivo</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="form-label">Moneda</label>
+                        <select className="form-input" value={currency} onChange={(e)=>setCurrency(e.target.value as "CLP"|"USD"|"") }>
+                          <option value="" disabled>Seleccione moneda...</option>
+                          <option value="CLP">Pesos (CLP)</option>
+                          <option value="USD">Dólares (USD)</option>
+                        </select>
+                      </div>
+                      {/* Orden alfabético eliminado por requerimiento */}
+                      <div className="sm:col-span-2">
+                        <label className="form-label">Observaciones pago</label>
+                        <textarea className="form-input" rows={3} value={paymentNotes} onChange={(e)=>setPaymentNotes(e.target.value)} placeholder="Ej: Datos de transferencia (máx. 200 caracteres)" />
+                      </div>
                     </div>
                   </div>
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <label className="form-label">Fecha de vencimiento</label>
-                    <input type="date" className="form-input" value={dueDate} onChange={(e)=>setDueDate(e.target.value)} />
-                  </div>
-                  <div>
-                    <label className="form-label">Notas</label>
-                    <input className="form-input" placeholder="Referencia del pedido, condiciones, etc." value={notes} onChange={(e)=>setNotes(e.target.value)} />
-                  </div>
-                </div>
+
+                {/* Se elimina bloque de "Fecha de vencimiento y notas" por requerimiento */}
                 <div className="flex flex-col sm:flex-row justify-between gap-3 sm:gap-0">
                   <button className="btn-ghost order-2 sm:order-1" onClick={saveDraft}>Guardar borrador</button>
                   <button className="btn-primary order-1 sm:order-2" onClick={()=>setStep(2)}>Continuar</button>
@@ -232,13 +343,13 @@ export const NewQuoteModal = {
                   <input className="form-input" placeholder="Escribe para buscar..." value={search} onChange={(e)=>setSearch(e.target.value)} />
                 </div>
                 {/* Categorías y subcategorías (checkbox) */}
-                <div className="border rounded-xl overflow-hidden divide-y">
+                <div className="rounded-xl overflow-hidden bg-white border border-gray-100 shadow-sm">
                   {Array.from(new Set(allProducts.map(p=>p.category))).map(cat => {
                     const catProducts = allProducts.filter(p=>p.category===cat && p.name.toLowerCase().includes(search.toLowerCase()));
                     const subcats = Array.from(new Set(catProducts.map(p=>p.subcategory || "Otros")));
                     return (
                       <details key={cat} open className="group">
-                        <summary className="flex items-center justify-between px-4 py-3 bg-gradient-to-r from-orange-50 to-white cursor-pointer">
+                        <summary className={`flex items-center justify-between px-4 py-3 ${BRAND.accentBgSoft} cursor-pointer`}>
                           <div className="font-semibold text-gray-900">{cat}</div>
                           <svg className="w-4 h-4 text-gray-500 transition-transform group-open:rotate-180" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.24a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.08z" clipRule="evenodd"/></svg>
                         </summary>
@@ -246,35 +357,35 @@ export const NewQuoteModal = {
                           const subProducts = catProducts.filter(p=> (p.subcategory||"Otros")===sub);
                           const subSelectedCount = subProducts.reduce((acc,p)=> acc + (selected[p.id] ? 1 : 0), 0);
                           return (
-                            <details key={sub} className="border-t last:border-b-0">
+                            <details key={sub} className="border-t border-gray-100 last:border-b-0">
                               <summary className="flex items-center justify-between px-6 py-3 bg-white cursor-pointer hover:bg-gray-50">
                                 <div className="flex items-center gap-2">
                                   <div className="text-gray-800 font-medium">{sub}</div>
-                                  {subSelectedCount>0 && (<span className="text-xs px-2 py-0.5 rounded-full bg-orange-100 text-orange-700">{subSelectedCount} seleccionados</span>)}
+                                  {subSelectedCount>0 && (<span className={`text-xs px-2 py-0.5 rounded-full ${BRAND.accentBgSoft} ${BRAND.accentText}`}>{subSelectedCount} seleccionados</span>)}
                                 </div>
                                 <svg className="w-4 h-4 text-gray-500" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.24a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.08z" clipRule="evenodd"/></svg>
                               </summary>
                               <div className="px-6 py-3 bg-white">
-                                <ul className="grid sm:grid-cols-2 gap-3">
+                <ul className="grid sm:grid-cols-2 gap-3">
                                   {subProducts.map(p => (
-                                    <li key={p.id} className="rounded-lg border p-3 hover:shadow-sm transition flex items-center justify-between">
+                  <li key={p.id} className={`${selected[p.id] ? `${BRAND.accentBgSoft} ring-1 ring-orange-200` : ''} rounded-lg border border-gray-100 bg-white p-3 hover:bg-gray-50 hover:shadow-sm transition flex items-center justify-between`}>
                                       <div className="flex items-start gap-3">
-                                        <input type="checkbox" className="mt-1 accent-orange-600" checked={!!selected[p.id]} onChange={(e)=>{
+                    <input type="checkbox" className={`mt-1 accent-orange-600`} checked={!!selected[p.id]} onChange={(e)=>{
                                           if (e.target.checked) updateQty(p.id, 1); else updateQty(p.id, -999);
                                         }} />
-                                        <div>
-                                          <div className="font-medium text-gray-900">{p.name}</div>
-                                          <div className="text-sm text-gray-600">${p.price.toLocaleString('es-CL')}</div>
+                                        <div className="min-w-0">
+                                          <div className="font-medium text-gray-900 truncate">{p.name}</div>
+                                          <div className={`inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full ${BRAND.accentBgSoft} ${BRAND.accentText} mt-1`}>$ {p.price.toLocaleString('es-CL')}</div>
                                         </div>
                                       </div>
                                       {selected[p.id] ? (
                                         <div className="flex items-center gap-2">
                                           <button className="btn-ghost" onClick={()=>updateQty(p.id,-1)}>-</button>
-                                          <div className="w-8 text-center">{selected[p.id]}</div>
-                                          <button className="btn-secondary" onClick={()=>updateQty(p.id,1)}>+</button>
+                                          <div className="w-9 text-center border rounded-md py-0.5 text-sm">{selected[p.id]}</div>
+                                          <button className="inline-flex items-center justify-center px-3 py-1.5 rounded-md text-white bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 shadow" onClick={()=>updateQty(p.id,1)}>+</button>
                                         </div>
                                       ) : (
-                                        <button className="btn-secondary" onClick={()=>updateQty(p.id,1)}>Agregar</button>
+                                        <button className="inline-flex items-center justify-center px-3 py-1.5 rounded-md text-white bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 shadow" onClick={()=>updateQty(p.id,1)}>Agregar</button>
                                       )}
                                     </li>
                                   ))}
@@ -303,6 +414,16 @@ export const NewQuoteModal = {
                   <label className="form-label">Términos y condiciones</label>
                   <textarea className="form-input" rows={5} defaultValue={`Validez de la cotización: 30 días\nForma de pago: 50% al confirmar pedido, 50% contra entrega\nTiempo de entrega: 15 días hábiles\nGarantía: 12 meses por defectos de fabricación`} />
                 </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="form-label">Descuento global (%)</label>
+                    <input type="number" min={0} max={100} className="form-input" value={globalDiscountPct} onChange={(e)=>setGlobalDiscountPct(Math.max(0, Math.min(100, Number(e.target.value)||0)))} />
+                  </div>
+                  <div>
+                    <label className="form-label">Monto exento</label>
+                    <input type="number" min={0} className="form-input" value={exentoAmount} onChange={(e)=>setExentoAmount(Math.max(0, Number(e.target.value)||0))} />
+                  </div>
+                </div>
                 <div className="flex justify-between">
                   <button className="btn-secondary" onClick={()=>setStep(2)}>Atrás</button>
                   <div className="flex gap-2">
@@ -319,7 +440,7 @@ export const NewQuoteModal = {
             <h4 className="font-semibold text-gray-900 mb-3 text-sm lg:text-base">Resumen</h4>
             <div className="space-y-2 text-xs lg:text-sm">
               <div className="flex justify-between"><span className="text-gray-600">Cliente</span><span className="font-medium truncate ml-2">{client || "—"}</span></div>
-              <div className="flex justify-between"><span className="text-gray-600">Vencimiento</span><span className="font-medium">{dueDate}</span></div>
+              <div className="flex justify-between"><span className="text-gray-600">Vencimiento</span><span className="font-medium">{dueDate || '—'}</span></div>
             </div>
             <div className="mt-4">
               <h5 className="font-medium text-gray-900 mb-2 text-sm">Productos</h5>
@@ -340,9 +461,15 @@ export const NewQuoteModal = {
               )}
             </div>
             <div className="mt-4 pt-4 border-t space-y-1 text-xs lg:text-sm">
-              <div className="flex justify-between"><span className="text-gray-600">Subtotal</span><span className="font-semibold">${subtotal.toLocaleString('es-CL')}</span></div>
-              <div className="flex justify-between"><span className="text-gray-600">IVA (19%)</span><span className="font-semibold">${tax.toLocaleString('es-CL')}</span></div>
-              <div className="flex justify-between text-sm lg:text-base border-t pt-2"><span className="text-gray-900">Total</span><span className="font-extrabold text-gray-900">${total.toLocaleString('es-CL')}</span></div>
+              <div className="flex justify-between"><span className="text-gray-600">Subtotal</span><span className="font-semibold">{currency==='USD' ? `$ ${(subtotal/900).toLocaleString('en-US')}` : `$ ${subtotal.toLocaleString('es-CL')}`}</span></div>
+              {globalDiscountPct>0 && (
+                <div className="flex justify-between"><span className="text-gray-600">Descuento ({globalDiscountPct}%)</span><span className="font-semibold">- {currency==='USD' ? `$ ${(discountAmount/900).toLocaleString('en-US')}` : `$ ${discountAmount.toLocaleString('es-CL')}`}</span></div>
+              )}
+              {exentoAmount>0 && (
+                <div className="flex justify-between"><span className="text-gray-600">Exento</span><span className="font-semibold">{currency==='USD' ? `$ ${(exentoAmount/900).toLocaleString('en-US')}` : `$ ${exentoAmount.toLocaleString('es-CL')}`}</span></div>
+              )}
+              <div className="flex justify-between"><span className="text-gray-600">IVA (19%)</span><span className="font-semibold">{currency==='USD' ? `$ ${(tax/900).toLocaleString('en-US')}` : `$ ${tax.toLocaleString('es-CL')}`}</span></div>
+              <div className="flex justify-between text-sm lg:text-base border-t pt-2"><span className="text-gray-900">Total</span><span className="font-extrabold text-gray-900">{currency==='USD' ? `$ ${(total/900).toLocaleString('en-US')}` : `$ ${total.toLocaleString('es-CL')}`}</span></div>
             </div>
           </aside>
         </div>
