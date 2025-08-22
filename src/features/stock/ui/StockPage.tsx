@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { BRAND } from "@/shared/ui/brand";
 import { inventoryMock, type InventoryItem, inferStatus } from "../model/inventory";
 import { Toast } from "@/shared/ui/Toast";
+import { AddStockModal, useAddStockModal } from "./AddStockModal";
 
 function cx(...c: (string|false|undefined)[]) { return c.filter(Boolean).join(" "); }
 function formatCLP(n: number) { return new Intl.NumberFormat("es-CL", { style: "currency", currency: "CLP", maximumFractionDigits: 0 }).format(n); }
@@ -15,6 +16,8 @@ const statusChip: Record<string, string> = {
 };
 
 export default function StockPage() {
+  const { open, openModal, closeModal } = useAddStockModal();
+  const [data, setData] = useState<InventoryItem[]>(inventoryMock);
   const [q, setQ] = useState("");
   const [cat, setCat] = useState("todas");
   const [onlyAlerts, setOnlyAlerts] = useState(false);
@@ -22,7 +25,7 @@ export default function StockPage() {
   const [sortDir, setSortDir] = useState<"asc"|"desc">("desc");
 
   const items = useMemo(() => {
-    const withStatus = inventoryMock.map(i => ({ ...i, status: inferStatus(i) }));
+    const withStatus = data.map(i => ({ ...i, status: inferStatus(i) }));
     let out = withStatus;
     if (cat !== "todas") out = out.filter(i => i.category === cat);
     if (q) {
@@ -42,9 +45,9 @@ export default function StockPage() {
       return a.name.localeCompare(b.name) * dir;
     });
     return out;
-  }, [q, cat, onlyAlerts, sortBy, sortDir]);
+  }, [q, cat, onlyAlerts, sortBy, sortDir, data]);
 
-  const categories = useMemo(() => Array.from(new Set(inventoryMock.map(i => i.category))), []);
+  const categories = useMemo(() => Array.from(new Set(data.map(i => i.category))), [data]);
 
   const totals = useMemo(() => {
     const currentValue = items.reduce((acc, i) => acc + i.stock * i.cost, 0);
@@ -55,6 +58,35 @@ export default function StockPage() {
 
   return (
     <div className="space-y-4 sm:space-y-6 animate-fadeIn">
+  <AddStockModal open={open} onClose={closeModal} items={data} onConfirm={({ lines, newProducts }) => {
+        setData(prev => {
+          // Insertar productos nuevos
+          const inserted = [
+            ...prev,
+            ...newProducts.map(np => ({
+              id: np.id,
+              code: np.code,
+              name: np.name,
+              category: np.category,
+              unit: np.unit,
+              stock: 0,
+              packSize: np.packSize,
+              price: np.price,
+              cost: np.cost,
+              updatedAt: new Date().toISOString(),
+            }))
+          ];
+          // Sumar cantidades al stock
+          const updated = inserted.map(it => {
+            const l = lines.find(li => li.productId === it.id);
+            if (!l) return it;
+            return { ...it, stock: it.stock + l.qty, packSize: l.packSize || it.packSize, cost: l.unitCost || it.cost, price: l.unitPrice ?? it.price, updatedAt: new Date().toISOString() };
+          });
+          return updated;
+        });
+        Toast.success("Stock actualizado");
+        closeModal();
+      }} />
       {/* Acciones */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="flex gap-2 flex-1">
@@ -72,8 +104,8 @@ export default function StockPage() {
           </label>
         </div>
   <div className="flex gap-2">
+          <button className="btn-primary text-sm" onClick={openModal}>Agregar stock</button>
           <button className="btn-secondary text-sm" onClick={()=>Toast.info("Exportar inventario pronto")}>Exportar</button>
-          <button className="btn-primary text-sm" onClick={()=>Toast.info("Nuevo producto pronto")}>Nuevo producto</button>
         </div>
       </div>
 
