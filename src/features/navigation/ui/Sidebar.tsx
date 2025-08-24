@@ -2,6 +2,7 @@
 
 import { useSection } from "../model/useSection";
 import type { Section } from "../model/useSection";
+import { useAuth } from "@/features/auth/model/useAuth";
 import { FiHome, FiFileText, FiUsers, FiBox, FiPackage, FiBarChart2, FiX } from "react-icons/fi";
 import { Logo } from "@/shared/ui/Logo";
 import { BRAND } from "@/shared/ui/brand";
@@ -17,6 +18,7 @@ const navigationItems = [
 
 export function Sidebar() {
   const { section, setSection, sidebarOpen, setSidebarOpen } = useSection();
+  const { user } = useAuth();
 
   return (
     <>
@@ -86,6 +88,27 @@ export function Sidebar() {
                 </button>
               );
             })}
+            {/* Opción exclusiva de Admin: Vendedores (placeholder) */}
+            {user?.role === "admin" && (
+              <button
+                onClick={() => { setSection("vendedores"); setSidebarOpen(false); }}
+                className={`
+                  w-full flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2.5 sm:py-3 rounded-lg font-medium text-sm transition-all duration-200
+                  ${section === 'vendedores'
+                    ? `${BRAND.accentBgSoft} ${BRAND.accentText} border-l-4 pl-2 sm:pl-2 border-orange-500`
+                    : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900 border-l-4 border-transparent'
+                  }
+                `}
+              >
+                <div className={`${section === 'vendedores' ? 'text-orange-600' : ''}`}>
+                  <FiUsers className="w-5 h-5" />
+                </div>
+                <span className="flex-1 text-left text-sm">Vendedores</span>
+                {section === 'vendedores' && (
+                  <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-orange-600"></div>
+                )}
+              </button>
+            )}
           </div>
         </nav>
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { useAuth } from "../model/useAuth";
 import { FiMail, FiLock, FiEye, FiEyeOff, FiArrowRight, FiCheck } from "react-icons/fi";
 import { Logo } from "@/shared/ui/Logo";
@@ -22,6 +23,7 @@ export function LoginForm() {
   const [showDemoCredentials, setShowDemoCredentials] = useState(false);
 
   const { login, isLoading } = useAuth();
+  const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -31,6 +33,13 @@ export function LoginForm() {
     
     if (!result.success) {
       setError(result.error || "Error desconocido");
+    } else {
+      // Redirección por rol
+      if (formData.email === "admin@empresa.com") {
+        router.replace("/admin");
+      } else {
+        router.replace("/");
+      }
     }
   };
 

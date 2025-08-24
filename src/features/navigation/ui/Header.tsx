@@ -11,9 +11,9 @@ const titles: Record<string, string> = {
   dashboard: "Bienvenido al Panel Administrativo",
   cotizaciones: "Gestión de Cotizaciones",
   clientes: "Gestión de Clientes", 
-  catalogo: "Catálogo de Productos",
   stock: "Control de Stock",
   reportes: "Reportes y Análisis",
+  vendedores: "Gestión de Vendedores",
 };
 
 // Subtítulos informativos que aparecen debajo del título principal
@@ -21,9 +21,9 @@ const subtitles: Record<string, string> = {
   dashboard: "Resumen general de tu sistema de cotizaciones",
   cotizaciones: "Administra y controla todas tus cotizaciones",
   clientes: "Gestiona tu base de datos de clientes",
-  catalogo: "Organiza tu inventario de productos",
   stock: "Gestiona inventario y valorización",
   reportes: "Analiza el rendimiento de tu negocio",
+  vendedores: "Administra el equipo comercial (en desarrollo)",
 };
 
 export function Header() {
