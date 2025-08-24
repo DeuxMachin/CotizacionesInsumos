@@ -81,7 +81,7 @@ export function ClientsPage() {
             />
             <select
               value={status}
-              onChange={(e) => setStatus(e.target.value as any)}
+              onChange={(e) => setStatus(e.target.value as ("todos" | ClientStatus))}
               className="form-input w-[160px]"
             >
               <option value="todos">Todos</option>

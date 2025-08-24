@@ -49,7 +49,7 @@ export function QuickActions() {
         setSection("clientes");
         break;
       case "go-catalog":
-        setSection("catalogo");
+  setSection("stock");
         break;
       case "go-reports":
         setSection("reportes");

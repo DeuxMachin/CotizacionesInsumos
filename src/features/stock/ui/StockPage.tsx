@@ -119,7 +119,7 @@ export default function StockPage() {
       {/* Ordenar por - visible en todos los tamaños */}
   <div className="rounded-xl border border-gray-100 bg-slate-50 px-3 py-2 flex items-center justify-end gap-2 flex-wrap w-full">
         <span className="text-xs text-slate-600">Ordenar por</span>
-        <select className="form-input h-10 w-40" value={sortBy} onChange={e=>setSortBy(e.target.value as any)}>
+  <select className="form-input h-10 w-40" value={sortBy} onChange={e=>setSortBy(e.target.value as "name"|"status"|"quantity")}>
           <option value="name">Nombre</option>
           <option value="status">Estado</option>
           <option value="quantity">Cantidad</option>
