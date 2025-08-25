@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<title>{{tipo_doc_legible}} N° {{numero_interno}}</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<style>
+  @page { size: A4; margin: 14mm 12mm 14mm 12mm; }
+  html, body { height: 100%; }
+  body { font-family: Arial, Helvetica, sans-serif; font-size: 10pt; line-height: 1.25; color: #000; font-variant-numeric: tabular-nums; }
+  * { box-sizing: border-box; }
+  .bold { font-weight: 700; }
+  .right { text-align: right; }
+  .center { text-align: center; }
+  .small { font-size: 9pt; }
+  .xs { font-size: 8.5pt; }
+  .muted { color: #111; }
+  :root { --b: 0.5pt; --b2: 0.35pt; }
+  .brd { border: var(--b) solid #000; }
+  .brd2 { border: var(--b2) solid #000; }
+  .no-brd { border: none; }
+  .page { position: relative; min-height: calc(297mm - 28mm); }
+  header#doc-header { display: grid; grid-template-columns: 30% 42% 28%; column-gap: 4mm; align-items: start; margin-bottom: 6mm; }
+  .rut-box .tipo, .rut-box .folio, .rut-box .sii { line-height: 1.15; }
+  .logo-box { display: flex; align-items: center; gap: 6mm; min-height: 10mm; }
+  .logo-box img { height: 8mm; width: auto; }
+  .logo-subtitle { font-size: 8.8pt; margin-top: 2mm; }
+  .emisor-box { padding: 3.5mm; }
+  .emisor-box h2 { font-size: 11pt; margin: 0 0 2mm 0; line-height: 1.2; }
+  .emisor-box .line { margin: 1mm 0; }
+  .rut-box { padding: 3.5mm 3mm; border: var(--b) solid #000; word-break: break-word; }
+  .rut-box .rut { font-size: 11.5pt; text-align: right; margin-bottom: 2mm; }
+  .rut-box .tipo { font-size: 12pt; font-weight: 700; text-align: center; margin: 1mm 0; }
+  .rut-box .folio { font-size: 12pt; font-weight: 700; text-align: center; margin: 1mm 0 2mm; }
+  .rut-box .sii { text-align: center; font-size: 10pt; }
+  .fecha-emision { text-align: right; margin: 2mm 0 4mm; }
+  .receptor-grid { display: grid; grid-template-columns: 66% 34%; gap: 4mm; }
+  .receptor-box { border: var(--b) solid #000; padding: 3mm; margin-bottom: 4mm; }
+  .receptor-left { padding: 0; min-height: 22mm; }
+  .receptor-left h3 { margin: 0 0 2mm; font-size: 10.5pt; }
+  .receptor-left .line { margin: 0.5mm 0; }
+  .receptor-right { padding: 0; }
+  .receptor-right .row { display: grid; grid-template-columns: 28% 72%; margin: 0.8mm 0; }
+  .receptor-right .key { font-weight: 700; }
+  .items-wrap { border: var(--b) solid #000; margin-top: 2mm; }
+  table.items { width: 100%; border-collapse: collapse; page-break-inside: auto; }
+  .items thead th { border: none; border-bottom: var(--b) solid #000; padding: 2.5mm 2mm; font-size: 9.5pt; background: #f5f5f5; }
+  .items thead th:not(:last-child) { border-right: var(--b2) solid #000; }
+  .items tbody td { border: none; padding: 1.8mm 2mm; vertical-align: top; }
+  .items tbody td:not(:last-child) { border-right: none; }
+  .items tfoot td { border-top: var(--b) solid #000; }
+  .col-codigo { width: 18%; }
+  .col-desc   { width: 44%; }
+  .col-cant   { width: 6%;  text-align: right; }
+  .col-precio { width: 10%; text-align: right; }
+  .col-dscto  { width: 7%;  text-align: right; }
+  .col-rec    { width: 7%;  text-align: right; }
+  .col-afex   { width: 8%;  text-align: center; }
+  .col-valor  { width: 10%; text-align: right; }
+  .under-table { display: grid; grid-template-columns: 60% 40%; gap: 4mm; align-items: start; margin-top: 2mm; }
+  .count-lines { font-size: 9pt; margin: 1mm 0; }
+  .refs, .obs { border: var(--b) solid #000; min-height: 16mm; padding: 2.5mm; }
+  .refs-title, .obs-title { font-weight: 700; margin-bottom: 1mm; }
+  .totales { border: var(--b) solid #000; padding: 3mm; }
+  .totales .row { display: grid; grid-template-columns: 60% 40%; margin: 0.8mm 0; }
+  .totales .label { text-align: right; padding-right: 2mm; }
+  .totales .value { text-align: right; font-variant-numeric: tabular-nums; }
+  .totales .total { font-weight: 700; }
+  thead { display: table-header-group; }
+  tfoot { display: table-row-group; }
+  tr { page-break-inside: avoid; }
+  .items tbody { page-break-inside: auto; }
+  .avoid-break { page-break-inside: avoid; }
+</style>
+</head>
+<body>
+  <div class="page">
+    <header id="doc-header">
+      <div class="logo-box">
+        {{#if logo_url}}<img src="{{logo_url}}" alt="Logo" />{{/if}}
+        {{#if logo_subtitle}}<div class="logo-subtitle xs">{{logo_subtitle}}</div>{{/if}}
+      </div>
+      <div class="emisor-box">
+        <h2 class="bold">{{emisor.razon_social}}</h2>
+        {{#if emisor.giro}}<div class="line">{{emisor.giro}}</div>{{/if}}
+        {{#if emisor.web}}<div class="line">{{emisor.web}}</div>{{/if}}
+        {{#if emisor.direccion}}<div class="line">Dirección: {{emisor.direccion}}</div>{{/if}}
+        {{#if emisor.email}}<div class="line">Email: {{emisor.email}}</div>{{/if}}
+        {{#if emisor.telefono}}<div class="line">Teléfono(s): {{emisor.telefono}}</div>{{/if}}
+      </div>
+      <div class="rut-box">
+        <div class="rut bold">R.U.T.: {{emisor.rut}}</div>
+        <div class="tipo">{{tipo_doc_legible}}</div>
+        <div class="folio">N° {{numero_interno}}</div>
+        <div class="sii">S.I.I. – {{sii_oficina}}</div>
+      </div>
+    </header>
+
+    <div class="fecha-emision small">Fecha emisión: {{fecha_emision}}</div>
+
+    <section class="receptor-box avoid-break">
+      <div class="receptor-grid">
+        <div class="receptor-left">
+          <h3>Señor(es):</h3>
+          <div class="line bold">{{receptor.razon_social}}</div>
+          <div class="line">Dirección: {{receptor.direccion}}</div>
+          <div class="line">Giro: {{receptor.giro}}</div>
+        </div>
+        <div class="receptor-right">
+          <div class="row"><div class="key">RUT:</div><div>{{receptor.rut}}</div></div>
+          <div class="row"><div class="key">Comuna:</div><div>{{receptor.comuna}}</div></div>
+          <div class="row"><div class="key">Ciudad:</div><div>{{receptor.ciudad}}</div></div>
+        </div>
+      </div>
+    </section>
+
+  <div class="items-wrap avoid-break">
+  <table class="items">
+      <thead>
+        <tr>
+          <th class="col-codigo">Código</th>
+          <th class="col-desc">Descripción</th>
+          <th class="col-cant">Cant.</th>
+          <th class="col-precio">Precio</th>
+          <th class="col-dscto">Dscto.(%)</th>
+          <th class="col-rec">Recargo</th>
+          <th class="col-afex">Af/Ex</th>
+          <th class="col-valor">Valor</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{#each items}}
+        <tr>
+          <td class="col-codigo">{{this.codigo}}</td>
+          <td class="col-desc">{{this.descripcion}}{{#if this.descripcion2}}<br/><span class="muted">{{this.descripcion2}}</span>{{/if}}</td>
+          <td class="col-cant">{{this.cantidad}}</td>
+          <td class="col-precio">{{this.precio}}</td>
+          <td class="col-dscto">{{this.dscto_porcentaje}}</td>
+          <td class="col-rec">{{this.recargo}}</td>
+          <td class="col-afex">{{#if this.afecto_exento}}AFECTO{{else}}EXENTO{{/if}}</td>
+          <td class="col-valor">{{this.valor}}</td>
+        </tr>
+        {{/each}}
+      </tbody>
+  </table>
+  </div>
+
+    <div class="under-table">
+      <div>
+        <div class="count-lines xs">N° líneas: {{num_lineas}} / Cant: {{suma_cantidades}}</div>
+        <div class="refs avoid-break">
+          <div class="refs-title">Referencias:</div>
+          {{#if referencia_texto}}
+            <div>{{referencia_texto}}</div>
+          {{else}}
+            <div class="muted">—</div>
+          {{/if}}
+        </div>
+        <div class="obs avoid-break" style="margin-top: 3mm;">
+          <div class="obs-title">Observaciones:</div>
+          {{#if observaciones}}
+            <div>{{observaciones}}</div>
+          {{else}}
+            <div class="muted">—</div>
+          {{/if}}
+        </div>
+      </div>
+      <div class="totales avoid-break">
+        <div class="row"><div class="label">Subtotal:</div><div class="value">{{subtotal}}</div></div>
+        <div class="row"><div class="label">Descto. global :</div><div class="value">{{descto_global_monto}}</div></div>
+        <div class="row"><div class="label">Monto neto:</div><div class="value">{{neto}}</div></div>
+        <div class="row"><div class="label">IVA (19%):</div><div class="value">{{iva}}</div></div>
+        <div class="row"><div class="label total">Total:</div><div class="value total">{{total}}</div></div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

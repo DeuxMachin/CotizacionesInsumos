@@ -5,6 +5,8 @@ import { BRAND } from "@/shared/ui/brand";
 import { products as allProducts } from "@/features/quotes/model/products";
 import { clients as mockClients, type Client } from "@/features/clients/model/clients";
 import { QuoteAmountCalculator } from "@/entities/quote/model/types";
+import { downloadServerDTE } from "@/features/reports/ui/pdf/downloadServerDTE";
+import { mapQuoteToDTE, type DTEItem } from "@/features/reports/ui/pdf/ChileanTaxUtils";
 
 export const NewQuoteModal = {
   Trigger() {
@@ -428,7 +430,42 @@ export const NewQuoteModal = {
                   <button className="btn-secondary" onClick={()=>setStep(2)}>Atrás</button>
                   <div className="flex gap-2">
                     <button className="btn-ghost" onClick={saveDraft}>Guardar borrador</button>
-                    <button className="btn-primary" onClick={()=>{ clearDraft(); resetAndClose(); }}>Crear Cotización</button>
+                    <button className="btn-primary" onClick={async ()=>{
+                      // Construir items desde selección
+                      const items: DTEItem[] = Object.entries(selected).map(([id, qty]) => {
+                        const p = allProducts.find(pp=>pp.id===id)!;
+                        return { codigo: p.id, descripcion: p.name, cantidad: qty, precio: Math.round(p.price), afecto: true };
+                      });
+                      const doc = mapQuoteToDTE({
+                        quoteId: "temp",
+                        tipo: "COTIZACIÓN",
+                        fechaEmision: new Date().toISOString(),
+                        folio: folio || undefined,
+                        items,
+                        emisor: {
+                          razonSocial: BRAND?.name || "Mi Empresa",
+                          rut: "76.309.629-7",
+                          giro: "Comercialización de productos y servicios",
+                          direccion: "Dirección de la empresa",
+                          // Prefer PNG/JPG for best Puppeteer rendering
+                          logoUrl: BRAND?.logoSrc || undefined,
+                          encabezadoSuperior: "INSUMOS DE CONSTRUCCION Y SERVICIOS DE VENTA",
+                          encabezadoInferior: "OLGA ESTER LEAL LEAL E.I.R.L.",
+                        },
+                        cliente: {
+                          razonSocial: client || clientRazonSocial || "Cliente",
+                          rut: clientRut || undefined,
+                          direccion: clientDireccion,
+                          comuna: clientComuna,
+                          ciudad: clientCiudad,
+                          giro: clientGiro,
+                        },
+                        observaciones: paymentNotes || undefined,
+                      });
+                      await downloadServerDTE(doc, `COT_${new Date().toISOString().slice(0,10)}.pdf`);
+                      clearDraft();
+                      resetAndClose();
+                    }}>Crear Cotización</button>
                   </div>
                 </div>
               </div>
