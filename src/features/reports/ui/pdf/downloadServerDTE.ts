@@ -11,7 +11,7 @@ export async function downloadServerDTE(doc: DTEDocument, filename?: string) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = filename || `DTE_${doc.tipo}_${doc.folio || "s-n"}.pdf`;
+  a.download = filename || `NOTA_DE_VENTA_${doc.folio || "s-n"}.pdf`;
   document.body.appendChild(a);
   a.click();
   a.remove();

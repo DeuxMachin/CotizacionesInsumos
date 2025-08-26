@@ -10,8 +10,12 @@ const longDate = (iso: string) => {
 };
 
 function tipoLegible(t: DTEDocument["tipo"]) {
-  if (t === "COTIZACIÓN") return t;
+  if (t === "COTIZACIÓN") return "NOTA DE VENTA";  // Siempre usar NOTA DE VENTA para las cotizaciones
   return `${t} ELECTRÓNICA`;
+}
+
+function formatCurrencyNoSymbol(n: number): string {
+  return n.toLocaleString('es-CL');
 }
 
 export function mapToTemplateModel(doc: DTEDocument) {
@@ -32,12 +36,16 @@ export function mapToTemplateModel(doc: DTEDocument) {
   });
 
   const suma_cantidades = doc.items.reduce((a, b) => a + (b.cantidad || 0), 0);
+  const netoCalc = doc.items.filter(i => i.afecto !== false).reduce((a, it) => a + it.precio * it.cantidad, 0);
+  const exentoCalc = doc.items.filter(i => i.afecto === false).reduce((a, it) => a + it.precio * it.cantidad, 0);
+  const ivaCalc = Math.round(netoCalc * (doc.tasaIVA ?? 0.19));
+  const totalCalc = netoCalc + ivaCalc + exentoCalc;
+
   return {
     logo_url: doc.emisor.logoUrl || "",
     logo_subtitle: "",
-    tipo_doc_legible: tipoLegible(doc.tipo),
+    tipo_doc_legible: "NOTA DE VENTA",
     numero_interno: doc.folio || "",
-    sii_oficina: (doc.sucursal || "TEMUCO").replace(/^S\.I\.I\s*-\s*/i, ""),
     fecha_emision: longDate(doc.fechaEmision),
     emisor: {
       razon_social: doc.emisor.encabezadoSuperior
@@ -57,6 +65,14 @@ export function mapToTemplateModel(doc: DTEDocument) {
       rut: doc.receptor.rut || "",
       comuna: doc.receptor.comuna || "",
       ciudad: doc.receptor.ciudad || "",
+      contacto: (doc as any).receptor?.contacto || "",
+      plazo_entrega: (doc as any).receptor?.plazo_entrega || "",
+      vendedor: (doc as any).receptor?.vendedor || "",
+      documento: (doc as any).receptor?.documento || "",
+      f_entrega: (doc as any).receptor?.f_entrega || "",
+      forma_pago: (doc as any).receptor?.forma_pago || "",
+      moneda: (doc as any).receptor?.moneda || "Pesos",
+      canal_venta: (doc as any).receptor?.canal_venta || "",
     },
     items,
     num_lineas: items.length,
@@ -65,8 +81,9 @@ export function mapToTemplateModel(doc: DTEDocument) {
     observaciones: doc.observaciones || "",
     subtotal: numberCL(doc.items.reduce((a, it) => a + it.precio * it.cantidad, 0)),
     descto_global_monto: numberCL(0),
-    neto: numberCL(doc.items.filter(i => i.afecto !== false).reduce((a, it) => a + it.precio * it.cantidad, 0)),
-    iva: numberCL(Math.round(doc.items.filter(i => i.afecto !== false).reduce((a, it) => a + it.precio * it.cantidad, 0) * (doc.tasaIVA ?? 0.19))),
-    total: numberCL(doc.items.reduce((a, it) => a + Math.round((it.precio - (it.descuentoPct ? (it.precio * it.descuentoPct) / 100 : 0)) * it.cantidad + (it.recargo || 0)), 0)),
+    neto: numberCL(netoCalc),
+    exento: numberCL(exentoCalc),
+    iva: numberCL(ivaCalc),
+    total: numberCL(totalCalc),
   };
 }

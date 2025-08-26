@@ -29,7 +29,7 @@ export async function POST(req: NextRequest) {
         data.logo_url = `data:${mime};base64,${b64}`;
       } catch {}
     }
-  const tplPath = path.join(process.cwd(), "src", "features", "reports", "ui", "pdf", "template", "dte-template.hbs");
+  const tplPath = path.join(process.cwd(), "src", "features", "reports", "ui", "pdf", "template", "nota-venta-template.hbs");
   const template = await readFile(tplPath, "utf8");
   const html = await renderHtmlWithTemplate(template, data);
   const pdf = await renderPdfFromHtml(html);
