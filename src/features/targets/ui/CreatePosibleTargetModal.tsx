@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { FiX, FiMapPin, FiSearch, FiLoader, FiMap, FiCheckCircle } from "react-icons/fi";
 import { Modal } from "@/shared/ui/Modal";
-import { useTargets } from "../model/useTargets";
+
 import type { CreateTargetData } from "../model/types";
 
 interface CreateTargetModalProps {
@@ -214,7 +214,7 @@ export function CreateTargetModal({ isOpen, onClose }: CreateTargetModalProps) {
     }
 
     try {
-      
+     
       onClose();
       
       // Reset form
@@ -479,7 +479,7 @@ export function CreateTargetModal({ isOpen, onClose }: CreateTargetModalProps) {
                   <select
                     required
                     value={formData.prioridad}
-                    onChange={(e) => setFormData(prev => ({ ...prev, prioridad: e.target.value as 'baja' | 'media' | 'alta' }))}
+                    onChange={(e) => setFormData(prev => ({ ...prev, prioridad: e.target.value as any }))}
                     className="input-field"
                   >
                     <option value="baja">Baja</option>
@@ -594,7 +594,7 @@ export function CreateTargetModal({ isOpen, onClose }: CreateTargetModalProps) {
               >
                 Volver a Ubicación
               </button>
-             
+              
             </div>
           </form>
         )}

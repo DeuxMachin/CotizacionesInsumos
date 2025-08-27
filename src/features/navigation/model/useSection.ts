@@ -1,7 +1,7 @@
 "use client";
 import { create } from "zustand";
 
-export type Section = "dashboard" | "cotizaciones" | "clientes" | "stock" | "reportes" | "vendedores";
+export type Section = "dashboard" | "cotizaciones" | "clientes" | "stock" | "reportes" | "posibles-targets" | "vendedores";
 
 interface Store {
   section: Section;

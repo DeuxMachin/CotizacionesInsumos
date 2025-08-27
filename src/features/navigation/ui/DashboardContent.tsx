@@ -18,6 +18,7 @@ import { useAuth } from "@/features/auth/model/useAuth";
 import { SalesSummaryKPIs } from "@/features/reports/ui/SalesSummaryKPIs";
 import { SalesTrendChart } from "@/features/reports/ui/SalesTrendChart";
 import { PeriodToggle } from "@/features/reports/ui/PeriodToggle";
+import { PosiblesTargetsPage } from "@/features/targets/ui/PosiblesTargetsPage";
 import { useState } from "react";
 
 export function DashboardContent() {
@@ -100,6 +101,11 @@ export function DashboardContent() {
             {/* Control de Stock */}
             {section === "stock" && (
               <StockPage />
+            )}
+
+            {/* Posibles Targets */}
+            {section === "posibles-targets" && (
+              <PosiblesTargetsPage />
             )}
 
             {/* Se eliminó la sección de Targets */}
