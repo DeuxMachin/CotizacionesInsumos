@@ -28,7 +28,7 @@ export function DashboardContent() {
   const [trendPeriod, setTrendPeriod] = useState<"month" | "year">("month");
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex">
       {/* Navegación lateral */}
       <Sidebar />
       
@@ -38,7 +38,7 @@ export function DashboardContent() {
         <Header />
         
         {/* Contenido scrolleable */}
-        <main className="flex-1 overflow-auto">
+        <main className="flex-1 overflow-auto bg-gray-50 dark:bg-gray-900">
           <div className="p-3 sm:p-4 lg:p-6">
             <div className="max-w-7xl mx-auto space-y-3 sm:space-y-4 lg:space-y-6">
             
@@ -136,10 +136,10 @@ export function DashboardContent() {
             {/* Vendedores - placeholder */}
             {section === "vendedores" && (
               <div className="space-y-4 sm:space-y-6 animate-fadeIn">
-                <div className="bg-white rounded-xl border border-gray-100 p-6 sm:p-10 text-center">
+                <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 sm:p-10 text-center">
                   <div className="max-w-lg mx-auto space-y-3">
-                    <h3 className="text-xl font-semibold text-gray-900">Vendedores</h3>
-                    <p className="text-gray-500">Trabajando...</p>
+                    <h3 className="text-xl font-semibold text-gray-900 dark:text-white">Vendedores</h3>
+                    <p className="text-gray-500 dark:text-gray-400">Trabajando...</p>
                   </div>
                 </div>
               </div>

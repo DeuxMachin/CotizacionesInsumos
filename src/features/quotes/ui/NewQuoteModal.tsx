@@ -171,7 +171,7 @@ export const NewQuoteModal = {
               <div className="space-y-4 sm:space-y-5">
                 <div className="grid lg:grid-cols-2 gap-4">
                   {/* Panel Cliente */}
-                  <div className="rounded-xl p-3 sm:p-4 bg-white border border-gray-100 shadow-sm">
+                  <div className="rounded-xl p-3 sm:p-4 bg-white border border-gray-200 dark:border-gray-700 shadow-sm">
                     <div className="flex items-center justify-between mb-3">
                       <h3 className="font-semibold text-gray-900">Datos del cliente</h3>
                       <div className="flex gap-1 sm:gap-2">
@@ -279,7 +279,7 @@ export const NewQuoteModal = {
                   </div>
 
                   {/* Panel de Configuración de la cotización */}
-                  <div className="rounded-xl p-3 sm:p-4 bg-white border border-gray-100 shadow-sm">
+                  <div className="rounded-xl p-3 sm:p-4 bg-white border border-gray-200 dark:border-gray-700 shadow-sm">
                     <h3 className="font-semibold text-gray-900 mb-3">Configuración</h3>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
@@ -345,7 +345,7 @@ export const NewQuoteModal = {
                   <input className="form-input" placeholder="Escribe para buscar..." value={search} onChange={(e)=>setSearch(e.target.value)} />
                 </div>
                 {/* Categorías y subcategorías (checkbox) */}
-                <div className="rounded-xl overflow-hidden bg-white border border-gray-100 shadow-sm">
+                <div className="rounded-xl overflow-hidden bg-white border border-gray-200 dark:border-gray-700 shadow-sm">
                   {Array.from(new Set(allProducts.map(p=>p.category))).map(cat => {
                     const catProducts = allProducts.filter(p=>p.category===cat && p.name.toLowerCase().includes(search.toLowerCase()));
                     const subcats = Array.from(new Set(catProducts.map(p=>p.subcategory || "Otros")));
@@ -359,7 +359,7 @@ export const NewQuoteModal = {
                           const subProducts = catProducts.filter(p=> (p.subcategory||"Otros")===sub);
                           const subSelectedCount = subProducts.reduce((acc,p)=> acc + (selected[p.id] ? 1 : 0), 0);
                           return (
-                            <details key={sub} className="border-t border-gray-100 last:border-b-0">
+                            <details key={sub} className="border-t border-gray-200 dark:border-gray-700 last:border-b-0">
                               <summary className="flex items-center justify-between px-6 py-3 bg-white cursor-pointer hover:bg-gray-50">
                                 <div className="flex items-center gap-2">
                                   <div className="text-gray-800 font-medium">{sub}</div>
@@ -370,7 +370,7 @@ export const NewQuoteModal = {
                               <div className="px-6 py-3 bg-white">
                 <ul className="grid sm:grid-cols-2 gap-3">
                                   {subProducts.map(p => (
-                  <li key={p.id} className={`${selected[p.id] ? `${BRAND.accentBgSoft} ring-1 ring-orange-200` : ''} rounded-lg border border-gray-100 bg-white p-3 hover:bg-gray-50 hover:shadow-sm transition flex items-center justify-between`}>
+                  <li key={p.id} className={`${selected[p.id] ? `${BRAND.accentBgSoft} ring-1 ring-orange-200` : ''} rounded-lg border border-gray-200 dark:border-gray-700 bg-white p-3 hover:bg-gray-50 hover:shadow-sm transition flex items-center justify-between`}>
                                       <div className="flex items-start gap-3">
                     <input type="checkbox" className={`mt-1 accent-orange-600`} checked={!!selected[p.id]} onChange={(e)=>{
                                           if (e.target.checked) updateQty(p.id, 1); else updateQty(p.id, -999);
@@ -383,7 +383,7 @@ export const NewQuoteModal = {
                                       {selected[p.id] ? (
                                         <div className="flex items-center gap-2">
                                           <button className="btn-ghost" onClick={()=>updateQty(p.id,-1)}>-</button>
-                                          <div className="w-9 text-center border rounded-md py-0.5 text-sm">{selected[p.id]}</div>
+                                          <div className="w-9 text-center border border-gray-200 dark:border-gray-700 rounded-md py-0.5 text-sm">{selected[p.id]}</div>
                                           <button className="inline-flex items-center justify-center px-3 py-1.5 rounded-md text-white bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 shadow" onClick={()=>updateQty(p.id,1)}>+</button>
                                         </div>
                                       ) : (
@@ -473,7 +473,7 @@ export const NewQuoteModal = {
           </div>
 
           {/* Right: sticky summary */}
-          <aside className="hidden lg:block border-l border-gray-100 p-4 lg:p-6 sticky top-14 sm:top-16 h-[calc(100vh-3.5rem)] sm:h-[calc(100vh-4rem)] overflow-auto">
+          <aside className="hidden lg:block border-l border-gray-200 dark:border-gray-700 p-4 lg:p-6 sticky top-14 sm:top-16 h-[calc(100vh-3.5rem)] sm:h-[calc(100vh-4rem)] overflow-auto">
             <h4 className="font-semibold text-gray-900 mb-3 text-sm lg:text-base">Resumen</h4>
             <div className="space-y-2 text-xs lg:text-sm">
               <div className="flex justify-between"><span className="text-gray-600">Cliente</span><span className="font-medium truncate ml-2">{client || "—"}</span></div>
@@ -497,7 +497,7 @@ export const NewQuoteModal = {
                 </ul>
               )}
             </div>
-            <div className="mt-4 pt-4 border-t space-y-1 text-xs lg:text-sm">
+            <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700 space-y-1 text-xs lg:text-sm">
               <div className="flex justify-between"><span className="text-gray-600">Subtotal</span><span className="font-semibold">{currency==='USD' ? `$ ${(subtotal/900).toLocaleString('en-US')}` : `$ ${subtotal.toLocaleString('es-CL')}`}</span></div>
               {globalDiscountPct>0 && (
                 <div className="flex justify-between"><span className="text-gray-600">Descuento ({globalDiscountPct}%)</span><span className="font-semibold">- {currency==='USD' ? `$ ${(discountAmount/900).toLocaleString('en-US')}` : `$ ${discountAmount.toLocaleString('es-CL')}`}</span></div>
@@ -506,7 +506,7 @@ export const NewQuoteModal = {
                 <div className="flex justify-between"><span className="text-gray-600">Exento</span><span className="font-semibold">{currency==='USD' ? `$ ${(exentoAmount/900).toLocaleString('en-US')}` : `$ ${exentoAmount.toLocaleString('es-CL')}`}</span></div>
               )}
               <div className="flex justify-between"><span className="text-gray-600">IVA (19%)</span><span className="font-semibold">{currency==='USD' ? `$ ${(tax/900).toLocaleString('en-US')}` : `$ ${tax.toLocaleString('es-CL')}`}</span></div>
-              <div className="flex justify-between text-sm lg:text-base border-t pt-2"><span className="text-gray-900">Total</span><span className="font-extrabold text-gray-900">{currency==='USD' ? `$ ${(total/900).toLocaleString('en-US')}` : `$ ${total.toLocaleString('es-CL')}`}</span></div>
+              <div className="flex justify-between text-sm lg:text-base border-t border-gray-200 dark:border-gray-700 pt-2"><span className="text-gray-900">Total</span><span className="font-extrabold text-gray-900">{currency==='USD' ? `$ ${(total/900).toLocaleString('en-US')}` : `$ ${total.toLocaleString('es-CL')}`}</span></div>
             </div>
           </aside>
         </div>

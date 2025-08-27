@@ -16,7 +16,7 @@ export function ToastHost() {
         <div key={m.id} className="min-w-[300px] rounded-xl shadow-lg text-white px-4 py-3 flex items-center justify-between animate-slideIn"
              style={{ backgroundColor: ({info:"#6366f1",success:"#10b981",error:"#ef4444",warning:"#f59e0b"})[m.type] }}>
           <span>{m.text}</span>
-          <button onClick={()=>setList((prev)=>prev.filter(x=>x.id!==m.id))} className="ml-3">✖</button>
+          <button onClick={()=>setList((prev)=>prev.filter(x=>x.id!==m.id))} className="ml-3 text-white/80 hover:text-white">✖</button>
         </div>
       ))}
     </div>

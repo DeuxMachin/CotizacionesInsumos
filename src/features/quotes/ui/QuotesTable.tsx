@@ -26,19 +26,19 @@ export function QuotesTable() {
   }, [filters]);
 
   return (
-    <div className="rounded-xl bg-white shadow overflow-hidden">
+    <div className="rounded-xl bg-white dark:bg-gray-800 shadow overflow-hidden">
       {/* Mobile card view for small screens */}
       <div className="block sm:hidden">
-        <div className="divide-y divide-gray-100">
+        <div className="divide-y divide-gray-200 dark:divide-gray-700">
           {data.map(q => (
             <div key={q.id} className="p-4 space-y-2">
               <div className="flex items-center justify-between">
-                <span className="font-semibold text-gray-900 text-sm">{q.id}</span>
+                <span className="font-semibold text-gray-900 dark:text-gray-100 text-sm">{q.id}</span>
                 <Badge status={q.status} />
               </div>
-              <div className="text-sm text-gray-600">{q.client}</div>
+              <div className="text-sm text-gray-600 dark:text-gray-300">{q.client}</div>
               <div className="flex items-center justify-between">
-                <span className="font-semibold text-gray-900">${q.amount.toLocaleString("es-ES",{minimumFractionDigits:2})}</span>
+                <span className="font-semibold text-gray-900 dark:text-gray-100">${q.amount.toLocaleString("es-ES",{minimumFractionDigits:2})}</span>
                 <div className="flex gap-1">
                   <button className="btn-icon text-xs" onClick={()=>Toast.info(`Viendo ${q.id}`)}>👁️</button>
                   <button className="btn-icon text-xs" onClick={()=>Toast.info(`Editando ${q.id}`)}>✏️</button>
@@ -48,7 +48,7 @@ export function QuotesTable() {
             </div>
           ))}
           {data.length === 0 && (
-            <div className="p-6 text-center text-gray-500 text-sm">Sin resultados</div>
+            <div className="p-6 text-center text-gray-500 dark:text-gray-400 text-sm">Sin resultados</div>
           )}
         </div>
       </div>
@@ -57,20 +57,20 @@ export function QuotesTable() {
       <div className="hidden sm:block overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
-            <tr className="bg-slate-100 text-left">
+            <tr className="bg-slate-100 dark:bg-gray-700 text-left">
               {["Número","Cliente","Fecha","Estado","Monto","Acciones"].map(h => (
-                <th key={h} className="p-3 font-semibold text-xs sm:text-sm">{h}</th>
+                <th key={h} className="p-3 font-semibold text-xs sm:text-sm dark:text-gray-100">{h}</th>
               ))}
             </tr>
           </thead>
           <tbody>
             {data.map(q => (
-              <tr key={q.id} className="border-t hover:bg-slate-50">
-                <td className="p-3 text-xs sm:text-sm">{q.id}</td>
-                <td className="p-3 text-xs sm:text-sm">{q.client}</td>
-                <td className="p-3 text-xs sm:text-sm">{q.date}</td>
+              <tr key={q.id} className="border-t border-gray-200 dark:border-gray-700 hover:bg-slate-50 dark:hover:bg-gray-700/50">
+                <td className="p-3 text-xs sm:text-sm dark:text-gray-200">{q.id}</td>
+                <td className="p-3 text-xs sm:text-sm dark:text-gray-200">{q.client}</td>
+                <td className="p-3 text-xs sm:text-sm dark:text-gray-200">{q.date}</td>
                 <td className="p-3"><Badge status={q.status} /></td>
-                <td className="p-3 text-xs sm:text-sm font-medium">${q.amount.toLocaleString("es-ES",{minimumFractionDigits:2})}</td>
+                <td className="p-3 text-xs sm:text-sm font-medium dark:text-gray-200">${q.amount.toLocaleString("es-ES",{minimumFractionDigits:2})}</td>
                 <td className="p-3">
                   <div className="flex gap-1 sm:gap-2">
                     <button className="btn-icon" onClick={()=>Toast.info(`Viendo ${q.id}`)}>👁️</button>
@@ -116,13 +116,13 @@ export function QuotesTable() {
               </tr>
             ))}
             {data.length === 0 && (
-              <tr><td className="p-6 text-center text-slate-500 text-sm" colSpan={6}>Sin resultados</td></tr>
+              <tr><td className="p-6 text-center text-slate-500 dark:text-gray-400 text-sm" colSpan={6}>Sin resultados</td></tr>
             )}
           </tbody>
         </table>
       </div>
 
-      <div className="p-3 border-t flex justify-end">
+      <div className="p-3 border-t border-gray-200 dark:border-gray-700 flex justify-end">
         <button
           className="btn-secondary text-xs sm:text-sm"
           onClick={() => {

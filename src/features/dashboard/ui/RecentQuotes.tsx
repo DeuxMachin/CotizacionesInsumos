@@ -6,18 +6,18 @@ import { FiEye, FiDownload } from "react-icons/fi";
 
 export function RecentQuotes() {
   return (
-    <div className="bg-white rounded-xl border border-gray-100 p-6">
+    <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
       {/* Header con título y acción */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h3 className="text-lg font-semibold text-gray-900 mb-1">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">
             Cotizaciones Recientes
           </h3>
-          <p className="text-sm text-gray-600">
+          <p className="text-sm text-gray-600 dark:text-gray-400">
             Últimas cotizaciones generadas en el sistema
           </p>
         </div>
-  <button className="flex items-center gap-2 text-sm text-orange-600 font-medium hover:text-orange-700 transition-colors">
+  <button className="flex items-center gap-2 text-sm text-orange-600 dark:text-orange-400 font-medium hover:text-orange-700 dark:hover:text-orange-300 transition-colors">
           <FiEye className="w-4 h-4" />
           Ver Todas
         </button>
@@ -28,7 +28,7 @@ export function RecentQuotes() {
         {quotesData.slice(0, 3).map((quote, index) => (
           <div 
             key={quote.id} 
-            className="flex items-center justify-between p-4 rounded-lg border border-gray-100 hover:border-gray-200 hover:shadow-sm transition-all duration-200 animate-slideUp"
+            className="flex items-center justify-between p-4 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-gray-200 dark:hover:border-gray-600 hover:shadow-sm transition-all duration-200 animate-slideUp"
             style={{ animationDelay: `${index * 100}ms` }}
           >
             {/* Información de la cotización */}
@@ -40,11 +40,11 @@ export function RecentQuotes() {
                 <Badge status={quote.status} />
               </div>
               
-              <div className="text-gray-900 font-medium mb-1">
+              <div className="text-gray-900 dark:text-white font-medium mb-1">
                 {quote.client}
               </div>
               
-              <div className="text-xs text-gray-500">
+              <div className="text-xs text-gray-500 dark:text-gray-400">
                 {new Date(quote.date).toLocaleDateString('es-ES', {
                   year: 'numeric',
                   month: 'short', 
@@ -56,7 +56,7 @@ export function RecentQuotes() {
             {/* Monto y acciones */}
             <div className="flex items-center gap-4">
               <div className="text-right">
-                <div className="font-bold text-gray-900">
+                <div className="font-bold text-gray-900 dark:text-white">
                   ${quote.amount.toLocaleString("es-ES", { minimumFractionDigits: 0 })}
                 </div>
               </div>
@@ -73,12 +73,12 @@ export function RecentQuotes() {
       </div>
       
       {/* Footer con estadística rápida */}
-      <div className="mt-6 pt-4 border-t border-gray-100">
+      <div className="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
         <div className="flex items-center justify-between text-sm">
-          <span className="text-gray-600">
-            Total de cotizaciones activas: <span className="font-semibold text-gray-900">24</span>
+          <span className="text-gray-600 dark:text-gray-400">
+            Total de cotizaciones activas: <span className="font-semibold text-gray-900 dark:text-white">24</span>
           </span>
-          <span className="text-green-600 font-medium">
+          <span className="text-green-600 dark:text-green-500 font-medium">
             +12% este mes
           </span>
         </div>
