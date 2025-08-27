@@ -5,6 +5,7 @@ import { useAuth } from "@/features/auth/model/useAuth";
 import { FiMenu, FiBell, FiLogOut } from "react-icons/fi";
 import { Logo } from "@/shared/ui/Logo";
 import { BRAND } from "@/shared/ui/brand";
+import { ThemeToggle } from "@/features/theme/ui/ThemeToggle";
 
 // Títulos descriptivos para cada sección del sistema
 const titles: Record<string, string> = {
@@ -31,7 +32,7 @@ export function Header() {
   const { logout, user } = useAuth();
 
   return (
-    <header className="sticky top-0 z-30 bg-white border-b border-gray-100">
+    <header className="sticky top-0 z-30 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 shadow-sm transition-colors duration-200">
       <div className="flex items-center justify-between h-14 sm:h-16 px-3 sm:px-4 lg:px-6 max-w-7xl mx-auto">
         {/* Sección izquierda: Menú móvil + Títulos */}
         <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
@@ -47,10 +48,10 @@ export function Header() {
           </div>
           
           <div className="min-w-0">
-            <h1 className="text-base sm:text-lg font-bold text-gray-900 truncate display-font">
+            <h1 className="text-base sm:text-lg font-bold text-gray-900 dark:text-white truncate display-font">
               {titles[section] ?? "Dashboard"}
             </h1>
-            <p className="text-xs text-gray-500 truncate hidden sm:block">
+            <p className="text-xs text-gray-500 dark:text-gray-400 truncate hidden sm:block">
               {subtitles[section] ?? "Bienvenido al sistema"}
             </p>
           </div>
@@ -58,6 +59,11 @@ export function Header() {
 
         {/* Sección derecha: Acciones responsivas */}
         <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
+          {/* Botón de tema claro/oscuro */}
+          <div className="mr-1 sm:mr-2">
+            <ThemeToggle />
+          </div>
+          
           {/* Notificaciones con indicador visual */}
           <button className="relative btn-icon">
             <FiBell className="w-4 h-4 sm:w-5 sm:h-5" />
@@ -67,18 +73,18 @@ export function Header() {
           </button>
 
           {/* Avatar del usuario con menú */}
-          <div className="flex items-center gap-2 pl-2 sm:pl-3 border-l border-gray-200">
+          <div className="flex items-center gap-2 pl-2 sm:pl-3 border-l border-gray-200 dark:border-gray-700">
             <div className="flex items-center gap-2 sm:gap-3">
               <div className="text-right hidden sm:block">
-                <p className="text-sm font-medium text-gray-900">{user?.name || "Usuario"}</p>
-                <p className="text-xs text-gray-500">{user?.role || "Invitado"}</p>
+                <p className="text-sm font-medium text-gray-900 dark:text-white">{user?.name || "Usuario"}</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">{user?.role || "Invitado"}</p>
               </div>
               <div className={`h-7 w-7 sm:h-8 sm:w-8 rounded-full bg-gradient-to-br ${BRAND.accentFrom} ${BRAND.accentTo} flex items-center justify-center text-white text-xs sm:text-sm font-medium`}>
                 {user?.name?.charAt(0).toUpperCase() || "A"}
               </div>
               <button
                 onClick={logout}
-                className="btn-icon text-gray-500 hover:text-red-600 hover:bg-red-50"
+                className="btn-icon text-gray-500 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20"
                 title="Cerrar sesión"
               >
                 <FiLogOut className="w-3 h-3 sm:w-4 sm:h-4" />

@@ -70,7 +70,7 @@ export function ClientsPage() {
   return (
     <div className="space-y-4">
       {/* Filtros */}
-      <div className="bg-white rounded-xl border border-gray-100 p-3 sm:p-4">
+      <div className="bg-white rounded-xl border border-gray-200 dark:border-gray-700 p-3 sm:p-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex-1 flex gap-2">
             <input
@@ -102,7 +102,7 @@ export function ClientsPage() {
       <div className="rounded-xl bg-white shadow overflow-hidden">
         {/* Mobile cards */}
         <div className="block sm:hidden">
-          <div className="divide-y divide-gray-100">
+          <div className="divide-y divide-gray-200">
             {pageData.map((c) => (
               <div key={c.id} className="p-4 space-y-2">
                 <div className="flex items-start justify-between gap-2">
@@ -141,7 +141,7 @@ export function ClientsPage() {
             </thead>
             <tbody>
               {pageData.map((c) => (
-                <tr key={c.id} className="border-t hover:bg-slate-50">
+                <tr key={c.id} className="border-t border-gray-200 hover:bg-slate-50">
                   <td className="p-3 text-xs sm:text-sm font-medium">{c.razonSocial}</td>
                   <td className="p-3 text-xs sm:text-sm text-center">{c.rut}</td>
                   <td className="p-3 text-xs sm:text-sm">{c.contactoNombre || "-"}</td>
@@ -170,7 +170,7 @@ export function ClientsPage() {
         </div>
 
         {/* Paginación */}
-        <div className="p-3 border-t flex items-center justify-between text-sm">
+        <div className="p-3 border-t border-gray-200 flex items-center justify-between text-sm">
           <div className="text-gray-600">
             {data.length} resultado{data.length === 1 ? "" : "s"}
           </div>
@@ -207,7 +207,7 @@ function StatCard({ label, value, tone = "slate" }: { label: string; value: stri
     rose: "bg-rose-50 text-rose-800",
   };
   return (
-    <div className={`rounded-xl border border-gray-100 p-3 sm:p-4 ${tones[tone]}`}>
+    <div className={`rounded-xl border border-gray-200 dark:border-gray-700 p-3 sm:p-4 ${tones[tone]}`}>
       <div className="text-xs text-slate-500">{label}</div>
       <div className="font-semibold text-base sm:text-lg">{value}</div>
     </div>
@@ -261,7 +261,7 @@ function ClientDetail({ client, onBack, onEdit, onDelete }: { client: ClientExte
 
       <div className="grid md:grid-cols-3 gap-3 sm:gap-4">
         {/* Información de la empresa */}
-        <div className="md:col-span-2 bg-white rounded-xl border border-gray-100 p-3 sm:p-4">
+        <div className="md:col-span-2 bg-white rounded-xl border border-gray-200 dark:border-gray-700 p-3 sm:p-4">
           <h4 className={`font-semibold mb-3 ${BRAND.accentText}`}>Información de la empresa</h4>
           <div className="divide-y divide-gray-100">
             {/* Razón social removed here to avoid duplication with header */}
@@ -275,7 +275,7 @@ function ClientDetail({ client, onBack, onEdit, onDelete }: { client: ClientExte
         </div>
 
         {/* Condiciones de pago */}
-        <div className="bg-white rounded-xl border border-gray-100 p-3 sm:p-4">
+        <div className="bg-white rounded-xl border border-gray-200 dark:border-gray-700 p-3 sm:p-4">
           <h4 className={`font-semibold mb-3 ${BRAND.accentText}`}>Condiciones de pago</h4>
           <div className="space-y-2 text-sm">
             <div className="flex justify-between"><span>Días adicionales</span><span className="font-semibold">{client.additionalDays}</span></div>
@@ -289,7 +289,7 @@ function ClientDetail({ client, onBack, onEdit, onDelete }: { client: ClientExte
 
       <div className="grid md:grid-cols-2 gap-3 sm:gap-4">
         {/* Contacto comercial */}
-        <div className="bg-white rounded-xl border border-gray-100 p-3 sm:p-4">
+        <div className="bg-white rounded-xl border border-gray-200 dark:border-gray-700 p-3 sm:p-4">
           <h4 className={`font-semibold mb-3 ${BRAND.accentText}`}>Contacto</h4>
           <div className="divide-y divide-gray-100">
             <InfoRow label="Nombre" value={client.contactoNombre} />
@@ -300,7 +300,7 @@ function ClientDetail({ client, onBack, onEdit, onDelete }: { client: ClientExte
         </div>
 
         {/* Responsable de pagos */}
-        <div className="bg-white rounded-xl border border-gray-100 p-3 sm:p-4">
+        <div className="bg-white rounded-xl border border-gray-200 dark:border-gray-700 p-3 sm:p-4">
           <h4 className={`font-semibold mb-3 ${BRAND.accentText}`}>Responsable de pagos</h4>
           <div className="divide-y divide-gray-100">
             <InfoRow label="Nombre" value={client.paymentResponsible} />
@@ -312,7 +312,7 @@ function ClientDetail({ client, onBack, onEdit, onDelete }: { client: ClientExte
       </div>
 
       {/* Cotizaciones del cliente */}
-      <div className="bg-white rounded-xl border border-gray-100 p-4">
+      <div className="bg-white rounded-xl border border-gray-200 dark:border-gray-700 p-4">
         <div className="flex items-center justify-between mb-3">
           <h4 className={`font-semibold ${BRAND.accentText}`}>Cotizaciones del cliente</h4>
           <div className="flex items-center gap-2">
@@ -332,7 +332,7 @@ function ClientDetail({ client, onBack, onEdit, onDelete }: { client: ClientExte
             </thead>
             <tbody>
               {(showAllQuotes ? clientQuotes : clientQuotes.slice(0, 5)).map((q) => (
-                <tr key={q.id} className="border-t">
+                <tr key={q.id} className="border-t border-gray-200">
                   <td className="p-2">{q.id}</td>
                   <td className="p-2">{q.date}</td>
                   <td className="p-2">

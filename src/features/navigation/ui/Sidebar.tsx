@@ -32,90 +32,77 @@ export function Sidebar() {
       
       {/* Sidebar principal */}
       <aside className={`
-        fixed inset-y-0 left-0 z-50 w-64 sm:w-72 lg:w-64 bg-white flex flex-col
-        border-r border-gray-100
+        fixed inset-y-0 left-0 z-50 w-64 sm:w-72 lg:w-64 
+        bg-white dark:bg-gray-800
+        flex flex-col
+        border-r border-gray-200 dark:border-gray-700
         overflow-y-auto
         transform transition-transform duration-300 ease-out
         ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
         lg:translate-x-0
       `}>
         {/* Header del sidebar - alineado con header principal */}
-        <div className="flex items-center justify-between h-14 sm:h-16 px-3 sm:px-4 border-b border-gray-100 flex-shrink-0">
+        <div className="flex items-center justify-between h-14 sm:h-16 px-3 sm:px-4 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
           <div className="flex items-center gap-2 sm:gap-3 min-w-0">
             <Logo height={22} className="shrink-0 sm:h-7" />
             <div className="flex flex-col min-w-0">
-              <span className="font-bold text-gray-900 text-sm truncate">Panel Admin</span>
-              <span className="text-xs text-gray-500 truncate">Sistema v1.0</span>
+              <span className="font-bold text-gray-900 dark:text-white text-sm truncate">Panel Admin</span>
+              <span className="text-xs text-gray-500 dark:text-gray-400 truncate">Sistema v1.0</span>
             </div>
           </div>
-          
-          {/* Botón cerrar en móvil */}
           <button 
-            className="lg:hidden p-1.5 hover:bg-gray-100 rounded-lg transition-colors"
+            className="lg:hidden btn-icon" 
             onClick={() => setSidebarOpen(false)}
+            aria-label="Cerrar menú"
           >
             <FiX className="w-4 h-4" />
           </button>
         </div>
         
-        {/* Navegación principal - ocupa el espacio disponible */}
-        <nav className="flex-1 px-3 sm:px-4 py-4 sm:py-6 overflow-y-auto">
-          <div className="space-y-1 sm:space-y-2">
-            {navigationItems.map((item) => {
-              const isActive = section === item.key;
-              return (
+        {/* Items de navegación */}
+        <nav className="flex-1 py-4 overflow-y-auto">
+          <ul className="space-y-1 px-2">
+            {navigationItems.map((item) => (
+              <li key={item.key}>
                 <button
-                  key={item.key}
-                  onClick={() => { 
-                    setSection(item.key as Section); 
-                    setSidebarOpen(false); 
+                  onClick={() => {
+                    setSection(item.key as Section);
+                    setSidebarOpen(false);
                   }}
                   className={`
-                    w-full flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2.5 sm:py-3 rounded-lg font-medium text-sm transition-all duration-200
-                    ${isActive
-                      ? `${BRAND.accentBgSoft} ${BRAND.accentText} border-l-4 pl-2 sm:pl-2 border-orange-500`
-                      : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900 border-l-4 border-transparent'
+                    w-full flex items-center gap-3 px-3 py-2.5 rounded-lg
+                    transition-colors duration-200 
+                    ${section === item.key 
+                      ? `bg-orange-50 dark:bg-orange-900/20 text-orange-600 dark:text-orange-400 font-medium` 
+                      : `hover:bg-gray-100 dark:hover:bg-gray-700/50 text-gray-600 dark:text-gray-300`
                     }
                   `}
                 >
-                  <div className={`${isActive ? 'text-orange-600' : ''}`}>
+                  <span className={`
+                    ${section === item.key 
+                      ? `text-orange-600 dark:text-orange-400` 
+                      : `text-gray-500 dark:text-gray-400`
+                    }
+                  `}>
                     {item.icon}
-                  </div>
-                  <span className="flex-1 text-left text-sm">{item.label}</span>
-                  {isActive && (
-                    <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-orange-600"></div>
-                  )}
+                  </span>
+                  <span>{item.label}</span>
                 </button>
-              );
-            })}
-            {/* Opción exclusiva de Admin: Vendedores (placeholder) */}
-            {user?.role === "admin" && (
-              <button
-                onClick={() => { setSection("vendedores"); setSidebarOpen(false); }}
-                className={`
-                  w-full flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2.5 sm:py-3 rounded-lg font-medium text-sm transition-all duration-200
-                  ${section === 'vendedores'
-                    ? `${BRAND.accentBgSoft} ${BRAND.accentText} border-l-4 pl-2 sm:pl-2 border-orange-500`
-                    : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900 border-l-4 border-transparent'
-                  }
-                `}
-              >
-                <div className={`${section === 'vendedores' ? 'text-orange-600' : ''}`}>
-                  <FiUsers className="w-5 h-5" />
-                </div>
-                <span className="flex-1 text-left text-sm">Vendedores</span>
-                {section === 'vendedores' && (
-                  <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-orange-600"></div>
-                )}
-              </button>
-            )}
-          </div>
+              </li>
+            ))}
+          </ul>
         </nav>
-
-        {/* Footer del sidebar - fijo en la parte inferior */}
-        <div className="px-4 sm:px-6 py-3 sm:py-4 border-t border-gray-100 flex-shrink-0">
-          <div className="text-center">
-            <p className="text-xs text-gray-400 font-medium">Sistema de Gestión v1.0</p>
+        
+        {/* Footer del sidebar */}
+        <div className="p-4 border-t border-gray-200 dark:border-gray-700">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <div className="h-9 w-9 rounded-full bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 flex items-center justify-center font-medium">
+              {user?.email?.[0].toUpperCase() || "U"}
+            </div>
+            <div className="flex flex-col min-w-0">
+              <span className="font-medium text-gray-900 dark:text-white text-sm truncate">{user?.name || "Usuario"}</span>
+              <span className="text-xs text-gray-500 dark:text-gray-400 truncate">{user?.email || "usuario@mail.com"}</span>
+            </div>
           </div>
         </div>
       </aside>

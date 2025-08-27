@@ -35,19 +35,19 @@ const items: Activity[] = [
 
 export function RecentActivity() {
   return (
-    <div className="bg-white rounded-xl border border-gray-100 p-6">
+    <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
       <div className="mb-4 sm:mb-6">
-        <h3 className="section-title text-lg sm:text-xl text-gray-900 mb-1">Actividad Reciente</h3>
-        <p className="text-sm text-gray-600">Últimos eventos del sistema</p>
+        <h3 className="section-title text-lg sm:text-xl text-gray-900 dark:text-white mb-1">Actividad Reciente</h3>
+        <p className="text-sm text-gray-600 dark:text-gray-400">Últimos eventos del sistema</p>
       </div>
 
-      <ul className="divide-y divide-gray-100">
+      <ul className="divide-y divide-gray-200 dark:divide-gray-700">
         {items.map((a, idx) => (
           <li key={a.id} className="py-4 flex items-start gap-3 sm:gap-4 animate-slideUp" style={{ animationDelay: `${idx * 80}ms` }}>
             {ICONS[a.icon]}
             <div className="flex-1 min-w-0">
-              <div className="font-medium text-gray-900">{a.title}</div>
-              <div className="text-xs text-gray-500 mt-0.5">{a.time}</div>
+              <div className="font-medium text-gray-900 dark:text-white">{a.title}</div>
+              <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{a.time}</div>
             </div>
           </li>
         ))}

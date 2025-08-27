@@ -72,156 +72,156 @@ export function AddStockModal({ open, onClose, items, onConfirm }: { open: boole
 
   return (
     <FullscreenModal open={open} onClose={onClose} title={<div className="flex items-center gap-2"><span className={`text-lg font-semibold ${BRAND.accentText}`}>Nuevo ingreso de stock</span></div>}>
-  <div className="max-w-[1600px] mx-auto p-4 sm:p-6 space-y-4">
+      <div className="max-w-[1600px] mx-auto p-4 sm:p-6 space-y-4">
         {/* Encabezado */}
-        <div className="bg-white rounded-xl border border-gray-100 p-4 sm:p-5">
+        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 sm:p-5">
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
             <div>
-              <label className="form-label">Fecha de emisión</label>
-              <input type="date" className="form-input" value={date} onChange={e=>setDate(e.target.value)} />
+              <label className="form-label dark:text-gray-300">Fecha de emisión</label>
+              <input type="date" className="form-input dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200" value={date} onChange={e=>setDate(e.target.value)} />
             </div>
             <div>
-              <label className="form-label">Bodega</label>
-              <select className="form-input" value={warehouse} onChange={e=>setWarehouse(e.target.value)}>
+              <label className="form-label dark:text-gray-300">Bodega</label>
+              <select className="form-input dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200" value={warehouse} onChange={e=>setWarehouse(e.target.value)}>
                 <option>Bodega principal</option>
                 <option>Bodega secundaria</option>
               </select>
             </div>
             <div>
-              <label className="form-label">Proveedor</label>
-              <input className="form-input" placeholder="Nombre proveedor" value={vendor} onChange={e=>setVendor(e.target.value)} />
+              <label className="form-label dark:text-gray-300">Proveedor</label>
+              <input className="form-input dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200" placeholder="Nombre proveedor" value={vendor} onChange={e=>setVendor(e.target.value)} />
             </div>
             <div>
-              <label className="form-label">N° documento</label>
-              <input className="form-input" placeholder="Factura/Guía" value={docNumber} onChange={e=>setDocNumber(e.target.value)} />
+              <label className="form-label dark:text-gray-300">N° documento</label>
+              <input className="form-input dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200" placeholder="Factura/Guía" value={docNumber} onChange={e=>setDocNumber(e.target.value)} />
             </div>
           </div>
         </div>
 
         {/* Buscador y listado productos */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-6">
-          <div className="order-2 lg:order-1 lg:col-span-5 xl:col-span-5 bg-white rounded-xl border border-gray-100 p-4 sm:p-5">
+          <div className="order-2 lg:order-1 lg:col-span-5 xl:col-span-5 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 sm:p-5">
             <div className="flex flex-col gap-2 mb-3">
               <div className="flex items-center gap-2">
-                <input className="form-input h-11 flex-1" placeholder="Buscar producto por código o nombre" value={search} onChange={e=>setSearch(e.target.value)} />
-                <button className={`btn-secondary text-xs shrink-0 ${addingNew ? 'ring-2 ring-orange-300' : ''}`} onClick={()=>setAddingNew(v=>!v)}>
+                <input className="form-input h-11 flex-1 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200" placeholder="Buscar producto por código o nombre" value={search} onChange={e=>setSearch(e.target.value)} />
+                <button className={`btn-secondary text-xs shrink-0 ${addingNew ? 'ring-2 ring-orange-300 dark:ring-orange-500' : ''}`} onClick={()=>setAddingNew(v=>!v)}>
                   {addingNew ? 'Cancelar nuevo' : 'Producto nuevo'}
                 </button>
               </div>
               {addingNew && (
-                <div className="grid sm:grid-cols-2 gap-3 bg-slate-50 p-4 rounded-lg border border-slate-200">
+                <div className="grid sm:grid-cols-2 gap-3 bg-slate-50 dark:bg-gray-700 p-4 rounded-lg border border-slate-200 dark:border-gray-600">
                   <div>
-                    <label className="form-label">Código / SKU</label>
-                    <input className="form-input h-11" placeholder="Ej: IT-ABC-123" value={newItem.code} onChange={e=>setNewItem({...newItem, code: e.target.value})} />
+                    <label className="form-label dark:text-gray-300">Código / SKU</label>
+                    <input className="form-input h-11 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200" placeholder="Ej: IT-ABC-123" value={newItem.code} onChange={e=>setNewItem({...newItem, code: e.target.value})} />
                   </div>
                   <div>
-                    <label className="form-label">Nombre del producto</label>
-                    <input className="form-input h-11" placeholder="Ej: Adhesivo 300 Café" value={newItem.name} onChange={e=>setNewItem({...newItem, name: e.target.value})} />
+                    <label className="form-label dark:text-gray-300">Nombre del producto</label>
+                    <input className="form-input h-11 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200" placeholder="Ej: Adhesivo 300 Café" value={newItem.name} onChange={e=>setNewItem({...newItem, name: e.target.value})} />
                   </div>
                   <div className="relative">
-                    <label className="form-label">Categoría</label>
-                    <input className="form-input h-11" placeholder="Escribe o selecciona" value={newItem.category} onChange={e=>setNewItem({...newItem, category: e.target.value})} onFocus={()=>setCatFocus(true)} onBlur={()=>setTimeout(()=>setCatFocus(false), 150)} />
+                    <label className="form-label dark:text-gray-300">Categoría</label>
+                    <input className="form-input h-11 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200" placeholder="Escribe o selecciona" value={newItem.category} onChange={e=>setNewItem({...newItem, category: e.target.value})} onFocus={()=>setCatFocus(true)} onBlur={()=>setTimeout(()=>setCatFocus(false), 150)} />
                     {catFocus && (
-                      <div className="absolute z-10 mt-1 w-full max-h-40 overflow-auto bg-white border border-slate-200 rounded-lg shadow">
+                      <div className="absolute z-10 mt-1 w-full max-h-40 overflow-auto bg-white dark:bg-gray-700 border border-slate-200 dark:border-gray-600 rounded-lg shadow">
                         {categoryOptions.filter(c => !newItem.category || c.toLowerCase().includes(newItem.category.toLowerCase())).map(c => (
-                          <button key={c} type="button" className="w-full text-left px-3 py-1.5 hover:bg-slate-50 text-sm" onClick={()=>setNewItem({...newItem, category: c})}>{c}</button>
+                          <button key={c} type="button" className="w-full text-left px-3 py-1.5 hover:bg-slate-50 dark:hover:bg-gray-600 text-sm dark:text-gray-200" onClick={()=>setNewItem({...newItem, category: c})}>{c}</button>
                         ))}
-                        {categoryOptions.length === 0 && <div className="px-3 py-2 text-sm text-slate-500">Sin categorías</div>}
+                        {categoryOptions.length === 0 && <div className="px-3 py-2 text-sm text-slate-500 dark:text-gray-400">Sin categorías</div>}
                       </div>
                     )}
                   </div>
                   <div className="flex items-end gap-2">
                     <div className="w-28">
-                      <label className="form-label">Pack (tamaño)</label>
-                      <input type="number" className="form-input h-11" placeholder="1" value={newItem.packSize} min={1} onChange={e=>setNewItem({...newItem, packSize: Number(e.target.value)})} />
+                      <label className="form-label dark:text-gray-300">Pack (tamaño)</label>
+                      <input type="number" className="form-input h-11 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200" placeholder="1" value={newItem.packSize} min={1} onChange={e=>setNewItem({...newItem, packSize: Number(e.target.value)})} />
                     </div>
                     <div className="flex-1">
-                      <label className="form-label">Cantidad (total a ingresar)</label>
-                      <input type="number" className="form-input h-11" placeholder="Unidades totales" min={1} value={newItem.intakeQty} onChange={e=>setNewItem({...newItem, intakeQty: Number(e.target.value)})} />
+                      <label className="form-label dark:text-gray-300">Cantidad (total a ingresar)</label>
+                      <input type="number" className="form-input h-11 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200" placeholder="Unidades totales" min={1} value={newItem.intakeQty} onChange={e=>setNewItem({...newItem, intakeQty: Number(e.target.value)})} />
                     </div>
                   </div>
                   <div>
-                    <label className="form-label">Precio compra (unitario)</label>
-                    <input type="number" className="form-input h-11" placeholder="0" value={newItem.cost} min={0} onChange={e=>setNewItem({...newItem, cost: Number(e.target.value)})} />
+                    <label className="form-label dark:text-gray-300">Precio compra (unitario)</label>
+                    <input type="number" className="form-input h-11 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200" placeholder="0" value={newItem.cost} min={0} onChange={e=>setNewItem({...newItem, cost: Number(e.target.value)})} />
                   </div>
                   <div>
-                    <label className="form-label">Precio venta (unitario)</label>
-                    <input type="number" className="form-input h-11" placeholder="0" value={newItem.price} min={0} onChange={e=>setNewItem({...newItem, price: Number(e.target.value)})} />
+                    <label className="form-label dark:text-gray-300">Precio venta (unitario)</label>
+                    <input type="number" className="form-input h-11 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200" placeholder="0" value={newItem.price} min={0} onChange={e=>setNewItem({...newItem, price: Number(e.target.value)})} />
                   </div>
-          <div className="sm:col-span-2 flex justify-end">
+                  <div className="sm:col-span-2 flex justify-end">
                     <button className="btn-primary text-sm" onClick={() => {
                       if (!newItem.code || !newItem.name) return Toast.warning('Completa código y nombre');
                       if (newItem.packSize < 1) return Toast.warning('Pack debe ser al menos 1');
-            const id = `NEW-${Date.now()}`;
-            // Guardar el nuevo producto localmente y crear una línea de ingreso
+                      const id = `NEW-${Date.now()}`;
+                      // Guardar el nuevo producto localmente y crear una línea de ingreso
                       const n: NewProduct = { id, code: newItem.code, name: newItem.name, category: newItem.category || 'Sin categoría', unit: 'un', packSize: newItem.packSize, price: newItem.price, cost: newItem.cost };
-            setNewProducts(prev => [...prev, n]);
+                      setNewProducts(prev => [...prev, n]);
                       // Crear la línea con la cantidad total indicada
                       setLines(prev => [...prev, { productId: id, qty: Math.max(1, newItem.intakeQty), packSize: newItem.packSize, unitCost: newItem.cost, unitPrice: newItem.price }]);
-            Toast.success('Producto nuevo agregado al detalle');
+                      Toast.success('Producto nuevo agregado al detalle');
                       setAddingNew(false);
                     }}>Agregar al detalle</button>
                   </div>
                 </div>
               )}
             </div>
-            <div className="max-h-80 overflow-auto divide-y divide-gray-100">
+            <div className="max-h-80 overflow-auto divide-y divide-gray-200 dark:divide-gray-700">
               {products.map(p => (
                 <div key={p.id} className="py-2 flex items-center justify-between gap-2">
                   <div className="min-w-0">
-                    <div className="text-sm font-medium text-slate-900 truncate">{p.name}</div>
-                    <div className="text-xs text-slate-500">SKU: {p.code}</div>
+                    <div className="text-sm font-medium text-slate-900 dark:text-gray-200 truncate">{p.name}</div>
+                    <div className="text-xs text-slate-500 dark:text-gray-400">SKU: {p.code}</div>
                   </div>
                   <button className="btn-secondary text-xs h-9" onClick={()=>{ addLine(p.id, p.packSize ?? 1, p.cost, p.price); detailRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }}>
                     Agregar
                   </button>
                 </div>
               ))}
-              {products.length === 0 && <div className="py-6 text-center text-slate-500 text-sm">Sin resultados</div>}
+              {products.length === 0 && <div className="py-6 text-center text-slate-500 dark:text-gray-400 text-sm">Sin resultados</div>}
             </div>
           </div>
 
           {/* Líneas seleccionadas */}
-          <div ref={detailRef} className="order-1 lg:order-2 lg:col-span-7 xl:col-span-7 bg-white rounded-xl border border-gray-100 p-4 sm:p-5 max-h-[55vh] lg:max-h-[65vh] overflow-auto">
-            <div className="flex items-center justify-between mb-3 sticky top-0 bg-white z-10 pb-2">
-              <h4 className="font-semibold">Detalle del ingreso</h4>
-              <div className="text-sm text-slate-600">Items: <span className="font-semibold">{totals.items}</span> • Unidades: <span className="font-semibold">{totals.units}</span> • Costo total: <span className="font-semibold">{formatCLP(totals.cost)}</span></div>
+          <div ref={detailRef} className="order-1 lg:order-2 lg:col-span-7 xl:col-span-7 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 sm:p-5 max-h-[55vh] lg:max-h-[65vh] overflow-auto">
+            <div className="flex items-center justify-between mb-3 sticky top-0 bg-white dark:bg-gray-800 z-10 pb-2">
+              <h4 className="font-semibold dark:text-gray-200">Detalle del ingreso</h4>
+              <div className="text-sm text-slate-600 dark:text-gray-300">Items: <span className="font-semibold">{totals.items}</span> • Unidades: <span className="font-semibold">{totals.units}</span> • Costo total: <span className="font-semibold">{formatCLP(totals.cost)}</span></div>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="bg-slate-100 text-left">
-                    <th className="p-3">Producto</th>
-                    <th className="p-3 text-right">Cantidad (unidades)</th>
-                    <th className="p-3 text-right">Pack (tamaño)</th>
-                    <th className="p-3 text-right">Precio compra (unitario)</th>
-                    <th className="p-3 text-right">Precio venta (unitario)</th>
-                    <th className="p-3 text-right">Subtotal</th>
-                    <th className="p-3">Acciones</th>
+                  <tr className="bg-slate-100 dark:bg-gray-700 text-left">
+                    <th className="p-3 dark:text-gray-200">Producto</th>
+                    <th className="p-3 text-right dark:text-gray-200">Cantidad (unidades)</th>
+                    <th className="p-3 text-right dark:text-gray-200">Pack (tamaño)</th>
+                    <th className="p-3 text-right dark:text-gray-200">Precio compra (unitario)</th>
+                    <th className="p-3 text-right dark:text-gray-200">Precio venta (unitario)</th>
+                    <th className="p-3 text-right dark:text-gray-200">Subtotal</th>
+                    <th className="p-3 dark:text-gray-200">Acciones</th>
                   </tr>
                 </thead>
                 <tbody>
                   {lines.map((l, idx) => {
                     const p = items.find(x=>x.id===l.productId)!;
                     return (
-                      <tr key={idx} className="border-t">
+                      <tr key={idx} className="border-t border-gray-200 dark:border-gray-700">
                         <td className="p-3 min-w-[300px]">
-                          <div className="text-sm font-medium text-slate-900">{p?.name}</div>
-                          <div className="text-xs text-slate-500">SKU: {p?.code}</div>
+                          <div className="text-sm font-medium text-slate-900 dark:text-gray-200">{p?.name}</div>
+                          <div className="text-xs text-slate-500 dark:text-gray-400">SKU: {p?.code}</div>
                         </td>
                         <td className="p-3 text-right">
-                          <input type="number" className="form-input h-10 w-32 text-right" min={0} value={l.qty} onChange={e=>updateLine(idx,{ qty: Number(e.target.value) })} placeholder="un" title="Cantidad (unidades)" />
+                          <input type="number" className="form-input h-10 w-32 text-right dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200" min={0} value={l.qty} onChange={e=>updateLine(idx,{ qty: Number(e.target.value) })} placeholder="un" title="Cantidad (unidades)" />
                         </td>
                         <td className="p-3 text-right">
-                          <input type="number" className="form-input h-10 w-32 text-right" min={1} value={l.packSize} onChange={e=>updateLine(idx,{ packSize: Number(e.target.value) })} placeholder="pack" title="Pack (tamaño de presentación)" />
+                          <input type="number" className="form-input h-10 w-32 text-right dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200" min={1} value={l.packSize} onChange={e=>updateLine(idx,{ packSize: Number(e.target.value) })} placeholder="pack" title="Pack (tamaño de presentación)" />
                         </td>
                         <td className="p-3 text-right">
-                          <input type="number" className="form-input h-10 w-36 text-right" min={0} value={l.unitCost} onChange={e=>updateLine(idx,{ unitCost: Number(e.target.value) })} placeholder="$" title="Precio compra unitario" />
+                          <input type="number" className="form-input h-10 w-36 text-right dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200" min={0} value={l.unitCost} onChange={e=>updateLine(idx,{ unitCost: Number(e.target.value) })} placeholder="$" title="Precio compra unitario" />
                         </td>
                         <td className="p-3 text-right">
-                          <input type="number" className="form-input h-10 w-36 text-right" min={0} value={l.unitPrice ?? p?.price ?? 0} onChange={e=>updateLine(idx,{ unitPrice: Number(e.target.value) })} placeholder="$" title="Precio venta unitario" />
+                          <input type="number" className="form-input h-10 w-36 text-right dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200" min={0} value={l.unitPrice ?? p?.price ?? 0} onChange={e=>updateLine(idx,{ unitPrice: Number(e.target.value) })} placeholder="$" title="Precio venta unitario" />
                         </td>
-                        <td className="p-3 text-right font-semibold">{formatCLP(l.qty * l.unitCost)}</td>
+                        <td className="p-3 text-right font-semibold dark:text-gray-200">{formatCLP(l.qty * l.unitCost)}</td>
                         <td className="p-3">
                           <button className="btn-ghost text-sm" onClick={()=>removeLine(idx)}>Eliminar</button>
                         </td>
@@ -229,7 +229,7 @@ export function AddStockModal({ open, onClose, items, onConfirm }: { open: boole
                     );
                   })}
                   {lines.length === 0 && (
-                    <tr><td className="p-4 text-center text-slate-500" colSpan={6}>Agrega productos para ingresar stock</td></tr>
+                    <tr><td className="p-4 text-center text-slate-500 dark:text-gray-400" colSpan={7}>Agrega productos para ingresar stock</td></tr>
                   )}
                 </tbody>
               </table>
@@ -238,7 +238,7 @@ export function AddStockModal({ open, onClose, items, onConfirm }: { open: boole
         </div>
 
         {/* Footer acciones */}
-  <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between">
           <button className="btn-ghost" onClick={onClose}>Cancelar</button>
           <div className="flex items-center gap-3">
             <div className={`text-sm ${BRAND.accentText}`}>Total a ingresar: <span className="font-semibold">{totals.units}</span> un • Costo: <span className="font-semibold">{formatCLP(totals.cost)}</span></div>
