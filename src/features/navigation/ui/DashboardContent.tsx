@@ -102,6 +102,8 @@ export function DashboardContent() {
               <StockPage />
             )}
 
+            {/* Se eliminó la sección de Targets */}
+
             {/* Reportes y Análisis */}
             {section === "reportes" && (
               <div className="space-y-4 sm:space-y-6 animate-fadeIn">
