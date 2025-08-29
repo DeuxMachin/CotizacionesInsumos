@@ -185,7 +185,7 @@ export const useTargets = create<TargetsStore>((set, get) => ({
       // Simulación de API call
       await new Promise(resolve => setTimeout(resolve, 800));
       set({ targets: mockTargets, loading: false });
-    } catch (error) {
+  } catch {
       set({ error: "Error al cargar targets", loading: false });
     }
   },
@@ -224,9 +224,9 @@ export const useTargets = create<TargetsStore>((set, get) => ({
       await new Promise(resolve => setTimeout(resolve, 500));
       const currentTargets = get().targets;
       set({ targets: [...currentTargets, newTarget], loading: false });
-    } catch (error) {
+    } catch (e) {
       set({ error: "Error al crear target", loading: false });
-      throw error;
+      throw e;
     }
   },
 
@@ -239,9 +239,9 @@ export const useTargets = create<TargetsStore>((set, get) => ({
         target.id === id ? { ...target, ...data } : target
       );
       set({ targets: updatedTargets, loading: false });
-    } catch (error) {
+    } catch (e) {
       set({ error: "Error al actualizar target", loading: false });
-      throw error;
+      throw e;
     }
   },
 
@@ -252,9 +252,9 @@ export const useTargets = create<TargetsStore>((set, get) => ({
       const currentTargets = get().targets;
       const filteredTargets = currentTargets.filter(target => target.id !== id);
       set({ targets: filteredTargets, loading: false });
-    } catch (error) {
+    } catch (e) {
       set({ error: "Error al eliminar target", loading: false });
-      throw error;
+      throw e;
     }
   },
 

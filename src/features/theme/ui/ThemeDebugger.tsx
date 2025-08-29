@@ -59,7 +59,7 @@ export function ThemeDebugger() {
         <div>theme: <span className="font-mono">{theme}</span></div>
         <div>resolvedTheme: <span className="font-mono">{resolvedTheme}</span></div>
         <div>systemTheme: <span className="font-mono">{systemTheme}</span></div>
-        <div className="mb-2">HTML class 'dark': <span className={`font-mono ${hasDarkClass ? 'text-green-500' : 'text-red-500'}`}>
+  <div className="mb-2">HTML class &apos;dark&apos;: <span className={`font-mono ${hasDarkClass ? 'text-green-500' : 'text-red-500'}`}>
           {hasDarkClass ? 'ACTIVA' : 'INACTIVA'}
         </span></div>
         

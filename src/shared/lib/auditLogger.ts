@@ -20,7 +20,7 @@ export interface AuditEvent {
   eventType: AuditEventType;
   resource: string;
   action: string;
-  details?: Record<string, any>;
+  details?: Record<string, unknown>;
   ipAddress?: string;
   userAgent?: string;
 }
@@ -166,7 +166,7 @@ class AuditLogger {
     userRole: string,
     resource: string,
     action: string,
-    details?: Record<string, any>
+  details?: Record<string, unknown>
   ): void {
     const eventType = this.getEventTypeFromAction(action);
     this.log({

@@ -55,7 +55,7 @@ export default function CreateTargetModal({ isOpen, onClose }: CreateTargetModal
     fechaEstimadaInicio: "",
     observaciones: ""
   });
-  const [errors, setErrors] = useState<Record<string, string>>({});
+  // const [errors, setErrors] = useState<Record<string, string>>({});
 
   const steps = [
     { id: 'location', label: 'Ubicación', icon: FiMapPin },
@@ -329,7 +329,7 @@ export default function CreateTargetModal({ isOpen, onClose }: CreateTargetModal
               return (
                 <div key={step.id} className="flex items-center flex-1">
                   <button
-                    onClick={() => isAccessible ? setCurrentStep(step.id as any) : null}
+                    onClick={() => isAccessible ? setCurrentStep(step.id as 'location' | 'basic' | 'contact' | 'additional') : null}
                     disabled={!isAccessible}
                     className={`relative flex flex-col items-center gap-1 sm:gap-2 p-2 sm:p-3 lg:p-4 rounded-lg transition-all ${
                       isAccessible ? 'cursor-pointer hover:scale-105' : 'cursor-not-allowed opacity-50'
@@ -851,7 +851,7 @@ export default function CreateTargetModal({ isOpen, onClose }: CreateTargetModal
             onClick={() => {
               const currentIndex = getCurrentStepIndex();
               if (currentIndex > 0) {
-                setCurrentStep(steps[currentIndex - 1].id as any);
+                setCurrentStep(steps[currentIndex - 1].id as 'location' | 'basic' | 'contact' | 'additional');
               }
             }}
             disabled={getCurrentStepIndex() === 0}
@@ -880,7 +880,7 @@ export default function CreateTargetModal({ isOpen, onClose }: CreateTargetModal
               onClick={() => {
                 const currentIndex = getCurrentStepIndex();
                 if (isStepCompleted(currentStep)) {
-                  setCurrentStep(steps[currentIndex + 1].id as any);
+                  setCurrentStep(steps[currentIndex + 1].id as 'location' | 'basic' | 'contact' | 'additional');
                 }
               }}
               disabled={!isStepCompleted(currentStep)}

@@ -3,7 +3,6 @@
 import { useEffect } from "react";
 import { useAuth } from "@/features/auth/model/useAuth";
 import { useRouter } from "next/navigation";
-import { AuthWrapper } from "@/components/AuthWrapper";
 import DashboardContent from "@/features/navigation/ui/DashboardContent";
 
 export default function AdminPage() {
@@ -17,8 +16,8 @@ export default function AdminPage() {
   }, [isAuthenticated, user, router]);
 
   return (
-    <AuthWrapper>
+    
       <DashboardContent />
-    </AuthWrapper>
+ 
   );
 }

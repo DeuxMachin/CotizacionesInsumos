@@ -5,9 +5,6 @@ import { quotesData } from "../model/mock";
 import { quotesToCSV, downloadCSV } from "@/shared/lib/csv";
 import { Badge } from "@/shared/ui/Badge";
 import { Toast } from "@/shared/ui/Toast";
-import { downloadServerDTE } from "@/features/reports/ui/pdf/downloadServerDTE";
-import { mapQuoteToDTE, DTEItem } from "@/features/reports/ui/pdf/ChileanTaxUtils";
-import { BRAND } from "@/shared/ui/brand";
 
 export function QuotesTable() {
   const [filters] = useState<{status?: string; date?: string; search?: string}>({});
@@ -35,7 +32,7 @@ export function QuotesTable() {
     >
       {/* Mobile card view for small screens */}
       <div className="block sm:hidden">
-        <div className="divide-y" style={{ '--tw-divide-y-reverse': '0', '--tw-divide-opacity': '1' }}>
+        <div className="divide-y divide-[var(--border-subtle)]">
           {data.map(q => (
             <div key={q.id} className="p-4 space-y-2" style={{ borderColor: 'var(--border-subtle)' }}>
               <div className="flex items-center justify-between">
@@ -99,41 +96,7 @@ export function QuotesTable() {
                   <div className="flex gap-1 sm:gap-2">
                     <button className="btn-icon" onClick={()=>Toast.info(`Viendo ${q.id}`)}>👁️</button>
                     <button className="btn-icon" onClick={()=>Toast.info(`Editando ${q.id}`)}>✏️</button>
-                    <button className="btn-icon" onClick={async ()=>{
-                      // DEMO: Generar PDF tipo Nota de Crédito como en la imagen, con datos estáticos
-                      const items: DTEItem[] = [
-                        { codigo: "1S-SA-406715", descripcion: "SELLANTE HIBRIDO POMO DE 300ML GRIS\nMS-35 QUILOSA", cantidad: 5, precio: 4708, descuentoPct: 0, afecto: true },
-                        { codigo: "1S-AD-165758", descripcion: "ADHESIVO DE MONTAJE BLANCO POMO DE 370 ML\nAFIX MONTAJE", cantidad: 5, precio: 1581, descuentoPct: 0, afecto: true },
-                      ];
-                      const doc = mapQuoteToDTE({
-                        quoteId: q.id,
-                        tipo: "NOTA DE CRÉDITO",
-                        fechaEmision: new Date().toISOString(),
-                        folio: 937,
-                        items,
-                        emisor: {
-                          razonSocial: "OLGA ESTER LEAL LEAL E.I.R.L.",
-                          rut: "76.309.629-7",
-                          giro: "VTA.INSUM.CONST/ COM.EN VTAS/ PREST.SERV.PROF/ ASESORIA VENTAS",
-                          direccion: "BELGRADO 699, Temuco",
-                          email: "cobranza@importalventas.cl",
-                          telefono: "+56 9 77497459",
-                          logoUrl: BRAND?.logoSrc || undefined,
-                          encabezadoSuperior: "INSUMOS DE CONSTRUCCION Y SERVICIOS DE VENTA",
-                          encabezadoInferior: "OLGA ESTER LEAL LEAL E.I.R.L.",
-                        },
-                        cliente: {
-                          razonSocial: q.client,
-                          rut: "76.146.982-7",
-                          direccion: "ALDUNATE 719 711",
-                          comuna: "Temuco",
-                          ciudad: "Temuco",
-                          giro: "CONSTRUCCION DE EDIFICIOS COMPLETOS O DE",
-                        },
-                      });
-                      await downloadServerDTE(doc, `${q.id}_DTE.pdf`);
-                      Toast.success("PDF generado");
-                    }}>📄</button>
+                    {/* Botón de PDF deshabilitado temporalmente */}
                     <button className="btn-icon" onClick={()=>Toast.success(`Eliminada ${q.id}`)}>🗑️</button>
                   </div>
                 </td>

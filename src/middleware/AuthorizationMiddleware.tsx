@@ -1,6 +1,7 @@
 "use client";
 
-import { useAuthWithPermissions } from "@/features/auth/model/useAuth";
+import { useAuth } from "@/features/auth/model/useAuth";
+import { usePermissions, type Resource, type Action } from "@/features/auth/model/permissions";
 import { useNavigationItems } from "@/features/navigation/model/navigationItems";
 import { useSection } from "@/features/navigation/model/useSection";
 import { auditLogger } from "@/shared/lib/auditLogger";
@@ -11,7 +12,7 @@ import { useEffect } from "react";
  * para verificar que el usuario tenga permisos para la sección actual
  */
 export function AuthorizationMiddleware({ children }: { children: React.ReactNode }) {
-  const { user, isAuthenticated } = useAuthWithPermissions();
+  const { user, isAuthenticated } = useAuth();
   const { section, setSection } = useSection();
   const { canAccessSection } = useNavigationItems(user?.role || '');
 
@@ -55,33 +56,34 @@ export function AuthorizationMiddleware({ children }: { children: React.ReactNod
  * Hook para verificar acciones específicas en componentes
  */
 export function useActionAuthorization() {
-  const { user, hasPermission, roleInfo } = useAuthWithPermissions();
+  const { user } = useAuth();
+  const { hasPermission } = usePermissions(user?.role || '');
 
-  const canCreate = (resource: string): boolean => {
-    return hasPermission(resource as any, 'create');
+  const canCreate = (resource: Resource): boolean => {
+    return hasPermission(resource, 'create');
   };
 
-  const canEdit = (resource: string): boolean => {
-    return hasPermission(resource as any, 'update');
+  const canEdit = (resource: Resource): boolean => {
+    return hasPermission(resource, 'update');
   };
 
-  const canDelete = (resource: string): boolean => {
-    return hasPermission(resource as any, 'delete');
+  const canDelete = (resource: Resource): boolean => {
+    return hasPermission(resource, 'delete');
   };
 
-  const canExport = (resource: string): boolean => {
-    return hasPermission(resource as any, 'export');
+  const canExport = (resource: Resource): boolean => {
+    return hasPermission(resource, 'export');
   };
 
-  const canManage = (resource: string): boolean => {
-    return hasPermission(resource as any, 'manage');
+  const canManage = (resource: Resource): boolean => {
+    return hasPermission(resource, 'manage');
   };
 
   const isOwnerOrAdmin = (ownerId?: string): boolean => {
-    return roleInfo.isAdmin || user?.id === ownerId;
+    return user?.role?.toLowerCase() === 'admin' || user?.id === ownerId;
   };
 
-  const logUnauthorizedAction = (resource: string, action: string) => {
+  const logUnauthorizedAction = (resource: Resource, action: Action) => {
     console.warn(`Unauthorized action attempted: ${user?.role} tried to ${action} ${resource}`);
     
     if (user) {
@@ -89,8 +91,8 @@ export function useActionAuthorization() {
         user.id,
         user.email,
         user.role,
-        resource,
-        action
+  resource,
+  action
       );
     }
   };
@@ -104,6 +106,9 @@ export function useActionAuthorization() {
     isOwnerOrAdmin,
     logUnauthorizedAction,
     user,
-    roleInfo,
+    // La propiedad roleInfo ya no existe, pero proporcionamos isAdmin para compatibilidad
+    roleInfo: {
+      isAdmin: user?.role?.toLowerCase() === 'admin'
+    },
   };
 }

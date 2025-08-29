@@ -479,7 +479,7 @@ export function CreateTargetModal({ isOpen, onClose }: CreateTargetModalProps) {
                   <select
                     required
                     value={formData.prioridad}
-                    onChange={(e) => setFormData(prev => ({ ...prev, prioridad: e.target.value as any }))}
+                    onChange={(e) => setFormData(prev => ({ ...prev, prioridad: e.target.value as 'baja' | 'media' | 'alta' }))}
                     className="input-field"
                   >
                     <option value="baja">Baja</option>

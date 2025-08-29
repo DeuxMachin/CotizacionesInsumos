@@ -4,7 +4,6 @@ import { useSection } from "@/features/navigation/model/useSection";
 import { useAuth } from "@/features/auth/model/useAuth";
 import { FiMenu, FiBell, FiLogOut } from "react-icons/fi";
 import { Logo } from "@/shared/ui/Logo";
-import { BRAND } from "@/shared/ui/brand";
 import { ThemeToggle } from "@/features/theme/ui/ThemeToggle";
 
 // Títulos descriptivos para cada sección del sistema

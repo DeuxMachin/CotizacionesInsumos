@@ -1,12 +1,11 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
 import { FullscreenModal } from "@/shared/ui/FullscreenModal";
-import { BRAND } from "@/shared/ui/brand";
 import { products as allProducts } from "@/features/quotes/model/products";
 import { clients as mockClients, type Client } from "@/features/clients/model/clients";
 import { QuoteAmountCalculator } from "@/entities/quote/model/types";
-import { downloadServerDTE } from "@/features/reports/ui/pdf/downloadServerDTE";
-import { mapQuoteToDTE, type DTEItem } from "@/features/reports/ui/pdf/ChileanTaxUtils";
+// PDF deshabilitado temporalmente
+// import { downloadServerDTE } from "@/features/reports/ui/pdf";
 
 export const NewQuoteModal = {
   Trigger() {
@@ -46,7 +45,7 @@ export const NewQuoteModal = {
     const [paymentMethod, setPaymentMethod] = useState<string>("");
     const [currency, setCurrency] = useState<"CLP" | "USD" | "">("");
   const [paymentNotes, setPaymentNotes] = useState<string>("");
-  const [folio, setFolio] = useState<string>("");
+  // const [folio, setFolio] = useState<string>("");
     // helper: add days
     const addDays = (dateStr: string, days: number) => {
       const d = new Date(dateStr);
@@ -129,7 +128,7 @@ export const NewQuoteModal = {
       setClientRut(""); setClientRazonSocial(""); setClientGiro(""); setClientDireccion(""); setClientRegion(""); setClientCiudad(""); setClientComuna(""); setClientTipoEmpresa("Ltda.");
       setContactoNombre(""); setContactoEmail(""); setContactoTelefono("");
   setCreatedDate(""); setDocType(""); setValidDaysStr(""); setPaymentMethod(""); setCurrency(""); setPaymentNotes("");
-      setDueDate(""); setSearch(""); setSelected({}); setCollapsed(true); setGlobalDiscountPct(0); setExentoAmount(0); setFolio("");
+  setDueDate(""); setSearch(""); setSelected({}); setCollapsed(true); setGlobalDiscountPct(0); setExentoAmount(0); /* setFolio(""); */
       clearDraft();
       close();
     };
@@ -139,7 +138,7 @@ export const NewQuoteModal = {
       setClientRut(""); setClientRazonSocial(""); setClientGiro(""); setClientDireccion(""); setClientRegion(""); setClientCiudad(""); setClientComuna(""); setClientTipoEmpresa("Ltda.");
       setContactoNombre(""); setContactoEmail(""); setContactoTelefono("");
   setCreatedDate(""); setDocType(""); setValidDaysStr(""); setPaymentMethod(""); setCurrency(""); setPaymentNotes("");
-  setDueDate(""); setSearch(""); setSelected({}); setCollapsed(true); setGlobalDiscountPct(0); setExentoAmount(0); setFolio("");
+  setDueDate(""); setSearch(""); setSelected({}); setCollapsed(true); setGlobalDiscountPct(0); setExentoAmount(0); /* setFolio(""); */
       clearDraft();
     };
 
@@ -518,38 +517,7 @@ export const NewQuoteModal = {
                   <div className="flex gap-2">
                     <button className="btn-ghost" onClick={saveDraft}>Guardar borrador</button>
                     <button className="btn-primary" onClick={async ()=>{
-                      // Construir items desde selección
-                      const items: DTEItem[] = Object.entries(selected).map(([id, qty]) => {
-                        const p = allProducts.find(pp=>pp.id===id)!;
-                        return { codigo: p.id, descripcion: p.name, cantidad: qty, precio: Math.round(p.price), afecto: true };
-                      });
-                      const doc = mapQuoteToDTE({
-                        quoteId: "temp",
-                        tipo: "COTIZACIÓN",
-                        fechaEmision: new Date().toISOString(),
-                        folio: folio || undefined,
-                        items,
-                        emisor: {
-                          razonSocial: BRAND?.name || "Mi Empresa",
-                          rut: "76.309.629-7",
-                          giro: "Comercialización de productos y servicios",
-                          direccion: "Dirección de la empresa",
-                          // Prefer PNG/JPG for best Puppeteer rendering
-                          logoUrl: BRAND?.logoSrc || undefined,
-                          encabezadoSuperior: "INSUMOS DE CONSTRUCCION Y SERVICIOS DE VENTA",
-                          encabezadoInferior: "OLGA ESTER LEAL LEAL E.I.R.L.",
-                        },
-                        cliente: {
-                          razonSocial: client || clientRazonSocial || "Cliente",
-                          rut: clientRut || undefined,
-                          direccion: clientDireccion,
-                          comuna: clientComuna,
-                          ciudad: clientCiudad,
-                          giro: clientGiro,
-                        },
-                        observaciones: paymentNotes || undefined,
-                      });
-                      await downloadServerDTE(doc, `COT_${new Date().toISOString().slice(0,10)}.pdf`);
+                      // Descarga de PDF deshabilitada temporalmente
                       clearDraft();
                       resetAndClose();
                     }}>Crear Cotización</button>

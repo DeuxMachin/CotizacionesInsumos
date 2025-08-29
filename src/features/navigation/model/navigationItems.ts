@@ -2,7 +2,7 @@
 
 import { FiHome, FiFileText, FiUsers, FiPackage, FiBarChart2, FiMapPin, FiSettings, FiShield } from "react-icons/fi";
 import type { Section } from "./useSection";
-import { usePermissions, type Resource } from "@/features/auth/model/permissions";
+import { usePermissions, type Resource, type Action } from "@/features/auth/model/permissions";
 
 export interface NavigationItem {
   key: Section;
@@ -10,7 +10,7 @@ export interface NavigationItem {
   label: string;
   description: string;
   resource: Resource;
-  requiredActions: string[];
+  requiredActions: Action[];
   adminOnly?: boolean;
   badge?: string;
   comingSoon?: boolean;
@@ -101,15 +101,12 @@ export const ALL_NAVIGATION_ITEMS: NavigationItem[] = [
 
 // Hook para obtener elementos de navegación filtrados por permisos
 export function useNavigationItems(userRole: string) {
-  const { hasAnyPermission, canRead } = usePermissions(userRole);
+  const { hasAnyPermission, canRead } = usePermissions(userRole.toLowerCase());
 
   const getFilteredNavigationItems = (): NavigationItem[] => {
     return ALL_NAVIGATION_ITEMS.filter(item => {
       // Verificar si el usuario tiene permisos para ver este elemento
-      const hasRequiredPermissions = hasAnyPermission(
-        item.resource, 
-        item.requiredActions as any[]
-      );
+  const hasRequiredPermissions = hasAnyPermission(item.resource, item.requiredActions);
 
       // Si es adminOnly, verificar que sea admin
       if (item.adminOnly && userRole.toLowerCase() !== 'admin') {
@@ -137,7 +134,7 @@ export function useNavigationItems(userRole: string) {
       return false;
     }
 
-    return hasAnyPermission(item.resource, item.requiredActions as any[]);
+  return hasAnyPermission(item.resource, item.requiredActions);
   };
 
   return {

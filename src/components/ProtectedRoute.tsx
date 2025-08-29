@@ -52,7 +52,7 @@ export function ProtectedComponent({
   fallback = null 
 }: ProtectedComponentProps) {
   const { user } = useAuth();
-  const { hasPermission, hasAnyPermission, hasAllPermissions } = usePermissions(user?.role || '');
+  const { hasAnyPermission, hasAllPermissions } = usePermissions(user?.role || '');
 
   // Si requiere admin y no es admin, no mostrar
   if (requireAdmin && user?.role?.toLowerCase() !== 'admin') {

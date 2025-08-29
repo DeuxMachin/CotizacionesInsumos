@@ -1,7 +1,6 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { BRAND } from "@/shared/ui/brand";
 import { inventoryMock, type InventoryItem, inferStatus } from "../model/inventory";
 import { Toast } from "@/shared/ui/Toast";
 import { AddStockModal, useAddStockModal } from "./AddStockModal";
