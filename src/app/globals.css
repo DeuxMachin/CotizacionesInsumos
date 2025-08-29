@@ -1,8 +1,6 @@
 @import "tailwindcss";
 
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+
 
 /* Tipografías base (usando next/font variables) */
 :root { 
@@ -12,10 +10,9 @@
 
 /* Variables para modo claro - basado exactamente en las imágenes proporcionadas */
 :root {
-  /* Colores principales del tema claro */
-  --bg-primary: #ffffff;  /* Para header y sidebar */
-  --bg-secondary: #f9fafb; /* Para el fondo de las páginas */
-  --bg-sidebar: #ffffff;   /* Sidebar específicamente */
+ --bg-primary: #ffffff;
+  --bg-secondary: #f9fafb;
+  --bg-sidebar: #ffffff;
   --text-primary: #1f2937;
   --text-secondary: #6b7280;
   --text-muted: #9ca3af;
@@ -23,31 +20,41 @@
   --border-light: #f3f4f6;
   --border-subtle: #e5e7eb;
   --card-bg: #ffffff;
-  
-  /* Colores del tema naranja */
+
   --accent-primary: #f97316;
   --accent-secondary: #fb923c;
   --accent-hover: #ea580c;
   --accent-soft: #fed7aa;
   --accent-bg: #fff7ed;
-  
-  /* Estados */
+  --accent-text: #ea580c;
+
   --success: #10b981;
+  --success-bg: #d1fae5;
+  --success-text: #065f46;
   --warning: #f59e0b;
+  --warning-bg: #fef3c7;
+  --warning-text: #92400e;
   --danger: #ef4444;
+  --danger-bg: #fee2e2;
+  --danger-text: #991b1b;
   --info: #3b82f6;
-  
-  /* Sombras */
+  --info-bg: #dbeafe;
+  --info-text: #1e40af;
+  --neutral-bg: #f3f4f6;
+  --neutral-text: #374151;
+
   --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
   --shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
   --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+
+  color-scheme: light dark; /* mejora controles nativos */
 }
 
 /* Variables para modo oscuro */
 .dark {
-  --bg-primary: #1f2937;   /* Para header y sidebar - gris más claro */
-  --bg-secondary: #111827; /* Para el fondo de las páginas - gris más oscuro */
-  --bg-sidebar: #1f2937;   /* Sidebar específicamente */
+  --bg-primary: #1f2937;
+  --bg-secondary: #111827;
+  --bg-sidebar: #1f2937;
   --text-primary: #f9fafb;
   --text-secondary: #d1d5db;
   --text-muted: #9ca3af;
@@ -55,39 +62,46 @@
   --border-light: #1f2937;
   --border-subtle: #374151;
   --card-bg: #1f2937;
-  
+
   --accent-primary: #fb923c;
   --accent-secondary: #fdba74;
   --accent-hover: #f97316;
   --accent-soft: #7c2d12;
   --accent-bg: #431407;
-  
+  --accent-text: #fb923c;
+
   --success: #10b981;
+  --success-bg: #064e3b;
+  --success-text: #6ee7b7;
   --warning: #f59e0b;
+  --warning-bg: #78350f;
+  --warning-text: #fcd34d;
   --danger: #ef4444;
+  --danger-bg: #7f1d1d;
+  --danger-text: #fca5a5;
   --info: #3b82f6;
-  
+  --info-bg: #1e3a8a;
+  --info-text: #93c5fd;
+  --neutral-bg: #374151;
+  --neutral-text: #d1d5db;
+
   --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.2);
   --shadow: 0 1px 3px 0 rgb(0 0 0 / 0.3), 0 1px 2px -1px rgb(0 0 0 / 0.3);
   --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.3), 0 2px 4px -2px rgb(0 0 0 / 0.3);
 }
 
 /* Estilos base del body y html */
-html { 
-  font-family: var(--font-sans);
-  scroll-behavior: smooth;
-}
 
-body { 
+html { font-family: var(--font-sans); scroll-behavior: smooth; }
+body {
   font-family: var(--font-sans);
   background-color: var(--bg-secondary);
   color: var(--text-primary);
-  transition: background-color 0.3s ease, color 0.3s ease;
+  transition: background-color .3s ease, color .3s ease;
 }
+h1, h2, .display-font { font-family: var(--font-display); }
 
-h1, h2, .display-font { 
-  font-family: var(--font-display); 
-}
+
 
 @layer components {
   .section-title { 
@@ -97,31 +111,22 @@ h1, h2, .display-font {
   }
   
   /* Botones principales - exactamente como diseño original */
-  .btn-primary { 
-    @apply inline-flex items-center justify-center gap-2 px-4 py-2.5 sm:px-6 sm:py-3 rounded-lg;
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 px-4 py-2.5 sm:px-6 sm:py-3 rounded-lg font-medium;
     background: linear-gradient(to right, var(--accent-primary), var(--accent-hover));
-    color: white;
-    font-weight: 500;
-    box-shadow: var(--shadow-sm);
-    transition: all 0.2s;
+    color: #fff; box-shadow: var(--shadow-sm); transition: all .2s;
   }
-  .btn-primary:hover {
-    transform: translateY(-1px);
-    box-shadow: var(--shadow-md);
-  }
-  
-  .btn-secondary { 
-    @apply inline-flex items-center justify-center gap-2 px-3 py-2 sm:px-4 sm:py-2 rounded-lg;
+  .btn-primary:hover { transform: translateY(-1px); box-shadow: var(--shadow-md); }
+
+  .btn-secondary {
+    @apply inline-flex items-center justify-center gap-2 px-3 py-2 sm:px-4 sm:py-2 rounded-lg font-medium;
     border: 1px solid var(--border);
     background: var(--card-bg);
     color: var(--text-primary);
-    font-weight: 500;
-    transition: all 0.2s;
+    transition: all .2s;
   }
-  .btn-secondary:hover {
-    background: var(--bg-secondary);
-    border-color: var(--accent-primary);
-  }
+  .btn-secondary:hover { background: var(--bg-secondary); border-color: var(--accent-primary); }
+
   
   .btn-ghost { 
     @apply inline-flex items-center justify-center gap-2 px-3 py-2 sm:px-4 sm:py-2 rounded-lg;
@@ -145,18 +150,15 @@ h1, h2, .display-font {
   }
   
   /* Formularios */
-  .form-input { 
+  .form-input {
     @apply w-full px-3 py-2.5 sm:px-3 sm:py-2 rounded-lg text-sm sm:text-base;
     border: 1px solid var(--border);
     background: var(--card-bg);
     color: var(--text-primary);
-    transition: all 0.2s;
+    transition: all .2s;
   }
-  .form-input:focus {
-    outline: none;
-    border-color: var(--accent-primary);
-    box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.1);
-  }
+  .form-input:focus { outline: none; border-color: var(--accent-primary); box-shadow: 0 0 0 3px rgba(249,115,22,.1); }
+
   
   .form-label { 
     @apply block text-xs sm:text-sm font-medium mb-1;
@@ -165,20 +167,16 @@ h1, h2, .display-font {
   
   /* Tarjetas de estadísticas */
   .stat-card { 
-    @apply rounded-xl p-4 sm:p-6 relative overflow-hidden;
+    @apply rounded-xl p-4 sm:p-6 relative overflow-hidden transition-all;
     background: var(--card-bg);
     border: 1px solid var(--border);
-    transition: all 0.2s;
   }
+  .stat-card::before { content: ""; @apply absolute left-0 top-0 h-1 w-full; background: var(--accent-primary); opacity:.8; }
+
   .stat-card:hover {
     box-shadow: var(--shadow-md);
   }
-  .stat-card::before { 
-    content: ""; 
-    @apply absolute left-0 top-0 h-1 w-full;
-    background: var(--accent-primary);
-    opacity: 0.8;
-  }
+
   
   .stat-number { 
     @apply text-lg sm:text-2xl font-bold;
@@ -259,6 +257,99 @@ h1, h2, .display-font {
 .animate-scaleIn { animation: scaleIn 0.2s ease-out both; }
 .animate-blob { animation: blob 7s infinite; }
 
+/* Badges para estados y prioridades con design tokens */
+.badge-base {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  border-radius: 9999px;
+}
+
+.badge-pendiente {
+  background-color: var(--warning-bg);
+  color: var(--warning-text);
+}
+
+.badge-contactado {
+  background-color: var(--info-bg);
+  color: var(--info-text);
+}
+
+.badge-gestionando {
+  background-color: var(--accent-bg);
+  color: var(--accent-text);
+}
+
+.badge-cerrado {
+  background-color: var(--success-bg);
+  color: var(--success-text);
+}
+
+.badge-descartado {
+  background-color: var(--neutral-bg);
+  color: var(--neutral-text);
+}
+
+.badge-alta {
+  background-color: var(--danger-bg);
+  color: var(--danger-text);
+}
+
+.badge-media {
+  background-color: var(--warning-bg);
+  color: var(--warning-text);
+}
+
+.badge-baja {
+  background-color: var(--success-bg);
+  color: var(--success-text);
+}
+
+/* Utilidades adicionales para modales y diseños complejos */
+.modal-content {
+  background-color: var(--card-bg);
+  border: 1px solid var(--border);
+}
+
+.divider-horizontal {
+  border-top: 1px solid var(--border);
+}
+
+.divider-vertical {
+  border-left: 1px solid var(--border);
+}
+
+/* Scrollbar personalizada para el tema */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background-color: var(--bg-secondary);
+  border-radius: 3px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background-color: var(--border);
+  border-radius: 3px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background-color: var(--text-muted);
+}
+
 /* Utilidades de espaciado y colores personalizados */
-.text-gradient { @apply bg-gradient-to-r from-orange-500 to-orange-700 bg-clip-text text-transparent; }
+.text-gradient { 
+  background: linear-gradient(to right, rgb(249 115 22), rgb(194 65 12));
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+}
 .bg-pattern { background-image: radial-gradient(circle at 1px 1px, rgba(249, 115, 22, 0.12) 1px, transparent 0); background-size: 20px 20px; }
+.text-theme-primary { color: var(--text-primary); }
+.text-theme-secondary { color: var(--text-secondary); }
+.bg-theme-card { background-color: var(--card-bg); }
+.border-subtle { border-color: var(--border-subtle); }

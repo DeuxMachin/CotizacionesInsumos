@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { FiPlus, FiMapPin, FiPhone, FiUser, FiClock, FiArrowLeft, FiArrowRight, FiMap } from "react-icons/fi";
 import { useTargets } from "../model/useTargets";
-import { CreateTargetModal } from "./CreateTargetModal";
+import CreateTargetModal from "./CreateTargetModal";
 import { TargetDetailsModal } from "./TargetDetailsModal";
 import type { PosibleTarget } from "../model/types";
 
@@ -24,33 +24,33 @@ export function PosiblesTargetsPage() {
     (currentPage + 1) * TARGETS_PER_PAGE
   );
 
-  const getEstadoColor = (estado: string) => {
+  const getEstadoClass = (estado: string) => {
     switch (estado) {
       case 'pendiente':
-        return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400';
+        return 'badge-base badge-pendiente';
       case 'contactado':
-        return 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400';
+        return 'badge-base badge-contactado';
       case 'gestionando':
-        return 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400';
+        return 'badge-base badge-gestionando';
       case 'cerrado':
-        return 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400';
+        return 'badge-base badge-cerrado';
       case 'descartado':
-        return 'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400';
+        return 'badge-base badge-descartado';
       default:
-        return 'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400';
+        return 'badge-base badge-descartado';
     }
   };
 
-  const getPrioridadColor = (prioridad: string) => {
+  const getPrioridadClass = (prioridad: string) => {
     switch (prioridad) {
       case 'alta':
-        return 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400';
+        return 'badge-base badge-alta';
       case 'media':
-        return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400';
+        return 'badge-base badge-media';
       case 'baja':
-        return 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400';
+        return 'badge-base badge-baja';
       default:
-        return 'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400';
+        return 'badge-base badge-media';
     }
   };
 
@@ -64,16 +64,23 @@ export function PosiblesTargetsPage() {
     return (
       <div className="space-y-6 animate-fadeIn">
         <div className="flex justify-between items-center">
-          <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded w-48 animate-pulse" />
-          <div className="h-10 bg-gray-200 dark:bg-gray-700 rounded w-40 animate-pulse" />
+          <div className="h-8 rounded w-48 animate-pulse" style={{ backgroundColor: 'var(--bg-secondary)' }} />
+          <div className="h-10 rounded w-40 animate-pulse" style={{ backgroundColor: 'var(--bg-secondary)' }} />
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {[...Array(6)].map((_, i) => (
-            <div key={i} className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 animate-pulse">
-              <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded w-3/4 mb-4" />
-              <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-full mb-2" />
-              <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-2/3 mb-4" />
-              <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded w-20" />
+            <div 
+              key={i} 
+              className="rounded-xl shadow-sm p-6 animate-pulse"
+              style={{ 
+                backgroundColor: 'var(--card-bg)',
+                border: '1px solid var(--border)'
+              }}
+            >
+              <div className="h-6 rounded w-3/4 mb-4" style={{ backgroundColor: 'var(--bg-secondary)' }} />
+              <div className="h-4 rounded w-full mb-2" style={{ backgroundColor: 'var(--bg-secondary)' }} />
+              <div className="h-4 rounded w-2/3 mb-4" style={{ backgroundColor: 'var(--bg-secondary)' }} />
+              <div className="h-8 rounded w-20" style={{ backgroundColor: 'var(--bg-secondary)' }} />
             </div>
           ))}
         </div>
@@ -140,7 +147,7 @@ export function PosiblesTargetsPage() {
                       <h3 className="text-lg font-semibold line-clamp-2" style={{ color: 'var(--text-primary)' }}>
                         {target.titulo}
                       </h3>
-                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${getEstadoColor(target.estado)}`}>
+                      <span className={getEstadoClass(target.estado)}>
                         {target.estado}
                       </span>
                     </div>
@@ -182,7 +189,7 @@ export function PosiblesTargetsPage() {
                       style={{ borderColor: 'var(--border)' }}
                     >
                       <div className="flex items-center gap-2">
-                        <span className={`px-2 py-1 text-xs font-medium rounded-full ${getPrioridadColor(target.prioridad)}`}>
+                        <span className={getPrioridadClass(target.prioridad)}>
                           {target.prioridad}
                         </span>
                         {target.tipoObra && (
