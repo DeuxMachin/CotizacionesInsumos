@@ -58,13 +58,19 @@ export function QuickActions() {
   };
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 sm:p-6">
+    <div 
+      className="rounded-xl p-4 sm:p-6"
+      style={{ 
+        backgroundColor: 'var(--bg-primary)',
+        border: '1px solid var(--border-subtle)' 
+      }}
+    >
       {/* Header de la sección */}
       <div className="mb-3 sm:mb-4 lg:mb-6">
-        <h3 className="section-title text-lg sm:text-xl font-semibold text-gray-900 dark:text-white mb-1">
+        <h3 className="section-title text-lg sm:text-xl mb-1">
           Acciones Rápidas
         </h3>
-        <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
+        <p className="text-xs sm:text-sm text-theme-secondary">
           Accede rápidamente a las funciones más utilizadas
         </p>
       </div>
@@ -75,8 +81,14 @@ export function QuickActions() {
           <button
             key={a.action}
             onClick={() => handleActionClick(a.action)}
-            className="group text-left bg-white dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-700 rounded-xl p-3 sm:p-4 lg:p-5 hover:border-orange-500 hover:shadow-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2"
-            style={{ animationDelay: `${idx * 60}ms` }}
+            className="group text-left rounded-xl p-3 sm:p-4 lg:p-5 hover:shadow-theme-md transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 animate-slideUp"
+            style={{ 
+              backgroundColor: 'var(--bg-primary)',
+              animationDelay: `${idx * 60}ms`,
+              border: '2px solid var(--border-subtle)'
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.borderColor = 'var(--accent-primary)'}
+            onMouseLeave={(e) => e.currentTarget.style.borderColor = 'var(--border-subtle)'}
           >
             <div className="flex flex-col items-center text-center">
               <div className="mb-2 sm:mb-3">
@@ -84,10 +96,10 @@ export function QuickActions() {
                   {a.icon}
                 </div>
               </div>
-              <h4 className="font-semibold text-gray-900 dark:text-white mb-1 text-sm sm:text-base">
+              <h4 className="font-semibold text-theme-primary mb-1 text-sm sm:text-base">
                 {a.title}
               </h4>
-              <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 hidden sm:block">
+              <p className="text-xs sm:text-sm text-theme-secondary hidden sm:block">
                 {a.description}
               </p>
             </div>
@@ -103,19 +115,28 @@ export function QuickActions() {
             downloadCSV(csv, "cotizaciones.csv");
             Toast?.success?.("Cotizaciones exportadas");
           }}
-          className="px-2 py-1 sm:px-3 sm:py-1.5 rounded-full border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:border-orange-400 dark:hover:border-orange-600 hover:bg-orange-50 dark:hover:bg-orange-900/20 text-xs sm:text-sm"
+          className="px-2 py-1 sm:px-3 sm:py-1.5 rounded-full text-theme-secondary hover:bg-theme-accent text-xs sm:text-sm transition-colors"
+          style={{ border: '1px solid var(--border-subtle)' }}
+          onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--accent-primary)'; }}
+          onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--border-subtle)'; }}
         >
           Exportar CSV
         </button>
         <button
           onClick={() => Toast?.info?.("Importación próximamente")}
-          className="px-2 py-1 sm:px-3 sm:py-1.5 rounded-full border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:border-orange-400 dark:hover:border-orange-600 hover:bg-orange-50 dark:hover:bg-orange-900/20 text-xs sm:text-sm"
+          className="px-2 py-1 sm:px-3 sm:py-1.5 rounded-full text-theme-secondary hover:bg-theme-accent text-xs sm:text-sm transition-colors"
+          style={{ border: '1px solid var(--border-subtle)' }}
+          onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--accent-primary)'; }}
+          onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--border-subtle)'; }}
         >
           Importar CSV
         </button>
         <button
           onClick={() => Toast?.info?.("Atajos: N nueva cotización, / buscar, G ir a sección")}
-          className="px-2 py-1 sm:px-3 sm:py-1.5 rounded-full border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:border-orange-400 dark:hover:border-orange-600 hover:bg-orange-50 dark:hover:bg-orange-900/20 text-xs sm:text-sm hidden sm:inline-flex"
+          className="px-2 py-1 sm:px-3 sm:py-1.5 rounded-full text-theme-secondary hover:bg-theme-accent text-xs sm:text-sm hidden sm:inline-flex transition-colors"
+          style={{ border: '1px solid var(--border-subtle)' }}
+          onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--accent-primary)'; }}
+          onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--border-subtle)'; }}
         >
           Atajos del teclado
         </button>

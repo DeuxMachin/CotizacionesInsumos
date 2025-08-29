@@ -11,7 +11,13 @@ export function FiltersBar({ onChange }: Props) {
   useMemo(() => { onChange?.({ status, date, search }); }, [status, date, search, onChange]);
 
   return (
-    <div className="bg-white shadow rounded-xl p-4 mb-4">
+    <div 
+      className="rounded-xl p-4 mb-4 shadow-sm"
+      style={{ 
+        backgroundColor: 'var(--bg-primary)',
+        border: '1px solid var(--border-subtle)'
+      }}
+    >
       <div className="flex flex-col md:flex-row gap-3 items-stretch md:items-center">
         <select className="form-input" value={status} onChange={(e)=>setStatus(e.target.value)}>
           <option value="">Todos los estados</option>

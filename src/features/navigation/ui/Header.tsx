@@ -32,7 +32,13 @@ export function Header() {
   const { logout, user } = useAuth();
 
   return (
-    <header className="sticky top-0 z-30 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 shadow-sm transition-colors duration-200">
+    <header 
+      className="sticky top-0 z-30 shadow-sm transition-colors duration-200"
+      style={{ 
+        backgroundColor: 'var(--bg-primary)',
+        borderBottom: '1px solid var(--border-subtle)' 
+      }}
+    >
       <div className="flex items-center justify-between h-14 sm:h-16 px-3 sm:px-4 lg:px-6 max-w-7xl mx-auto">
         {/* Sección izquierda: Menú móvil + Títulos */}
         <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
@@ -48,10 +54,10 @@ export function Header() {
           </div>
           
           <div className="min-w-0">
-            <h1 className="text-base sm:text-lg font-bold text-gray-900 dark:text-white truncate display-font">
+            <h1 className="text-base sm:text-lg font-bold text-theme-primary truncate display-font">
               {titles[section] ?? "Dashboard"}
             </h1>
-            <p className="text-xs text-gray-500 dark:text-gray-400 truncate hidden sm:block">
+            <p className="text-xs text-theme-secondary truncate hidden sm:block">
               {subtitles[section] ?? "Bienvenido al sistema"}
             </p>
           </div>
@@ -73,18 +79,21 @@ export function Header() {
           </button>
 
           {/* Avatar del usuario con menú */}
-          <div className="flex items-center gap-2 pl-2 sm:pl-3 border-l border-gray-200 dark:border-gray-700">
+          <div 
+            className="flex items-center gap-2 pl-2 sm:pl-3"
+            style={{ borderLeft: '1px solid var(--border-subtle)' }}
+          >
             <div className="flex items-center gap-2 sm:gap-3">
               <div className="text-right hidden sm:block">
-                <p className="text-sm font-medium text-gray-900 dark:text-white">{user?.name || "Usuario"}</p>
-                <p className="text-xs text-gray-500 dark:text-gray-400">{user?.role || "Invitado"}</p>
+                <p className="text-sm font-medium text-theme-primary">{user?.name || "Usuario"}</p>
+                <p className="text-xs text-theme-secondary">{user?.role || "Invitado"}</p>
               </div>
-              <div className={`h-7 w-7 sm:h-8 sm:w-8 rounded-full bg-gradient-to-br ${BRAND.accentFrom} ${BRAND.accentTo} flex items-center justify-center text-white text-xs sm:text-sm font-medium`}>
+              <div className="h-7 w-7 sm:h-8 sm:w-8 rounded-full bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center text-white text-xs sm:text-sm font-medium">
                 {user?.name?.charAt(0).toUpperCase() || "A"}
               </div>
               <button
                 onClick={logout}
-                className="btn-icon text-gray-500 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20"
+                className="btn-icon hover:text-red-600 dark:hover:text-red-500"
                 title="Cerrar sesión"
               >
                 <FiLogOut className="w-3 h-3 sm:w-4 sm:h-4" />

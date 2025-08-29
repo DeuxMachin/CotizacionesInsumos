@@ -70,7 +70,13 @@ export function ClientsPage() {
   return (
     <div className="space-y-4">
       {/* Filtros */}
-      <div className="bg-white rounded-xl border border-gray-200 dark:border-gray-700 p-3 sm:p-4">
+      <div 
+        className="rounded-xl p-3 sm:p-4"
+        style={{ 
+          backgroundColor: 'var(--card-bg)', 
+          border: '1px solid var(--border)' 
+        }}
+      >
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex-1 flex gap-2">
             <input
@@ -99,19 +105,22 @@ export function ClientsPage() {
       </div>
 
       {/* Tabla */}
-      <div className="rounded-xl bg-white shadow overflow-hidden">
+      <div 
+        className="rounded-xl shadow overflow-hidden"
+        style={{ backgroundColor: 'var(--card-bg)' }}
+      >
         {/* Mobile cards */}
         <div className="block sm:hidden">
-          <div className="divide-y divide-gray-200">
+          <div className="divide-y" style={{ borderColor: 'var(--border)' }}>
             {pageData.map((c) => (
               <div key={c.id} className="p-4 space-y-2">
                 <div className="flex items-start justify-between gap-2">
-                  <span className="font-semibold text-gray-900 text-sm leading-snug flex-1">{c.razonSocial}</span>
+                  <span className="font-semibold text-sm leading-snug flex-1" style={{ color: 'var(--text-primary)' }}>{c.razonSocial}</span>
                   <StatusBadge status={c.status} />
                 </div>
-                <div className="text-xs text-gray-600">RUT: {c.rut}</div>
+                <div className="text-xs" style={{ color: 'var(--text-secondary)' }}>RUT: {c.rut}</div>
                 <div className="flex items-center justify-between">
-                  <span className="font-semibold text-gray-900">{formatCLP(c.paid + c.pending + c.partial + c.overdue)}</span>
+                  <span className="font-semibold" style={{ color: 'var(--text-primary)' }}>{formatCLP(c.paid + c.pending + c.partial + c.overdue)}</span>
                   <div className="flex gap-1">
                     <button className="btn-icon text-xs" onClick={() => setSelected(c)}>👁️</button>
                     <button className="btn-icon text-xs" onClick={() => Toast.info(`Editando ${c.razonSocial}`)}>✏️</button>
@@ -121,7 +130,7 @@ export function ClientsPage() {
               </div>
             ))}
             {pageData.length === 0 && (
-              <div className="p-6 text-center text-gray-500 text-sm">Sin resultados</div>
+              <div className="p-6 text-center text-sm" style={{ color: 'var(--text-muted)' }}>Sin resultados</div>
             )}
           </div>
         </div>
@@ -130,23 +139,32 @@ export function ClientsPage() {
         <div className="hidden sm:block overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="bg-slate-100 text-left">
-                <th className="p-3 font-semibold text-xs sm:text-sm">Razón Social</th>
-                <th className="p-3 font-semibold text-xs sm:text-sm text-center">RUT</th>
-                <th className="p-3 font-semibold text-xs sm:text-sm">Contacto</th>
-                <th className="p-3 font-semibold text-xs sm:text-sm">Estado</th>
-                <th className="p-3 font-semibold text-xs sm:text-sm">Total Mov.</th>
-                <th className="p-3 font-semibold text-xs sm:text-sm">Acciones</th>
+              <tr className="text-left" style={{ backgroundColor: 'var(--bg-secondary)' }}>
+                <th className="p-3 font-semibold text-xs sm:text-sm" style={{ color: 'var(--text-primary)' }}>Razón Social</th>
+                <th className="p-3 font-semibold text-xs sm:text-sm text-center" style={{ color: 'var(--text-primary)' }}>RUT</th>
+                <th className="p-3 font-semibold text-xs sm:text-sm" style={{ color: 'var(--text-primary)' }}>Contacto</th>
+                <th className="p-3 font-semibold text-xs sm:text-sm" style={{ color: 'var(--text-primary)' }}>Estado</th>
+                <th className="p-3 font-semibold text-xs sm:text-sm" style={{ color: 'var(--text-primary)' }}>Total Mov.</th>
+                <th className="p-3 font-semibold text-xs sm:text-sm" style={{ color: 'var(--text-primary)' }}>Acciones</th>
               </tr>
             </thead>
             <tbody>
               {pageData.map((c) => (
-                <tr key={c.id} className="border-t border-gray-200 hover:bg-slate-50">
-                  <td className="p-3 text-xs sm:text-sm font-medium">{c.razonSocial}</td>
-                  <td className="p-3 text-xs sm:text-sm text-center">{c.rut}</td>
-                  <td className="p-3 text-xs sm:text-sm">{c.contactoNombre || "-"}</td>
+                <tr 
+                  key={c.id} 
+                  className="border-t transition-colors"
+                  style={{ 
+                    borderColor: 'var(--border)',
+                    backgroundColor: 'var(--card-bg)'
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--bg-secondary)'}
+                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--card-bg)'}
+                >
+                  <td className="p-3 text-xs sm:text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{c.razonSocial}</td>
+                  <td className="p-3 text-xs sm:text-sm text-center" style={{ color: 'var(--text-primary)' }}>{c.rut}</td>
+                  <td className="p-3 text-xs sm:text-sm" style={{ color: 'var(--text-secondary)' }}>{c.contactoNombre || "-"}</td>
                   <td className="p-3"><StatusBadge status={c.status} /></td>
-                  <td className="p-3 text-xs sm:text-sm font-medium">
+                  <td className="p-3 text-xs sm:text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
                     {formatCLP(c.paid + c.pending + c.partial + c.overdue)}
                   </td>
                   <td className="p-3">
@@ -160,7 +178,7 @@ export function ClientsPage() {
               ))}
               {pageData.length === 0 && (
                 <tr>
-                  <td className="p-6 text-center text-slate-500 text-sm" colSpan={6}>
+                  <td className="p-6 text-center text-sm" colSpan={6} style={{ color: 'var(--text-muted)' }}>
                     Sin resultados
                   </td>
                 </tr>
@@ -170,8 +188,11 @@ export function ClientsPage() {
         </div>
 
         {/* Paginación */}
-        <div className="p-3 border-t border-gray-200 flex items-center justify-between text-sm">
-          <div className="text-gray-600">
+        <div 
+          className="p-3 border-t flex items-center justify-between text-sm"
+          style={{ borderColor: 'var(--border)' }}
+        >
+          <div style={{ color: 'var(--text-secondary)' }}>
             {data.length} resultado{data.length === 1 ? "" : "s"}
           </div>
           <div className="flex items-center gap-2">
@@ -182,7 +203,7 @@ export function ClientsPage() {
             >
               Anterior
             </button>
-            <span className="text-gray-600">
+            <span style={{ color: 'var(--text-secondary)' }}>
               Página {page} de {totalPages}
             </span>
             <button

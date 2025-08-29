@@ -100,15 +100,15 @@ export default function StockPage() {
       {/* Acciones */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="flex gap-2 flex-1">
-          <select className="form-input w-40 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200" value={cat} onChange={e=>setCat(e.target.value)}>
+          <select className="form-input w-40" value={cat} onChange={e=>setCat(e.target.value)}>
             <option value="todas">Todas las categorías</option>
             {categories.map(c => <option key={c} value={c}>{c}</option>)}
           </select>
-          <div className="relative flex-1">
-            <input className="form-input pr-10 w-full dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200" placeholder="Buscar por código o nombre" value={q} onChange={e=>setQ(e.target.value)} />
-            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500">🔎</span>
+            <div className="relative flex-1">
+            <input className="form-input pr-10 w-full" placeholder="Buscar por código o nombre" value={q} onChange={e=>setQ(e.target.value)} />
+            <span className="absolute right-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--text-muted)' }}>🔎</span>
           </div>
-          <label className="inline-flex items-center gap-2 text-sm text-slate-700 dark:text-gray-300">
+          <label className="inline-flex items-center gap-2 text-sm" style={{ color: 'var(--text-secondary)' }}>
             <input type="checkbox" checked={onlyAlerts} onChange={e=>setOnlyAlerts(e.target.checked)} />
             Solo alertas
           </label>
@@ -127,9 +127,12 @@ export default function StockPage() {
       </div>
 
       {/* Ordenar por - visible en todos los tamaños */}
-      <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-slate-50 dark:bg-gray-800/50 px-3 py-2 flex items-center justify-end gap-2 flex-wrap w-full">
-        <span className="text-xs text-slate-600 dark:text-gray-400">Ordenar por</span>
-        <select className="form-input h-10 w-40 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200" value={sortBy} onChange={e=>setSortBy(e.target.value as "name"|"status"|"quantity")}>
+      <div 
+        className="rounded-xl px-3 py-2 flex items-center justify-end gap-2 flex-wrap w-full"
+        style={{ backgroundColor: 'var(--card-bg)', border: '1px solid var(--border)' }}
+      >
+        <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>Ordenar por</span>
+        <select className="form-input h-10 w-40" value={sortBy} onChange={e=>setSortBy(e.target.value as "name"|"status"|"quantity")}>
           <option value="name">Nombre</option>
           <option value="status">Estado</option>
           <option value="quantity">Cantidad</option>
@@ -140,16 +143,19 @@ export default function StockPage() {
       </div>
 
       {/* Tabla */}
-      <div className="rounded-xl bg-white dark:bg-gray-800 shadow overflow-hidden">
+      <div 
+        className="rounded-xl shadow overflow-hidden"
+        style={{ backgroundColor: 'var(--card-bg)' }}
+      >
         {/* Mobile cards */}
         <div className="block sm:hidden">
-          <div className="divide-y divide-gray-200 dark:divide-gray-700">
+          <div className="divide-y" style={{ borderColor: 'var(--border)' }}>
             {items.map(i => (
               <div key={i.id} className="p-4 space-y-2">
                 <div className="flex items-start justify-between gap-2">
                   <div>
-                    <div className="font-semibold text-gray-900 dark:text-white text-sm">{i.name}</div>
-                    <div className="text-xs text-slate-500 dark:text-gray-400">SKU: {i.code}</div>
+                    <div className="font-semibold text-sm" style={{ color: 'var(--text-primary)' }}>{i.name}</div>
+                    <div className="text-xs" style={{ color: 'var(--text-secondary)' }}>SKU: {i.code}</div>
                   </div>
                   <span className={cx("px-2 py-0.5 text-xs font-semibold rounded-2xl", statusChip[i.status!].light, "dark:"+statusChip[i.status!].dark)}>
                     {
@@ -157,30 +163,30 @@ export default function StockPage() {
                   }</span>
                 </div>
                 <div className="grid grid-cols-2 gap-2 text-sm">
-                  <div className="bg-slate-50 dark:bg-gray-700 rounded-lg p-2">
-                    <div className="flex items-center gap-1 text-xs text-slate-500 dark:text-gray-400">Cantidad<InfoButton text="Cantidad de producto disponible en bodega." /></div>
-                    <div className="font-semibold dark:text-white">{i.stock}</div>
+                  <div className="rounded-lg p-2" style={{ backgroundColor: 'var(--bg-secondary)' }}>
+                    <div className="flex items-center gap-1 text-xs" style={{ color: 'var(--text-secondary)' }}>Cantidad<InfoButton text="Cantidad de producto disponible en bodega." /></div>
+                    <div className="font-semibold" style={{ color: 'var(--text-primary)' }}>{i.stock}</div>
                   </div>
-                  <div className="bg-slate-50 dark:bg-gray-700 rounded-lg p-2">
-                    <div className="flex items-center gap-1 text-xs text-slate-500 dark:text-gray-400">Pack<InfoButton text="Tamaño de pack o presentación (ej: 6, 12, 24, 36)." /></div>
-                    <div className="font-semibold dark:text-white">{i.packSize}</div>
+                  <div className="rounded-lg p-2" style={{ backgroundColor: 'var(--bg-secondary)' }}>
+                    <div className="flex items-center gap-1 text-xs" style={{ color: 'var(--text-secondary)' }}>Pack<InfoButton text="Tamaño de pack o presentación (ej: 6, 12, 24, 36)." /></div>
+                    <div className="font-semibold" style={{ color: 'var(--text-primary)' }}>{i.packSize}</div>
                   </div>
-                  <div className="bg-slate-50 dark:bg-gray-700 rounded-lg p-2">
-                    <div className="flex items-center gap-1 text-xs text-slate-500 dark:text-gray-400">Precio<InfoButton text="Precio unitario de venta." /></div>
-                    <div className="font-semibold dark:text-white">{formatCLP(i.price)}</div>
+                  <div className="rounded-lg p-2" style={{ backgroundColor: 'var(--bg-secondary)' }}>
+                    <div className="flex items-center gap-1 text-xs" style={{ color: 'var(--text-secondary)' }}>Precio<InfoButton text="Precio unitario de venta." /></div>
+                    <div className="font-semibold" style={{ color: 'var(--text-primary)' }}>{formatCLP(i.price)}</div>
                   </div>
-                  <div className="bg-slate-50 dark:bg-gray-700 rounded-lg p-2">
-                    <div className="flex items-center gap-1 text-xs text-slate-500 dark:text-gray-400">Costo<InfoButton text="Costo unitario de compra del producto." /></div>
-                    <div className="font-semibold dark:text-white">{formatCLP(i.cost)}</div>
+                  <div className="rounded-lg p-2" style={{ backgroundColor: 'var(--bg-secondary)' }}>
+                    <div className="flex items-center gap-1 text-xs" style={{ color: 'var(--text-secondary)' }}>Costo<InfoButton text="Costo unitario de compra del producto." /></div>
+                    <div className="font-semibold" style={{ color: 'var(--text-primary)' }}>{formatCLP(i.cost)}</div>
                   </div>
-                  <div className="bg-slate-50 dark:bg-gray-700 rounded-lg p-2 col-span-2">
-                    <div className="flex items-center gap-1 text-xs text-slate-500 dark:text-gray-400">Valorización<InfoButton text="Valor total del stock actual según costo." /></div>
-                    <div className="font-semibold dark:text-white">{formatCLP(i.stock * i.cost)}</div>
+                  <div className="rounded-lg p-2 col-span-2" style={{ backgroundColor: 'var(--bg-secondary)' }}>
+                    <div className="flex items-center gap-1 text-xs" style={{ color: 'var(--text-secondary)' }}>Valorización<InfoButton text="Valor total del stock actual según costo." /></div>
+                    <div className="font-semibold" style={{ color: 'var(--text-primary)' }}>{formatCLP(i.stock * i.cost)}</div>
                   </div>
                 </div>
               </div>
             ))}
-            {items.length === 0 && <div className="p-6 text-center text-slate-500 dark:text-gray-400 text-sm">Sin resultados</div>}
+            {items.length === 0 && <div className="p-6 text-center text-sm" style={{ color: 'var(--text-muted)' }}>Sin resultados</div>}
           </div>
         </div>
 
@@ -188,36 +194,42 @@ export default function StockPage() {
         <div className="hidden sm:block overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="bg-slate-100 dark:bg-gray-700 text-center">
-                <th className="p-3 text-center dark:text-gray-200">Producto</th>
-                <th className="p-3 text-center dark:text-gray-200">SKU</th>
-                <th className="p-3 text-center dark:text-gray-200">Estado</th>
-                <th className="p-3 text-center dark:text-gray-200">Cantidad <InfoButton text="Cantidad de producto disponible en bodega." /></th>
-                <th className="p-3 text-center dark:text-gray-200">Pack <InfoButton text="Tamaño de pack o presentación (ej: 6, 12, 24, 36)." /></th>
-                <th className="p-3 text-center dark:text-gray-200">Costo <InfoButton text="Costo unitario de compra del producto." /></th>
-                <th className="p-3 text-center dark:text-gray-200">Precio <InfoButton text="Precio unitario de venta." /></th>
-                <th className="p-3 text-center dark:text-gray-200">Valorización <InfoButton text="Valor total del stock actual según costo." /></th>
-                <th className="p-3 text-center dark:text-gray-200">Ingreso potencial <InfoButton text="Ingreso total si se vende todo el stock al precio actual." /></th>
-                <th className="p-3 text-center dark:text-gray-200">Actualizado</th>
+              <tr className="text-center" style={{ backgroundColor: 'var(--bg-secondary)' }}>
+                <th className="p-3 text-center" style={{ color: 'var(--text-primary)' }}>Producto</th>
+                <th className="p-3 text-center" style={{ color: 'var(--text-primary)' }}>SKU</th>
+                <th className="p-3 text-center" style={{ color: 'var(--text-primary)' }}>Estado</th>
+                <th className="p-3 text-center" style={{ color: 'var(--text-primary)' }}>Cantidad <InfoButton text="Cantidad de producto disponible en bodega." /></th>
+                <th className="p-3 text-center" style={{ color: 'var(--text-primary)' }}>Pack <InfoButton text="Tamaño de pack o presentación (ej: 6, 12, 24, 36)." /></th>
+                <th className="p-3 text-center" style={{ color: 'var(--text-primary)' }}>Costo <InfoButton text="Costo unitario de compra del producto." /></th>
+                <th className="p-3 text-center" style={{ color: 'var(--text-primary)' }}>Precio <InfoButton text="Precio unitario de venta." /></th>
+                <th className="p-3 text-center" style={{ color: 'var(--text-primary)' }}>Valorización <InfoButton text="Valor total del stock actual según costo." /></th>
+                <th className="p-3 text-center" style={{ color: 'var(--text-primary)' }}>Ingreso potencial <InfoButton text="Ingreso total si se vende todo el stock al precio actual." /></th>
+                <th className="p-3 text-center" style={{ color: 'var(--text-primary)' }}>Actualizado</th>
               </tr>
             </thead>
             <tbody>
               {items.map(i => (
-                <tr key={i.id} className="border-t border-gray-200 dark:border-gray-700 hover:bg-slate-50 dark:hover:bg-gray-700/50 text-center">
-                  <td className="p-3 font-medium text-center dark:text-gray-200">{i.name}</td>
-                  <td className="p-3 text-center dark:text-gray-200">{i.code}</td>
+                <tr 
+                  key={i.id} 
+                  className="border-t text-center transition-colors"
+                  style={{ borderColor: 'var(--border)', backgroundColor: 'var(--card-bg)' }}
+                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--bg-secondary)'}
+                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--card-bg)'}
+                >
+                  <td className="p-3 font-medium text-center" style={{ color: 'var(--text-primary)' }}>{i.name}</td>
+                  <td className="p-3 text-center" style={{ color: 'var(--text-primary)' }}>{i.code}</td>
                   <td className="p-3 text-center"><span className={cx("px-2 py-0.5 text-xs font-semibold rounded-2xl", statusChip[i.status!].light, "dark:"+statusChip[i.status!].dark)}>{ i.status === "in-stock" ? "En stock" : i.status === "low" ? "Bajo" : "Agotado" }</span></td>
-                  <td className="p-3 text-center dark:text-gray-200">{i.stock}</td>
-                  <td className="p-3 text-center dark:text-gray-200">{i.packSize}</td>
-                  <td className="p-3 text-center dark:text-gray-200">{formatCLP(i.cost)}</td>
-                  <td className="p-3 text-center dark:text-gray-200">{formatCLP(i.price)}</td>
-                  <td className="p-3 text-center dark:text-gray-200">{formatCLP(i.stock * i.cost)}</td>
-                  <td className="p-3 text-center dark:text-gray-200">{formatCLP(i.stock * i.price)}</td>
-                  <td className="p-3 text-center dark:text-gray-200">{new Date(i.updatedAt).toLocaleDateString("es-CL")}</td>
+                  <td className="p-3 text-center" style={{ color: 'var(--text-primary)' }}>{i.stock}</td>
+                  <td className="p-3 text-center" style={{ color: 'var(--text-primary)' }}>{i.packSize}</td>
+                  <td className="p-3 text-center" style={{ color: 'var(--text-primary)' }}>{formatCLP(i.cost)}</td>
+                  <td className="p-3 text-center" style={{ color: 'var(--text-primary)' }}>{formatCLP(i.price)}</td>
+                  <td className="p-3 text-center" style={{ color: 'var(--text-primary)' }}>{formatCLP(i.stock * i.cost)}</td>
+                  <td className="p-3 text-center" style={{ color: 'var(--text-primary)' }}>{formatCLP(i.stock * i.price)}</td>
+                  <td className="p-3 text-center" style={{ color: 'var(--text-primary)' }}>{new Date(i.updatedAt).toLocaleDateString("es-CL")}</td>
                 </tr>
               ))}
               {items.length === 0 && (
-                <tr><td className="p-6 text-center text-slate-500 dark:text-gray-400 text-sm" colSpan={10}>Sin resultados</td></tr>
+                <tr><td className="p-6 text-center text-sm" colSpan={10} style={{ color: 'var(--text-muted)' }}>Sin resultados</td></tr>
               )}
             </tbody>
           </table>
@@ -253,8 +265,19 @@ function KPI({ label, value, tone }: { label: string; value: string; tone: "slat
 function InfoButton({ text }: { text: string }) {
   return (
     <span className="relative group inline-block align-middle">
-      <button className="ml-1 text-xs text-orange-500 hover:text-orange-700 dark:text-orange-400 dark:hover:text-orange-300 focus:outline-none" tabIndex={0}>ⓘ</button>
-      <div className="absolute left-1/2 -translate-x-1/2 mt-2 z-10 hidden group-hover:block group-focus:block min-w-[180px] bg-white dark:bg-gray-800 border border-orange-200 dark:border-orange-900/50 rounded-lg shadow-lg p-2 text-xs text-slate-700 dark:text-gray-300">
+      <button 
+        className="ml-1 text-xs focus:outline-none"
+        style={{ color: 'var(--accent-primary)' }}
+        onMouseEnter={(e) => e.currentTarget.style.color = 'var(--accent-hover)'}
+        onMouseLeave={(e) => e.currentTarget.style.color = 'var(--accent-primary)'}
+        tabIndex={0}
+      >
+        ⓘ
+      </button>
+      <div 
+        className="absolute left-1/2 -translate-x-1/2 mt-2 z-10 hidden group-hover:block group-focus:block min-w-[180px] rounded-lg shadow-lg p-2 text-xs"
+        style={{ backgroundColor: 'var(--card-bg)', border: '1px solid var(--border)', color: 'var(--text-secondary)' }}
+      >
         {text}
       </div>
     </span>

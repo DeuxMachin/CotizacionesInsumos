@@ -29,7 +29,10 @@ export function DashboardContent() {
   const [trendPeriod, setTrendPeriod] = useState<"month" | "year">("month");
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex">
+    <div 
+      className="min-h-screen flex"
+      style={{ backgroundColor: 'var(--bg-secondary)' }}
+    >
       {/* Navegación lateral */}
       <Sidebar />
       
@@ -39,7 +42,10 @@ export function DashboardContent() {
         <Header />
         
         {/* Contenido scrolleable */}
-        <main className="flex-1 overflow-auto bg-gray-50 dark:bg-gray-900">
+        <main 
+          className="flex-1 overflow-auto"
+          style={{ backgroundColor: 'var(--bg-secondary)' }}
+        >
           <div className="p-3 sm:p-4 lg:p-6">
             <div className="max-w-7xl mx-auto space-y-3 sm:space-y-4 lg:space-y-6">
             
@@ -144,10 +150,16 @@ export function DashboardContent() {
             {/* Vendedores - placeholder */}
             {section === "vendedores" && (
               <div className="space-y-4 sm:space-y-6 animate-fadeIn">
-                <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 sm:p-10 text-center">
+                <div 
+                  className="rounded-xl p-6 sm:p-10 text-center"
+                  style={{ 
+                    backgroundColor: 'var(--bg-primary)',
+                    border: '1px solid var(--border-subtle)' 
+                  }}
+                >
                   <div className="max-w-lg mx-auto space-y-3">
-                    <h3 className="text-xl font-semibold text-gray-900 dark:text-white">Vendedores</h3>
-                    <p className="text-gray-500 dark:text-gray-400">Trabajando...</p>
+                    <h3 className="text-xl font-semibold text-theme-primary">Vendedores</h3>
+                    <p className="text-theme-secondary">Trabajando...</p>
                   </div>
                 </div>
               </div>

@@ -31,23 +31,30 @@ export function Sidebar() {
       )}
       
       {/* Sidebar principal */}
-      <aside className={`
-        fixed inset-y-0 left-0 z-50 w-64 sm:w-72 lg:w-64 
-        bg-white dark:bg-gray-800
-        flex flex-col
-        border-r border-gray-200 dark:border-gray-700
-        overflow-y-auto
-        transform transition-transform duration-300 ease-out
-        ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
-        lg:translate-x-0
-      `}>
+      <aside 
+        className={`
+          fixed inset-y-0 left-0 z-50 w-64 sm:w-72 lg:w-64 
+          flex flex-col
+          overflow-y-auto
+          transform transition-transform duration-300 ease-out
+          ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
+          lg:translate-x-0
+        `}
+        style={{ 
+          backgroundColor: 'var(--bg-primary)',
+          borderRight: '1px solid var(--border-subtle)' 
+        }}
+      >
         {/* Header del sidebar - alineado con header principal */}
-        <div className="flex items-center justify-between h-14 sm:h-16 px-3 sm:px-4 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
+        <div 
+          className="flex items-center justify-between h-14 sm:h-16 px-3 sm:px-4 flex-shrink-0"
+          style={{ borderBottom: '1px solid var(--border-subtle)' }}
+        >
           <div className="flex items-center gap-2 sm:gap-3 min-w-0">
             <Logo height={22} className="shrink-0 sm:h-7" />
             <div className="flex flex-col min-w-0">
-              <span className="font-bold text-gray-900 dark:text-white text-sm truncate">Panel Admin</span>
-              <span className="text-xs text-gray-500 dark:text-gray-400 truncate">Sistema v1.0</span>
+              <span className="font-bold text-theme-primary text-sm truncate">Panel Admin</span>
+              <span className="text-xs text-theme-secondary truncate">Sistema v1.0</span>
             </div>
           </div>
           <button 
@@ -73,15 +80,15 @@ export function Sidebar() {
                     w-full flex items-center gap-3 px-3 py-2.5 rounded-lg
                     transition-colors duration-200 
                     ${section === item.key 
-                      ? `bg-orange-50 dark:bg-orange-900/20 text-orange-600 dark:text-orange-400 font-medium` 
-                      : `hover:bg-gray-100 dark:hover:bg-gray-700/50 text-gray-600 dark:text-gray-300`
+                      ? `bg-theme-accent text-orange-600 dark:text-orange-400 font-medium` 
+                      : `hover:bg-theme-secondary text-theme-secondary`
                     }
                   `}
                 >
                   <span className={`
                     ${section === item.key 
                       ? `text-orange-600 dark:text-orange-400` 
-                      : `text-gray-500 dark:text-gray-400`
+                      : `text-theme-secondary`
                     }
                   `}>
                     {item.icon}
@@ -94,14 +101,17 @@ export function Sidebar() {
         </nav>
         
         {/* Footer del sidebar */}
-        <div className="p-4 border-t border-gray-200 dark:border-gray-700">
+        <div 
+          className="p-4"
+          style={{ borderTop: '1px solid var(--border-subtle)' }}
+        >
           <div className="flex items-center gap-2 sm:gap-3">
-            <div className="h-9 w-9 rounded-full bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 flex items-center justify-center font-medium">
+            <div className="h-9 w-9 rounded-full bg-theme-accent text-orange-600 dark:text-orange-400 flex items-center justify-center font-medium">
               {user?.email?.[0].toUpperCase() || "U"}
             </div>
             <div className="flex flex-col min-w-0">
-              <span className="font-medium text-gray-900 dark:text-white text-sm truncate">{user?.name || "Usuario"}</span>
-              <span className="text-xs text-gray-500 dark:text-gray-400 truncate">{user?.email || "usuario@mail.com"}</span>
+              <span className="font-medium text-theme-primary text-sm truncate">{user?.name || "Usuario"}</span>
+              <span className="text-xs text-theme-secondary truncate">{user?.email || "usuario@mail.com"}</span>
             </div>
           </div>
         </div>

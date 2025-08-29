@@ -5,78 +5,224 @@
 @tailwind utilities;
 
 /* Tipografías base (usando next/font variables) */
-:root { --font-sans: ui-sans-serif, system-ui, sans-serif; --font-display: Georgia, "Times New Roman", serif; }
-
-/* Variables para modo claro/oscuro */
-:root {
-  /* Modo claro (predeterminado) - ajustado para coincidir exactamente con el diseño original */
-  --bg-primary: #ffffff;
-  --bg-secondary: #f1f5f9;
-  --text-primary: #0f172a;
-  --text-secondary: #475569;
-  --border: #e5e7eb;
-  --card-bg: #ffffff;
-  --accent-from: #f97316;
-  --accent-to: #ea580c;
-  --accent-text: #ea580c;
-  --accent-bg-soft: #fff7ed;
+:root { 
+  --font-sans: ui-sans-serif, system-ui, sans-serif; 
+  --font-display: Georgia, "Times New Roman", serif; 
 }
 
+/* Variables para modo claro - basado exactamente en las imágenes proporcionadas */
+:root {
+  /* Colores principales del tema claro */
+  --bg-primary: #ffffff;  /* Para header y sidebar */
+  --bg-secondary: #f9fafb; /* Para el fondo de las páginas */
+  --bg-sidebar: #ffffff;   /* Sidebar específicamente */
+  --text-primary: #1f2937;
+  --text-secondary: #6b7280;
+  --text-muted: #9ca3af;
+  --border: #e5e7eb;
+  --border-light: #f3f4f6;
+  --border-subtle: #e5e7eb;
+  --card-bg: #ffffff;
+  
+  /* Colores del tema naranja */
+  --accent-primary: #f97316;
+  --accent-secondary: #fb923c;
+  --accent-hover: #ea580c;
+  --accent-soft: #fed7aa;
+  --accent-bg: #fff7ed;
+  
+  /* Estados */
+  --success: #10b981;
+  --warning: #f59e0b;
+  --danger: #ef4444;
+  --info: #3b82f6;
+  
+  /* Sombras */
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+}
+
+/* Variables para modo oscuro */
 .dark {
-  /* Modo oscuro - sin cambios */
-  --bg-primary: #111827;
-  --bg-secondary: #1f2937;
+  --bg-primary: #1f2937;   /* Para header y sidebar - gris más claro */
+  --bg-secondary: #111827; /* Para el fondo de las páginas - gris más oscuro */
+  --bg-sidebar: #1f2937;   /* Sidebar específicamente */
   --text-primary: #f9fafb;
   --text-secondary: #d1d5db;
+  --text-muted: #9ca3af;
   --border: #374151;
+  --border-light: #1f2937;
+  --border-subtle: #374151;
   --card-bg: #1f2937;
-  --accent-from: #fb923c;
-  --accent-to: #f97316;
-  --accent-text: #fb923c;
-  --accent-bg-soft: #422006;
+  
+  --accent-primary: #fb923c;
+  --accent-secondary: #fdba74;
+  --accent-hover: #f97316;
+  --accent-soft: #7c2d12;
+  --accent-bg: #431407;
+  
+  --success: #10b981;
+  --warning: #f59e0b;
+  --danger: #ef4444;
+  --info: #3b82f6;
+  
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.2);
+  --shadow: 0 1px 3px 0 rgb(0 0 0 / 0.3), 0 1px 2px -1px rgb(0 0 0 / 0.3);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.3), 0 2px 4px -2px rgb(0 0 0 / 0.3);
 }
 
-/* Prevenir que las clases del modo oscuro afecten al modo claro */
-/* Asegurar que las clases oscuras no interfieran con el modo claro */
-html:not(.dark) [class*="dark\:"] {
-  /* No aplicar ninguna propiedad del modo oscuro cuando estamos en modo claro */
-  background-color: transparent !important;
-  color: inherit !important;
-  border-color: inherit !important;
-  --tw-shadow: inherit !important;
-  --tw-ring-color: inherit !important;
-  --tw-bg-opacity: 0 !important;
-  --tw-text-opacity: 1 !important;
-  --tw-border-opacity: 0 !important;
+/* Estilos base del body y html */
+html { 
+  font-family: var(--font-sans);
+  scroll-behavior: smooth;
 }
 
-html, body { font-family: var(--font-sans); }
-h1, h2, .display-font { font-family: var(--font-display); }
+body { 
+  font-family: var(--font-sans);
+  background-color: var(--bg-secondary);
+  color: var(--text-primary);
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+h1, h2, .display-font { 
+  font-family: var(--font-display); 
+}
 
 @layer components {
-  .section-title { @apply font-semibold; font-family: var(--font-display); }
-  /* Botones principales - mobile responsive - exactamente como diseño original */
-  .btn-primary { @apply inline-flex items-center justify-center gap-2 px-4 py-2.5 sm:px-6 sm:py-3 rounded-lg bg-gradient-to-r from-orange-500 to-orange-600 text-white font-medium hover:from-orange-600 hover:to-orange-700 shadow-sm hover:shadow-md transition-all duration-200 text-sm sm:text-base; }
-  .btn-secondary { @apply inline-flex items-center justify-center gap-2 px-3 py-2 sm:px-4 sm:py-2 rounded-lg border border-gray-200 bg-white text-gray-700 font-medium hover:bg-gray-50 hover:border-gray-300/80 transition-all duration-200 text-sm sm:text-base dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700 dark:hover:border-gray-600; }
-  .btn-ghost { @apply inline-flex items-center justify-center gap-2 px-3 py-2 sm:px-4 sm:py-2 rounded-lg text-gray-600 font-medium hover:bg-gray-100 transition-all duration-200 text-sm sm:text-base dark:text-gray-300 dark:hover:bg-gray-800; }
-  .btn-icon { @apply h-8 w-8 sm:h-10 sm:w-10 flex items-center justify-center rounded-lg text-gray-600 hover:bg-gray-100 hover:text-gray-900 transition-all duration-200 dark:text-gray-300 dark:hover:bg-gray-800 dark:hover:text-gray-100; }
+  .section-title { 
+    font-family: var(--font-display);
+    font-weight: 600;
+    color: var(--text-primary);
+  }
   
-  /* Formularios - mobile responsive */
-  .form-input { @apply w-full px-3 py-2.5 sm:px-3 sm:py-2 rounded-lg border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-orange-200 focus:border-orange-400 transition-colors text-sm sm:text-base dark:border-gray-700 dark:bg-gray-800 dark:text-white dark:focus:ring-orange-700 dark:focus:border-orange-500; }
-  .form-label { @apply block text-xs sm:text-sm font-medium text-gray-700 mb-1 dark:text-gray-300; }
+  /* Botones principales - exactamente como diseño original */
+  .btn-primary { 
+    @apply inline-flex items-center justify-center gap-2 px-4 py-2.5 sm:px-6 sm:py-3 rounded-lg;
+    background: linear-gradient(to right, var(--accent-primary), var(--accent-hover));
+    color: white;
+    font-weight: 500;
+    box-shadow: var(--shadow-sm);
+    transition: all 0.2s;
+  }
+  .btn-primary:hover {
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-md);
+  }
   
-  /* Tarjetas de estadísticas - mobile responsive - exactamente como diseño original */
-  .stat-card { @apply bg-white rounded-xl p-4 sm:p-6 border border-gray-200 hover:shadow-sm transition-all duration-200 relative overflow-hidden dark:bg-gray-800 dark:border-gray-700; }
-  .stat-card::before { content: ""; @apply absolute left-0 top-0 h-1 w-full bg-orange-500/80; }
-  .stat-number { @apply text-lg sm:text-2xl font-bold text-gray-900 dark:text-white; }
-  .stat-label { @apply text-xs sm:text-sm font-medium text-gray-600 mt-1 dark:text-gray-400; }
-  .stat-change { @apply text-xs font-medium mt-1; }
-  .stat-change-positive { @apply text-green-600 dark:text-green-500; }
-  .stat-change-negative { @apply text-red-600 dark:text-red-500; }
+  .btn-secondary { 
+    @apply inline-flex items-center justify-center gap-2 px-3 py-2 sm:px-4 sm:py-2 rounded-lg;
+    border: 1px solid var(--border);
+    background: var(--card-bg);
+    color: var(--text-primary);
+    font-weight: 500;
+    transition: all 0.2s;
+  }
+  .btn-secondary:hover {
+    background: var(--bg-secondary);
+    border-color: var(--accent-primary);
+  }
   
-  /* Acciones rápidas - mobile responsive - exactamente como diseño original */
-  .quick-action { @apply flex flex-col items-center justify-center p-4 sm:p-6 rounded-lg border border-gray-200 hover:border-orange-300/80 hover:bg-orange-50 transition-all duration-200 cursor-pointer dark:border-gray-700 dark:hover:border-orange-700 dark:hover:bg-orange-900/20; }
-  .quick-action-primary { @apply bg-gradient-to-br from-orange-500 to-orange-600 text-white hover:from-orange-600 hover:to-orange-700; }
+  .btn-ghost { 
+    @apply inline-flex items-center justify-center gap-2 px-3 py-2 sm:px-4 sm:py-2 rounded-lg;
+    color: var(--text-secondary);
+    font-weight: 500;
+    transition: all 0.2s;
+  }
+  .btn-ghost:hover {
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+  }
+  
+  .btn-icon { 
+    @apply h-8 w-8 sm:h-10 sm:w-10 flex items-center justify-center rounded-lg;
+    color: var(--text-secondary);
+    transition: all 0.2s;
+  }
+  .btn-icon:hover {
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+  }
+  
+  /* Formularios */
+  .form-input { 
+    @apply w-full px-3 py-2.5 sm:px-3 sm:py-2 rounded-lg text-sm sm:text-base;
+    border: 1px solid var(--border);
+    background: var(--card-bg);
+    color: var(--text-primary);
+    transition: all 0.2s;
+  }
+  .form-input:focus {
+    outline: none;
+    border-color: var(--accent-primary);
+    box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.1);
+  }
+  
+  .form-label { 
+    @apply block text-xs sm:text-sm font-medium mb-1;
+    color: var(--text-primary);
+  }
+  
+  /* Tarjetas de estadísticas */
+  .stat-card { 
+    @apply rounded-xl p-4 sm:p-6 relative overflow-hidden;
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    transition: all 0.2s;
+  }
+  .stat-card:hover {
+    box-shadow: var(--shadow-md);
+  }
+  .stat-card::before { 
+    content: ""; 
+    @apply absolute left-0 top-0 h-1 w-full;
+    background: var(--accent-primary);
+    opacity: 0.8;
+  }
+  
+  .stat-number { 
+    @apply text-lg sm:text-2xl font-bold;
+    color: var(--text-primary);
+  }
+  
+  .stat-label { 
+    @apply text-xs sm:text-sm font-medium mt-1;
+    color: var(--text-secondary);
+  }
+  
+  .stat-change { 
+    @apply text-xs font-medium mt-1;
+  }
+  
+  .stat-change-positive { 
+    color: var(--success);
+  }
+  
+  .stat-change-negative { 
+    color: var(--danger);
+  }
+  
+  /* Acciones rápidas */
+  .quick-action { 
+    @apply flex flex-col items-center justify-center p-4 sm:p-6 rounded-lg cursor-pointer;
+    border: 1px solid var(--border);
+    background: var(--card-bg);
+    transition: all 0.2s;
+  }
+  .quick-action:hover {
+    border-color: var(--accent-primary);
+    background: var(--accent-bg);
+    transform: translateY(-2px);
+  }
+  
+  .quick-action-primary { 
+    background: linear-gradient(135deg, var(--accent-primary), var(--accent-hover));
+    color: white;
+    border: none;
+  }
+  .quick-action-primary:hover {
+    transform: translateY(-2px) scale(1.02);
+  }
 }
 
 /* Animaciones mejoradas */

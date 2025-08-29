@@ -6,51 +6,57 @@ export default {
   theme: {
     extend: {
       colors: {
-        // Extendemos la paleta de colores para el tema
-        primary: "var(--bg-primary)",
-        secondary: "var(--bg-secondary)",
-        accent: {
-          from: "var(--accent-from)",
-          to: "var(--accent-to)",
-          text: "var(--accent-text)",
-          soft: "var(--accent-bg-soft)",
-        }
+        // Colores personalizados usando variables CSS
+        theme: {
+          bg: {
+            primary: "var(--bg-primary)",
+            secondary: "var(--bg-secondary)",
+            sidebar: "var(--bg-sidebar)",
+          },
+          text: {
+            primary: "var(--text-primary)",
+            secondary: "var(--text-secondary)",
+            muted: "var(--text-muted)",
+          },
+          border: {
+            DEFAULT: "var(--border)",
+            light: "var(--border-light)",
+          },
+          accent: {
+            primary: "var(--accent-primary)",
+            secondary: "var(--accent-secondary)",
+            hover: "var(--accent-hover)",
+            soft: "var(--accent-soft)",
+            bg: "var(--accent-bg)",
+          },
+          success: "var(--success)",
+          warning: "var(--warning)",
+          danger: "var(--danger)",
+          info: "var(--info)",
+        },
       },
       backgroundColor: {
-        primary: "var(--bg-primary)",
-        secondary: "var(--bg-secondary)",
-        card: "var(--card-bg)",
+        'theme-primary': "var(--bg-primary)",
+        'theme-secondary': "var(--bg-secondary)",
+        'theme-card': "var(--card-bg)",
+        'theme-accent': "var(--accent-bg)",
       },
       textColor: {
-        primary: "var(--text-primary)",
-        secondary: "var(--text-secondary)",
+        'theme-primary': "var(--text-primary)",
+        'theme-secondary': "var(--text-secondary)",
+        'theme-muted': "var(--text-muted)",
       },
       borderColor: {
-        primary: "var(--border)",
+        'theme-primary': "var(--border)",
+        'theme-light': "var(--border-light)",
+        'theme-subtle': "var(--border-subtle)",
+      },
+      boxShadow: {
+        'theme-sm': "var(--shadow-sm)",
+        'theme': "var(--shadow)",
+        'theme-md': "var(--shadow-md)",
       },
     },
   },
   plugins: [],
-  // Esto es importante para asegurarnos de que las clases se generen correctamente
-  safelist: [
-    'dark',
-    'light',
-    'dark:bg-gray-700',
-    'dark:bg-gray-800',
-    'dark:bg-gray-900',
-    'dark:text-white',
-    'dark:text-gray-100',
-    'dark:text-gray-200',
-    'dark:text-gray-300',
-    'dark:text-gray-400',
-    'dark:border-gray-600',
-    'dark:border-gray-700',
-    'dark:border-gray-800',
-    'dark:hover:bg-gray-700',
-    'dark:hover:bg-gray-800',
-    'dark:hover:border-gray-600',
-    'dark:hover:text-gray-100',
-    'dark:focus:ring-orange-700',
-    'dark:focus:border-orange-500'
-  ],
 };

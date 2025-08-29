@@ -18,12 +18,22 @@ export function FullscreenModal({ open, onClose, title, children }: { open: bool
 
   return createPortal(
     <div className="fixed inset-0 z-50 bg-black/40 animate-fadeIn" onClick={onClose}>
-      <div className="fixed inset-0 bg-white dark:bg-gray-800 animate-slideUp" onClick={(e) => e.stopPropagation()}>
+      <div 
+        className="fixed inset-0 animate-slideUp" 
+        style={{ backgroundColor: 'var(--bg-secondary)' }}
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* Header */}
-        <div className="sticky top-0 z-10 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 h-16 flex items-center justify-between px-4 sm:px-6">
+        <div 
+          className="sticky top-0 z-10 h-16 flex items-center justify-between px-4 sm:px-6"
+          style={{ 
+            backgroundColor: 'var(--bg-primary)', 
+            borderBottom: '1px solid var(--border)' 
+          }}
+        >
           <div className="min-w-0">
             {typeof title === "string" ? (
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white truncate">{title}</h3>
+              <h3 className="text-lg font-semibold truncate" style={{ color: 'var(--text-primary)' }}>{title}</h3>
             ) : (
               title
             )}

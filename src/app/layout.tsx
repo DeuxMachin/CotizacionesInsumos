@@ -65,15 +65,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           }}
         />
       </head>
-      <body className="bg-gray-50 dark:bg-gray-900 text-gray-800 dark:text-white transition-colors duration-300">
+      <body className="antialiased">
         <ThemeProvider 
           attribute="class" 
-          defaultTheme="system" 
+          defaultTheme="light" 
           enableSystem
           disableTransitionOnChange
           storageKey="theme"
         >
-          <ThemeDebugger />
           {children}
         </ThemeProvider>
       </body>

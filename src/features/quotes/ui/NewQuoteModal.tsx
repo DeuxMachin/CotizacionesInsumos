@@ -171,9 +171,15 @@ export const NewQuoteModal = {
               <div className="space-y-4 sm:space-y-5">
                 <div className="grid lg:grid-cols-2 gap-4">
                   {/* Panel Cliente */}
-                  <div className="rounded-xl p-3 sm:p-4 bg-white border border-gray-200 dark:border-gray-700 shadow-sm">
+                  <div 
+                    className="rounded-xl p-3 sm:p-4 shadow-sm"
+                    style={{ 
+                      backgroundColor: 'var(--card-bg)', 
+                      border: '1px solid var(--border)' 
+                    }}
+                  >
                     <div className="flex items-center justify-between mb-3">
-                      <h3 className="font-semibold text-gray-900">Datos del cliente</h3>
+                      <h3 className="font-semibold" style={{ color: 'var(--text-primary)' }}>Datos del cliente</h3>
                       <div className="flex gap-1 sm:gap-2">
                         <button className="btn-secondary text-xs sm:text-sm px-2 py-1" onClick={()=>setCollapsed(c=>!c)}>{collapsed? 'Editar datos':'Contraer'}</button>
                         <button className="btn-ghost text-xs sm:text-sm px-2 py-1" onClick={startManualEntry}>Rellenar manualmente</button>
@@ -207,11 +213,23 @@ export const NewQuoteModal = {
 
                     {/* Vista compacta */}
                     {collapsed ? (
-                      <div className="text-sm text-gray-700 space-y-1">
-                        <div className="flex justify-between"><span className="text-gray-600">Cliente</span><span className="font-medium truncate ml-2">{client || '—'}</span></div>
-                        <div className="flex justify-between"><span className="text-gray-600">Contacto</span><span className="truncate ml-2">{contactoNombre || '—'}</span></div>
-                        <div className="flex justify-between"><span className="text-gray-600">RUT</span><span>{clientRut || '—'}</span></div>
-                        <div className="flex justify-between"><span className="text-gray-600">Dirección</span><span className="truncate ml-2">{clientDireccion || '—'}</span></div>
+                      <div className="text-sm space-y-1">
+                        <div className="flex justify-between">
+                          <span style={{ color: 'var(--text-secondary)' }}>Cliente</span>
+                          <span className="font-medium truncate ml-2" style={{ color: 'var(--text-primary)' }}>{client || '—'}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span style={{ color: 'var(--text-secondary)' }}>Contacto</span>
+                          <span className="truncate ml-2" style={{ color: 'var(--text-primary)' }}>{contactoNombre || '—'}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span style={{ color: 'var(--text-secondary)' }}>RUT</span>
+                          <span style={{ color: 'var(--text-primary)' }}>{clientRut || '—'}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span style={{ color: 'var(--text-secondary)' }}>Dirección</span>
+                          <span className="truncate ml-2" style={{ color: 'var(--text-primary)' }}>{clientDireccion || '—'}</span>
+                        </div>
                       </div>
                     ) : (
                       <div className="space-y-3 sm:space-y-4">
@@ -279,8 +297,14 @@ export const NewQuoteModal = {
                   </div>
 
                   {/* Panel de Configuración de la cotización */}
-                  <div className="rounded-xl p-3 sm:p-4 bg-white border border-gray-200 dark:border-gray-700 shadow-sm">
-                    <h3 className="font-semibold text-gray-900 mb-3">Configuración</h3>
+                  <div 
+                    className="rounded-xl p-3 sm:p-4 shadow-sm"
+                    style={{ 
+                      backgroundColor: 'var(--card-bg)', 
+                      border: '1px solid var(--border)' 
+                    }}
+                  >
+                    <h3 className="font-semibold mb-3" style={{ color: 'var(--text-primary)' }}>Configuración</h3>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
                         <label className="form-label">Folio</label>
@@ -301,7 +325,7 @@ export const NewQuoteModal = {
                       <div>
                         <label className="form-label">Válida por (días)</label>
                         <input type="number" min={0} className="form-input" value={validDaysStr} onChange={(e)=>setValidDaysStr(e.target.value)} placeholder="Ej: 30" />
-                        <p className="text-xs text-gray-500 mt-1">Vence el <span className="font-medium">{dueDate || '—'}</span></p>
+                        <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>Vence el <span className="font-medium">{dueDate || '—'}</span></p>
                       </div>
                       <div>
                         <label className="form-label">Forma de pago</label>
@@ -345,45 +369,108 @@ export const NewQuoteModal = {
                   <input className="form-input" placeholder="Escribe para buscar..." value={search} onChange={(e)=>setSearch(e.target.value)} />
                 </div>
                 {/* Categorías y subcategorías (checkbox) */}
-                <div className="rounded-xl overflow-hidden bg-white border border-gray-200 dark:border-gray-700 shadow-sm">
+                <div 
+                  className="rounded-xl overflow-hidden shadow-sm"
+                  style={{ 
+                    backgroundColor: 'var(--card-bg)', 
+                    border: '1px solid var(--border)' 
+                  }}
+                >
                   {Array.from(new Set(allProducts.map(p=>p.category))).map(cat => {
                     const catProducts = allProducts.filter(p=>p.category===cat && p.name.toLowerCase().includes(search.toLowerCase()));
                     const subcats = Array.from(new Set(catProducts.map(p=>p.subcategory || "Otros")));
                     return (
                       <details key={cat} open className="group">
-                        <summary className={`flex items-center justify-between px-4 py-3 ${BRAND.accentBgSoft} cursor-pointer`}>
-                          <div className="font-semibold text-gray-900">{cat}</div>
-                          <svg className="w-4 h-4 text-gray-500 transition-transform group-open:rotate-180" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.24a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.08z" clipRule="evenodd"/></svg>
+                        <summary 
+                          className="flex items-center justify-between px-4 py-3 cursor-pointer"
+                          style={{ backgroundColor: 'var(--accent-bg)' }}
+                        >
+                          <div className="font-semibold" style={{ color: 'var(--text-primary)' }}>{cat}</div>
+                          <svg className="w-4 h-4 transition-transform group-open:rotate-180" style={{ color: 'var(--text-secondary)' }} viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.24a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.08z" clipRule="evenodd"/></svg>
                         </summary>
                         {subcats.map(sub => {
                           const subProducts = catProducts.filter(p=> (p.subcategory||"Otros")===sub);
                           const subSelectedCount = subProducts.reduce((acc,p)=> acc + (selected[p.id] ? 1 : 0), 0);
                           return (
-                            <details key={sub} className="border-t border-gray-200 dark:border-gray-700 last:border-b-0">
-                              <summary className="flex items-center justify-between px-6 py-3 bg-white cursor-pointer hover:bg-gray-50">
+                            <details key={sub} className="last:border-b-0" style={{ borderTop: '1px solid var(--border)' }}>
+                              <summary 
+                                className="flex items-center justify-between px-6 py-3 cursor-pointer"
+                                style={{ 
+                                  backgroundColor: 'var(--card-bg)',
+                                  transition: 'background-color 0.2s'
+                                }}
+                                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--bg-secondary)'}
+                                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--card-bg)'}
+                              >
                                 <div className="flex items-center gap-2">
-                                  <div className="text-gray-800 font-medium">{sub}</div>
-                                  {subSelectedCount>0 && (<span className={`text-xs px-2 py-0.5 rounded-full ${BRAND.accentBgSoft} ${BRAND.accentText}`}>{subSelectedCount} seleccionados</span>)}
+                                  <div className="font-medium" style={{ color: 'var(--text-primary)' }}>{sub}</div>
+                                  {subSelectedCount>0 && (
+                                    <span 
+                                      className="text-xs px-2 py-0.5 rounded-full"
+                                      style={{ 
+                                        backgroundColor: 'var(--accent-bg)', 
+                                        color: 'var(--accent-primary)' 
+                                      }}
+                                    >
+                                      {subSelectedCount} seleccionados
+                                    </span>
+                                  )}
                                 </div>
-                                <svg className="w-4 h-4 text-gray-500" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.24a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.08z" clipRule="evenodd"/></svg>
+                                <svg className="w-4 h-4" style={{ color: 'var(--text-secondary)' }} viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.24a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.08z" clipRule="evenodd"/></svg>
                               </summary>
-                              <div className="px-6 py-3 bg-white">
+                              <div className="px-6 py-3" style={{ backgroundColor: 'var(--card-bg)' }}>
                 <ul className="grid sm:grid-cols-2 gap-3">
                                   {subProducts.map(p => (
-                  <li key={p.id} className={`${selected[p.id] ? `${BRAND.accentBgSoft} ring-1 ring-orange-200` : ''} rounded-lg border border-gray-200 dark:border-gray-700 bg-white p-3 hover:bg-gray-50 hover:shadow-sm transition flex items-center justify-between`}>
+                  <li 
+                                      key={p.id} 
+                                      className="rounded-lg p-3 transition flex items-center justify-between"
+                                      style={{
+                                        backgroundColor: selected[p.id] ? 'var(--accent-bg)' : 'var(--card-bg)',
+                                        border: selected[p.id] ? '1px solid var(--accent-primary)' : '1px solid var(--border)',
+                                        transition: 'all 0.2s'
+                                      }}
+                                      onMouseEnter={(e) => {
+                                        if (!selected[p.id]) {
+                                          e.currentTarget.style.backgroundColor = 'var(--bg-secondary)';
+                                          e.currentTarget.style.boxShadow = 'var(--shadow-sm)';
+                                        }
+                                      }}
+                                      onMouseLeave={(e) => {
+                                        if (!selected[p.id]) {
+                                          e.currentTarget.style.backgroundColor = 'var(--card-bg)';
+                                          e.currentTarget.style.boxShadow = 'none';
+                                        }
+                                      }}
+                                    >
                                       <div className="flex items-start gap-3">
                     <input type="checkbox" className={`mt-1 accent-orange-600`} checked={!!selected[p.id]} onChange={(e)=>{
                                           if (e.target.checked) updateQty(p.id, 1); else updateQty(p.id, -999);
                                         }} />
                                         <div className="min-w-0">
-                                          <div className="font-medium text-gray-900 truncate">{p.name}</div>
-                                          <div className={`inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full ${BRAND.accentBgSoft} ${BRAND.accentText} mt-1`}>$ {p.price.toLocaleString('es-CL')}</div>
+                                          <div className="font-medium truncate" style={{ color: 'var(--text-primary)' }}>{p.name}</div>
+                                          <div 
+                                            className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full mt-1"
+                                            style={{ 
+                                              backgroundColor: 'var(--accent-soft)', 
+                                              color: 'var(--accent-primary)' 
+                                            }}
+                                          >
+                                            $ {p.price.toLocaleString('es-CL')}
+                                          </div>
                                         </div>
                                       </div>
                                       {selected[p.id] ? (
                                         <div className="flex items-center gap-2">
                                           <button className="btn-ghost" onClick={()=>updateQty(p.id,-1)}>-</button>
-                                          <div className="w-9 text-center border border-gray-200 dark:border-gray-700 rounded-md py-0.5 text-sm">{selected[p.id]}</div>
+                                          <div 
+                                            className="w-9 text-center rounded-md py-0.5 text-sm"
+                                            style={{ 
+                                              border: '1px solid var(--border)',
+                                              color: 'var(--text-primary)'
+                                            }}
+                                          >
+                                            {selected[p.id]}
+                                          </div>
                                           <button className="inline-flex items-center justify-center px-3 py-1.5 rounded-md text-white bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 shadow" onClick={()=>updateQty(p.id,1)}>+</button>
                                         </div>
                                       ) : (
@@ -473,40 +560,64 @@ export const NewQuoteModal = {
           </div>
 
           {/* Right: sticky summary */}
-          <aside className="hidden lg:block border-l border-gray-200 dark:border-gray-700 p-4 lg:p-6 sticky top-14 sm:top-16 h-[calc(100vh-3.5rem)] sm:h-[calc(100vh-4rem)] overflow-auto">
-            <h4 className="font-semibold text-gray-900 mb-3 text-sm lg:text-base">Resumen</h4>
+          <aside 
+            className="hidden lg:block p-4 lg:p-6 sticky top-14 sm:top-16 h-[calc(100vh-3.5rem)] sm:h-[calc(100vh-4rem)] overflow-auto"
+            style={{ borderLeft: '1px solid var(--border)' }}
+          >
+            <h4 className="font-semibold mb-3 text-sm lg:text-base" style={{ color: 'var(--text-primary)' }}>Resumen</h4>
             <div className="space-y-2 text-xs lg:text-sm">
-              <div className="flex justify-between"><span className="text-gray-600">Cliente</span><span className="font-medium truncate ml-2">{client || "—"}</span></div>
-              <div className="flex justify-between"><span className="text-gray-600">Vencimiento</span><span className="font-medium">{dueDate || '—'}</span></div>
+              <div className="flex justify-between">
+                <span style={{ color: 'var(--text-secondary)' }}>Cliente</span>
+                <span className="font-medium truncate ml-2" style={{ color: 'var(--text-primary)' }}>{client || "—"}</span>
+              </div>
+              <div className="flex justify-between">
+                <span style={{ color: 'var(--text-secondary)' }}>Vencimiento</span>
+                <span className="font-medium" style={{ color: 'var(--text-primary)' }}>{dueDate || '—'}</span>
+              </div>
             </div>
             <div className="mt-4">
-              <h5 className="font-medium text-gray-900 mb-2 text-sm">Productos</h5>
+              <h5 className="font-medium mb-2 text-sm" style={{ color: 'var(--text-primary)' }}>Productos</h5>
               {Object.keys(selected).length===0 ? (
-                <p className="text-xs lg:text-sm text-gray-500">Sin productos</p>
+                <p className="text-xs lg:text-sm" style={{ color: 'var(--text-muted)' }}>Sin productos</p>
               ) : (
                 <ul className="space-y-2 max-h-40 overflow-y-auto">
                   {Object.entries(selected).map(([id,qty])=>{
                     const p = allProducts.find(pp=>pp.id===id)!;
                     return (
                       <li key={id} className="flex justify-between text-xs lg:text-sm">
-                        <span className="text-gray-700 truncate mr-2">{p.name} × {qty}</span>
-                        <span className="font-medium whitespace-nowrap">${(p.price*qty).toLocaleString('es-CL')}</span>
+                        <span className="truncate mr-2" style={{ color: 'var(--text-secondary)' }}>{p.name} × {qty}</span>
+                        <span className="font-medium whitespace-nowrap" style={{ color: 'var(--text-primary)' }}>${(p.price*qty).toLocaleString('es-CL')}</span>
                       </li>
                     );
                   })}
                 </ul>
               )}
             </div>
-            <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700 space-y-1 text-xs lg:text-sm">
-              <div className="flex justify-between"><span className="text-gray-600">Subtotal</span><span className="font-semibold">{currency==='USD' ? `$ ${(subtotal/900).toLocaleString('en-US')}` : `$ ${subtotal.toLocaleString('es-CL')}`}</span></div>
+            <div className="mt-4 pt-4 space-y-1 text-xs lg:text-sm" style={{ borderTop: '1px solid var(--border)' }}>
+              <div className="flex justify-between">
+                <span style={{ color: 'var(--text-secondary)' }}>Subtotal</span>
+                <span className="font-semibold" style={{ color: 'var(--text-primary)' }}>{currency==='USD' ? `$ ${(subtotal/900).toLocaleString('en-US')}` : `$ ${subtotal.toLocaleString('es-CL')}`}</span>
+              </div>
               {globalDiscountPct>0 && (
-                <div className="flex justify-between"><span className="text-gray-600">Descuento ({globalDiscountPct}%)</span><span className="font-semibold">- {currency==='USD' ? `$ ${(discountAmount/900).toLocaleString('en-US')}` : `$ ${discountAmount.toLocaleString('es-CL')}`}</span></div>
+                <div className="flex justify-between">
+                  <span style={{ color: 'var(--text-secondary)' }}>Descuento ({globalDiscountPct}%)</span>
+                  <span className="font-semibold" style={{ color: 'var(--text-primary)' }}>- {currency==='USD' ? `$ ${(discountAmount/900).toLocaleString('en-US')}` : `$ ${discountAmount.toLocaleString('es-CL')}`}</span>
+                </div>
               )}
               {exentoAmount>0 && (
-                <div className="flex justify-between"><span className="text-gray-600">Exento</span><span className="font-semibold">{currency==='USD' ? `$ ${(exentoAmount/900).toLocaleString('en-US')}` : `$ ${exentoAmount.toLocaleString('es-CL')}`}</span></div>
+                <div className="flex justify-between">
+                  <span style={{ color: 'var(--text-secondary)' }}>Exento</span>
+                  <span className="font-semibold" style={{ color: 'var(--text-primary)' }}>{currency==='USD' ? `$ ${(exentoAmount/900).toLocaleString('en-US')}` : `$ ${exentoAmount.toLocaleString('es-CL')}`}</span>
+                </div>
               )}
-              <div className="flex justify-between"><span className="text-gray-600">IVA (19%)</span><span className="font-semibold">{currency==='USD' ? `$ ${(tax/900).toLocaleString('en-US')}` : `$ ${tax.toLocaleString('es-CL')}`}</span></div>
-              <div className="flex justify-between text-sm lg:text-base border-t border-gray-200 dark:border-gray-700 pt-2"><span className="text-gray-900">Total</span><span className="font-extrabold text-gray-900">{currency==='USD' ? `$ ${(total/900).toLocaleString('en-US')}` : `$ ${total.toLocaleString('es-CL')}`}</span></div>
+              <div className="flex justify-between">
+                <span style={{ color: 'var(--text-secondary)' }}>IVA (19%)</span>
+                <span className="font-semibold" style={{ color: 'var(--text-primary)' }}>{currency==='USD' ? `$ ${(tax/900).toLocaleString('en-US')}` : `$ ${tax.toLocaleString('es-CL')}`}</span>
+              </div>
+              <div className="flex justify-between text-sm lg:text-base pt-2" style={{ borderTop: '1px solid var(--border)' }}>
+                <span style={{ color: 'var(--text-primary)' }}>Total</span>
+                <span className="font-extrabold" style={{ color: 'var(--text-primary)' }}>{currency==='USD' ? `$ ${(total/900).toLocaleString('en-US')}` : `$ ${total.toLocaleString('es-CL')}`}</span>
+              </div>
             </div>
           </aside>
         </div>

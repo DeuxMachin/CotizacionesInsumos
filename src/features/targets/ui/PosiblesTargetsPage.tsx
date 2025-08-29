@@ -86,10 +86,10 @@ export function PosiblesTargetsPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+          <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>
             Posibles Targets
           </h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-1">
+          <p className="mt-1" style={{ color: 'var(--text-secondary)' }}>
             Gestiona oportunidades de negocio encontradas en terreno
           </p>
         </div>
@@ -104,11 +104,11 @@ export function PosiblesTargetsPage() {
 
       {targets.length === 0 ? (
         <div className="text-center py-12">
-          <FiMapPin className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-          <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+          <FiMapPin className="mx-auto h-12 w-12 mb-4" style={{ color: 'var(--text-muted)' }} />
+          <h3 className="text-lg font-medium mb-2" style={{ color: 'var(--text-primary)' }}>
             No hay targets registrados
           </h3>
-          <p className="text-gray-500 dark:text-gray-400 mb-6">
+          <p className="mb-6" style={{ color: 'var(--text-secondary)' }}>
             Comienza agregando el primer posible target encontrado en terreno
           </p>
           <button
@@ -127,13 +127,17 @@ export function PosiblesTargetsPage() {
               {paginatedTargets.map((target: PosibleTarget) => (
                 <div
                   key={target.id}
-                  className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-md transition-shadow cursor-pointer"
+                  className="rounded-xl shadow-sm hover:shadow-md transition-all cursor-pointer"
+                  style={{ 
+                    backgroundColor: 'var(--card-bg)',
+                    border: '1px solid var(--border)'
+                  }}
                   onClick={() => setSelectedTarget(target)}
                 >
                   <div className="p-6">
                     {/* Header con título y estado */}
                     <div className="flex items-start justify-between mb-4">
-                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white line-clamp-2">
+                      <h3 className="text-lg font-semibold line-clamp-2" style={{ color: 'var(--text-primary)' }}>
                         {target.titulo}
                       </h3>
                       <span className={`px-2 py-1 text-xs font-medium rounded-full ${getEstadoColor(target.estado)}`}>
@@ -142,14 +146,14 @@ export function PosiblesTargetsPage() {
                     </div>
 
                     {/* Descripción */}
-                    <p className="text-gray-600 dark:text-gray-400 text-sm mb-4 line-clamp-2">
+                    <p className="text-sm mb-4 line-clamp-2" style={{ color: 'var(--text-secondary)' }}>
                       {target.descripcion}
                     </p>
 
                     {/* Ubicación */}
                     <div className="flex items-center gap-2 mb-3">
-                      <FiMapPin className="w-4 h-4 text-gray-500" />
-                      <span className="text-sm text-gray-600 dark:text-gray-400 line-clamp-1">
+                      <FiMapPin className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />
+                      <span className="text-sm line-clamp-1" style={{ color: 'var(--text-secondary)' }}>
                         {target.ubicacion.direccion}
                       </span>
                     </div>
@@ -157,14 +161,14 @@ export function PosiblesTargetsPage() {
                     {/* Contacto */}
                     {target.contacto.nombre && (
                       <div className="flex items-center gap-2 mb-3">
-                        <FiUser className="w-4 h-4 text-gray-500" />
-                        <span className="text-sm text-gray-600 dark:text-gray-400">
+                        <FiUser className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />
+                        <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>
                           {target.contacto.nombre}
                         </span>
                         {target.contacto.telefono && (
                           <>
-                            <FiPhone className="w-3 h-3 text-gray-400 ml-2" />
-                            <span className="text-xs text-gray-500">
+                            <FiPhone className="w-3 h-3 ml-2" style={{ color: 'var(--text-muted)' }} />
+                            <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
                               {target.contacto.telefono}
                             </span>
                           </>
@@ -173,13 +177,22 @@ export function PosiblesTargetsPage() {
                     )}
 
                     {/* Información adicional */}
-                    <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+                    <div 
+                      className="flex items-center justify-between mt-4 pt-4 border-t"
+                      style={{ borderColor: 'var(--border)' }}
+                    >
                       <div className="flex items-center gap-2">
                         <span className={`px-2 py-1 text-xs font-medium rounded-full ${getPrioridadColor(target.prioridad)}`}>
                           {target.prioridad}
                         </span>
                         {target.tipoObra && (
-                          <span className="px-2 py-1 text-xs bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 rounded-full">
+                          <span 
+                            className="px-2 py-1 text-xs rounded-full"
+                            style={{ 
+                              backgroundColor: 'var(--bg-secondary)',
+                              color: 'var(--text-secondary)'
+                            }}
+                          >
                             {target.tipoObra}
                           </span>
                         )}
@@ -190,7 +203,10 @@ export function PosiblesTargetsPage() {
                           e.stopPropagation();
                           openGoogleMaps(target);
                         }}
-                        className="flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300"
+                        className="flex items-center gap-1 text-xs transition-colors"
+                        style={{ color: 'var(--accent-primary)' }}
+                        onMouseEnter={(e) => e.currentTarget.style.color = 'var(--accent-hover)'}
+                        onMouseLeave={(e) => e.currentTarget.style.color = 'var(--accent-primary)'}
                       >
                         <FiMap className="w-3 h-3" />
                         Ver mapa
@@ -198,8 +214,8 @@ export function PosiblesTargetsPage() {
                     </div>
 
                     {/* Footer con fecha y gestión */}
-                    <div className="mt-4 pt-3 border-t border-gray-200 dark:border-gray-700">
-                      <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
+                    <div className="mt-4 pt-3 border-t" style={{ borderColor: 'var(--border)' }}>
+                      <div className="flex items-center justify-between text-xs" style={{ color: 'var(--text-muted)' }}>
                         <div className="flex items-center gap-1">
                           <FiClock className="w-3 h-3" />
                           {new Date(target.fechaCreacion).toLocaleDateString()}
@@ -207,7 +223,7 @@ export function PosiblesTargetsPage() {
                         {target.gestionadoPor && (
                           <div className="flex items-center gap-1">
                             <FiUser className="w-3 h-3" />
-                            <span className="text-orange-600 dark:text-orange-400 font-medium">
+                            <span className="font-medium" style={{ color: 'var(--accent-primary)' }}>
                               {target.nombreGestionadoPor}
                             </span>
                           </div>
@@ -225,20 +241,34 @@ export function PosiblesTargetsPage() {
                 <button
                   onClick={() => setCurrentPage(Math.max(0, currentPage - 1))}
                   disabled={currentPage === 0}
-                  className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-600 dark:text-gray-400 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  style={{ 
+                    color: 'var(--text-secondary)',
+                    backgroundColor: 'var(--card-bg)',
+                    border: '1px solid var(--border)'
+                  }}
+                  onMouseEnter={(e) => { if (!e.currentTarget.disabled) e.currentTarget.style.backgroundColor = 'var(--bg-secondary)' }}
+                  onMouseLeave={(e) => { if (!e.currentTarget.disabled) e.currentTarget.style.backgroundColor = 'var(--card-bg)' }}
                 >
                   <FiArrowLeft className="w-4 h-4" />
                   Anterior
                 </button>
                 
-                <span className="text-sm text-gray-600 dark:text-gray-400">
+                <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>
                   Página {currentPage + 1} de {totalPages} • {targets.length} targets
                 </span>
                 
                 <button
                   onClick={() => setCurrentPage(Math.min(totalPages - 1, currentPage + 1))}
                   disabled={currentPage === totalPages - 1}
-                  className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-600 dark:text-gray-400 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  style={{ 
+                    color: 'var(--text-secondary)',
+                    backgroundColor: 'var(--card-bg)',
+                    border: '1px solid var(--border)'
+                  }}
+                  onMouseEnter={(e) => { if (!e.currentTarget.disabled) e.currentTarget.style.backgroundColor = 'var(--bg-secondary)' }}
+                  onMouseLeave={(e) => { if (!e.currentTarget.disabled) e.currentTarget.style.backgroundColor = 'var(--card-bg)' }}
                 >
                   Siguiente
                   <FiArrowRight className="w-4 h-4" />

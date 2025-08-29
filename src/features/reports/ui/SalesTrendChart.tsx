@@ -41,9 +41,9 @@ export function SalesTrendChart({ period }: { period: Period }) {
               <stop offset="95%" stopColor="#fb923c" stopOpacity={0.06} />
             </linearGradient>
           </defs>
-          <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-          <XAxis dataKey="label" tick={{ fontSize: 12 }} stroke="#94a3b8" />
-          <YAxis tick={{ fontSize: 12 }} stroke="#94a3b8" tickFormatter={(v) => `$${Math.round(v/1000)}k`} />
+          <CartesianGrid strokeDasharray="3 3" stroke="currentColor" opacity={0.1} />
+          <XAxis dataKey="label" tick={{ fontSize: 12 }} stroke="currentColor" opacity={0.5} />
+          <YAxis tick={{ fontSize: 12 }} stroke="currentColor" opacity={0.5} tickFormatter={(v) => `$${Math.round(v/1000)}k`} />
           <Tooltip formatter={(v: number) => [`$${v.toLocaleString()}`, "Ventas"]} labelFormatter={(l) => `${l}`} />
           <Area type="monotone" dataKey="ventas" stroke="#fb923c" fill="url(#ventasGrad)" name="Ventas" />
         </AreaChart>
