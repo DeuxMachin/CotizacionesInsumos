@@ -28,8 +28,9 @@ async function getQuoteById(id: string): Promise<Quote | null> {
   return quote || null;
 }
 
-export default async function QuoteDetailsPage({ params }: { params: { id: string } }) {
-  const quote = await getQuoteById(params.id);
+export default async function QuoteDetailsPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const quote = await getQuoteById(id);
   
   // Si no se encuentra la cotización, mostrar la página 404
   if (!quote) {

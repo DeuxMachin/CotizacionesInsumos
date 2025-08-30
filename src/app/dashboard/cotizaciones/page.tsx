@@ -22,23 +22,17 @@ const quotesDB: Quote[] = [
 ];
 
 // Función para obtener todas las cotizaciones (con posibles filtros)
-async function getQuotes(filters?: any): Promise<Quote[]> {
+async function getQuotes(): Promise<Quote[]> {
   // En producción, esta sería una consulta a la base de datos con filtros aplicados
   // Por ahora, simplemente devolvemos todos los datos de prueba
   return quotesDB;
 }
 
-export default async function CotizacionesPage({ searchParams }: { searchParams?: { [key: string]: string } }) {
-  // Extraer filtros de los parámetros de búsqueda
-  const filters = searchParams ? {
-    client: searchParams.client,
-    status: searchParams.status,
-    dateFrom: searchParams.dateFrom,
-    dateTo: searchParams.dateTo
-  } : undefined;
-  
-  // Obtener cotizaciones con filtros aplicados
-  const quotes = await getQuotes(filters);
+export default async function CotizacionesPage(props: { searchParams?: Promise<Record<string, string>> }) {
+  // Para futura implementación: leer searchParams cuando se necesite
+  // const params = props.searchParams ? await props.searchParams : undefined;
+  void props; // evitar warning de var no usada
+  const quotes = await getQuotes();
   
   return (
     <div className="space-y-3 sm:space-y-4 lg:space-y-6 animate-fadeIn">

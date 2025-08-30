@@ -29,8 +29,9 @@ async function getQuoteById(id: string): Promise<Quote | null> {
   return quote || null;
 }
 
-export default async function EditQuotePage({ params }: { params: { id: string } }) {
-  const quote = await getQuoteById(params.id);
+export default async function EditQuotePage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const quote = await getQuoteById(id);
   
   // Si no se encuentra la cotización, mostrar la página 404
   if (!quote) {
@@ -40,7 +41,7 @@ export default async function EditQuotePage({ params }: { params: { id: string }
   // Server action para actualizar la cotización
   async function handleUpdateQuote(formData: FormData) {
     'use server';
-    return updateQuote(params.id, formData);
+    return updateQuote(id, formData);
   }
   
   return (
@@ -48,7 +49,7 @@ export default async function EditQuotePage({ params }: { params: { id: string }
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold">Editar Cotización</h1>
         <Link 
-          href={`/dashboard/cotizaciones/${params.id}`}
+          href={`/dashboard/cotizaciones/${id}`}
           className="text-blue-600 hover:underline"
         >
           Volver a detalles

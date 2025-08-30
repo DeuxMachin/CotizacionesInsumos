@@ -17,7 +17,7 @@ const QuoteSchema = z.object({
 type QuoteFormData = z.infer<typeof QuoteSchema>;
 
 // Mock de base de datos (en producción, esto sería una conexión real a la BD)
-let quotesDB: Quote[] = [];
+const quotesDB: Quote[] = [];
 
 /**
  * Server Action para crear una nueva cotización
@@ -148,7 +148,7 @@ export async function changeQuoteStatus(quoteId: string, newStatus: QuoteStatus)
     revalidatePath(`/dashboard/cotizaciones/${quoteId}`);
     
     return { success: true };
-  } catch (error) {
+  } catch {
     return { success: false, error: 'Error al cambiar el estado de la cotización' };
   }
 }
@@ -175,7 +175,7 @@ export async function deleteQuote(quoteId: string) {
     revalidatePath('/dashboard/cotizaciones');
     
     return { success: true };
-  } catch (error) {
+  } catch {
     return { success: false, error: 'Error al eliminar la cotización' };
   }
 }
@@ -183,7 +183,7 @@ export async function deleteQuote(quoteId: string) {
 /**
  * Función auxiliar para registrar acciones en el log de auditoría
  */
-async function logAuditAction(action: string, resourceId: string, details?: Record<string, any>) {
+async function logAuditAction(action: string, resourceId: string, details?: Record<string, unknown>) {
   // Aquí iría la lógica para registrar en el log de auditoría
   console.log(`[AUDIT] ${action} - Resource: ${resourceId}`, details || '');
 }

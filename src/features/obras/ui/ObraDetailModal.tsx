@@ -15,22 +15,22 @@ import {
   FiCheckCircle,
   FiAlertCircle,
   FiFileText,
-  FiDownload,
-  FiShare2,
   FiEdit3,
   FiSave,
   FiRotateCcw,
-  FiBarChart,
-  FiTarget,
   FiHome,
   FiMessageSquare,
   FiFlag,
-  FiArrowUpRight,
-  FiArrowDownRight,
   FiBox,
-  FiUsers
+  FiChevronLeft,
+  FiChevronRight,
+  FiHelpCircle,
+  FiCalendar,
+  FiEye,
+  FiPercent,
+  FiMoreHorizontal
 } from 'react-icons/fi';
-import { Obra, EtapaObra, EstadoObra } from '../model/types';
+import { Obra, EtapaObra, EstadoObra, ContactoObra } from '../model/types';
 
 interface ObraDetailModalProps {
   obra: Obra;
@@ -54,11 +54,36 @@ export function ObraDetailModal({
   const [activeTab, setActiveTab] = useState<'overview' | 'progress' | 'contact' | 'financial'>('overview');
   const [isEditing, setIsEditing] = useState(false);
   const [editedObra, setEditedObra] = useState<Obra>(obra);
-  // Note and setNote state removed as they're not used
-
+  const [showSecondaryContact, setShowSecondaryContact] = useState(false);
+  const [secondaryContact, setSecondaryContact] = useState<ContactoObra | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveResult, setSaveResult] = useState<{success: boolean, message: string} | null>(null);
+  const [savedState, setSavedState] = useState<{etapasCompletadas: EtapaObra[], etapaActual: EtapaObra}>(
+    {etapasCompletadas: [...obra.etapasCompletadas], etapaActual: obra.etapaActual}
+  );
+  
   useEffect(() => {
     setEditedObra(obra);
-  }, [obra]);
+    
+    // También actualizamos el estado guardado cuando cambia la obra
+    setSavedState({
+      etapasCompletadas: [...obra.etapasCompletadas],
+      etapaActual: obra.etapaActual
+    });
+    
+    // Inicializar el contacto secundario con valores predeterminados
+    // En una implementación real, esto vendría de la API
+    if (!secondaryContact) {
+      setSecondaryContact({
+        nombre: "Carlos Rodriguez",
+        cargo: "Comprador de Materiales",
+        telefono: "+56 9 8765 4321",
+        email: "carlos.rodriguez@" + obra.constructora.nombre.toLowerCase().replace(/\s+/g, '') + ".cl"
+      });
+    }
+    // Nota: incluimos secondaryContact para satisfacer eslint exhaustive-deps.
+    // setSecondaryContact es estable de React.
+  }, [obra, secondaryContact]);
 
   const estadoColor = getEstadoColor(obra.estado);
   const etapas: EtapaObra[] = ['fundacion', 'estructura', 'albanileria', 'instalaciones', 'terminaciones', 'entrega'];
@@ -67,18 +92,81 @@ export function ObraDetailModal({
     return ((obra.etapasCompletadas.length / etapas.length) * 100);
   };
 
-  const getRandomPercentage = () => {
-    return Math.floor(Math.random() * 30) + 10;
-  };
+  // (toggleStageCompletion eliminado hasta que se necesite)
 
-  const getRandomNumber = (min: number, max: number) => {
-    return Math.floor(Math.random() * (max - min + 1)) + min;
+  const setCurrentStage = (etapa: EtapaObra) => {
+    // Esta es ahora la única forma de gestionar el progreso de las etapas
+    const etapaIndex = etapas.indexOf(etapa);
+  const prevEtapas = etapas.slice(0, etapaIndex);
+    
+    // 1. Marcar todas las etapas previas como completadas
+    const updatedEtapasCompletadas = [...prevEtapas]; // Todas las etapas anteriores se consideran completadas
+    
+    // 2. Asegurarse que la etapa actual NO esté marcada como completada
+    // (ya que está "En progreso")
+    
+    // 3. Asegurarse que todas las etapas posteriores NO estén marcadas como completadas
+    // (esto evita tener etapas completadas después de la etapa actual)
+    
+    setEditedObra({
+      ...editedObra,
+      etapaActual: etapa,
+      etapasCompletadas: updatedEtapasCompletadas
+    });
+    
+    // Esta actualización fuerza un progreso lineal:
+    // - Las etapas previas siempre están completadas
+    // - La etapa actual está en progreso
+    // - Las etapas posteriores están pendientes
   };
 
   const handleSave = async () => {
-    const success = await onUpdate(editedObra);
-    if (success) {
-      setIsEditing(false);
+    // Activamos el estado de carga y limpiamos cualquier resultado anterior
+    setIsSaving(true);
+    setSaveResult(null);
+    
+    try {
+      // Llamamos a la función onUpdate proporcionada por el componente padre
+      const success = await onUpdate(editedObra);
+      
+      if (success) {
+        // Si la actualización fue exitosa
+        setSaveResult({
+          success: true,
+          message: "Cambios guardados correctamente"
+        });
+        
+        // Si estaba en modo edición, lo mantenemos; si no, seguimos sin él
+        // Esto proporciona consistencia en la experiencia de usuario
+        
+        // Actualizamos el estado guardado para que coincida con el editado
+        // Esto hará que el botón "Guardar cambios" desaparezca
+        setSavedState({
+          etapasCompletadas: [...editedObra.etapasCompletadas],
+          etapaActual: editedObra.etapaActual
+        });
+      } else {
+        // Si la actualización falló
+        setSaveResult({
+          success: false,
+          message: "No se pudieron guardar los cambios"
+        });
+      }
+    } catch (error) {
+      // Si ocurrió una excepción
+      setSaveResult({
+        success: false,
+        message: "Error al procesar la solicitud"
+      });
+      console.error("Error al guardar los cambios:", error);
+    } finally {
+      // Desactivamos el estado de carga
+      setIsSaving(false);
+      
+      // Configuramos un temporizador para eliminar el mensaje después de 3 segundos
+      setTimeout(() => {
+        setSaveResult(null);
+      }, 3000);
     }
   };
 
@@ -295,13 +383,21 @@ export function ObraDetailModal({
                       <div>
                         <p className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>Presupuesto Total</p>
                         <h3 className="text-base sm:text-lg md:text-xl font-bold mt-1" style={{ color: 'var(--text-primary)' }}>
-                          ${obra.presupuesto?.toLocaleString('es-CL')}
+                          {obra.presupuesto ? formatMoney(obra.presupuesto) : 'No definido'}
                         </h3>
                         <p className="text-xs mt-1" style={{ color: 'var(--text-success)' }}>
-                          <span className="flex items-center">
-                            <FiArrowUpRight className="mr-1" />
-                            {getRandomPercentage()}% vs anterior
-                          </span>
+                          {isEditing && (
+                            <input
+                              type="number"
+                              value={editedObra.presupuesto || 0}
+                              onChange={(e) => setEditedObra({
+                                ...editedObra,
+                                presupuesto: parseInt(e.target.value, 10)
+                              })}
+                              className="w-full px-2 py-1 rounded text-sm"
+                              style={{ backgroundColor: 'var(--bg-secondary)' }}
+                            />
+                          )}
                         </p>
                       </div>
                       <div 
@@ -325,13 +421,21 @@ export function ObraDetailModal({
                       <div>
                         <p className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>Duración Estimada</p>
                         <h3 className="text-base sm:text-lg md:text-xl font-bold mt-1" style={{ color: 'var(--text-primary)' }}>
-                          {obra.duracionEstimada} meses
+                          {obra.duracionEstimada || '?'} meses
                         </h3>
                         <p className="text-xs mt-1" style={{ color: 'var(--text-error)' }}>
-                          <span className="flex items-center">
-                            <FiArrowDownRight className="mr-1" />
-                            {getRandomPercentage()}% retraso
-                          </span>
+                          {isEditing && (
+                            <input
+                              type="number"
+                              value={editedObra.duracionEstimada || 0}
+                              onChange={(e) => setEditedObra({
+                                ...editedObra,
+                                duracionEstimada: parseInt(e.target.value, 10)
+                              })}
+                              className="w-full px-2 py-1 rounded text-sm"
+                              style={{ backgroundColor: 'var(--bg-secondary)' }}
+                            />
+                          )}
                         </p>
                       </div>
                       <div 
@@ -355,22 +459,21 @@ export function ObraDetailModal({
                       <div>
                         <p className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>Materiales Requeridos</p>
                         <h3 className="text-base sm:text-lg md:text-xl font-bold mt-1" style={{ color: 'var(--text-primary)' }}>
-                          {getRandomNumber(30, 100)} ítems
+                          {editedObra.materialVendido ? Math.round(editedObra.materialVendido / 10000) : 0} ítems
                         </h3>
-                        <p className="text-xs mt-1" style={{ color: getRandomPercentage() > 50 ? 'var(--text-success)' : 'var(--text-error)' }}>
-                          <span className="flex items-center">
-                            {getRandomPercentage() > 50 ? (
-                              <>
-                                <FiArrowUpRight className="mr-1" />
-                                {getRandomPercentage()}% stock
-                              </>
-                            ) : (
-                              <>
-                                <FiArrowDownRight className="mr-1" />
-                                {getRandomPercentage()}% pendiente
-                              </>
-                            )}
-                          </span>
+                        <p className="text-xs mt-1" style={{ color: 'var(--text-success)' }}>
+                          {isEditing && (
+                            <input
+                              type="number"
+                              value={Math.round(editedObra.materialVendido / 10000)}
+                              onChange={(e) => setEditedObra({
+                                ...editedObra,
+                                materialVendido: parseInt(e.target.value, 10) * 10000
+                              })}
+                              className="w-full px-2 py-1 rounded text-sm"
+                              style={{ backgroundColor: 'var(--bg-secondary)' }}
+                            />
+                          )}
                         </p>
                       </div>
                       <div 
@@ -392,22 +495,30 @@ export function ObraDetailModal({
                   >
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>Personal Asignado</p>
+                        <p className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>Cotizaciones hechas</p>
                         <h3 className="text-base sm:text-lg md:text-xl font-bold mt-1" style={{ color: 'var(--text-primary)' }}>
-                          {getRandomNumber(15, 50)} personas
+                          {editedObra.materialVendido ? Math.round(editedObra.materialVendido / 100000) : 0}
                         </h3>
                         <p className="text-xs mt-1" style={{ color: 'var(--text-info)' }}>
-                          <span className="flex items-center">
-                            <FiUser className="mr-1" />
-                            {getRandomNumber(3, 8)} especialidades
-                          </span>
+                          {isEditing && (
+                            <input
+                              type="number"
+                              value={Math.round(editedObra.materialVendido / 100000)}
+                              onChange={(e) => setEditedObra({
+                                ...editedObra,
+                                materialVendido: parseInt(e.target.value, 10) * 100000
+                              })}
+                              className="w-full px-2 py-1 rounded text-sm"
+                              style={{ backgroundColor: 'var(--bg-secondary)' }}
+                            />
+                          )}
                         </p>
                       </div>
                       <div 
                         className="p-2 rounded-full"
                         style={{ backgroundColor: 'var(--badge-primary-bg)' }}
                       >
-                        <FiUsers size={18} className="sm:text-lg md:text-xl" style={{ color: 'var(--badge-primary-text)' }} />
+                        <FiFileText size={18} className="sm:text-lg md:text-xl" style={{ color: 'var(--badge-primary-text)' }} />
                       </div>
                     </div>
                   </div>
@@ -493,15 +604,25 @@ export function ObraDetailModal({
                   border: '1px solid var(--border)'
                 }}
               >
-                <h3 className="text-base font-semibold flex items-center gap-2 mb-4" style={{ color: 'var(--text-primary)' }}>
-                  <FiActivity className="w-4 h-4" style={{ color: 'var(--accent-primary)' }} />
-                  Cronograma de Etapas
-                </h3>
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="text-base font-semibold flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
+                    <FiActivity className="w-4 h-4" style={{ color: 'var(--accent-primary)' }} />
+                    Cronograma de Etapas
+                  </h3>
+                  
+                  {/* Indicador de cambios pendientes */}
+                  {JSON.stringify(savedState.etapasCompletadas) !== JSON.stringify(editedObra.etapasCompletadas) || 
+                   savedState.etapaActual !== editedObra.etapaActual ? (
+                    <span className="text-xs px-2 py-1 rounded-full" style={{ backgroundColor: 'var(--warning-bg)', color: 'var(--warning-text)' }}>
+                      Cambios pendientes
+                    </span>
+                  ) : null}
+                </div>
                 
                 <div className="space-y-4">
                   {etapas.map((etapa, index) => {
-                    const isCompleted = obra.etapasCompletadas.includes(etapa);
-                    const isCurrent = obra.etapaActual === etapa;
+                    const isCompleted = editedObra.etapasCompletadas.includes(etapa);
+                    const isCurrent = editedObra.etapaActual === etapa;
                     const etapaColor = getEtapaColor(etapa);
                     
                     return (
@@ -560,23 +681,48 @@ export function ObraDetailModal({
                               {etapa.replace('_', ' ')}
                             </h4>
                             
-                            <span 
-                              className="text-xs px-2 py-0.5 rounded-full"
-                              style={{
-                                backgroundColor: isCompleted 
-                                  ? 'var(--success-bg)' 
-                                  : isCurrent 
-                                  ? etapaColor.bg 
-                                  : 'var(--bg-secondary)',
-                                color: isCompleted 
-                                  ? 'var(--success-text)' 
-                                  : isCurrent 
-                                  ? etapaColor.text 
-                                  : 'var(--text-secondary)'
-                              }}
-                            >
-                              {isCompleted ? 'Completado' : isCurrent ? 'En progreso' : 'Pendiente'}
-                            </span>
+                            {/* Botones de acción para gestionar etapas */}
+                            <div className="flex items-center gap-2 flex-wrap">
+                              {/* Botón "Completado" con estilo verde - solo lectura */}
+                              {isCompleted && (
+                                <button
+                                  className="text-xs px-3 py-1 rounded"
+                                  style={{
+                                    backgroundColor: 'var(--success-bg)',
+                                    color: 'var(--success-text)',
+                                  }}
+                                  disabled
+                                >
+                                  Completado
+                                </button>
+                              )}
+                              
+                              {/* Botón "En progreso" o "Establecer actual" */}
+                              {isCurrent ? (
+                                <button
+                                  className="text-xs px-3 py-1 rounded"
+                                  style={{
+                                    backgroundColor: 'var(--accent-bg)',
+                                    color: 'var(--accent-text)',
+                                  }}
+                                  disabled
+                                >
+                                  En progreso
+                                </button>
+                              ) : (
+                                <button
+                                  onClick={() => setCurrentStage(etapa)}
+                                  className="text-xs px-3 py-1 rounded"
+                                  style={{
+                                    backgroundColor: 'var(--bg-secondary)',
+                                    color: 'var(--accent-primary)',
+                                    border: '1px solid var(--accent-primary)',
+                                  }}
+                                >
+                                  Establecer actual
+                                </button>
+                              )}
+                            </div>
                           </div>
                           
                           {isCurrent && (
@@ -585,10 +731,58 @@ export function ObraDetailModal({
                             </p>
                           )}
                         </div>
+                        
+                        {/* Eliminamos los botones de flechas para mover etapas */}
                       </div>
                     );
                   })}
                 </div>
+                
+                {/* Botón de guardar cambios */}
+                {(JSON.stringify(savedState.etapasCompletadas) !== JSON.stringify(editedObra.etapasCompletadas) || 
+                  savedState.etapaActual !== editedObra.etapaActual) && (
+                  <div className="mt-4 flex justify-end items-center gap-3">
+                    {/* Mensaje de resultado */}
+                    {saveResult && (
+                      <div 
+                        className="text-sm px-3 py-1 rounded animate-fade-in" 
+                        style={{ 
+                          backgroundColor: saveResult.success ? 'var(--success-bg)' : 'var(--error-bg)',
+                          color: saveResult.success ? 'var(--success-text)' : 'var(--error-text)',
+                          animation: 'fadeIn 0.3s ease-in-out',
+                        }}
+                      >
+                        {saveResult.message}
+                      </div>
+                    )}
+                    
+                    {/* Botón de guardar */}
+                    <button
+                      onClick={handleSave}
+                      disabled={isSaving}
+                      className="flex items-center gap-2 px-4 py-2 rounded"
+                      style={{
+                        backgroundColor: isSaving ? 'var(--bg-secondary)' : 'var(--accent-primary)',
+                        color: isSaving ? 'var(--text-secondary)' : 'white',
+                        transition: 'all 0.2s ease',
+                        cursor: isSaving ? 'wait' : 'pointer',
+                        opacity: isSaving ? 0.7 : 1,
+                      }}
+                    >
+                      {isSaving ? (
+                        <>
+                          <div className="w-4 h-4 border-2 border-t-transparent border-white rounded-full animate-spin"></div>
+                          Guardando...
+                        </>
+                      ) : (
+                        <>
+                          <FiSave className="w-4 h-4" />
+                          Guardar Cambios
+                        </>
+                      )}
+                    </button>
+                  </div>
+                )}
               </div>
 
               {/* Actividad Reciente y Próximos Hitos */}
@@ -613,7 +807,7 @@ export function ObraDetailModal({
                           Etapa de {obra.etapasCompletadas[obra.etapasCompletadas.length - 1] || 'inicio'} completada
                         </p>
                         <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                          Hace {Math.floor(Math.random() * 10) + 1} días
+                          Hace {getDaysFromNow(obra.fechaActualizacion) + 2} días
                         </p>
                       </div>
                     </div>
@@ -637,7 +831,7 @@ export function ObraDetailModal({
                           Material entregado en sitio
                         </p>
                         <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                          Hace {Math.floor(Math.random() * 20) + 1} días
+                          Hace {getDaysFromNow(obra.fechaActualizacion) + 5} días
                         </p>
                       </div>
                     </div>
@@ -664,7 +858,7 @@ export function ObraDetailModal({
                           Revisión de instalaciones
                         </p>
                         <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                          En {Math.floor(Math.random() * 10) + 1} días
+                          En 7 días
                         </p>
                       </div>
                     </div>
@@ -676,7 +870,7 @@ export function ObraDetailModal({
                           Entrega de material fase {obra.etapasCompletadas.length + 1}
                         </p>
                         <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                          En {Math.floor(Math.random() * 15) + 1} días
+                          En 14 días
                         </p>
                       </div>
                     </div>
@@ -689,159 +883,342 @@ export function ObraDetailModal({
           {/* Tab: Contacto */}
           {activeTab === 'contact' && (
             <div className="space-y-4 sm:space-y-6">
-              {/* Contacto Principal */}
-              <div 
-                className="p-3 sm:p-4 rounded-lg"
-                style={{ 
-                  backgroundColor: 'var(--card-bg)',
-                  border: '1px solid var(--border)'
-                }}
-              >
-                <h3 className="text-base font-semibold flex items-center gap-2 mb-3 sm:mb-4" style={{ color: 'var(--text-primary)' }}>
+              {/* Sección de contactos */}
+
+              {/* Carrusel de contactos */}
+              <div className="flex justify-between items-center mb-2">
+                <h3 className="text-base font-semibold flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
                   <FiUser className="w-4 h-4" style={{ color: 'var(--accent-primary)' }} />
-                  Contacto Principal
+                  {showSecondaryContact ? 'Persona que compra materiales' : 'Contacto Principal'}
                 </h3>
                 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
-                  <div>
-                    <label className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
-                      Nombre Completo
-                    </label>
-                    {isEditing ? (
-                      <input
-                        type="text"
-                        value={editedObra.constructora.contactoPrincipal.nombre}
-                        onChange={(e) => setEditedObra({
-                          ...editedObra,
-                          constructora: {
-                            ...editedObra.constructora,
-                            contactoPrincipal: {
-                              ...editedObra.constructora.contactoPrincipal,
-                              nombre: e.target.value
-                            }
-                          }
-                        })}
-                        className="w-full mt-1 px-2 sm:px-3 py-1.5 sm:py-2 rounded text-sm"
-                        style={{
-                          backgroundColor: 'var(--bg-secondary)',
-                          borderColor: 'var(--border)',
-                          color: 'var(--text-primary)'
-                        }}
-                      />
-                    ) : (
-                      <p className="mt-1 text-sm" style={{ color: 'var(--text-primary)' }}>
-                        {obra.constructora.contactoPrincipal.nombre}
-                      </p>
-                    )}
-                  </div>
-                  
-                  <div>
-                    <label className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
-                      Cargo
-                    </label>
-                    {isEditing ? (
-                      <input
-                        type="text"
-                        value={editedObra.constructora.contactoPrincipal.cargo}
-                        onChange={(e) => setEditedObra({
-                          ...editedObra,
-                          constructora: {
-                            ...editedObra.constructora,
-                            contactoPrincipal: {
-                              ...editedObra.constructora.contactoPrincipal,
-                              cargo: e.target.value
-                            }
-                          }
-                        })}
-                        className="w-full mt-1 px-2 sm:px-3 py-1.5 sm:py-2 rounded text-sm"
-                        style={{
-                          backgroundColor: 'var(--bg-secondary)',
-                          borderColor: 'var(--border)',
-                          color: 'var(--text-primary)'
-                        }}
-                      />
-                    ) : (
-                      <p className="mt-1 text-sm" style={{ color: 'var(--text-primary)' }}>
-                        {obra.constructora.contactoPrincipal.cargo}
-                      </p>
-                    )}
-                  </div>
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => setShowSecondaryContact(false)}
+                    className={`p-1 rounded ${!showSecondaryContact ? 'opacity-50' : 'hover:bg-opacity-80'}`}
+                    style={{ 
+                      backgroundColor: !showSecondaryContact ? 'var(--accent-bg)' : 'var(--bg-secondary)',
+                      color: !showSecondaryContact ? 'var(--accent-text)' : 'var(--text-primary)'
+                    }}
+                  >
+                    <FiChevronLeft className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={() => setShowSecondaryContact(true)}
+                    className={`p-1 rounded ${showSecondaryContact ? 'opacity-50' : 'hover:bg-opacity-80'}`}
+                    style={{ 
+                      backgroundColor: showSecondaryContact ? 'var(--accent-bg)' : 'var(--bg-secondary)',
+                      color: showSecondaryContact ? 'var(--accent-text)' : 'var(--text-primary)'
+                    }}
+                  >
+                    <FiChevronRight className="w-4 h-4" />
+                  </button>
                 </div>
-                
-                <div className="mt-4 space-y-3">
-                  <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-                    <div className="flex items-center gap-2 flex-1 min-w-0">
-                      <FiPhone className="w-4 h-4 flex-shrink-0" style={{ color: 'var(--text-muted)' }} />
-                      <div className="min-w-0">
-                        <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>Teléfono</p>
-                        <a 
-                          href={`tel:${obra.constructora.contactoPrincipal.telefono}`}
-                          className="text-sm font-medium transition-colors truncate block"
-                          style={{ color: 'var(--accent-primary)' }}
-                        >
-                          {obra.constructora.contactoPrincipal.telefono}
-                        </a>
-                      </div>
-                    </div>
-                    <button
-                      className="text-xs px-2 py-1 rounded flex-shrink-0"
-                      style={{ 
-                        backgroundColor: 'var(--accent-bg)', 
-                        color: 'var(--accent-text)' 
-                      }}
-                    >
-                      Llamar
-                    </button>
+              </div>
+              
+              {showSecondaryContact ? (
+                <div 
+                  className="p-3 sm:p-4 rounded-lg"
+                  style={{ 
+                    backgroundColor: 'var(--card-bg)',
+                    border: '1px solid var(--border)'
+                  }}
+                >
+                  <div className="p-2 rounded mb-3" style={{ backgroundColor: 'rgba(var(--accent-rgb), 0.15)' }}>
+                    <p className="text-sm italic" style={{ color: 'var(--accent-text)' }}>
+                      Este contacto es la persona que se encarga de comprar materiales para la obra
+                    </p>
                   </div>
                   
-                  {obra.constructora.contactoPrincipal.email && (
+                  {secondaryContact ? (
+                    <>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
+                        <div>
+                          <label className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
+                            Nombre Completo
+                          </label>
+                          {isEditing ? (
+                            <input
+                              type="text"
+                              value={secondaryContact.nombre}
+                              onChange={(e) => setSecondaryContact({
+                                ...secondaryContact,
+                                nombre: e.target.value
+                              })}
+                              className="w-full mt-1 px-2 sm:px-3 py-1.5 sm:py-2 rounded text-sm"
+                              style={{
+                                backgroundColor: 'var(--bg-secondary)',
+                                borderColor: 'var(--border)',
+                                color: 'var(--text-primary)'
+                              }}
+                            />
+                          ) : (
+                            <p className="mt-1 text-sm" style={{ color: 'var(--text-primary)' }}>
+                              {secondaryContact.nombre}
+                            </p>
+                          )}
+                        </div>
+                        
+                        <div>
+                          <label className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
+                            Cargo
+                          </label>
+                          {isEditing ? (
+                            <input
+                              type="text"
+                              value={secondaryContact.cargo}
+                              onChange={(e) => setSecondaryContact({
+                                ...secondaryContact,
+                                cargo: e.target.value
+                              })}
+                              className="w-full mt-1 px-2 sm:px-3 py-1.5 sm:py-2 rounded text-sm"
+                              style={{
+                                backgroundColor: 'var(--bg-secondary)',
+                                borderColor: 'var(--border)',
+                                color: 'var(--text-primary)'
+                              }}
+                            />
+                          ) : (
+                            <p className="mt-1 text-sm" style={{ color: 'var(--text-primary)' }}>
+                              {secondaryContact.cargo}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                      
+                      <div className="mt-4 space-y-3">
+                        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+                          <div className="flex items-center gap-2 flex-1 min-w-0">
+                            <FiPhone className="w-4 h-4 flex-shrink-0" style={{ color: 'var(--text-muted)' }} />
+                            <div className="min-w-0">
+                              <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>Teléfono</p>
+                              <a 
+                                href={`tel:${secondaryContact.telefono}`}
+                                className="text-sm font-medium transition-colors truncate block"
+                                style={{ color: 'var(--accent-primary)' }}
+                              >
+                                {secondaryContact.telefono}
+                              </a>
+                            </div>
+                          </div>
+                          <button
+                            className="text-xs px-2 py-1 rounded flex-shrink-0"
+                            style={{ 
+                              backgroundColor: 'var(--accent-bg)', 
+                              color: 'var(--accent-text)' 
+                            }}
+                          >
+                            Llamar
+                          </button>
+                        </div>
+                        
+                        {secondaryContact.email && (
+                          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+                            <div className="flex items-center gap-2 flex-1 min-w-0">
+                              <FiMail className="w-4 h-4 flex-shrink-0" style={{ color: 'var(--text-muted)' }} />
+                              <div className="min-w-0">
+                                <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>Email</p>
+                                <a 
+                                  href={`mailto:${secondaryContact.email}`}
+                                  className="text-sm font-medium transition-colors truncate block"
+                                  style={{ color: 'var(--accent-primary)' }}
+                                >
+                                  {secondaryContact.email}
+                                </a>
+                              </div>
+                            </div>
+                            <button
+                              className="text-xs px-2 py-1 rounded flex-shrink-0"
+                              style={{ 
+                                backgroundColor: 'var(--info-bg)', 
+                                color: 'var(--info-text)' 
+                              }}
+                            >
+                              Enviar Email
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </>
+                  ) : (
+                    <div className="text-center py-4">
+                      {isEditing ? (
+                        <div className="space-y-3">
+                          <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+                            Añadir persona que compra materiales
+                          </p>
+                          <button
+                            onClick={() => setSecondaryContact({
+                              nombre: "Carlos Rodriguez",
+                              cargo: "Comprador de Materiales",
+                              telefono: "+56 9 8765 4321",
+                              email: "carlos.rodriguez@sanmartin.cl"
+                            })}
+                            className="btn-primary text-xs px-3 py-1"
+                          >
+                            <span className="flex items-center gap-1">
+                              <FiUser className="w-3 h-3" />
+                              Añadir
+                            </span>
+                          </button>
+                        </div>
+                      ) : (
+                        <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+                          No hay persona de compras registrada
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div 
+                  className="p-3 sm:p-4 rounded-lg"
+                  style={{ 
+                    backgroundColor: 'var(--card-bg)',
+                    border: '1px solid var(--border)'
+                  }}
+                >
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
+                    <div>
+                      <label className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
+                        Nombre Completo
+                      </label>
+                      {isEditing ? (
+                        <input
+                          type="text"
+                          value={editedObra.constructora.contactoPrincipal.nombre}
+                          onChange={(e) => setEditedObra({
+                            ...editedObra,
+                            constructora: {
+                              ...editedObra.constructora,
+                              contactoPrincipal: {
+                                ...editedObra.constructora.contactoPrincipal,
+                                nombre: e.target.value
+                              }
+                            }
+                          })}
+                          className="w-full mt-1 px-2 sm:px-3 py-1.5 sm:py-2 rounded text-sm"
+                          style={{
+                            backgroundColor: 'var(--bg-secondary)',
+                            borderColor: 'var(--border)',
+                            color: 'var(--text-primary)'
+                          }}
+                        />
+                      ) : (
+                        <p className="mt-1 text-sm" style={{ color: 'var(--text-primary)' }}>
+                          {obra.constructora.contactoPrincipal.nombre}
+                        </p>
+                      )}
+                    </div>
+                    
+                    <div>
+                      <label className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
+                        Cargo
+                      </label>
+                      {isEditing ? (
+                        <input
+                          type="text"
+                          value={editedObra.constructora.contactoPrincipal.cargo}
+                          onChange={(e) => setEditedObra({
+                            ...editedObra,
+                            constructora: {
+                              ...editedObra.constructora,
+                              contactoPrincipal: {
+                                ...editedObra.constructora.contactoPrincipal,
+                                cargo: e.target.value
+                              }
+                            }
+                          })}
+                          className="w-full mt-1 px-2 sm:px-3 py-1.5 sm:py-2 rounded text-sm"
+                          style={{
+                            backgroundColor: 'var(--bg-secondary)',
+                            borderColor: 'var(--border)',
+                            color: 'var(--text-primary)'
+                          }}
+                        />
+                      ) : (
+                        <p className="mt-1 text-sm" style={{ color: 'var(--text-primary)' }}>
+                          {obra.constructora.contactoPrincipal.cargo}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                  
+                  <div className="mt-4 space-y-3">
                     <div className="flex flex-wrap items-center gap-2 sm:gap-3">
                       <div className="flex items-center gap-2 flex-1 min-w-0">
-                        <FiMail className="w-4 h-4 flex-shrink-0" style={{ color: 'var(--text-muted)' }} />
+                        <FiPhone className="w-4 h-4 flex-shrink-0" style={{ color: 'var(--text-muted)' }} />
                         <div className="min-w-0">
-                          <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>Email</p>
+                          <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>Teléfono</p>
                           <a 
-                            href={`mailto:${obra.constructora.contactoPrincipal.email}`}
+                            href={`tel:${obra.constructora.contactoPrincipal.telefono}`}
                             className="text-sm font-medium transition-colors truncate block"
                             style={{ color: 'var(--accent-primary)' }}
                           >
-                            {obra.constructora.contactoPrincipal.email}
+                            {obra.constructora.contactoPrincipal.telefono}
                           </a>
                         </div>
                       </div>
                       <button
                         className="text-xs px-2 py-1 rounded flex-shrink-0"
                         style={{ 
-                          backgroundColor: 'var(--info-bg)', 
-                          color: 'var(--info-text)' 
+                          backgroundColor: 'var(--accent-bg)', 
+                          color: 'var(--accent-text)' 
                         }}
                       >
-                        Enviar Email
+                        Llamar
                       </button>
                     </div>
-                  )}
-                  
-                  {obra.constructora.contactoPrincipal.whatsapp && (
-                    <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-                      <div className="flex items-center gap-2 flex-1 min-w-0">
-                        <FiMessageSquare className="w-4 h-4 flex-shrink-0" style={{ color: 'var(--text-muted)' }} />
-                        <div className="min-w-0">
-                          <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>WhatsApp</p>
-                          <p className="text-sm font-medium truncate" style={{ color: 'var(--text-primary)' }}>
-                            {obra.constructora.contactoPrincipal.whatsapp}
-                          </p>
+                    
+                    {obra.constructora.contactoPrincipal.email && (
+                      <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+                        <div className="flex items-center gap-2 flex-1 min-w-0">
+                          <FiMail className="w-4 h-4 flex-shrink-0" style={{ color: 'var(--text-muted)' }} />
+                          <div className="min-w-0">
+                            <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>Email</p>
+                            <a 
+                              href={`mailto:${obra.constructora.contactoPrincipal.email}`}
+                              className="text-sm font-medium transition-colors truncate block"
+                              style={{ color: 'var(--accent-primary)' }}
+                            >
+                              {obra.constructora.contactoPrincipal.email}
+                            </a>
+                          </div>
                         </div>
+                        <button
+                          className="text-xs px-2 py-1 rounded flex-shrink-0"
+                          style={{ 
+                            backgroundColor: 'var(--info-bg)', 
+                            color: 'var(--info-text)' 
+                          }}
+                        >
+                          Enviar Email
+                        </button>
                       </div>
-                      <button
-                        className="text-xs px-2 py-1 rounded flex-shrink-0 text-white"
-                        style={{ backgroundColor: '#25D366' }}
-                      >
-                        WhatsApp
-                      </button>
-                    </div>
-                  )}
+                    )}
+                    
+                    {obra.constructora.contactoPrincipal.whatsapp && (
+                      <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+                        <div className="flex items-center gap-2 flex-1 min-w-0">
+                          <FiMessageSquare className="w-4 h-4 flex-shrink-0" style={{ color: 'var(--text-muted)' }} />
+                          <div className="min-w-0">
+                            <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>WhatsApp</p>
+                            <p className="text-sm font-medium truncate" style={{ color: 'var(--text-primary)' }}>
+                              {obra.constructora.contactoPrincipal.whatsapp}
+                            </p>
+                          </div>
+                        </div>
+                        <button
+                          className="text-xs px-2 py-1 rounded flex-shrink-0 text-white"
+                          style={{ backgroundColor: '#25D366' }}
+                        >
+                          WhatsApp
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
+              )}
 
               {/* Datos de la Empresa */}
               <div 
@@ -930,41 +1307,73 @@ export function ObraDetailModal({
               >
                 <h3 className="text-base font-semibold flex items-center gap-2 mb-3 sm:mb-4" style={{ color: 'var(--text-primary)' }}>
                   <FiDollarSign className="w-4 h-4" style={{ color: 'var(--accent-primary)' }} />
-                  Resumen Financiero
+                  Resumen de Cotizaciones
                 </h3>
                 
                 <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-                  <div>
-                    <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>Valor Total Obra</p>
+                  <div className="relative group">
+                    <div className="flex items-center gap-1 mb-1">
+                      <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>Valor Total Cotizado</p>
+                      <button 
+                        className="opacity-60 hover:opacity-100 transition-opacity"
+                        title="Total de todas las cotizaciones realizadas, incluyendo las que no se concretaron"
+                      >
+                        <FiHelpCircle className="w-3 h-3" style={{ color: 'var(--text-muted)' }} />
+                      </button>
+                    </div>
                     <p className="text-sm sm:text-base md:text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>
-                      {obra.valorEstimado ? formatMoney(obra.valorEstimado) : 'No definido'}
+                      {obra.valorEstimado ? formatMoney(obra.valorEstimado * 1.3) : formatMoney(15000000)}
                     </p>
                   </div>
                   
-                  <div>
-                    <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>Material Vendido</p>
+                  <div className="relative group">
+                    <div className="flex items-center gap-1 mb-1">
+                      <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>Cotizaciones Concretadas</p>
+                      <button 
+                        className="opacity-60 hover:opacity-100 transition-opacity"
+                        title="Valor de las cotizaciones que se confirmaron y resultaron en ventas"
+                      >
+                        <FiHelpCircle className="w-3 h-3" style={{ color: 'var(--text-muted)' }} />
+                      </button>
+                    </div>
                     <p className="text-sm sm:text-base md:text-lg font-semibold" style={{ color: 'var(--success-text)' }}>
                       {formatMoney(obra.materialVendido)}
                     </p>
                   </div>
                   
-                  <div>
-                    <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>Margen Estimado</p>
+                  <div className="relative group">
+                    <div className="flex items-center gap-1 mb-1">
+                      <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>Cotizaciones Hechas</p>
+                      <button 
+                        className="opacity-60 hover:opacity-100 transition-opacity"
+                        title="Número total de cotizaciones realizadas para esta obra"
+                      >
+                        <FiHelpCircle className="w-3 h-3" style={{ color: 'var(--text-muted)' }} />
+                      </button>
+                    </div>
                     <p className="text-sm sm:text-base md:text-lg font-semibold" style={{ color: 'var(--accent-text)' }}>
-                      {formatMoney(obra.materialVendido * 0.25)}
+                      {12} cotizaciones
                     </p>
                   </div>
                   
-                  <div>
-                    <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>% de Avance</p>
+                  <div className="relative group">
+                    <div className="flex items-center gap-1 mb-1">
+                      <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>Cotizaciones Aprobadas</p>
+                      <button 
+                        className="opacity-60 hover:opacity-100 transition-opacity"
+                        title="Porcentaje de cotizaciones que fueron aprobadas y se concretaron"
+                      >
+                        <FiHelpCircle className="w-3 h-3" style={{ color: 'var(--text-muted)' }} />
+                      </button>
+                    </div>
                     <p className="text-sm sm:text-base md:text-lg font-semibold" style={{ color: 'var(--info-text)' }}>
-                      {obra.valorEstimado ? Math.round((obra.materialVendido / obra.valorEstimado) * 100) : 0}%
+                      {Math.round((8 / 12) * 100)}%
                     </p>
                   </div>
                 </div>
               </div>
 
-              {/* Métricas */}
+              {/* Métricas de Vendedor */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4">
                 <div 
                   className="p-3 sm:p-4 rounded-lg text-center"
@@ -977,16 +1386,16 @@ export function ObraDetailModal({
                     className="w-10 h-10 sm:w-12 sm:h-12 mx-auto mb-2 sm:mb-3 rounded-full flex items-center justify-center"
                     style={{ backgroundColor: 'var(--success-bg)', color: 'var(--success-text)' }}
                   >
-                    <FiTarget className="w-5 h-5 sm:w-6 sm:h-6" />
+                    <FiPercent className="w-5 h-5 sm:w-6 sm:h-6" />
                   </div>
                   <h3 className="text-sm font-semibold mb-1" style={{ color: 'var(--text-primary)' }}>
-                    Rendimiento
+                    Tasa de Conversión
                   </h3>
                   <div className="text-lg sm:text-xl font-bold mb-1" style={{ color: 'var(--success-text)' }}>
-                    92%
+                    67%
                   </div>
                   <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
-                    Cumplimiento del cronograma
+                    Cotizaciones convertidas a ventas
                   </p>
                 </div>
 
@@ -1004,13 +1413,13 @@ export function ObraDetailModal({
                     <FiTrendingUp className="w-5 h-5 sm:w-6 sm:h-6" />
                   </div>
                   <h3 className="text-sm font-semibold mb-1" style={{ color: 'var(--text-primary)' }}>
-                    ROI
+                    Volumen de Ventas
                   </h3>
                   <div className="text-lg sm:text-xl font-bold mb-1" style={{ color: 'var(--accent-text)' }}>
-                    +18%
+                    {formatMoney(obra.materialVendido).slice(0, -3)}K
                   </div>
                   <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
-                    Retorno sobre inversión
+                    Total vendido en esta obra
                   </p>
                 </div>
 
@@ -1025,21 +1434,21 @@ export function ObraDetailModal({
                     className="w-10 h-10 sm:w-12 sm:h-12 mx-auto mb-2 sm:mb-3 rounded-full flex items-center justify-center"
                     style={{ backgroundColor: 'var(--info-bg)', color: 'var(--info-text)' }}
                   >
-                    <FiBarChart className="w-5 h-5 sm:w-6 sm:h-6" />
+                    <FiCalendar className="w-5 h-5 sm:w-6 sm:h-6" />
                   </div>
                   <h3 className="text-sm font-semibold mb-1" style={{ color: 'var(--text-primary)' }}>
-                    Eficiencia
+                    Frecuencia
                   </h3>
                   <div className="text-lg sm:text-xl font-bold mb-1" style={{ color: 'var(--info-text)' }}>
-                    87%
+                    2.3
                   </div>
                   <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
-                    Utilización de recursos
+                    Cotizaciones por semana
                   </p>
                 </div>
               </div>
 
-              {/* Opciones de Exportación */}
+              {/* Historial de Cotizaciones */}
               <div 
                 className="p-3 sm:p-4 rounded-lg"
                 style={{ 
@@ -1048,70 +1457,323 @@ export function ObraDetailModal({
                 }}
               >
                 <h3 className="text-base font-semibold flex items-center gap-2 mb-3 sm:mb-4" style={{ color: 'var(--text-primary)' }}>
-                  <FiDownload className="w-4 h-4" style={{ color: 'var(--accent-primary)' }} />
-                  Exportar Reportes
+                  <FiFileText className="w-4 h-4" style={{ color: 'var(--accent-primary)' }} />
+                  Historial de Cotizaciones
                 </h3>
                 
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
-                  <button
-                    className="flex items-center gap-2 p-2 sm:p-3 rounded border text-left transition-colors"
-                    style={{ 
-                      borderColor: 'var(--border)',
-                      backgroundColor: 'transparent',
-                      color: 'var(--text-primary)'
-                    }}
-                  >
-                    <FiFileText className="w-4 h-4" style={{ color: 'var(--accent-primary)' }} />
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium truncate">PDF Completo</p>
-                      <p className="text-xs truncate" style={{ color: 'var(--text-muted)' }}>Reporte detallado</p>
+                {/* Encabezados de tabla */}
+                <div className="hidden sm:grid sm:grid-cols-6 gap-3 pb-2 mb-3 text-xs font-medium" style={{ 
+                  borderBottom: '1px solid var(--border)',
+                  color: 'var(--text-secondary)'
+                }}>
+                  <div className="text-left">Cotizador</div>
+                  <div className="text-center">RUT</div>
+                  <div className="text-center">N° Cotización</div>
+                  <div className="text-center">Monto</div>
+                  <div className="text-center">Estado</div>
+                  <div className="text-center">Acciones</div>
+                </div>
+                
+                {/* Lista de cotizaciones */}
+                <div className="space-y-2">
+                  {/* Cotización 1 */}
+                  <div className="sm:grid sm:grid-cols-6 gap-3 p-3 rounded border border-opacity-50" style={{ 
+                    backgroundColor: 'var(--bg-secondary)',
+                    borderColor: 'var(--border)'
+                  }}>
+                    <div className="sm:flex sm:items-center sm:justify-start">
+                      <span className="text-xs sm:hidden" style={{ color: 'var(--text-secondary)' }}>Cotizador: </span>
+                      <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>Juan Pérez</span>
                     </div>
-                  </button>
+                    <div className="sm:flex sm:items-center sm:justify-center">
+                      <span className="text-xs sm:hidden" style={{ color: 'var(--text-secondary)' }}>RUT: </span>
+                      <span className="text-sm" style={{ color: 'var(--text-primary)' }}>12.345.678-9</span>
+                    </div>
+                    <div className="sm:flex sm:items-center sm:justify-center">
+                      <span className="text-xs sm:hidden" style={{ color: 'var(--text-secondary)' }}>N°: </span>
+                      <span className="text-sm font-mono" style={{ color: 'var(--accent-primary)' }}>COT-2025-001</span>
+                    </div>
+                    <div className="sm:flex sm:items-center sm:justify-center">
+                      <span className="text-xs sm:hidden" style={{ color: 'var(--text-secondary)' }}>Monto: </span>
+                      <span className="text-sm font-semibold" style={{ color: 'var(--success-text)' }}>{formatMoney(2500000)}</span>
+                    </div>
+                    <div className="sm:flex sm:items-center sm:justify-center">
+                      <span className="text-xs sm:hidden" style={{ color: 'var(--text-secondary)' }}>Estado: </span>
+                      <span className="inline-flex px-2 py-1 rounded-full text-xs font-medium" style={{
+                        backgroundColor: 'var(--success-bg)',
+                        color: 'var(--success-text)'
+                      }}>
+                        Confirmada
+                      </span>
+                    </div>
+                    <div className="sm:flex sm:items-center sm:justify-center mt-2 sm:mt-0">
+                      <button
+                        className="flex items-center gap-1 px-2 py-1 rounded text-xs"
+                        style={{
+                          backgroundColor: 'var(--accent-bg)',
+                          color: 'var(--accent-text)'
+                        }}
+                      >
+                        <FiEye className="w-3 h-3" />
+                        Ver
+                      </button>
+                    </div>
+                  </div>
                   
-                  <button
-                    className="flex items-center gap-2 p-2 sm:p-3 rounded border text-left transition-colors"
-                    style={{ 
-                      borderColor: 'var(--border)',
-                      backgroundColor: 'transparent',
-                      color: 'var(--text-primary)'
-                    }}
-                  >
-                    <FiBarChart className="w-4 h-4" style={{ color: 'var(--success-text)' }} />
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium truncate">Excel Financiero</p>
-                      <p className="text-xs truncate" style={{ color: 'var(--text-muted)' }}>Datos financieros</p>
+                  {/* Cotización 2 */}
+                  <div className="sm:grid sm:grid-cols-6 gap-3 p-3 rounded border border-opacity-50" style={{ 
+                    backgroundColor: 'var(--bg-secondary)',
+                    borderColor: 'var(--border)'
+                  }}>
+                    <div className="sm:flex sm:items-center sm:justify-start">
+                      <span className="text-xs sm:hidden" style={{ color: 'var(--text-secondary)' }}>Cotizador: </span>
+                      <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>María González</span>
                     </div>
-                  </button>
+                    <div className="sm:flex sm:items-center sm:justify-center">
+                      <span className="text-xs sm:hidden" style={{ color: 'var(--text-secondary)' }}>RUT: </span>
+                      <span className="text-sm" style={{ color: 'var(--text-primary)' }}>98.765.432-1</span>
+                    </div>
+                    <div className="sm:flex sm:items-center sm:justify-center">
+                      <span className="text-xs sm:hidden" style={{ color: 'var(--text-secondary)' }}>N°: </span>
+                      <span className="text-sm font-mono" style={{ color: 'var(--accent-primary)' }}>COT-2025-002</span>
+                    </div>
+                    <div className="sm:flex sm:items-center sm:justify-center">
+                      <span className="text-xs sm:hidden" style={{ color: 'var(--text-secondary)' }}>Monto: </span>
+                      <span className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{formatMoney(1800000)}</span>
+                    </div>
+                    <div className="sm:flex sm:items-center sm:justify-center">
+                      <span className="text-xs sm:hidden" style={{ color: 'var(--text-secondary)' }}>Estado: </span>
+                      <span className="inline-flex px-2 py-1 rounded-full text-xs font-medium" style={{
+                        backgroundColor: 'var(--warning-bg)',
+                        color: 'var(--warning-text)'
+                      }}>
+                        Pendiente
+                      </span>
+                    </div>
+                    <div className="sm:flex sm:items-center sm:justify-center mt-2 sm:mt-0">
+                      <button
+                        className="flex items-center gap-1 px-2 py-1 rounded text-xs"
+                        style={{
+                          backgroundColor: 'var(--accent-bg)',
+                          color: 'var(--accent-text)'
+                        }}
+                      >
+                        <FiEye className="w-3 h-3" />
+                        Ver
+                      </button>
+                    </div>
+                  </div>
                   
-                  <button
-                    className="flex items-center gap-2 p-2 sm:p-3 rounded border text-left transition-colors"
-                    style={{ 
-                      borderColor: 'var(--border)',
-                      backgroundColor: 'transparent',
-                      color: 'var(--text-primary)'
-                    }}
-                  >
-                    <FiActivity className="w-4 h-4" style={{ color: 'var(--info-text)' }} />
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium truncate">Cronograma</p>
-                      <p className="text-xs truncate" style={{ color: 'var(--text-muted)' }}>Timeline de obra</p>
+                  {/* Cotización 3 */}
+                  <div className="sm:grid sm:grid-cols-6 gap-3 p-3 rounded border border-opacity-50" style={{ 
+                    backgroundColor: 'var(--bg-secondary)',
+                    borderColor: 'var(--border)'
+                  }}>
+                    <div className="sm:flex sm:items-center sm:justify-start">
+                      <span className="text-xs sm:hidden" style={{ color: 'var(--text-secondary)' }}>Cotizador: </span>
+                      <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>Carlos López</span>
                     </div>
-                  </button>
+                    <div className="sm:flex sm:items-center sm:justify-center">
+                      <span className="text-xs sm:hidden" style={{ color: 'var(--text-secondary)' }}>RUT: </span>
+                      <span className="text-sm" style={{ color: 'var(--text-primary)' }}>15.987.654-3</span>
+                    </div>
+                    <div className="sm:flex sm:items-center sm:justify-center">
+                      <span className="text-xs sm:hidden" style={{ color: 'var(--text-secondary)' }}>N°: </span>
+                      <span className="text-sm font-mono" style={{ color: 'var(--accent-primary)' }}>COT-2025-003</span>
+                    </div>
+                    <div className="sm:flex sm:items-center sm:justify-center">
+                      <span className="text-xs sm:hidden" style={{ color: 'var(--text-secondary)' }}>Monto: </span>
+                      <span className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{formatMoney(950000)}</span>
+                    </div>
+                    <div className="sm:flex sm:items-center sm:justify-center">
+                      <span className="text-xs sm:hidden" style={{ color: 'var(--text-secondary)' }}>Estado: </span>
+                      <span className="inline-flex px-2 py-1 rounded-full text-xs font-medium" style={{
+                        backgroundColor: 'var(--error-bg)',
+                        color: 'var(--error-text)'
+                      }}>
+                        Rechazada
+                      </span>
+                    </div>
+                    <div className="sm:flex sm:items-center sm:justify-center mt-2 sm:mt-0">
+                      <button
+                        className="flex items-center gap-1 px-2 py-1 rounded text-xs"
+                        style={{
+                          backgroundColor: 'var(--accent-bg)',
+                          color: 'var(--accent-text)'
+                        }}
+                      >
+                        <FiEye className="w-3 h-3" />
+                        Ver
+                      </button>
+                    </div>
+                  </div>
                   
-                  <button
-                    className="flex items-center gap-2 p-2 sm:p-3 rounded border text-left transition-colors"
-                    style={{ 
-                      borderColor: 'var(--border)',
-                      backgroundColor: 'transparent',
-                      color: 'var(--text-primary)'
-                    }}
-                  >
-                    <FiShare2 className="w-4 h-4" style={{ color: 'var(--warning-text)' }} />
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium truncate">Compartir</p>
-                      <p className="text-xs truncate" style={{ color: 'var(--text-muted)' }}>Enviar por email</p>
+                  {/* Cotización 4 */}
+                  <div className="sm:grid sm:grid-cols-6 gap-3 p-3 rounded border border-opacity-50" style={{ 
+                    backgroundColor: 'var(--bg-secondary)',
+                    borderColor: 'var(--border)'
+                  }}>
+                    <div className="sm:flex sm:items-center sm:justify-start">
+                      <span className="text-xs sm:hidden" style={{ color: 'var(--text-secondary)' }}>Cotizador: </span>
+                      <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>Ana Martínez</span>
                     </div>
-                  </button>
+                    <div className="sm:flex sm:items-center sm:justify-center">
+                      <span className="text-xs sm:hidden" style={{ color: 'var(--text-secondary)' }}>RUT: </span>
+                      <span className="text-sm" style={{ color: 'var(--text-primary)' }}>18.456.789-2</span>
+                    </div>
+                    <div className="sm:flex sm:items-center sm:justify-center">
+                      <span className="text-xs sm:hidden" style={{ color: 'var(--text-secondary)' }}>N°: </span>
+                      <span className="text-sm font-mono" style={{ color: 'var(--accent-primary)' }}>COT-2025-004</span>
+                    </div>
+                    <div className="sm:flex sm:items-center sm:justify-center">
+                      <span className="text-xs sm:hidden" style={{ color: 'var(--text-secondary)' }}>Monto: </span>
+                      <span className="text-sm font-semibold" style={{ color: 'var(--success-text)' }}>{formatMoney(3200000)}</span>
+                    </div>
+                    <div className="sm:flex sm:items-center sm:justify-center">
+                      <span className="text-xs sm:hidden" style={{ color: 'var(--text-secondary)' }}>Estado: </span>
+                      <span className="inline-flex px-2 py-1 rounded-full text-xs font-medium" style={{
+                        backgroundColor: 'var(--success-bg)',
+                        color: 'var(--success-text)'
+                      }}>
+                        Confirmada
+                      </span>
+                    </div>
+                    <div className="sm:flex sm:items-center sm:justify-center mt-2 sm:mt-0">
+                      <button
+                        className="flex items-center gap-1 px-2 py-1 rounded text-xs"
+                        style={{
+                          backgroundColor: 'var(--accent-bg)',
+                          color: 'var(--accent-text)'
+                        }}
+                      >
+                        <FiEye className="w-3 h-3" />
+                        Ver
+                      </button>
+                    </div>
+                  </div>
+                  
+                  {/* Cotización 5 */}
+                  <div className="sm:grid sm:grid-cols-6 gap-3 p-3 rounded border border-opacity-50" style={{ 
+                    backgroundColor: 'var(--bg-secondary)',
+                    borderColor: 'var(--border)'
+                  }}>
+                    <div className="sm:flex sm:items-center sm:justify-start">
+                      <span className="text-xs sm:hidden" style={{ color: 'var(--text-secondary)' }}>Cotizador: </span>
+                      <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>Diego Silva</span>
+                    </div>
+                    <div className="sm:flex sm:items-center sm:justify-center">
+                      <span className="text-xs sm:hidden" style={{ color: 'var(--text-secondary)' }}>RUT: </span>
+                      <span className="text-sm" style={{ color: 'var(--text-primary)' }}>22.334.567-8</span>
+                    </div>
+                    <div className="sm:flex sm:items-center sm:justify-center">
+                      <span className="text-xs sm:hidden" style={{ color: 'var(--text-secondary)' }}>N°: </span>
+                      <span className="text-sm font-mono" style={{ color: 'var(--accent-primary)' }}>COT-2025-005</span>
+                    </div>
+                    <div className="sm:flex sm:items-center sm:justify-center">
+                      <span className="text-xs sm:hidden" style={{ color: 'var(--text-secondary)' }}>Monto: </span>
+                      <span className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{formatMoney(1450000)}</span>
+                    </div>
+                    <div className="sm:flex sm:items-center sm:justify-center">
+                      <span className="text-xs sm:hidden" style={{ color: 'var(--text-secondary)' }}>Estado: </span>
+                      <span className="inline-flex px-2 py-1 rounded-full text-xs font-medium" style={{
+                        backgroundColor: 'var(--warning-bg)',
+                        color: 'var(--warning-text)'
+                      }}>
+                        Pendiente
+                      </span>
+                    </div>
+                    <div className="sm:flex sm:items-center sm:justify-center mt-2 sm:mt-0">
+                      <button
+                        className="flex items-center gap-1 px-2 py-1 rounded text-xs"
+                        style={{
+                          backgroundColor: 'var(--accent-bg)',
+                          color: 'var(--accent-text)'
+                        }}
+                      >
+                        <FiEye className="w-3 h-3" />
+                        Ver
+                      </button>
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Sistema de paginación */}
+                <div className="mt-4 flex justify-between items-center">
+                  {/* Info de resultados */}
+                  <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+                    Mostrando 5 de 12 cotizaciones
+                  </div>
+                  
+                  {/* Controles de paginación */}
+                  <div className="flex items-center gap-2">
+                    {/* Botón página anterior */}
+                    <button
+                      className="p-2 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+                      style={{
+                        backgroundColor: 'var(--bg-secondary)',
+                        color: 'var(--text-primary)',
+                        border: '1px solid var(--border)'
+                      }}
+                      disabled
+                    >
+                      <FiChevronLeft className="w-4 h-4" />
+                    </button>
+                    
+                    {/* Números de página */}
+                    <div className="flex items-center gap-1">
+                      {/* Página 1 - activa */}
+                      <button
+                        className="px-3 py-1.5 rounded text-sm font-medium"
+                        style={{
+                          backgroundColor: 'var(--accent-primary)',
+                          color: 'white'
+                        }}
+                      >
+                        1
+                      </button>
+                      
+                      {/* Página 2 */}
+                      <button
+                        className="px-3 py-1.5 rounded text-sm font-medium hover:bg-opacity-80"
+                        style={{
+                          backgroundColor: 'var(--bg-secondary)',
+                          color: 'var(--text-primary)',
+                          border: '1px solid var(--border)'
+                        }}
+                      >
+                        2
+                      </button>
+                      
+                      {/* Página 3 */}
+                      <button
+                        className="px-3 py-1.5 rounded text-sm font-medium hover:bg-opacity-80"
+                        style={{
+                          backgroundColor: 'var(--bg-secondary)',
+                          color: 'var(--text-primary)',
+                          border: '1px solid var(--border)'
+                        }}
+                      >
+                        3
+                      </button>
+                      
+                      {/* Separador visual */}
+                      <span className="px-2 text-sm" style={{ color: 'var(--text-muted)' }}>
+                        <FiMoreHorizontal className="w-4 h-4" />
+                      </span>
+                    </div>
+                    
+                    {/* Botón página siguiente */}
+                    <button
+                      className="p-2 rounded hover:bg-opacity-80"
+                      style={{
+                        backgroundColor: 'var(--bg-secondary)',
+                        color: 'var(--text-primary)',
+                        border: '1px solid var(--border)'
+                      }}
+                    >
+                      <FiChevronRight className="w-4 h-4" />
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>

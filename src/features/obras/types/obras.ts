@@ -151,6 +151,7 @@ export interface UseObrasReturn {
   isAdmin: boolean;
   actualizarEstadoObra: (obraId: string, nuevoEstado: EstadoObra) => Promise<boolean>;
   eliminarObra: (obraId: string) => Promise<boolean>;
+  crearObra: (obra: Omit<Obra, 'id' | 'fechaCreacion' | 'fechaActualizacion' | 'fechaUltimoContacto'>) => Promise<boolean>;
   paginationConfig: {
     currentPage: number;
     totalPages: number;
@@ -160,4 +161,6 @@ export interface UseObrasReturn {
   goToPage: (page: number) => void;
   goToNextPage: () => void;
   goToPrevPage: () => void;
+  userId?: string;
+  userName: string;
 }

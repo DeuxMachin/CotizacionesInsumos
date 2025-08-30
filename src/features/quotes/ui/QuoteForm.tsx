@@ -5,7 +5,7 @@ import { Quote } from '@/core/domain/quote/Quote';
 
 type QuoteFormProps = {
   quote?: Quote;
-  onSubmit: (formData: FormData) => Promise<any>;
+  onSubmit: (formData: FormData) => Promise<{ success: boolean; error?: string } | unknown>;
   submitButtonText?: string;
 };
 
@@ -20,8 +20,12 @@ export function QuoteForm({ quote, onSubmit, submitButtonText = 'Guardar' }: Quo
     try {
       const result = await onSubmit(formData);
       
-      if (result && !result.success) {
-        setErrorMessage(result.error || 'Error al procesar la cotización');
+      if (result && typeof result === 'object' && 'success' in result && !result.success) {
+        setErrorMessage(
+          ('error' in result && typeof result.error === 'string') 
+            ? result.error 
+            : 'Error al procesar la cotización'
+        );
       }
     } catch (error) {
       setErrorMessage('Ocurrió un error inesperado');

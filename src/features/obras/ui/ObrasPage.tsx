@@ -33,6 +33,7 @@ import type {
   GetEtapaColor
 } from "../types/obras";
 import { ObraDetailModal } from "./ObraDetailModal";
+import { CreateObraModal } from "./CreateObraModal";
 import { FiltersBar } from "./FiltersBar";
 
 export function ObrasPage() {
@@ -45,10 +46,13 @@ export function ObrasPage() {
     setFiltros, 
     isAdmin,
     eliminarObra,
+    crearObra,
     paginationConfig,
     goToPage,
     goToNextPage,
-    goToPrevPage
+    goToPrevPage,
+    userId,
+    userName
   } = useObras();
 
   const [searchTerm, setSearchTerm] = useState("");
@@ -58,6 +62,7 @@ export function ObrasPage() {
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
   const [selectedObra, setSelectedObra] = useState<Obra | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
   // Aplicar filtros
   useMemo(() => {
@@ -181,6 +186,14 @@ export function ObrasPage() {
     }
   };
 
+  const handleCreateObra = async (nuevaObra: Omit<Obra, 'id' | 'fechaCreacion' | 'fechaActualizacion' | 'fechaUltimoContacto'>): Promise<boolean> => {
+    const success = await crearObra(nuevaObra);
+    if (success) {
+      // Refrescar datos o hacer algo adicional si es necesario
+    }
+    return success;
+  };
+
   if (loading) {
     return (
       <div className="space-y-6 animate-fadeIn">
@@ -238,7 +251,10 @@ export function ObrasPage() {
                 </span>
               )}
             </button>
-            <button className="btn-primary flex items-center gap-2">
+            <button 
+              onClick={() => setIsCreateModalOpen(true)}
+              className="btn-primary flex items-center gap-2"
+            >
               <FiPlus className="w-4 h-4" />
               Nueva Obra
             </button>
@@ -600,6 +616,15 @@ export function ObrasPage() {
           getEtapaColor={getEtapaColor}
         />
       )}
+
+      {/* Modal de Nueva Obra */}
+      <CreateObraModal
+        isOpen={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+        onSave={handleCreateObra}
+        currentUserId={userId || ''}
+        currentUserName={userName}
+      />
 
       {/* Panel de Filtros */}
       <FiltersBar

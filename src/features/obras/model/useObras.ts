@@ -3,7 +3,7 @@
 import { useState, useMemo, useCallback } from "react";
 import { useAuth } from "@/features/auth/model/useAuth";
 import { getObrasByVendedor, getAllObras, getObraById } from "./mock";
-import type { EstadoObra, EtapaObra, FiltroObras, EstadisticasObras } from "./types";
+import type { EstadoObra, EtapaObra, FiltroObras, EstadisticasObras, Obra } from "../types/obras";
 
 interface PaginationConfig {
   currentPage: number;
@@ -178,6 +178,35 @@ export function useObras() {
     }
   }, []);
 
+  const crearObra = useCallback(async (nuevaObra: Omit<Obra, 'id' | 'fechaCreacion' | 'fechaActualizacion' | 'fechaUltimoContacto'>) => {
+    setLoading(true);
+    try {
+      // Simular API call
+      await new Promise(resolve => setTimeout(resolve, 1200));
+      
+      // En producción, aquí iría la llamada a la API
+      console.log('Creando nueva obra:', nuevaObra);
+      
+      // Simular la creación exitosa
+      const obraConId = {
+        ...nuevaObra,
+        id: `obra-${Date.now()}`,
+        fechaCreacion: new Date(),
+        fechaActualizacion: new Date(),
+        fechaUltimoContacto: new Date()
+      };
+      
+      console.log('Obra creada exitosamente:', obraConId);
+      
+      return true;
+    } catch (error) {
+      console.error('Error creando obra:', error);
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   return {
     obras: obrasPaginadas,
     todasLasObras: obrasFiltradas, // Para estadísticas
@@ -189,12 +218,14 @@ export function useObras() {
     obtenerObra,
     actualizarEstadoObra,
     eliminarObra,
+    crearObra,
     // Funciones de paginación
     goToPage,
     goToNextPage,
     goToPrevPage,
     // Utilidades
     isAdmin: user?.role === 'admin',
-    userId: user?.id
+    userId: user?.id,
+    userName: user?.name || 'Usuario'
   };
 }
