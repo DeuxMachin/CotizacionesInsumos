@@ -4,24 +4,106 @@
  */
 
 // Estados válidos que puede tener una cotización en el sistema
-export type QuoteStatus = "pending" | "approved" | "rejected";
+export type QuoteStatus = "borrador" | "enviada" | "aceptada" | "rechazada" | "expirada";
+
+// Información del cliente de la cotización
+export interface ClientInfo {
+  razonSocial: string;
+  rut: string;
+  nombreFantasia?: string;
+  giro: string;
+  direccion: string;
+  ciudad: string;
+  comuna: string;
+  telefono?: string;
+  email?: string;
+  nombreContacto?: string;
+  telefonoContacto?: string;
+}
+
+// Información de despacho
+export interface DeliveryInfo {
+  direccion: string;
+  ciudad: string;
+  comuna: string;
+  fechaEstimada?: string;
+  costoDespacho?: number;
+  observaciones?: string;
+}
+
+// Item de la cotización
+export interface QuoteItem {
+  id: string;
+  codigo: string;
+  descripcion: string;
+  unidad: string;
+  cantidad: number;
+  precioUnitario: number;
+  descuento?: number;
+  subtotal: number;
+}
+
+// Condiciones comerciales
+export interface CommercialTerms {
+  validezOferta: number; // días
+  formaPago: string;
+  tiempoEntrega: string;
+  garantia?: string;
+  observaciones?: string;
+}
 
 // Entidad principal de Cotización con sus propiedades esenciales
 export interface Quote {
-  /** Identificador único de la cotización (ej: COT-001) */
+  /** Identificador único de la cotización (ej: COT-2024-001) */
   id: string;
   
-  /** Nombre del cliente asociado a la cotización */
-  client: string;
+  /** Número correlativo de la cotización */
+  numero: string;
   
-  /** Fecha de creación en formato ISO (YYYY-MM-DD) */
-  date: string;
+  /** Información del cliente */
+  cliente: ClientInfo;
+  
+  /** Fecha de creación */
+  fechaCreacion: string;
+  
+  /** Fecha de última modificación */
+  fechaModificacion: string;
   
   /** Estado actual de la cotización */
-  status: QuoteStatus;
+  estado: QuoteStatus;
   
-  /** Monto total de la cotización en la moneda del sistema */
-  amount: number;
+  /** ID del vendedor que creó la cotización */
+  vendedorId: string;
+  
+  /** Nombre del vendedor */
+  vendedorNombre: string;
+  
+  /** Items de la cotización */
+  items: QuoteItem[];
+  
+  /** Información de despacho */
+  despacho?: DeliveryInfo;
+  
+  /** Condiciones comerciales */
+  condicionesComerciales: CommercialTerms;
+  
+  /** Subtotal sin impuestos */
+  subtotal: number;
+  
+  /** Descuento total */
+  descuentoTotal: number;
+  
+  /** IVA */
+  iva: number;
+  
+  /** Total con impuestos */
+  total: number;
+  
+  /** Notas adicionales */
+  notas?: string;
+  
+  /** Fecha de expiración de la oferta */
+  fechaExpiracion?: string;
 }
 
 // Value Objects - Objetos de valor para validaciones y transformaciones
@@ -31,7 +113,7 @@ export interface Quote {
  * Asegura que solo se usen estados válidos en el dominio
  */
 export class QuoteStatusValidator {
-  private static readonly VALID_STATUSES: QuoteStatus[] = ["pending", "approved", "rejected"];
+  private static readonly VALID_STATUSES: QuoteStatus[] = ["borrador", "enviada", "aceptada", "rechazada", "expirada"];
   
   static isValid(status: string): status is QuoteStatus {
     return this.VALID_STATUSES.includes(status as QuoteStatus);
@@ -39,11 +121,24 @@ export class QuoteStatusValidator {
   
   static getDisplayName(status: QuoteStatus): string {
     const names = {
-      pending: "Pendiente",
-      approved: "Aprobada", 
-      rejected: "Rechazada"
+      borrador: "Borrador",
+      enviada: "Enviada",
+      aceptada: "Aceptada", 
+      rechazada: "Rechazada",
+      expirada: "Expirada"
     };
     return names[status];
+  }
+  
+  static getStatusColor(status: QuoteStatus) {
+    const colors = {
+      borrador: { bg: 'var(--warning-bg)', text: 'var(--warning-text)' },
+      enviada: { bg: 'var(--info-bg)', text: 'var(--info-text)' },
+      aceptada: { bg: 'var(--success-bg)', text: 'var(--success-text)' },
+      rechazada: { bg: 'var(--danger-bg)', text: 'var(--danger-text)' },
+      expirada: { bg: 'var(--neutral-bg)', text: 'var(--neutral-text)' }
+    };
+    return colors[status];
   }
 }
 
@@ -53,35 +148,76 @@ export class QuoteStatusValidator {
  */
 export class QuoteIdGenerator {
   static generate(sequential?: number): string {
+    const year = new Date().getFullYear();
     const num = sequential || Math.floor(Math.random() * 999) + 1;
-    return `COT-${num.toString().padStart(3, '0')}`;
+    return `COT-${year}-${num.toString().padStart(3, '0')}`;
   }
   
   static isValidFormat(id: string): boolean {
-    return /^COT-\d{3}$/.test(id);
+    return /^COT-\d{4}-\d{3}$/.test(id);
   }
 }
 
 /**
- * Calculadora de montos
+ * Calculadora de montos para cotizaciones
  * Centraliza la lógica de cálculos monetarios
  */
 export class QuoteAmountCalculator {
-  static formatCurrency(amount: number, locale: string = 'es-ES'): string {
-    return new Intl.NumberFormat(locale, {
+  static formatCurrency(amount: number): string {
+    return new Intl.NumberFormat('es-CL', {
       style: 'currency',
-      currency: 'USD',
+      currency: 'CLP',
       minimumFractionDigits: 0,
-      maximumFractionDigits: 2
+      maximumFractionDigits: 0
     }).format(amount);
   }
   
-  static calculateTax(amount: number, taxRate: number = 0.21): number {
-    return Math.round((amount * taxRate) * 100) / 100;
+  static calculateItemSubtotal(cantidad: number, precioUnitario: number, descuento: number = 0): number {
+    const subtotal = cantidad * precioUnitario;
+    const descuentoAmount = (subtotal * descuento) / 100;
+    return Math.round((subtotal - descuentoAmount));
   }
   
-  static calculateTotal(amount: number, taxRate?: number): number {
-    const tax = taxRate ? this.calculateTax(amount, taxRate) : 0;
-    return amount + tax;
+  static calculateQuoteTotals(items: QuoteItem[], costoDespacho: number = 0) {
+    const subtotal = items.reduce((sum, item) => sum + item.subtotal, 0);
+    const descuentoTotal = items.reduce((sum, item) => {
+      const itemTotal = item.cantidad * item.precioUnitario;
+      const descuentoItem = item.descuento ? (itemTotal * item.descuento) / 100 : 0;
+      return sum + descuentoItem;
+    }, 0);
+    
+    const baseImponible = subtotal + costoDespacho;
+    const iva = Math.round(baseImponible * 0.19);
+    const total = baseImponible + iva;
+    
+    return {
+      subtotal,
+      descuentoTotal: Math.round(descuentoTotal),
+      iva,
+      total,
+      baseImponible
+    };
   }
+}
+
+/**
+ * Filtros para cotizaciones
+ */
+export interface QuoteFilters {
+  busqueda?: string;
+  estado?: QuoteStatus[];
+  vendedor?: string;
+  fechaDesde?: string;
+  fechaHasta?: string;
+  cliente?: string;
+}
+
+/**
+ * Configuración de paginación para cotizaciones
+ */
+export interface QuotePaginationConfig {
+  currentPage: number;
+  itemsPerPage: number;
+  totalItems: number;
+  totalPages: number;
 }

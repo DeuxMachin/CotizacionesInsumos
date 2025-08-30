@@ -96,12 +96,6 @@ export function DashboardContent() {
             {/* Gestión de Clientes */}
             {section === "clientes" && (
               <div className="space-y-4 sm:space-y-6 animate-fadeIn">
-                {/* Acciones de sección (evitar duplicar títulos del Header) */}
-                <div className="flex items-start justify-end">
-                  <button className="btn-primary flex-shrink-0" onClick={() => { /* TODO: open create client modal */ }}>
-                    <span>Nuevo Cliente</span>
-                  </button>
-                </div>
                 <ClientsPage />
               </div>
             )}
