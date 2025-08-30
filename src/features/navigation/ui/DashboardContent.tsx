@@ -14,6 +14,7 @@ import StockPage from "@/features/stock/ui/StockPage";
 import { AdminReports } from "@/features/reports/ui/AdminReports";
 import { SellerReports } from "@/features/reports/ui/SellerReports";
 import { FinancialSummaryChart } from "@/features/reports/ui/FinancialSummaryChart";
+import { AdminPanel } from "@/features/admin/ui/AdminPanel";
 import { useAuth } from "@/features/auth/model/useAuth";
 import { SalesSummaryKPIs } from "@/features/reports/ui/SalesSummaryKPIs";
 import { SalesTrendChart } from "@/features/reports/ui/SalesTrendChart";
@@ -145,6 +146,11 @@ export function DashboardContent() {
                 {/* Reportes según rol */}
                 {isAdmin ? <AdminReports period={trendPeriod} /> : <SellerReports period={trendPeriod} />}
               </div>
+            )}
+
+            {/* Administración - Solo para administradores */}
+            {section === "admin" && (
+              <AdminPanel />
             )}
 
             {/* Vendedores - placeholder */}

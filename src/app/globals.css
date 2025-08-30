@@ -353,3 +353,82 @@ h1, h2, .display-font { font-family: var(--font-display); }
 .text-theme-secondary { color: var(--text-secondary); }
 .bg-theme-card { background-color: var(--card-bg); }
 .border-subtle { border-color: var(--border-subtle); }
+
+/* Badges adicionales para administración */
+.badge-blue {
+  background-color: var(--info-bg);
+  color: var(--info-text);
+}
+
+.badge-green {
+  background-color: var(--success-bg);
+  color: var(--success-text);
+}
+
+.badge-red {
+  background-color: var(--danger-bg);
+  color: var(--danger-text);
+}
+
+.badge-yellow {
+  background-color: var(--warning-bg);
+  color: var(--warning-text);
+}
+
+.badge-purple {
+  background-color: #ede9fe;
+  color: #7c3aed;
+}
+
+.badge-gray {
+  background-color: var(--neutral-bg);
+  color: var(--neutral-text);
+}
+
+/* Dark mode para badges */
+.dark .badge-blue {
+  background-color: rgb(30 58 138 / 0.2);
+  color: #93c5fd;
+}
+
+.dark .badge-green {
+  background-color: rgb(6 78 59 / 0.2);
+  color: #86efac;
+}
+
+.dark .badge-red {
+  background-color: rgb(153 27 27 / 0.2);
+  color: #fca5a5;
+}
+
+.dark .badge-yellow {
+  background-color: rgb(146 64 14 / 0.2);
+  color: #fcd34d;
+}
+
+.dark .badge-purple {
+  background-color: rgb(124 58 237 / 0.2);
+  color: #c4b5fd;
+}
+
+.dark .badge-gray {
+  background-color: rgb(55 65 81 / 0.2);
+  color: #d1d5db;
+}
+
+/* Estilo adicional para botones de íconos pequeños */
+.btn-icon-sm {
+  padding: 0.375rem;
+  border-radius: 0.375rem;
+  transition-property: color, background-color, border-color, text-decoration-color, fill, stroke;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 200ms;
+}
+
+.btn-icon-sm:hover {
+  background-color: var(--bg-secondary);
+}
+
+.dark .btn-icon-sm:hover {
+  background-color: rgba(75, 85, 99, 0.2);
+}

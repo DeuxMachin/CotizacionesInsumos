@@ -4,6 +4,7 @@ export const metadata = { title: "Panel Administrativo - Cotizaciones" };
 import "./globals.css";
 import { Playfair_Display, Source_Sans_3 } from "next/font/google";
 import { ThemeProvider } from "next-themes";
+import { AuthorizationMiddleware } from "@/middleware/AuthorizationMiddleware";
 import Script from "next/script";
 
 const playfair = Playfair_Display({ subsets: ["latin"], variable: "--font-display" });
@@ -45,7 +46,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           disableTransitionOnChange
           storageKey="theme"
         >
-          {children}
+          <AuthorizationMiddleware>
+            {children}
+          </AuthorizationMiddleware>
         </ThemeProvider>
       </body>
     </html>

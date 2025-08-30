@@ -3,22 +3,14 @@
 import { useSection } from "../model/useSection";
 import type { Section } from "../model/useSection";
 import { useAuth } from "@/features/auth/model/useAuth";
-import { FiHome, FiFileText, FiUsers, FiPackage, FiBarChart2, FiX, FiMapPin } from "react-icons/fi";
+import { useNavigationItems, NAVIGATION_ICONS } from "../model/navigationItems";
+import { FiX } from "react-icons/fi";
 import { Logo } from "@/shared/ui/Logo";
-
-// Elementos de navegación con iconos más profesionales y descriptivos
-const navigationItems = [
-  { key: "dashboard", icon: <FiHome className="w-5 h-5" />, label: "Dashboard" },
-  { key: "cotizaciones", icon: <FiFileText className="w-5 h-5" />, label: "Cotizaciones" },
-  { key: "clientes", icon: <FiUsers className="w-5 h-5" />, label: "Clientes" },
-  { key: "posibles-targets", icon: <FiMapPin className="w-5 h-5" />, label: "Posibles Targets" },
-  { key: "stock", icon: <FiPackage className="w-5 h-5" />, label: "Stock" },
-  { key: "reportes", icon: <FiBarChart2 className="w-5 h-5" />, label: "Reportes" },
-] as const;
 
 export function Sidebar() {
   const { section, setSection, sidebarOpen, setSidebarOpen } = useSection();
   const { user } = useAuth();
+  const { navigationItems } = useNavigationItems(user?.role || '');
 
   return (
     <>
@@ -53,8 +45,10 @@ export function Sidebar() {
           <div className="flex items-center gap-2 sm:gap-3 min-w-0">
             <Logo height={22} className="shrink-0 sm:h-7" />
             <div className="flex flex-col min-w-0">
-              <span className="font-bold text-theme-primary text-sm truncate">Panel Admin</span>
-              <span className="text-xs text-theme-secondary truncate">Sistema v1.0</span>
+              <span className="font-bold text-theme-primary text-sm truncate">
+                {user?.role?.toLowerCase() === 'admin' ? 'Panel Admin' : 'Sistema'}
+              </span>
+              <span className="text-xs text-theme-secondary truncate">v1.0</span>
             </div>
           </div>
           <button 
@@ -69,34 +63,58 @@ export function Sidebar() {
         {/* Items de navegación */}
         <nav className="flex-1 py-4 overflow-y-auto">
           <ul className="space-y-1 px-2">
-            {navigationItems.map((item) => (
-              <li key={item.key}>
-                <button
-                  onClick={() => {
-                    setSection(item.key as Section);
-                    setSidebarOpen(false);
-                  }}
-                  className={`
-                    w-full flex items-center gap-3 px-3 py-2.5 rounded-lg
-                    transition-colors duration-200 
-                    ${section === item.key 
-                      ? `bg-theme-accent text-orange-600 dark:text-orange-400 font-medium` 
-                      : `hover:bg-theme-secondary text-theme-secondary`
-                    }
-                  `}
-                >
-                  <span className={`
-                    ${section === item.key 
-                      ? `text-orange-600 dark:text-orange-400` 
-                      : `text-theme-secondary`
-                    }
-                  `}>
-                    {item.icon}
-                  </span>
-                  <span>{item.label}</span>
-                </button>
-              </li>
-            ))}
+            {navigationItems.map((item) => {
+              const IconComponent = NAVIGATION_ICONS[item.iconName as keyof typeof NAVIGATION_ICONS];
+              const isActive = section === item.key;
+              const isComingSoon = item.comingSoon;
+              
+              return (
+                <li key={item.key}>
+                  <button
+                    onClick={() => {
+                      if (!isComingSoon) {
+                        setSection(item.key as Section);
+                        setSidebarOpen(false);
+                      }
+                    }}
+                    disabled={isComingSoon}
+                    className={`
+                      w-full flex items-center gap-3 px-3 py-2.5 rounded-lg
+                      transition-colors duration-200 
+                      ${isActive 
+                        ? `bg-theme-accent text-orange-600 dark:text-orange-400 font-medium` 
+                        : isComingSoon
+                        ? `text-theme-muted cursor-not-allowed opacity-50`
+                        : `hover:bg-theme-secondary text-theme-secondary`
+                      }
+                    `}
+                    title={isComingSoon ? 'Próximamente disponible' : item.description}
+                  >
+                    <span className={`
+                      ${isActive 
+                        ? `text-orange-600 dark:text-orange-400` 
+                        : isComingSoon
+                        ? `text-theme-muted`
+                        : `text-theme-secondary`
+                      }
+                    `}>
+                      <IconComponent className="w-5 h-5" />
+                    </span>
+                    <span className="flex-1 text-left">{item.label}</span>
+                    {item.badge && (
+                      <span className="px-2 py-0.5 text-xs rounded-full bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300">
+                        {item.badge}
+                      </span>
+                    )}
+                    {isComingSoon && (
+                      <span className="px-2 py-0.5 text-xs rounded-full bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400">
+                        Pronto
+                      </span>
+                    )}
+                  </button>
+                </li>
+              );
+            })}
           </ul>
         </nav>
         
@@ -111,7 +129,14 @@ export function Sidebar() {
             </div>
             <div className="flex flex-col min-w-0">
               <span className="font-medium text-theme-primary text-sm truncate">{user?.name || "Usuario"}</span>
-              <span className="text-xs text-theme-secondary truncate">{user?.email || "usuario@mail.com"}</span>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-theme-secondary truncate">{user?.email || "usuario@mail.com"}</span>
+                {user?.role?.toLowerCase() === 'admin' && (
+                  <span className="px-1.5 py-0.5 text-xs rounded bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300">
+                    Admin
+                  </span>
+                )}
+              </div>
             </div>
           </div>
         </div>

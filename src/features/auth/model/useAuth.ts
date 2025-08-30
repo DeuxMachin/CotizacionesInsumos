@@ -2,6 +2,7 @@
 
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import { auditLogger } from "@/shared/lib/auditLogger";
 
 interface User {
   id: string;
@@ -45,7 +46,7 @@ const mockUsers = [
 
 export const useAuth = create<AuthState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       user: null,
       isAuthenticated: false,
       isLoading: false,
@@ -63,11 +64,16 @@ export const useAuth = create<AuthState>()(
         if (user) {
           const { password: _pw, ...userWithoutPassword } = user;
           void _pw;
+          
           set({ 
             user: userWithoutPassword, 
             isAuthenticated: true, 
             isLoading: false 
           });
+
+          // Registrar login en auditoría
+          auditLogger.logLogin(userWithoutPassword.id, userWithoutPassword.email, userWithoutPassword.role);
+          
           return { success: true };
         } else {
           set({ isLoading: false });
@@ -79,7 +85,17 @@ export const useAuth = create<AuthState>()(
       },
 
       logout: () => {
+        const currentUser = get().user;
+        
+        // Registrar logout en auditoría antes de limpiar el estado
+        if (currentUser) {
+          auditLogger.logLogout(currentUser.id, currentUser.email, currentUser.role);
+        }
+        
         set({ user: null, isAuthenticated: false });
+        
+        // Redirect to login page
+        window.location.href = '/login';
       },
     }),
     {
