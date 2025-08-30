@@ -97,6 +97,7 @@ export function Header() {
           >
             <FiMenu className="w-4 h-4 sm:w-5 sm:h-5" />
           </button>
+          
           <div className="lg:hidden">
             <Logo height={20} className="opacity-90 sm:h-6" />
           </div>

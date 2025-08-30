@@ -29,17 +29,21 @@ export function LoginForm() {
     e.preventDefault();
     setError("");
 
-    const result = await login(formData.email, formData.password);
-    
-    if (!result.success) {
-      setError(result.error || "Error desconocido");
-    } else {
-      // Redirección por rol
-      if (formData.email === "admin@empresa.com") {
-        router.replace("/admin");
+    try {
+      const result = await login(formData.email, formData.password);
+      
+      if (!result.success) {
+        setError(result.error || "Error desconocido");
       } else {
-        router.replace("/");
+        console.log("Login exitoso, redirigiendo...");
+        
+        // Redirección manual basada en el email
+        const isAdmin = formData.email === "admin@empresa.com";
+        router.push(isAdmin ? "/admin" : "/dashboard");
       }
+    } catch (err) {
+      console.error("Error en login:", err);
+      setError("Ocurrió un error inesperado. Intente nuevamente.");
     }
   };
 

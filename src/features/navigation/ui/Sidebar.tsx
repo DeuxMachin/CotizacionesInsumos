@@ -6,11 +6,30 @@ import { useAuth } from "@/features/auth/model/useAuth";
 import { useNavigationItems, NAVIGATION_ICONS } from "../model/navigationItems";
 import { FiX } from "react-icons/fi";
 import { Logo } from "@/shared/ui/Logo";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 
 export function Sidebar() {
-  const { section, setSection, sidebarOpen, setSidebarOpen } = useSection();
+  const { sidebarOpen, setSidebarOpen } = useSection();
   const { user } = useAuth();
   const { navigationItems } = useNavigationItems(user?.role || '');
+  const pathname = usePathname();
+
+  // Determinar qué sección está activa basada en la URL actual
+  const getActiveSection = (path: string): Section => {
+    if (path.startsWith('/admin')) return 'admin';
+    if (path.startsWith('/dashboard/cotizaciones')) return 'cotizaciones';
+    if (path.startsWith('/dashboard/clientes')) return 'clientes';
+    if (path.startsWith('/dashboard/obras')) return 'obras';
+    if (path.startsWith('/dashboard/posibles-targets')) return 'posibles-targets';
+    if (path.startsWith('/dashboard/stock')) return 'stock';
+    if (path.startsWith('/dashboard/reportes')) return 'reportes';
+    if (path.startsWith('/dashboard/configuracion')) return 'configuracion';
+    if (path.startsWith('/dashboard')) return 'dashboard';
+    return 'dashboard';
+  };
+
+  const activeSection = getActiveSection(pathname);
 
   return (
     <>
@@ -65,53 +84,67 @@ export function Sidebar() {
           <ul className="space-y-1 px-2">
             {navigationItems.map((item) => {
               const IconComponent = NAVIGATION_ICONS[item.iconName as keyof typeof NAVIGATION_ICONS];
-              const isActive = section === item.key;
+              const isActive = activeSection === item.key;
               const isComingSoon = item.comingSoon;
+              
+              // Determinar la URL basada en la clave del elemento
+              const getItemUrl = (key: Section): string => {
+                if (key === 'admin') return '/admin';
+                return `/dashboard/${key === 'dashboard' ? '' : key}`;
+              };
+              
+              const itemUrl = getItemUrl(item.key);
               
               return (
                 <li key={item.key}>
-                  <button
-                    onClick={() => {
-                      if (!isComingSoon) {
-                        setSection(item.key as Section);
-                        setSidebarOpen(false);
-                      }
-                    }}
-                    disabled={isComingSoon}
-                    className={`
-                      w-full flex items-center gap-3 px-3 py-2.5 rounded-lg
-                      transition-colors duration-200 
-                      ${isActive 
-                        ? `bg-theme-accent text-orange-600 dark:text-orange-400 font-medium` 
-                        : isComingSoon
-                        ? `text-theme-muted cursor-not-allowed opacity-50`
-                        : `hover:bg-theme-secondary text-theme-secondary`
-                      }
-                    `}
-                    title={isComingSoon ? 'Próximamente disponible' : item.description}
-                  >
-                    <span className={`
-                      ${isActive 
-                        ? `text-orange-600 dark:text-orange-400` 
-                        : isComingSoon
-                        ? `text-theme-muted`
-                        : `text-theme-secondary`
-                      }
-                    `}>
-                      <IconComponent className="w-5 h-5" />
-                    </span>
-                    <span className="flex-1 text-left">{item.label}</span>
-                    {item.badge && (
-                      <span className="px-2 py-0.5 text-xs rounded-full bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300">
-                        {item.badge}
+                  {isComingSoon ? (
+                    <button
+                      disabled
+                      className={`
+                        w-full flex items-center gap-3 px-3 py-2.5 rounded-lg
+                        transition-colors duration-200 
+                        text-theme-muted cursor-not-allowed opacity-50
+                      `}
+                      title="Próximamente disponible"
+                    >
+                      <span className="text-theme-muted">
+                        <IconComponent className="w-5 h-5" />
                       </span>
-                    )}
-                    {isComingSoon && (
+                      <span className="flex-1 text-left">{item.label}</span>
                       <span className="px-2 py-0.5 text-xs rounded-full bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400">
                         Pronto
                       </span>
-                    )}
-                  </button>
+                    </button>
+                  ) : (
+                    <Link
+                      href={itemUrl}
+                      onClick={() => setSidebarOpen(false)}
+                      className={`
+                        w-full flex items-center gap-3 px-3 py-2.5 rounded-lg
+                        transition-colors duration-200 
+                        ${isActive 
+                          ? `bg-theme-accent text-orange-600 dark:text-orange-400 font-medium` 
+                          : `hover:bg-theme-secondary text-theme-secondary`
+                        }
+                      `}
+                      title={item.description}
+                    >
+                      <span className={`
+                        ${isActive 
+                          ? `text-orange-600 dark:text-orange-400` 
+                          : `text-theme-secondary`
+                        }
+                      `}>
+                        <IconComponent className="w-5 h-5" />
+                      </span>
+                      <span className="flex-1 text-left">{item.label}</span>
+                      {item.badge && (
+                        <span className="px-2 py-0.5 text-xs rounded-full bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300">
+                          {item.badge}
+                        </span>
+                      )}
+                    </Link>
+                  )}
                 </li>
               );
             })}

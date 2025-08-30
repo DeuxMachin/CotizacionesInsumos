@@ -2,6 +2,8 @@
 
 import { useAuth } from "@/features/auth/model/useAuth";
 import { usePermissions, type Resource, type Action } from "@/features/auth/model/permissions";
+import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -18,8 +20,22 @@ export function ProtectedRoute({
   fallback,
   requireAdmin = false 
 }: ProtectedRouteProps) {
-  const { user } = useAuth();
+  const { user, isAuthenticated } = useAuth();
   const { hasPermission } = usePermissions(user?.role || '');
+  const router = useRouter();
+  
+  useEffect(() => {
+    // Verificar autenticación primero
+    if (!isAuthenticated) {
+      router.push('/login');
+      return;
+    }
+  }, [isAuthenticated, router]);
+
+  // Si no está autenticado, no renderizar nada hasta que la redirección ocurra
+  if (!isAuthenticated) {
+    return null;
+  }
 
   // Si requiere admin y no es admin, mostrar fallback
   if (requireAdmin && user?.role?.toLowerCase() !== 'admin') {
