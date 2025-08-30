@@ -4,7 +4,6 @@ import { useState, useMemo } from "react";
 import { 
   FiTool, 
   FiHome, 
-  FiUsers, 
   FiCalendar, 
   FiDollarSign,
   FiSearch,
@@ -14,16 +13,27 @@ import {
   FiEdit3,
   FiTrash2,
   FiPhone,
-  FiMail,
   FiMapPin,
   FiActivity,
   FiClock,
   FiTrendingUp,
   FiChevronLeft,
-  FiChevronRight
+  FiChevronRight,
+  FiX
 } from "react-icons/fi";
 import { useObras } from "../model/useObras";
-import type { Obra, EstadoObra, EtapaObra } from "../model/types";
+import type { 
+  Obra, 
+  EstadoObra, 
+  EtapaObra,
+  FiltroObras,
+  ObraCardProps,
+  ObrasTableProps,
+  GetEstadoColor,
+  GetEtapaColor
+} from "../types/obras";
+import { ObraDetailModal } from "./ObraDetailModal";
+import { FiltersBar } from "./FiltersBar";
 
 export function ObrasPage() {
   const { 
@@ -34,7 +44,6 @@ export function ObrasPage() {
     filtros, 
     setFiltros, 
     isAdmin,
-    actualizarEstadoObra,
     eliminarObra,
     paginationConfig,
     goToPage,
@@ -47,19 +56,41 @@ export function ObrasPage() {
   const [selectedEtapas, setSelectedEtapas] = useState<EtapaObra[]>([]);
   const [showFilters, setShowFilters] = useState(false);
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
+  const [selectedObra, setSelectedObra] = useState<Obra | null>(null);
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
 
   // Aplicar filtros
   useMemo(() => {
     setFiltros({
-      ...filtros,
       busqueda: searchTerm || undefined,
       estado: selectedEstados.length > 0 ? selectedEstados : undefined,
       etapa: selectedEtapas.length > 0 ? selectedEtapas : undefined
     });
   }, [searchTerm, selectedEstados, selectedEtapas, setFiltros]);
 
+  // Contar filtros activos
+  const filtrosActivos = useMemo(() => {
+    let count = 0;
+    if (filtros.estado && filtros.estado.length > 0) count++;
+    if (filtros.etapa && filtros.etapa.length > 0) count++;
+    if (filtros.vendedor) count++;
+    if (filtros.fechaDesde) count++;
+    if (filtros.fechaHasta) count++;
+    if (filtros.busqueda) count++;
+    return count;
+  }, [filtros]);
+
+  // Obtener lista única de vendedores
+  const vendedores = useMemo(() => {
+    const vendedoresSet = new Set(todasLasObras.map(obra => obra.nombreVendedor));
+    return Array.from(vendedoresSet).map(nombre => ({
+      id: nombre.toLowerCase().replace(/\s+/g, '-'),
+      nombre
+    }));
+  }, [todasLasObras]);
+
   // Obtener color según estado de obra
-  const getEstadoColor = (estado: EstadoObra) => {
+  const getEstadoColor: GetEstadoColor = (estado: EstadoObra) => {
     const colores = {
       planificacion: { bg: 'var(--info-bg)', text: 'var(--info-text)' },
       activa: { bg: 'var(--success-bg)', text: 'var(--success-text)' },
@@ -72,14 +103,14 @@ export function ObrasPage() {
   };
 
   // Obtener color según etapa
-  const getEtapaColor = (etapa: EtapaObra) => {
+  const getEtapaColor: GetEtapaColor = (etapa: EtapaObra) => {
     const colores = {
-      fundacion: '#8B5CF6', // purple
-      estructura: '#3B82F6', // blue  
-      albanileria: '#F59E0B', // amber
-      instalaciones: '#10B981', // emerald
-      terminaciones: '#EF4444', // red
-      entrega: '#6B7280' // gray
+      fundacion: { bg: '#8B5CF6', text: '#FFFFFF' }, // purple
+      estructura: { bg: '#3B82F6', text: '#FFFFFF' }, // blue  
+      albanileria: { bg: '#F59E0B', text: '#FFFFFF' }, // amber
+      instalaciones: { bg: '#10B981', text: '#FFFFFF' }, // emerald
+      terminaciones: { bg: '#EF4444', text: '#FFFFFF' }, // red
+      entrega: { bg: '#6B7280', text: '#FFFFFF' } // gray
     };
     return colores[etapa];
   };
@@ -94,20 +125,59 @@ export function ObrasPage() {
   };
 
   // Manejar acciones de obra
-  const handleEstadoChange = async (obraId: string, nuevoEstado: EstadoObra) => {
-    const success = await actualizarEstadoObra(obraId, nuevoEstado);
-    if (success) {
-      // Mostrar mensaje de éxito
-      alert('Estado actualizado exitosamente');
-    }
-  };
-
   const handleEliminar = async (obraId: string) => {
     if (confirm('¿Estás seguro de que deseas eliminar esta obra?')) {
       const success = await eliminarObra(obraId);
       if (success) {
         alert('Obra eliminada exitosamente');
       }
+    }
+  };
+
+  const handleVerDetalle = (obra: Obra) => {
+    setSelectedObra(obra);
+    setIsDetailModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setIsDetailModalOpen(false);
+    setSelectedObra(null);
+  };
+
+  const handleClearFilters = () => {
+    setSearchTerm('');
+    setSelectedEstados([]);
+    setSelectedEtapas([]);
+    setFiltros({});
+  };
+
+  const handleFiltroChange = <K extends keyof FiltroObras>(
+    key: K, 
+    value: FiltroObras[K]
+  ) => {
+    if (key === 'busqueda') {
+      setSearchTerm(value as string || '');
+    } else if (key === 'estado') {
+      setSelectedEstados(value as EstadoObra[] || []);
+    } else if (key === 'etapa') {
+      setSelectedEtapas(value as EtapaObra[] || []);
+    }
+    
+    setFiltros({
+      ...filtros,
+      [key]: value
+    });
+  };
+
+  const handleUpdateObra = async (obraActualizada: Obra): Promise<boolean> => {
+    try {
+      // Aquí iría la lógica para actualizar la obra
+      // Por ahora simulamos una actualización exitosa
+      console.log('Actualizando obra:', obraActualizada);
+      return true;
+    } catch (error) {
+      console.error('Error actualizando obra:', error);
+      return false;
     }
   };
 
@@ -155,10 +225,18 @@ export function ObrasPage() {
           <div className="flex items-center gap-3">
             <button
               onClick={() => setShowFilters(!showFilters)}
-              className="btn-secondary flex items-center gap-2"
+              className="btn-secondary flex items-center gap-2 relative"
             >
               <FiFilter className="w-4 h-4" />
               Filtros
+              {filtrosActivos > 0 && (
+                <span 
+                  className="absolute -top-1 -right-1 w-5 h-5 text-xs rounded-full flex items-center justify-center text-white font-medium"
+                  style={{ backgroundColor: 'var(--accent-primary)' }}
+                >
+                  {filtrosActivos}
+                </span>
+              )}
             </button>
             <button className="btn-primary flex items-center gap-2">
               <FiPlus className="w-4 h-4" />
@@ -213,6 +291,73 @@ export function ObrasPage() {
             </button>
           </div>
         </div>
+
+        {/* Filtros Activos */}
+        {filtrosActivos > 0 && (
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+              Filtros activos:
+            </span>
+            {filtros.estado && filtros.estado.length > 0 && (
+              <div className="flex items-center gap-2 px-3 py-1 rounded-full text-sm" 
+                   style={{ backgroundColor: 'var(--accent-bg)', color: 'var(--accent-text)' }}>
+                Estados: {filtros.estado.length}
+                <button
+                  onClick={() => setFiltros({ ...filtros, estado: undefined })}
+                  className="ml-1 hover:bg-black/10 rounded-full p-0.5"
+                >
+                  <FiX className="w-3 h-3" />
+                </button>
+              </div>
+            )}
+            {filtros.etapa && filtros.etapa.length > 0 && (
+              <div className="flex items-center gap-2 px-3 py-1 rounded-full text-sm" 
+                   style={{ backgroundColor: 'var(--info-bg)', color: 'var(--info-text)' }}>
+                Etapas: {filtros.etapa.length}
+                <button
+                  onClick={() => setFiltros({ ...filtros, etapa: undefined })}
+                  className="ml-1 hover:bg-black/10 rounded-full p-0.5"
+                >
+                  <FiX className="w-3 h-3" />
+                </button>
+              </div>
+            )}
+            {filtros.vendedor && (
+              <div className="flex items-center gap-2 px-3 py-1 rounded-full text-sm" 
+                   style={{ backgroundColor: 'var(--success-bg)', color: 'var(--success-text)' }}>
+                {filtros.vendedor}
+                <button
+                  onClick={() => setFiltros({ ...filtros, vendedor: undefined })}
+                  className="ml-1 hover:bg-black/10 rounded-full p-0.5"
+                >
+                  <FiX className="w-3 h-3" />
+                </button>
+              </div>
+            )}
+            {(filtros.fechaDesde || filtros.fechaHasta) && (
+              <div className="flex items-center gap-2 px-3 py-1 rounded-full text-sm" 
+                   style={{ backgroundColor: 'var(--warning-bg)', color: 'var(--warning-text)' }}>
+                Rango de fechas
+                <button
+                  onClick={() => setFiltros({ ...filtros, fechaDesde: undefined, fechaHasta: undefined })}
+                  className="ml-1 hover:bg-black/10 rounded-full p-0.5"
+                >
+                  <FiX className="w-3 h-3" />
+                </button>
+              </div>
+            )}
+            <button
+              onClick={() => setFiltros({})}
+              className="text-xs px-2 py-1 rounded transition-colors"
+              style={{ 
+                color: 'var(--text-muted)',
+                textDecoration: 'underline'
+              }}
+            >
+              Limpiar todos
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Estadísticas rápidas */}
@@ -338,8 +483,8 @@ export function ObrasPage() {
               getEstadoColor={getEstadoColor}
               getEtapaColor={getEtapaColor}
               formatMoney={formatMoney}
-              onEstadoChange={handleEstadoChange}
               onEliminar={handleEliminar}
+              onVerDetalle={handleVerDetalle}
             />
           ))}
         </div>
@@ -348,8 +493,8 @@ export function ObrasPage() {
           obras={obras}
           getEstadoColor={getEstadoColor}
           formatMoney={formatMoney}
-          onEstadoChange={handleEstadoChange}
           onEliminar={handleEliminar}
+          onVerDetalle={handleVerDetalle}
         />
       )}
 
@@ -442,25 +587,41 @@ export function ObrasPage() {
           </div>
         </div>
       )}
+
+      {/* Modal de Detalle de Obra */}
+      {selectedObra && (
+        <ObraDetailModal
+          obra={selectedObra}
+          isOpen={isDetailModalOpen}
+          onClose={handleCloseModal}
+          onUpdate={handleUpdateObra}
+          formatMoney={formatMoney}
+          getEstadoColor={getEstadoColor}
+          getEtapaColor={getEtapaColor}
+        />
+      )}
+
+      {/* Panel de Filtros */}
+      <FiltersBar
+        filtros={filtros}
+        onFiltrosChange={setFiltros}
+        onFiltroChange={handleFiltroChange}
+        onClearFilters={handleClearFilters}
+        isOpen={showFilters}
+        onClose={() => setShowFilters(false)}
+        vendedores={vendedores}
+      />
     </div>
   );
 }
 
 // Componente para tarjeta individual de obra
-interface ObraCardProps {
-  obra: Obra;
-  getEstadoColor: (estado: EstadoObra) => { bg: string; text: string };
-  getEtapaColor: (etapa: EtapaObra) => string;
-  formatMoney: (amount: number) => string;
-  onEstadoChange: (obraId: string, nuevoEstado: EstadoObra) => void;
-  onEliminar: (obraId: string) => void;
-}
-
-function ObraCard({ obra, getEstadoColor, getEtapaColor, formatMoney, onEstadoChange, onEliminar }: ObraCardProps) {
+function ObraCard({ obra, getEstadoColor, getEtapaColor, formatMoney, onEliminar, onVerDetalle }: ObraCardProps) {
   const estadoColor = getEstadoColor(obra.estado);
   
   return (
     <div
+      onClick={() => onVerDetalle(obra)}
       className="rounded-xl shadow-sm hover:shadow-md transition-all cursor-pointer"
       style={{ 
         backgroundColor: 'var(--card-bg)',
@@ -520,7 +681,7 @@ function ObraCard({ obra, getEstadoColor, getEtapaColor, formatMoney, onEstadoCh
           <div className="flex items-center gap-2">
             <div 
               className="w-3 h-3 rounded-full"
-              style={{ backgroundColor: getEtapaColor(obra.etapaActual) }}
+              style={{ backgroundColor: getEtapaColor(obra.etapaActual).bg }}
             />
             <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
               {obra.etapaActual}
@@ -566,6 +727,10 @@ function ObraCard({ obra, getEstadoColor, getEtapaColor, formatMoney, onEstadoCh
         <div className="flex items-center justify-between mt-4 pt-4 border-t" style={{ borderColor: 'var(--border)' }}>
           <div className="flex items-center gap-1">
             <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onVerDetalle(obra);
+              }}
               className="p-1 rounded transition-colors"
               style={{ color: 'var(--text-secondary)' }}
               onMouseEnter={(e) => e.currentTarget.style.color = 'var(--accent-primary)'}
@@ -575,6 +740,7 @@ function ObraCard({ obra, getEstadoColor, getEtapaColor, formatMoney, onEstadoCh
               <FiEye className="w-4 h-4" />
             </button>
             <button
+              onClick={(e) => e.stopPropagation()}
               className="p-1 rounded transition-colors"
               style={{ color: 'var(--text-secondary)' }}
               onMouseEnter={(e) => e.currentTarget.style.color = 'var(--accent-primary)'}
@@ -584,7 +750,10 @@ function ObraCard({ obra, getEstadoColor, getEtapaColor, formatMoney, onEstadoCh
               <FiEdit3 className="w-4 h-4" />
             </button>
             <button
-              onClick={() => onEliminar(obra.id)}
+              onClick={(e) => {
+                e.stopPropagation();
+                onEliminar(obra.id);
+              }}
               className="p-1 rounded transition-colors"
               style={{ color: 'var(--text-secondary)' }}
               onMouseEnter={(e) => e.currentTarget.style.color = 'var(--danger)'}
@@ -604,15 +773,7 @@ function ObraCard({ obra, getEstadoColor, getEtapaColor, formatMoney, onEstadoCh
 }
 
 // Componente para vista de tabla (simplificado)
-interface ObrasTableProps {
-  obras: Obra[];
-  getEstadoColor: (estado: EstadoObra) => { bg: string; text: string };
-  formatMoney: (amount: number) => string;
-  onEstadoChange: (obraId: string, nuevoEstado: EstadoObra) => void;
-  onEliminar: (obraId: string) => void;
-}
-
-function ObrasTable({ obras, getEstadoColor, formatMoney, onEstadoChange, onEliminar }: ObrasTableProps) {
+function ObrasTable({ obras, getEstadoColor, formatMoney, onEliminar, onVerDetalle }: ObrasTableProps) {
   return (
     <div 
       className="rounded-lg overflow-hidden"
@@ -643,12 +804,13 @@ function ObrasTable({ obras, getEstadoColor, formatMoney, onEstadoChange, onElim
             </tr>
           </thead>
           <tbody>
-            {obras.map((obra, index) => {
+            {obras.map((obra) => {
               const estadoColor = getEstadoColor(obra.estado);
               return (
                 <tr 
                   key={obra.id}
-                  className={`border-t transition-colors hover:bg-opacity-50`}
+                  onClick={() => onVerDetalle(obra)}
+                  className={`border-t transition-colors hover:bg-opacity-50 cursor-pointer`}
                   style={{ 
                     borderColor: 'var(--border)',
                   }}
@@ -696,6 +858,10 @@ function ObrasTable({ obras, getEstadoColor, formatMoney, onEstadoChange, onElim
                   <td className="px-4 py-4">
                     <div className="flex items-center justify-center gap-1">
                       <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onVerDetalle(obra);
+                        }}
                         className="p-1 rounded transition-colors"
                         style={{ color: 'var(--text-secondary)' }}
                         onMouseEnter={(e) => e.currentTarget.style.color = 'var(--accent-primary)'}
@@ -705,6 +871,7 @@ function ObrasTable({ obras, getEstadoColor, formatMoney, onEstadoChange, onElim
                         <FiEye className="w-4 h-4" />
                       </button>
                       <button
+                        onClick={(e) => e.stopPropagation()}
                         className="p-1 rounded transition-colors"
                         style={{ color: 'var(--text-secondary)' }}
                         onMouseEnter={(e) => e.currentTarget.style.color = 'var(--accent-primary)'}
@@ -714,7 +881,10 @@ function ObrasTable({ obras, getEstadoColor, formatMoney, onEstadoChange, onElim
                         <FiEdit3 className="w-4 h-4" />
                       </button>
                       <button
-                        onClick={() => onEliminar(obra.id)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onEliminar(obra.id);
+                        }}
                         className="p-1 rounded transition-colors"
                         style={{ color: 'var(--text-secondary)' }}
                         onMouseEnter={(e) => e.currentTarget.style.color = 'var(--danger)'}

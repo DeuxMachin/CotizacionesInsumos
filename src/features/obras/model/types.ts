@@ -51,6 +51,8 @@ export interface Obra {
   fechaInicio: Date;
   fechaEstimadaFin?: Date;
   fechaUltimoContacto: Date;
+  duracionEstimada?: number;       // Duración estimada en meses
+  presupuesto?: number;            // Presupuesto total asignado
   
   // Métricas de negocio
   valorEstimado?: number;

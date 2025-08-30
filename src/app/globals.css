@@ -493,3 +493,15 @@ p, .text-body {
 .dark .btn-icon-sm:hover {
   background-color: rgba(75, 85, 99, 0.2);
 }
+
+/* Utilidades adicionales para responsividad */
+@layer utilities {
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  
+  .no-scrollbar {
+    -ms-overflow-style: none;  /* IE and Edge */
+    scrollbar-width: none;  /* Firefox */
+  }
+}

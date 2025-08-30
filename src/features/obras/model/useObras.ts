@@ -2,8 +2,8 @@
 
 import { useState, useMemo, useCallback } from "react";
 import { useAuth } from "@/features/auth/model/useAuth";
-import { mockObras, getObrasByVendedor, getAllObras, getObraById } from "./mock";
-import type { Obra, EstadoObra, EtapaObra, FiltroObras, EstadisticasObras } from "./types";
+import { getObrasByVendedor, getAllObras, getObraById } from "./mock";
+import type { EstadoObra, EtapaObra, FiltroObras, EstadisticasObras } from "./types";
 
 interface PaginationConfig {
   currentPage: number;
