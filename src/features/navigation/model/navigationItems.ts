@@ -1,6 +1,6 @@
 "use client";
 
-import { FiHome, FiFileText, FiUsers, FiPackage, FiBarChart2, FiMapPin, FiSettings, FiShield } from "react-icons/fi";
+import { FiHome, FiFileText, FiUsers, FiPackage, FiBarChart2, FiMapPin, FiSettings, FiShield, FiTool } from "react-icons/fi";
 import type { Section } from "./useSection";
 import { usePermissions, type Resource, type Action } from "@/features/auth/model/permissions";
 
@@ -21,6 +21,7 @@ export const NAVIGATION_ICONS = {
   dashboard: FiHome,
   cotizaciones: FiFileText,
   clientes: FiUsers,
+  obras: FiTool,
   'posibles-targets': FiMapPin,
   stock: FiPackage,
   reportes: FiBarChart2,
@@ -52,6 +53,14 @@ export const ALL_NAVIGATION_ITEMS: NavigationItem[] = [
     label: "Clientes",
     description: "Administración de clientes",
     resource: "clients",
+    requiredActions: ["read"],
+  },
+  {
+    key: "obras",
+    iconName: "obras",
+    label: "Obras",
+    description: "Gestión de obras en construcción",
+    resource: "obras",
     requiredActions: ["read"],
   },
   {

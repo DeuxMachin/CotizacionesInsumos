@@ -10,6 +10,7 @@ import { FiltersBar } from "@/features/quotes/ui/FiltersBar";
 import { NewQuoteModal } from "@/features/quotes/ui/NewQuoteModal";
 import { ToastHost } from "@/shared/ui/Toast";
 import { ClientsPage } from "@/features/clients/ui/ClientsPage";
+import { ObrasPage } from "@/features/obras/ui/ObrasPage";
 import StockPage from "@/features/stock/ui/StockPage";
 import { AdminReports } from "@/features/reports/ui/AdminReports";
 import { SellerReports } from "@/features/reports/ui/SellerReports";
@@ -103,6 +104,11 @@ export function DashboardContent() {
                 </div>
                 <ClientsPage />
               </div>
+            )}
+
+            {/* Gestión de Obras */}
+            {section === "obras" && (
+              <ObrasPage />
             )}
 
             {/* Control de Stock */}

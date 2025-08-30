@@ -2,17 +2,35 @@
 export const metadata = { title: "Panel Administrativo - Cotizaciones" };
 
 import "./globals.css";
-import { Playfair_Display, Source_Sans_3 } from "next/font/google";
+import { Inter, JetBrains_Mono, Lexend } from "next/font/google";
 import { ThemeProvider } from "next-themes";
 import { AuthorizationMiddleware } from "@/middleware/AuthorizationMiddleware";
 import Script from "next/script";
 
-const playfair = Playfair_Display({ subsets: ["latin"], variable: "--font-display" });
-const sourceSans = Source_Sans_3({ subsets: ["latin"], variable: "--font-sans" });
+// Fuente principal para texto general - muy profesional y legible
+const inter = Inter({ 
+  subsets: ["latin"], 
+  variable: "--font-sans",
+  display: "swap"
+});
+
+// Fuente para títulos - diseñada para mejor legibilidad
+const lexend = Lexend({ 
+  subsets: ["latin"], 
+  variable: "--font-display",
+  display: "swap"
+});
+
+// Fuente monospace para código y números
+const jetbrainsMono = JetBrains_Mono({ 
+  subsets: ["latin"], 
+  variable: "--font-mono",
+  display: "swap"
+});
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="es" className={`${sourceSans.variable} ${playfair.variable}`} suppressHydrationWarning>
+    <html lang="es" className={`${inter.variable} ${lexend.variable} ${jetbrainsMono.variable}`} suppressHydrationWarning>
       <head>
         {/* Evita parpadeo y asegura .dark en SSR */}
         <Script

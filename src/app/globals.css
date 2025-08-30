@@ -1,11 +1,10 @@
 @import "tailwindcss";
 
-
-
 /* Tipografías base (usando next/font variables) */
 :root { 
-  --font-sans: ui-sans-serif, system-ui, sans-serif; 
-  --font-display: Georgia, "Times New Roman", serif; 
+  --font-sans: var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; 
+  --font-display: var(--font-lexend), 'Lexend', system-ui, -apple-system, sans-serif; 
+  --font-mono: var(--font-jetbrains-mono), 'JetBrains Mono', 'SF Mono', Consolas, 'Liberation Mono', Menlo, monospace;
 }
 
 /* Variables para modo claro - basado exactamente en las imágenes proporcionadas */
@@ -91,15 +90,77 @@
 }
 
 /* Estilos base del body y html */
+html { 
+  font-family: var(--font-sans); 
+  scroll-behavior: smooth;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
 
-html { font-family: var(--font-sans); scroll-behavior: smooth; }
 body {
   font-family: var(--font-sans);
   background-color: var(--bg-secondary);
   color: var(--text-primary);
   transition: background-color .3s ease, color .3s ease;
+  line-height: 1.6;
+  letter-spacing: -0.01em;
 }
-h1, h2, .display-font { font-family: var(--font-display); }
+
+/* Tipografía jerárquica profesional con tamaños ajustados */
+h1, h2, h3, h4, h5, h6, .display-font { 
+  font-family: var(--font-display);
+  font-weight: 600;
+  line-height: 1.3;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+}
+
+h1 { font-size: 1.75rem; font-weight: 700; } /* Reducido de 2.25rem */
+h2 { font-size: 1.5rem; font-weight: 600; }   /* Reducido de 1.875rem */
+h3 { font-size: 1.25rem; font-weight: 600; }  /* Reducido de 1.5rem */
+h4 { font-size: 1.125rem; font-weight: 600; } /* Reducido de 1.25rem */
+h5 { font-size: 1rem; font-weight: 500; }     /* Reducido de 1.125rem */
+h6 { font-size: 0.875rem; font-weight: 500; } /* Reducido de 1rem */
+
+/* Tamaños base más pequeños y proporcionales */
+body {
+  font-size: 0.875rem; /* 14px base en lugar del default 16px */
+  line-height: 1.5;
+  letter-spacing: -0.005em;
+}
+
+/* Texto de código y números */
+.font-mono, code, pre, .numeric {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 0.8125rem; /* Ligeramente más pequeño para números */
+}
+
+/* Mejoras en legibilidad con tamaños ajustados */
+p, .text-body {
+  font-size: 0.875rem; /* 14px */
+  line-height: 1.6;
+  color: var(--text-secondary);
+}
+
+.text-small {
+  font-size: 0.75rem; /* 12px */
+  line-height: 1.4;
+}
+
+.text-large {
+  font-size: 1rem; /* 16px */
+  line-height: 1.5;
+}
+
+/* Tamaños específicos para componentes */
+.text-xs { font-size: 0.75rem; }
+.text-sm { font-size: 0.875rem; }
+.text-base { font-size: 0.875rem; } /* Cambiado de 1rem a 0.875rem */
+.text-lg { font-size: 1rem; }       /* Reducido */
+.text-xl { font-size: 1.125rem; }   /* Reducido */
+.text-2xl { font-size: 1.25rem; }   /* Reducido */
 
 
 

@@ -5,6 +5,7 @@ export type Resource =
   | 'dashboard'
   | 'quotes' 
   | 'clients'
+  | 'obras'
   | 'targets'
   | 'stock'
   | 'reports'
@@ -33,6 +34,7 @@ export const ROLE_PERMISSIONS: Record<string, Permission[]> = {
     { resource: 'dashboard', actions: ['read', 'manage'] },
     { resource: 'quotes', actions: ['create', 'read', 'update', 'delete', 'export', 'import'] },
     { resource: 'clients', actions: ['create', 'read', 'update', 'delete', 'export', 'import'] },
+    { resource: 'obras', actions: ['create', 'read', 'update', 'delete', 'manage', 'export'] },
     { resource: 'targets', actions: ['create', 'read', 'update', 'delete', 'manage'] },
     { resource: 'stock', actions: ['create', 'read', 'update', 'delete', 'manage'] },
     { resource: 'reports', actions: ['read', 'export', 'manage'] },
@@ -46,6 +48,7 @@ export const ROLE_PERMISSIONS: Record<string, Permission[]> = {
     { resource: 'dashboard', actions: ['read'] },
     { resource: 'quotes', actions: ['create', 'read', 'update', 'export'] },
     { resource: 'clients', actions: ['create', 'read', 'update'] },
+    { resource: 'obras', actions: ['create', 'read', 'update'] },
     { resource: 'targets', actions: ['create', 'read', 'update'] },
     { resource: 'stock', actions: ['read'] },
     { resource: 'reports', actions: ['read'] },
@@ -56,6 +59,7 @@ export const ROLE_PERMISSIONS: Record<string, Permission[]> = {
     { resource: 'dashboard', actions: ['read'] },
     { resource: 'quotes', actions: ['read'] },
     { resource: 'clients', actions: ['read'] },
+    { resource: 'obras', actions: ['read'] },
     { resource: 'targets', actions: ['read'] },
     { resource: 'stock', actions: ['read'] },
     { resource: 'reports', actions: ['read'] },
