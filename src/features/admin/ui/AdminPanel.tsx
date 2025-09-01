@@ -1,20 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { AuditLogsPage } from "./AuditLogsPage";
-import { UsersManagementPage } from "./UsersManagementPage";
-import { SystemSettingsPage } from "./SystemSettingsPage";
-import { FiActivity, FiUsers, FiSettings } from "react-icons/fi";
+import dynamic from "next/dynamic";
+import { FiUsers, FiSettings } from "react-icons/fi";
 
-type AdminTab = 'audit' | 'users' | 'settings';
+type AdminTab = 'users' | 'settings';
 
 const adminTabs = [
-  {
-    key: 'audit' as AdminTab,
-    label: 'Registro de Auditoría',
-    icon: FiActivity,
-    description: 'Monitoreo de actividad del sistema'
-  },
   {
     key: 'users' as AdminTab,
     label: 'Gestión de Usuarios',
@@ -29,8 +21,11 @@ const adminTabs = [
   }
 ];
 
+const UsersManagementPage = dynamic(() => import("./UsersManagementPage").then(m => m.UsersManagementPage), { ssr: false, loading: () => <div className="h-40 rounded-lg" style={{ backgroundColor: 'var(--bg-secondary)' }} /> });
+const SystemSettingsPage = dynamic(() => import("./SystemSettingsPage").then(m => m.SystemSettingsPage), { ssr: false, loading: () => <div className="h-40 rounded-lg" style={{ backgroundColor: 'var(--bg-secondary)' }} /> });
+
 export function AdminPanel() {
-  const [activeTab, setActiveTab] = useState<AdminTab>('audit');
+  const [activeTab, setActiveTab] = useState<AdminTab>('users');
 
   return (
     <div className="space-y-6 animate-fadeIn">
@@ -92,7 +87,7 @@ export function AdminPanel() {
                 <Icon className="w-4 h-4" />
                 <span className="hidden sm:inline">{tab.label}</span>
                 <span className="sm:hidden">
-                  {tab.key === 'audit' ? 'Auditoría' : tab.key === 'users' ? 'Usuarios' : 'Config'}
+                  {tab.key === 'users' ? 'Usuarios' : 'Config'}
                 </span>
               </button>
             );
@@ -102,7 +97,7 @@ export function AdminPanel() {
 
       {/* Contenido del tab activo */}
       <div role="tabpanel">
-        {activeTab === 'audit' && <AuditLogsPage />}
+      
         {activeTab === 'users' && <UsersManagementPage />}
         {activeTab === 'settings' && <SystemSettingsPage />}
       </div>

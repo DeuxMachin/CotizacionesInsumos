@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from 'react';
-import { FiX, FiCalendar, FiUser, FiCheckSquare, FiSquare } from 'react-icons/fi';
+import { FiX, FiCalendar, FiUser, FiCheckSquare } from 'react-icons/fi';
 import { QuoteFilters, QuoteStatus } from '@/core/domain/quote/Quote';
 
 interface QuoteFiltersPanelProps {

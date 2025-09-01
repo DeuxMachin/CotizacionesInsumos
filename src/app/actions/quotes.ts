@@ -23,32 +23,18 @@ const quotesDB: Quote[] = [];
  * Server Action para crear una nueva cotización
  */
 export async function createQuote(formData: FormData) {
-  // Validar y parsear los datos del formulario
-  const rawData = Object.fromEntries(formData.entries());
   
-  // Procesamiento de datos para adaptarlos al formato esperado
-  const quoteData: QuoteFormData = {
-    client: rawData.client as string,
-    date: rawData.date as string || new Date().toISOString().split('T')[0], // Formato YYYY-MM-DD
-    status: (rawData.status as QuoteStatus) || 'pending',
-    amount: parseFloat(rawData.amount as string),
-  };
+
+
   
   try {
-    // Validar los datos
-    const validatedData = QuoteSchema.parse(quoteData);
+
     
     // Generar un ID único para la nueva cotización
-    const newId = `COT-${Date.now()}`;
+    const newId = `COT-${Date.now()}`;    
+
     
-    // Crear la nueva cotización
-    const newQuote: Quote = {
-      ...validatedData,
-      id: newId,
-    };
     
-    // En producción, aquí iría la lógica para guardar en la base de datos
-    quotesDB.push(newQuote);
     
     // Registrar la acción en el log de auditoría
     await logAuditAction('create_quote', newId);
@@ -72,21 +58,12 @@ export async function createQuote(formData: FormData) {
  * Server Action para actualizar una cotización existente
  */
 export async function updateQuote(quoteId: string, formData: FormData) {
-  // Validar y parsear los datos del formulario
-  const rawData = Object.fromEntries(formData.entries());
-  
+
   // Procesamiento de datos para adaptarlos al formato esperado
-  const quoteData: QuoteFormData = {
-    id: quoteId,
-    client: rawData.client as string,
-    date: rawData.date as string,
-    status: (rawData.status as QuoteStatus) || 'pending',
-    amount: parseFloat(rawData.amount as string),
-  };
+
   
   try {
-    // Validar los datos
-    const validatedData = QuoteSchema.parse(quoteData);
+
     
     // Buscar la cotización existente
     const quoteIndex = quotesDB.findIndex(q => q.id === quoteId);
@@ -95,14 +72,9 @@ export async function updateQuote(quoteId: string, formData: FormData) {
       return { success: false, error: 'Cotización no encontrada' };
     }
     
-    // Actualizar la cotización
-    const updatedQuote: Quote = {
-      ...validatedData,
-      id: quoteId, // Asegurarnos que el ID esté definido
-    };
+
     
-    // En producción, aquí iría la lógica para actualizar en la base de datos
-    quotesDB[quoteIndex] = updatedQuote;
+ 
     
     // Registrar la acción en el log de auditoría
     await logAuditAction('update_quote', quoteId);
@@ -137,7 +109,7 @@ export async function changeQuoteStatus(quoteId: string, newStatus: QuoteStatus)
     // Actualizar el estado de la cotización
     quotesDB[quoteIndex] = {
       ...quotesDB[quoteIndex],
-      status: newStatus,
+      
     };
     
     // Registrar la acción en el log de auditoría

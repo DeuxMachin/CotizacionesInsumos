@@ -10,7 +10,6 @@ interface SystemSettings {
   requireEmailVerification: boolean;
   sessionTimeout: number;
   maxLoginAttempts: number;
-  enableAuditLogs: boolean;
   backupFrequency: string;
   maintenanceMode: boolean;
 }
@@ -22,7 +21,6 @@ const defaultSettings: SystemSettings = {
   requireEmailVerification: true,
   sessionTimeout: 480, // minutos
   maxLoginAttempts: 5,
-  enableAuditLogs: true,
   backupFrequency: "daily",
   maintenanceMode: false,
 };
@@ -291,32 +289,6 @@ export function SystemSettingsPage() {
         </div>
 
         <div className="space-y-4">
-          <div className="flex items-center justify-between p-4 rounded-lg border border-theme-subtle">
-            <div>
-              <div className="font-medium text-theme-primary">Registro de Auditoría</div>
-              <div className="text-sm text-theme-secondary">
-                Mantener logs detallados de actividad del sistema
-              </div>
-            </div>
-            <label className="relative inline-flex items-center cursor-pointer">
-              <input
-                type="checkbox"
-                checked={settings.enableAuditLogs}
-                onChange={(e) => handleSettingChange('enableAuditLogs', e.target.checked)}
-                className="sr-only"
-              />
-              <div className={`w-11 h-6 rounded-full transition-colors ${
-                settings.enableAuditLogs 
-                  ? 'bg-orange-500' 
-                  : 'bg-gray-200 dark:bg-gray-700'
-              }`}>
-                <div className={`w-5 h-5 bg-white rounded-full transition-transform ${
-                  settings.enableAuditLogs ? 'translate-x-5' : 'translate-x-0'
-                } mt-0.5 ml-0.5`}></div>
-              </div>
-            </label>
-          </div>
-
           <div className="flex items-center justify-between p-4 rounded-lg border border-theme-subtle">
             <div>
               <div className="font-medium text-theme-primary">Modo Mantenimiento</div>

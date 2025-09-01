@@ -4,7 +4,6 @@ import { useAuth } from "@/features/auth/model/useAuth";
 import { usePermissions, type Resource, type Action } from "@/features/auth/model/permissions";
 import { useNavigationItems } from "@/features/navigation/model/navigationItems";
 import { useSection } from "@/features/navigation/model/useSection";
-import { auditLogger } from "@/shared/lib/auditLogger";
 import { useEffect } from "react";
 
 /**
@@ -21,28 +20,9 @@ export function AuthorizationMiddleware({ children }: { children: React.ReactNod
       return;
     }
 
-    // Log section access
-    auditLogger.logResourceAccess(
-      user.id,
-      user.email,
-      user.role,
-      'navigation',
-      `access_section_${section}`,
-      { section }
-    );
-
     // Verificar si el usuario puede acceder a la sección actual
     if (!canAccessSection(section)) {
       console.warn(`User ${user.role} attempted to access unauthorized section: ${section}`);
-      
-      // Log unauthorized access attempt
-      auditLogger.logUnauthorizedAccess(
-        user.id,
-        user.email,
-        user.role,
-        'navigation',
-        `access_section_${section}`
-      );
       
       // Redirigir al dashboard si no tiene permisos
       setSection('dashboard');
@@ -85,16 +65,6 @@ export function useActionAuthorization() {
 
   const logUnauthorizedAction = (resource: Resource, action: Action) => {
     console.warn(`Unauthorized action attempted: ${user?.role} tried to ${action} ${resource}`);
-    
-    if (user) {
-      auditLogger.logUnauthorizedAccess(
-        user.id,
-        user.email,
-        user.role,
-  resource,
-  action
-      );
-    }
   };
 
   return {

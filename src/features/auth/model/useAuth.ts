@@ -2,7 +2,6 @@
 
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import { auditLogger } from "@/shared/lib/auditLogger";
 import { useEffect } from "react";
 
 interface User {
@@ -52,7 +51,7 @@ const mockUsers = [
 
 export const useAuth = create<AuthState>()(
   persist(
-    (set, get) => ({
+    (set) => ({
       user: null,
       isAuthenticated: false,
       isLoading: false,
@@ -83,9 +82,6 @@ export const useAuth = create<AuthState>()(
               isLoading: false,
               lastActivity: Date.now()
             });
-
-            // Registrar login en auditoría
-            auditLogger.logLogin(userWithoutPassword.id, userWithoutPassword.email, userWithoutPassword.role);
             
             // Escribir cookie accesible por middleware
             try {
@@ -115,12 +111,7 @@ export const useAuth = create<AuthState>()(
       },
 
       logout: () => {
-        const currentUser = get().user;
         
-        // Registrar logout en auditoría antes de limpiar el estado
-        if (currentUser) {
-          auditLogger.logLogout(currentUser.id, currentUser.email, currentUser.role);
-        }
         
         set({ user: null, isAuthenticated: false, lastActivity: null });
         

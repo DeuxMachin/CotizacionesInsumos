@@ -9,10 +9,7 @@ import {
   QuoteStatusValidator,
   QuoteIdGenerator,
   QuoteAmountCalculator,
-  ClientInfo,
-  QuoteItem,
-  CommercialTerms,
-  DeliveryInfo
+
 } from '@/core/domain/quote/Quote';
 import { useAuth } from '@/features/auth/model/useAuth';
 
@@ -161,6 +158,7 @@ interface UseQuotesReturn {
   // Utilidades
   formatMoney: (amount: number) => string;
   getStatusColor: (status: QuoteStatus) => { bg: string; text: string };
+  getQuoteById: (id: string) => Quote | null;
   canEdit: (cotizacion: Quote) => boolean;
   canDelete: (cotizacion: Quote) => boolean;
   
@@ -188,9 +186,6 @@ export function useQuotes(): UseQuotesReturn {
     const loadQuotes = async () => {
       try {
         setLoading(true);
-        // Simular carga de datos
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        
         // Filtrar cotizaciones según permisos de usuario
         let quotesToLoad = mockQuotes;
         if (!isAdmin && user?.id) {
@@ -406,6 +401,13 @@ export function useQuotes(): UseQuotesReturn {
     return cotizacion.estado === 'borrador';
   };
 
+  // Optimización: Retornar la cotización desde el array completo sin filtros adicionales
+  // para evitar búsquedas o procesamiento adicional
+  const getQuoteById = (id: string): Quote | null => {
+    // Buscamos directamente sin filtros adicionales para máxima rapidez
+    return mockQuotes.find(quote => quote.id === id) || null;
+  };
+
   return {
     // Estado
     quotes,
@@ -434,6 +436,7 @@ export function useQuotes(): UseQuotesReturn {
     // Utilidades
     formatMoney,
     getStatusColor,
+    getQuoteById,
     canEdit,
     canDelete,
     

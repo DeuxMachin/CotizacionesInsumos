@@ -32,8 +32,15 @@ import type {
   GetEstadoColor,
   GetEtapaColor
 } from "../types/obras";
-import { ObraDetailModal } from "./ObraDetailModal";
-import { CreateObraModal } from "./CreateObraModal";
+import dynamic from "next/dynamic";
+const ObraDetailModal = dynamic(() => import("./ObraDetailModal").then(m => m.ObraDetailModal), {
+  loading: () => <div className="p-6">Cargando detalle…</div>,
+  ssr: false,
+});
+const CreateObraModal = dynamic(() => import("./CreateObraModal").then(m => m.CreateObraModal), {
+  loading: () => <div className="p-6">Cargando formulario…</div>,
+  ssr: false,
+});
 import { FiltersBar } from "./FiltersBar";
 
 export function ObrasPage() {

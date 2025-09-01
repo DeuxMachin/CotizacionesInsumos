@@ -154,7 +154,7 @@ export class FilterQuotesUseCase {
 
     // Validar campo de ordenamiento si está presente
     if (validated.sortBy) {
-      const validSortFields: (keyof Quote)[] = ['id', 'client', 'date', 'status', 'amount'];
+      const validSortFields: (keyof Quote)[] = ['id', 'cliente', 'fechaCreacion', 'estado', 'total'];
       if (!validSortFields.includes(validated.sortBy)) {
         throw new Error(`Campo de ordenamiento inválido: ${validated.sortBy}`);
       }

@@ -1,13 +1,42 @@
 "use client";
 
 import { useState } from "react";
-import { FinancialSummaryChart } from "@/features/reports/ui/FinancialSummaryChart";
-import { AdminReports } from "@/features/reports/ui/AdminReports";
-import { SellerReports } from "@/features/reports/ui/SellerReports";
-import { SalesSummaryKPIs } from "@/features/reports/ui/SalesSummaryKPIs";
-import { SalesTrendChart } from "@/features/reports/ui/SalesTrendChart";
-import { PeriodToggle } from "@/features/reports/ui/PeriodToggle";
+import dynamic from "next/dynamic";
 import { useAuth } from "@/features/auth/model/useAuth";
+
+const SalesSummaryKPIs = dynamic(() => import("@/features/reports/ui/SalesSummaryKPIs").then(m => m.SalesSummaryKPIs), {
+  ssr: false,
+  loading: () => <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+    {[1, 2, 3, 4].map((i) => (
+      <div key={i} className="rounded-xl p-4 sm:p-5 shadow-sm animate-pulse" style={{ backgroundColor: 'var(--bg-primary)', border: '1px solid var(--border-subtle)' }}>
+        <div className="h-3 w-20 bg-gray-200 dark:bg-gray-700 rounded mb-3"></div>
+        <div className="h-5 w-24 bg-gray-200 dark:bg-gray-700 rounded"></div>
+      </div>
+    ))}
+  </div>
+});
+
+const PeriodToggle = dynamic(() => import("@/features/reports/ui/PeriodToggle").then(m => m.PeriodToggle), {
+  ssr: false,
+  loading: () => <div className="inline-flex rounded-lg overflow-hidden h-8 w-32 animate-pulse" style={{ backgroundColor: 'var(--bg-primary)', border: '1px solid var(--border-subtle)' }}></div>
+});
+
+const SalesTrendChart = dynamic(() => import("@/features/reports/ui/SalesTrendChart").then(m => m.SalesTrendChart), {
+  ssr: false,
+  loading: () => <div className="h-64 rounded-lg" style={{ backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border)' }} />
+});
+const FinancialSummaryChart = dynamic(() => import("@/features/reports/ui/FinancialSummaryChart").then(m => m.FinancialSummaryChart), {
+  ssr: false,
+  loading: () => <div className="h-64 rounded-lg" style={{ backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border)' }} />
+});
+const AdminReports = dynamic(() => import("@/features/reports/ui/AdminReports").then(m => m.AdminReports), {
+  ssr: false,
+  loading: () => <div className="h-96 rounded-lg" style={{ backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border)' }} />
+});
+const SellerReports = dynamic(() => import("@/features/reports/ui/SellerReports").then(m => m.SellerReports), {
+  ssr: false,
+  loading: () => <div className="h-96 rounded-lg" style={{ backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border)' }} />
+});
 
 export default function ReportesPage() {
   const { user } = useAuth();

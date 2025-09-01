@@ -30,7 +30,20 @@ export function middleware(request: NextRequest) {
 
   const url = request.nextUrl.clone();
   const isLoginPage = url.pathname === '/login';
+  const isRootPage = url.pathname === '/';
   const isProtectedRoute = url.pathname.startsWith('/dashboard') || url.pathname.startsWith('/admin');
+
+  // Redirect root path to login if not authenticated
+  if (isRootPage && !isAuthenticated) {
+    url.pathname = '/login';
+    return NextResponse.redirect(url);
+  }
+
+  // Redirect root to appropriate dashboard if authenticated
+  if (isRootPage && isAuthenticated) {
+    url.pathname = role === 'admin' ? '/admin' : '/dashboard';
+    return NextResponse.redirect(url);
+  }
 
   if (isProtectedRoute && !isAuthenticated) {
     url.pathname = '/login';
@@ -46,5 +59,5 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/dashboard/:path*', '/admin/:path*', '/login'],
+  matcher: ['/', '/dashboard/:path*', '/admin/:path*', '/login'],
 };

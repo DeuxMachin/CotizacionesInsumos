@@ -3,8 +3,9 @@
 import { useState, useEffect } from "react";
 import { FiPlus, FiMapPin, FiPhone, FiUser, FiClock, FiArrowLeft, FiArrowRight, FiMap } from "react-icons/fi";
 import { useTargets } from "../model/useTargets";
-import CreateTargetModal from "./CreateTargetModal";
-import { TargetDetailsModal } from "./TargetDetailsModal";
+import dynamic from "next/dynamic";
+const CreateTargetModal = dynamic(() => import("./CreateTargetModal"), { ssr: false, loading: () => null });
+const TargetDetailsModal = dynamic(() => import("./TargetDetailsModal").then(m => m.TargetDetailsModal), { ssr: false, loading: () => null });
 import type { PosibleTarget } from "../model/types";
 
 export function PosiblesTargetsPage() {

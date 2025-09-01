@@ -1,12 +1,9 @@
 "use client";
-
-import { useState } from "react";
 import { FiPlusCircle, FiUserPlus, FiBox, FiTrendingUp } from "react-icons/fi";
 import { useSection } from "@/features/navigation/model/useSection";
-import { quotesData } from "@/features/quotes/model/mock";
-import { quotesToCSV, downloadCSV } from "@/shared/lib/csv";
+
+
 import { Toast } from "@/shared/ui/Toast";
-import { NewQuoteModal } from "@/features/quotes/ui/NewQuoteModal";
 
 // Acciones rápidas inspiradas en el HTML de referencia
 const quickActions = [
@@ -38,12 +35,11 @@ const quickActions = [
 
 export function QuickActions() {
   const { setSection } = useSection();
-  const [openNew, setOpenNew] = useState(false);
 
   const handleActionClick = (action: string) => {
-    switch (action) {
+  switch (action) {
       case "create-quote":
-        setOpenNew(true);
+    // TODO: open new quote modal or navigate
         break;
       case "go-clients":
         setSection("clientes");
@@ -109,19 +105,7 @@ export function QuickActions() {
 
       {/* Chips secundarios - responsive */}
       <div className="mt-3 sm:mt-4 flex flex-wrap gap-1.5 sm:gap-2">
-        <button
-          onClick={() => {
-            const csv = quotesToCSV(quotesData);
-            downloadCSV(csv, "cotizaciones.csv");
-            Toast?.success?.("Cotizaciones exportadas");
-          }}
-          className="px-2 py-1 sm:px-3 sm:py-1.5 rounded-full text-theme-secondary hover:bg-theme-accent text-xs sm:text-sm transition-colors"
-          style={{ border: '1px solid var(--border-subtle)' }}
-          onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--accent-primary)'; }}
-          onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--border-subtle)'; }}
-        >
-          Exportar CSV
-        </button>
+
         <button
           onClick={() => Toast?.info?.("Importación próximamente")}
           className="px-2 py-1 sm:px-3 sm:py-1.5 rounded-full text-theme-secondary hover:bg-theme-accent text-xs sm:text-sm transition-colors"
@@ -141,7 +125,7 @@ export function QuickActions() {
           Atajos del teclado
         </button>
       </div>
-      <NewQuoteModal.Root controlledOpen={openNew} onClose={() => setOpenNew(false)} />
+      
     </div>
   );
 }

@@ -1,10 +1,9 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useRouter } from 'next/navigation';
 import { clientsExtended, type ClientExtended, type ClientStatus } from "../model/clientsExtended";
-import { BRAND } from "@/shared/ui/brand";
 import { Toast } from "@/shared/ui/Toast";
-import { quotesData } from "@/features/quotes/model/mock";
 import { useAuth } from "@/features/auth/model/useAuth";
 import { useActionAuthorization } from "@/middleware/AuthorizationMiddleware";
 import { 
@@ -17,7 +16,6 @@ import {
   FiEdit3,
   FiTrash2,
   FiPhone,
-  FiMail,
   FiMapPin,
   FiDollarSign,
   FiTrendingUp,
@@ -26,6 +24,7 @@ import {
   FiChevronLeft,
   FiChevronRight
 } from "react-icons/fi";
+
 
 // Types para componentes
 interface ClientCardProps {
@@ -48,41 +47,23 @@ interface GetStatusColor {
   (status: ClientStatus): { bg: string; text: string };
 }
 
-interface FiltrosClientes {
-  busqueda?: string;
-  estado?: ClientStatus[];
-  region?: string[];
-}
 
-const statusStyles: Record<ClientStatus, string> = {
-  vigente: "bg-emerald-100 text-emerald-700",
-  moroso: "bg-amber-100 text-amber-700",
-  inactivo: "bg-slate-200 text-slate-700",
-};
 
-function StatusBadge({ status }: { status: ClientStatus }) {
-  return (
-    <span className={`inline-block px-2.5 py-1 text-xs font-semibold rounded-2xl ${statusStyles[status]}`}>
-      {status[0].toUpperCase() + status.slice(1)}
-    </span>
-  );
-}
 
 function formatCLP(n: number) {
   return new Intl.NumberFormat("es-CL", { style: "currency", currency: "CLP", maximumFractionDigits: 0 }).format(n);
 }
 
 export function ClientsPage() {
+  const router = useRouter();
   const { user } = useAuth();
-  const { canCreate, canEdit, canDelete, canExport } = useActionAuthorization();
+  const { canCreate, canDelete } = useActionAuthorization();
   
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedStates, setSelectedStates] = useState<ClientStatus[]>([]);
   const [selectedRegions, setSelectedRegions] = useState<string[]>([]);
   const [showFilters, setShowFilters] = useState(false);
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
-  const [selectedClient, setSelectedClient] = useState<ClientExtended | null>(null);
-  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [page, setPage] = useState(1);
   
   const pageSize = 12; // Más elementos por página como en ObrasPage
@@ -166,7 +147,7 @@ export function ClientsPage() {
   };
 
   // Handlers
-  const handleEliminar = async (clientId: string) => {
+  const handleEliminar = async () => {
     if (!canDelete('clients')) {
       Toast.error('No tienes permisos para eliminar clientes');
       return;
@@ -179,13 +160,7 @@ export function ClientsPage() {
   };
 
   const handleVerDetalle = (client: ClientExtended) => {
-    setSelectedClient(client);
-    setIsDetailModalOpen(true);
-  };
-
-  const handleCloseModal = () => {
-    setIsDetailModalOpen(false);
-    setSelectedClient(null);
+    router.push(`/dashboard/clientes/${client.id}`);
   };
 
   const handleClearFilters = () => {
@@ -206,18 +181,7 @@ export function ClientsPage() {
     if (page > 1) setPage(page - 1);
   };
 
-  if (selectedClient && isDetailModalOpen) {
-    return (
-      <ClientDetail
-        client={selectedClient}
-        onBack={handleCloseModal}
-        onEdit={() => Toast.info("Editar cliente próximamente")}
-        onDelete={() => handleEliminar(selectedClient.id)}
-        canEdit={canEdit('clients')}
-        canDelete={canDelete('clients')}
-      />
-    );
-  }
+
 
   return (
     <div className="space-y-6 animate-fadeIn">
@@ -1055,241 +1019,6 @@ function FiltersPanel({
   );
 }
 
-function StatCard({ label, value, tone = "slate" }: { label: string; value: string; tone?: "slate"|"emerald"|"amber"|"rose" }) {
-  const tones: Record<string, string> = {
-    slate: "text-slate-800",
-    emerald: "text-emerald-800", 
-    amber: "text-amber-800",
-    rose: "text-rose-800",
-  };
-  
-  const bgTones: Record<string, string> = {
-    slate: "var(--neutral-bg)",
-    emerald: "var(--success-bg)",
-    amber: "var(--warning-bg)", 
-    rose: "var(--danger-bg)",
-  };
-  
-  return (
-    <div 
-      className={`rounded-xl p-3 sm:p-4 ${tones[tone]}`}
-      style={{ 
-        backgroundColor: bgTones[tone],
-        border: '1px solid var(--border)'
-      }}
-    >
-      <div className="text-xs" style={{ color: 'var(--text-muted)' }}>{label}</div>
-      <div className="font-semibold text-base sm:text-lg" style={{ color: 'var(--text-primary)' }}>{value}</div>
-    </div>
-  );
-}
 
-function InfoRow({ label, value }: { label: string; value?: string }) {
-  return (
-    <div className="flex items-start gap-3 py-2">
-      <div className="w-32 sm:w-40 text-xs flex-shrink-0" style={{ color: 'var(--text-muted)' }}>{label}</div>
-      <div className="text-sm break-words hyphens-auto min-w-0" style={{ color: 'var(--text-primary)' }}>{value || "-"}</div>
-    </div>
-  );
-}
-
-function ClientDetail({ 
-  client, 
-  onBack, 
-  onEdit, 
-  onDelete,
-  canEdit,
-  canDelete 
-}: { 
-  client: ClientExtended; 
-  onBack: ()=>void; 
-  onEdit: ()=>void; 
-  onDelete: ()=>void;
-  canEdit: boolean;
-  canDelete: boolean;
-}) {
-  const [showAllQuotes, setShowAllQuotes] = useState(false);
-  const clientQuotes = useMemo(() => {
-    // match by razonSocial or contact; in real app use client id
-    return quotesData.filter(q => q.client.toLowerCase().includes(client.razonSocial.toLowerCase().split(" ")[0]));
-  }, [client.razonSocial]);
-
-  return (
-    <div className="space-y-6 animate-fadeIn">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
-        <div className="space-y-1 min-w-0">
-          <div className="flex items-start gap-2 flex-wrap">
-            <h3 className="text-base sm:text-xl font-bold display-font break-words hyphens-auto" style={{ color: 'var(--text-primary)' }}>
-              {client.razonSocial}
-            </h3>
-            <div className="mt-0.5 sm:mt-0"><StatusBadge status={client.status} /></div>
-          </div>
-          <div className="text-xs sm:text-sm">
-            <span className="inline-block px-2 py-0.5 rounded" style={{ backgroundColor: 'var(--bg-secondary)', color: 'var(--text-secondary)' }}>
-              RUT: {client.rut}
-            </span>
-          </div>
-        </div>
-        <div className="flex flex-wrap gap-2 self-start sm:self-auto">
-          <button className="btn-secondary text-sm" onClick={onBack}>
-            <FiChevronLeft className="w-4 h-4 mr-1" />
-            Volver
-          </button>
-          {canEdit && (
-            <button className="btn-secondary text-sm" onClick={onEdit}>
-              <FiEdit3 className="w-4 h-4 mr-1" />
-              Editar
-            </button>
-          )}
-          {canDelete && (
-            <button className="btn-secondary text-sm" onClick={onDelete}>
-              <FiTrash2 className="w-4 h-4 mr-1" />
-              Eliminar
-            </button>
-          )}
-        </div>
-      </div>
-
-      {/* Resumen financiero */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <StatCard label="Pagado" value={formatCLP(client.paid)} tone="emerald" />
-        <StatCard label="Pendiente" value={formatCLP(client.pending)} tone="amber" />
-        <StatCard label="Parcial" value={formatCLP(client.partial)} tone="slate" />
-        <StatCard label="Vencido" value={formatCLP(client.overdue)} tone="rose" />
-      </div>
-
-      <div className="grid md:grid-cols-3 gap-3 sm:gap-4">
-        {/* Información de la empresa */}
-        <div 
-          className="md:col-span-2 rounded-xl p-3 sm:p-4"
-          style={{ backgroundColor: 'var(--card-bg)', border: '1px solid var(--border)' }}
-        >
-          <h4 className={`font-semibold mb-3 ${BRAND.accentText}`}>Información de la empresa</h4>
-          <div className="divide-y" style={{ borderColor: 'var(--border)' }}>
-            <InfoRow label="Giro" value={client.giro} />
-            <InfoRow label="Dirección" value={client.direccion} />
-            <InfoRow label="Región" value={client.region} />
-            <InfoRow label="Ciudad" value={client.ciudad} />
-            <InfoRow label="Comuna" value={client.comuna} />
-            <InfoRow label="Tipo de empresa" value={client.tipoEmpresa} />
-          </div>
-        </div>
-
-        {/* Condiciones de pago */}
-        <div 
-          className="rounded-xl p-3 sm:p-4"
-          style={{ backgroundColor: 'var(--card-bg)', border: '1px solid var(--border)' }}
-        >
-          <h4 className={`font-semibold mb-3 ${BRAND.accentText}`}>Condiciones de pago</h4>
-          <div className="space-y-2 text-sm">
-            <div className="flex justify-between">
-              <span style={{ color: 'var(--text-secondary)' }}>Días adicionales</span>
-              <span className="font-semibold" style={{ color: 'var(--text-primary)' }}>{client.additionalDays}</span>
-            </div>
-            <div className="flex justify-between">
-              <span style={{ color: 'var(--text-secondary)' }}>Línea de crédito</span>
-              <span className="font-semibold" style={{ color: 'var(--text-primary)' }}>{formatCLP(client.creditLine)}</span>
-            </div>
-            <div className="flex justify-between">
-              <span style={{ color: 'var(--text-secondary)' }}>Crédito usado</span>
-              <span className="font-semibold" style={{ color: 'var(--text-primary)' }}>{formatCLP(client.credit)}</span>
-            </div>
-            <div className="flex justify-between">
-              <span style={{ color: 'var(--text-secondary)' }}>Retención</span>
-              <span className="font-semibold" style={{ color: 'var(--text-primary)' }}>{client.retention}</span>
-            </div>
-            <div className="flex justify-between">
-              <span style={{ color: 'var(--text-secondary)' }}>Descuento</span>
-              <span className="font-semibold" style={{ color: 'var(--text-primary)' }}>{client.discount}%</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="grid md:grid-cols-2 gap-3 sm:gap-4">
-        {/* Contacto comercial */}
-        <div 
-          className="rounded-xl p-3 sm:p-4"
-          style={{ backgroundColor: 'var(--card-bg)', border: '1px solid var(--border)' }}
-        >
-          <h4 className={`font-semibold mb-3 ${BRAND.accentText}`}>Contacto</h4>
-          <div className="divide-y" style={{ borderColor: 'var(--border)' }}>
-            <InfoRow label="Nombre" value={client.contactoNombre} />
-            <InfoRow label="Email" value={client.contactoEmail || client.email} />
-            <InfoRow label="Teléfono" value={client.contactoTelefono || client.phone} />
-            <InfoRow label="Móvil" value={client.mobile} />
-          </div>
-        </div>
-
-        {/* Responsable de pagos */}
-        <div 
-          className="rounded-xl p-3 sm:p-4"
-          style={{ backgroundColor: 'var(--card-bg)', border: '1px solid var(--border)' }}
-        >
-          <h4 className={`font-semibold mb-3 ${BRAND.accentText}`}>Responsable de pagos</h4>
-          <div className="divide-y" style={{ borderColor: 'var(--border)' }}>
-            <InfoRow label="Nombre" value={client.paymentResponsible} />
-            <InfoRow label="Email" value={client.paymentEmail} />
-            <InfoRow label="Teléfono" value={client.paymentPhone} />
-            <InfoRow label="Medio de pago" value={client.transferInfo} />
-          </div>
-        </div>
-      </div>
-
-      {/* Cotizaciones del cliente */}
-      <div 
-        className="rounded-xl p-4"
-        style={{ backgroundColor: 'var(--card-bg)', border: '1px solid var(--border)' }}
-      >
-        <div className="flex items-center justify-between mb-3">
-          <h4 className={`font-semibold ${BRAND.accentText}`}>Cotizaciones del cliente</h4>
-          <div className="flex items-center gap-2">
-            <label className="text-sm" style={{ color: 'var(--text-secondary)' }}>Ver todas</label>
-            <input 
-              type="checkbox" 
-              className="translate-y-[1px]" 
-              checked={showAllQuotes} 
-              onChange={(e)=>setShowAllQuotes(e.target.checked)} 
-            />
-          </div>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr style={{ backgroundColor: 'var(--bg-secondary)' }}>
-                <th className="p-2 text-left" style={{ color: 'var(--text-primary)' }}>Número</th>
-                <th className="p-2 text-left" style={{ color: 'var(--text-primary)' }}>Fecha</th>
-                <th className="p-2 text-left" style={{ color: 'var(--text-primary)' }}>Estado</th>
-                <th className="p-2 text-left" style={{ color: 'var(--text-primary)' }}>Monto</th>
-              </tr>
-            </thead>
-            <tbody>
-              {(showAllQuotes ? clientQuotes : clientQuotes.slice(0, 5)).map((q) => (
-                <tr key={q.id} className="border-t" style={{ borderColor: 'var(--border)' }}>
-                  <td className="p-2" style={{ color: 'var(--text-primary)' }}>{q.id}</td>
-                  <td className="p-2" style={{ color: 'var(--text-primary)' }}>{q.date}</td>
-                  <td className="p-2">
-                    <span className={`text-xs font-semibold rounded-2xl px-2 py-0.5 ${q.status === 'pending' ? 'text-amber-700 bg-amber-100' : q.status === 'approved' ? 'text-emerald-700 bg-emerald-100' : 'text-rose-700 bg-rose-100'}`}>
-                      {{pending: 'Pendiente', approved: 'Aprobada', rejected: 'Rechazada'}[q.status]}
-                    </span>
-                  </td>
-                  <td className="p-2 font-medium" style={{ color: 'var(--text-primary)' }}>{formatCLP(Math.round(q.amount))}</td>
-                </tr>
-              ))}
-              {clientQuotes.length === 0 && (
-                <tr>
-                  <td className="p-3 text-center" colSpan={4} style={{ color: 'var(--text-muted)' }}>
-                    Sin cotizaciones
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 export default ClientsPage;

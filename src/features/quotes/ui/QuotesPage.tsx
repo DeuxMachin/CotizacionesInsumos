@@ -1,13 +1,13 @@
 "use client";
 
 import React, { useState, useMemo } from 'react';
+import { useRouter } from 'next/navigation';
 import { 
   FiSearch, 
   FiFilter, 
   FiGrid, 
   FiList, 
   FiPlus, 
-  FiDownload,
   FiEye,
   FiEdit2,
   FiTrash2,
@@ -15,7 +15,6 @@ import {
   FiSend,
   FiDollarSign,
   FiFileText,
-  FiClock,
   FiUsers,
   FiTrendingUp,
   FiChevronLeft,
@@ -24,8 +23,7 @@ import {
 } from 'react-icons/fi';
 import { useQuotes } from '../model/useQuotes';
 import { Quote, QuoteStatus } from '@/core/domain/quote/Quote';
-import { QuoteDetailModal } from './QuoteDetailModal';
-import { CreateQuoteModal } from './CreateQuoteModal';
+
 import { QuoteFiltersPanel } from './QuoteFiltersPanel';
 
 interface QuoteCardProps {
@@ -55,6 +53,7 @@ interface QuotesTableProps {
 }
 
 export function QuotesPage() {
+  const router = useRouter();
   const {
     quotes,
     todasLasCotizaciones,
@@ -73,18 +72,13 @@ export function QuotesPage() {
     getStatusColor,
     canEdit,
     canDelete,
-    userName,
-    isAdmin
+    
   } = useQuotes();
 
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedStates, setSelectedStates] = useState<QuoteStatus[]>([]);
   const [showFilters, setShowFilters] = useState(false);
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
-  const [selectedQuote, setSelectedQuote] = useState<Quote | null>(null);
-  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [isEditMode, setIsEditMode] = useState(false);
 
   // Aplicar filtros
   React.useMemo(() => {
@@ -117,15 +111,16 @@ export function QuotesPage() {
 
   // Handlers
   const handleView = (quote: Quote) => {
-    setSelectedQuote(quote);
-    setIsEditMode(false);
-    setIsDetailModalOpen(true);
+    // Asegurar que tenemos los datos antes de navegar
+    if (quote) {
+      // Navegación inmediata a la página de detalle
+      router.push(`/dashboard/cotizaciones/${quote.id}`);
+    }
   };
 
   const handleEdit = (quote: Quote) => {
-    setSelectedQuote(quote);
-    setIsEditMode(true);
-    setIsDetailModalOpen(true);
+    // Funcionalidad de edición será implementada después
+    alert('Funcionalidad de edición en desarrollo');
   };
 
   const handleDelete = async (id: string) => {
@@ -149,12 +144,6 @@ export function QuotesPage() {
     if (success) {
       // Podrías mostrar un toast de éxito aquí
     }
-  };
-
-  const handleCloseModal = () => {
-    setIsDetailModalOpen(false);
-    setSelectedQuote(null);
-    setIsEditMode(false);
   };
 
   const handleClearFilters = () => {
@@ -185,7 +174,8 @@ export function QuotesPage() {
       <div className="flex flex-col gap-4">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>
+            <h1 className="text-3xl font-bold flex items-center gap-3" style={{ color: 'var(--text-primary)' }}>
+              <FiFileText className="w-8 h-8" style={{ color: 'var(--accent-primary)' }} />
               Cotizaciones
             </h1>
             <p style={{ color: 'var(--text-secondary)' }}>
@@ -193,6 +183,21 @@ export function QuotesPage() {
             </p>
           </div>
           <div className="flex items-center gap-3">
+            <button
+              onClick={() => setShowFilters(!showFilters)}
+              className="btn-secondary flex items-center gap-2 relative"
+            >
+              <FiFilter className="w-4 h-4" />
+              Filtros
+              {filtrosActivos > 0 && (
+                <span 
+                  className="absolute -top-1 -right-1 w-5 h-5 text-xs rounded-full flex items-center justify-center text-white font-medium"
+                  style={{ backgroundColor: 'var(--accent-primary)' }}
+                >
+                  {filtrosActivos}
+                </span>
+              )}
+            </button>
             <button
               onClick={() => setViewMode(viewMode === 'grid' ? 'table' : 'grid')}
               className="p-2 rounded-lg border transition-colors"
@@ -205,7 +210,7 @@ export function QuotesPage() {
               {viewMode === 'grid' ? <FiList className="w-4 h-4" /> : <FiGrid className="w-4 h-4" />}
             </button>
             <button
-              onClick={() => setIsCreateModalOpen(true)}
+              onClick={() => router.push('/dashboard/cotizaciones/nueva')}
               className="btn-primary flex items-center gap-2"
             >
               <FiPlus className="w-4 h-4" />
@@ -236,37 +241,18 @@ export function QuotesPage() {
           </div>
           <div className="flex items-center gap-2">
             <button
-              onClick={() => setShowFilters(!showFilters)}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg border transition-colors ${
-                filtrosActivos > 0 ? 'border-blue-500' : ''
-              }`}
-              style={{
-                backgroundColor: 'var(--bg-primary)',
-                borderColor: filtrosActivos > 0 ? 'var(--primary)' : 'var(--border)',
-                color: 'var(--text-primary)'
-              }}
+              onClick={() => setViewMode('grid')}
+              className={`p-2 rounded-md transition-colors ${viewMode === 'grid' ? 'bg-orange-500 text-white' : ''}`}
+              style={viewMode !== 'grid' ? { color: 'var(--text-secondary)' } : {}}
             >
-              <FiFilter className="w-4 h-4" />
-              Filtros
-              {filtrosActivos > 0 && (
-                <span 
-                  className="px-2 py-1 text-xs rounded-full"
-                  style={{ backgroundColor: 'var(--primary)', color: 'white' }}
-                >
-                  {filtrosActivos}
-                </span>
-              )}
+              <FiGrid className="w-4 h-4" />
             </button>
             <button
-              className="flex items-center gap-2 px-4 py-2 rounded-lg border transition-colors"
-              style={{
-                backgroundColor: 'var(--bg-primary)',
-                borderColor: 'var(--border)',
-                color: 'var(--text-primary)'
-              }}
+              onClick={() => setViewMode('table')}
+              className={`p-2 rounded-md transition-colors ${viewMode === 'table' ? 'bg-orange-500 text-white' : ''}`}
+              style={viewMode !== 'table' ? { color: 'var(--text-secondary)' } : {}}
             >
-              <FiDownload className="w-4 h-4" />
-              Exportar
+              <FiList className="w-4 h-4" />
             </button>
           </div>
         </div>
@@ -278,36 +264,35 @@ export function QuotesPage() {
               Filtros activos:
             </span>
             {filtros.estado && filtros.estado.length > 0 && (
-              <span 
-                className="flex items-center gap-1 px-3 py-1 text-sm rounded-full"
-                style={{ backgroundColor: 'var(--info-bg)', color: 'var(--info-text)' }}
-              >
-                Estado: {filtros.estado.map(e => e.charAt(0).toUpperCase() + e.slice(1)).join(', ')}
+              <div className="flex items-center gap-2 px-3 py-1 rounded-full text-sm" 
+                   style={{ backgroundColor: 'var(--accent-bg)', color: 'var(--accent-text)' }}>
+                Estados: {filtros.estado.length}
                 <button 
                   onClick={() => setSelectedStates([])}
-                  className="ml-1 hover:bg-black/10 rounded-full p-0.5"
+                  className="w-4 h-4 rounded-full flex items-center justify-center ml-1 hover:bg-red-200"
                 >
                   <FiX className="w-3 h-3" />
                 </button>
-              </span>
+              </div>
             )}
             {filtros.vendedor && (
-              <span 
-                className="flex items-center gap-1 px-3 py-1 text-sm rounded-full"
-                style={{ backgroundColor: 'var(--info-bg)', color: 'var(--info-text)' }}
-              >
-                Vendedor: {filtros.vendedor}
-                <button className="ml-1 hover:bg-black/10 rounded-full p-0.5">
+              <div className="flex items-center gap-2 px-3 py-1 rounded-full text-sm" 
+                   style={{ backgroundColor: 'var(--success-bg)', color: 'var(--success-text)' }}>
+                {filtros.vendedor}
+                <button className="w-4 h-4 rounded-full flex items-center justify-center ml-1 hover:bg-red-200">
                   <FiX className="w-3 h-3" />
                 </button>
-              </span>
+              </div>
             )}
             <button
               onClick={handleClearFilters}
-              className="text-sm underline hover:no-underline"
-              style={{ color: 'var(--primary)' }}
+              className="text-xs px-2 py-1 rounded transition-colors"
+              style={{ 
+                color: 'var(--text-muted)',
+                textDecoration: 'underline'
+              }}
             >
-              Limpiar filtros
+              Limpiar todos
             </button>
           </div>
         )}
@@ -321,18 +306,18 @@ export function QuotesPage() {
         >
           <div className="flex items-center gap-3">
             <div 
-              className="w-10 h-10 rounded-lg flex items-center justify-center"
-              style={{ backgroundColor: 'var(--primary)', color: 'white' }}
+              className="p-2 rounded"
+              style={{ backgroundColor: 'var(--info-bg)', color: 'var(--info-text)' }}
             >
               <FiFileText className="w-5 h-5" />
             </div>
             <div>
-              <p className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>
+              <div className="text-2xl font-semibold" style={{ color: 'var(--text-primary)' }}>
                 {estadisticas.total}
-              </p>
-              <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+              </div>
+              <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>
                 Total
-              </p>
+              </div>
             </div>
           </div>
         </div>
@@ -343,18 +328,18 @@ export function QuotesPage() {
         >
           <div className="flex items-center gap-3">
             <div 
-              className="w-10 h-10 rounded-lg flex items-center justify-center"
-              style={{ backgroundColor: 'var(--warning)', color: 'white' }}
+              className="p-2 rounded"
+              style={{ backgroundColor: 'var(--warning-bg)', color: 'var(--warning-text)' }}
             >
               <FiEdit2 className="w-5 h-5" />
             </div>
             <div>
-              <p className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>
+              <div className="text-2xl font-semibold" style={{ color: 'var(--text-primary)' }}>
                 {estadisticas.borradores}
-              </p>
-              <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+              </div>
+              <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>
                 Borradores
-              </p>
+              </div>
             </div>
           </div>
         </div>
@@ -365,18 +350,18 @@ export function QuotesPage() {
         >
           <div className="flex items-center gap-3">
             <div 
-              className="w-10 h-10 rounded-lg flex items-center justify-center"
-              style={{ backgroundColor: 'var(--info)', color: 'white' }}
+              className="p-2 rounded"
+              style={{ backgroundColor: 'var(--info-bg)', color: 'var(--info-text)' }}
             >
               <FiSend className="w-5 h-5" />
             </div>
             <div>
-              <p className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>
+              <div className="text-2xl font-semibold" style={{ color: 'var(--text-primary)' }}>
                 {estadisticas.enviadas}
-              </p>
-              <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+              </div>
+              <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>
                 Enviadas
-              </p>
+              </div>
             </div>
           </div>
         </div>
@@ -387,18 +372,18 @@ export function QuotesPage() {
         >
           <div className="flex items-center gap-3">
             <div 
-              className="w-10 h-10 rounded-lg flex items-center justify-center"
-              style={{ backgroundColor: 'var(--success)', color: 'white' }}
+              className="p-2 rounded"
+              style={{ backgroundColor: 'var(--success-bg)', color: 'var(--success-text)' }}
             >
               <FiTrendingUp className="w-5 h-5" />
             </div>
             <div>
-              <p className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>
+              <div className="text-2xl font-semibold" style={{ color: 'var(--text-primary)' }}>
                 {estadisticas.aceptadas}
-              </p>
-              <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+              </div>
+              <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>
                 Aceptadas
-              </p>
+              </div>
             </div>
           </div>
         </div>
@@ -409,18 +394,18 @@ export function QuotesPage() {
         >
           <div className="flex items-center gap-3">
             <div 
-              className="w-10 h-10 rounded-lg flex items-center justify-center"
-              style={{ backgroundColor: 'var(--danger)', color: 'white' }}
+              className="p-2 rounded"
+              style={{ backgroundColor: 'var(--danger-bg)', color: 'var(--danger-text)' }}
             >
               <FiX className="w-5 h-5" />
             </div>
             <div>
-              <p className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>
+              <div className="text-2xl font-semibold" style={{ color: 'var(--text-primary)' }}>
                 {estadisticas.rechazadas}
-              </p>
-              <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+              </div>
+              <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>
                 Rechazadas
-              </p>
+              </div>
             </div>
           </div>
         </div>
@@ -431,18 +416,18 @@ export function QuotesPage() {
         >
           <div className="flex items-center gap-3">
             <div 
-              className="w-10 h-10 rounded-lg flex items-center justify-center"
-              style={{ backgroundColor: '#10B981', color: 'white' }}
+              className="p-2 rounded"
+              style={{ backgroundColor: 'var(--accent-bg)', color: 'var(--accent-text)' }}
             >
               <FiDollarSign className="w-5 h-5" />
             </div>
             <div>
-              <p className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>
+              <div className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>
                 {formatMoney(estadisticas.montoTotal)}
-              </p>
-              <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+              </div>
+              <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>
                 Valor Total
-              </p>
+              </div>
             </div>
           </div>
         </div>
@@ -496,7 +481,7 @@ export function QuotesPage() {
             }
           </p>
           <button 
-            onClick={() => setIsCreateModalOpen(true)}
+            onClick={() => router.push('/dashboard/cotizaciones/nueva')}
             className="btn-primary flex items-center gap-2 mx-auto"
           >
             <FiPlus className="w-4 h-4" />
@@ -561,24 +546,6 @@ export function QuotesPage() {
         </div>
       )}
 
-      {/* Modal de Detalle/Edición de Cotización */}
-      {selectedQuote && (
-        <QuoteDetailModal
-          quote={selectedQuote}
-          isOpen={isDetailModalOpen}
-          onClose={handleCloseModal}
-          isEditMode={isEditMode}
-          formatMoney={formatMoney}
-          getStatusColor={getStatusColor}
-        />
-      )}
-
-      {/* Modal de Nueva Cotización */}
-      <CreateQuoteModal
-        isOpen={isCreateModalOpen}
-        onClose={() => setIsCreateModalOpen(false)}
-      />
-
       {/* Panel de Filtros */}
       <QuoteFiltersPanel
         isOpen={showFilters}
@@ -609,6 +576,7 @@ function QuoteCard({
 
   return (
     <div
+      onClick={() => onView(quote)}
       className="rounded-xl shadow-sm hover:shadow-md transition-all cursor-pointer relative"
       style={{ 
         backgroundColor: 'var(--card-bg)',
@@ -667,17 +635,17 @@ function QuoteCard({
         >
           <div>
             <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-              Items
+              Productos
             </p>
             <p className="font-medium" style={{ color: 'var(--text-primary)' }}>
-              {quote.items.length}
+              {quote.items.length} ítems
             </p>
           </div>
           <div>
             <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
               Total
             </p>
-            <p className="font-bold text-lg" style={{ color: 'var(--text-primary)' }}>
+            <p className="font-bold text-lg" style={{ color: 'var(--accent-primary)' }}>
               {formatMoney(quote.total)}
             </p>
           </div>
@@ -765,7 +733,7 @@ function QuotesTable({
   onEdit, 
   onDelete, 
   onDuplicate, 
-  onChangeStatus,
+
   formatMoney, 
   getStatusColor, 
   canEdit, 
@@ -814,7 +782,7 @@ function QuotesTable({
                         {quote.numero}
                       </div>
                       <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-                        {quote.items.length} items
+                        {quote.items.length} cotizaciones
                       </div>
                     </div>
                   </td>

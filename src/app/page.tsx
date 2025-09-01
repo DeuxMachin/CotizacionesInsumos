@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 
 export default function HomePage() {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
@@ -14,9 +14,11 @@ export default function HomePage() {
     if (!isAuthenticated) {
       router.replace("/login");
     } else {
-      router.replace("/dashboard");
+      // Redirigir según el rol del usuario
+      const redirectPath = user?.role === 'admin' ? '/admin' : '/dashboard';
+      router.replace(redirectPath);
     }
-  }, [isAuthenticated, router]);
+  }, [isAuthenticated, router, user]);
 
   // Página de carga mientras se redirecciona
   return (

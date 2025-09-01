@@ -7,13 +7,14 @@ import { useNavigationItems, NAVIGATION_ICONS } from "../model/navigationItems";
 import { FiX } from "react-icons/fi";
 import { Logo } from "@/shared/ui/Logo";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 
 export function Sidebar() {
   const { sidebarOpen, setSidebarOpen } = useSection();
   const { user } = useAuth();
   const { navigationItems } = useNavigationItems(user?.role || '');
   const pathname = usePathname();
+  const router = useRouter();
 
   // Determinar qué sección está activa basada en la URL actual
   const getActiveSection = (path: string): Section => {
@@ -118,7 +119,12 @@ export function Sidebar() {
                   ) : (
                     <Link
                       href={itemUrl}
+                      prefetch={true}
                       onClick={() => setSidebarOpen(false)}
+                      onMouseEnter={() => {
+                        // Prefetch adicional en dev
+                        try { router.prefetch(itemUrl); } catch {}
+                      }}
                       className={`
                         w-full flex items-center gap-3 px-3 py-2.5 rounded-lg
                         transition-colors duration-200 
