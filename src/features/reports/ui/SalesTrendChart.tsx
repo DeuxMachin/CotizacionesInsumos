@@ -4,6 +4,29 @@ import React from "react";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { ChartCard } from "./ChartCard";
 
+// Componente personalizado para el tooltip
+const CustomTooltip = ({ active, payload, label }: any) => {
+  if (active && payload && payload.length) {
+    return (
+      <div className="recharts-default-tooltip">
+        <div className="recharts-tooltip-label">{label}</div>
+        {payload.map((entry: any, index: number) => (
+          <div key={index} className="recharts-tooltip-item">
+            <span className="recharts-tooltip-item-name">{entry.name}: </span>
+            <span className="recharts-tooltip-item-value">
+              ${entry.value?.toLocaleString('es-CL', { 
+                minimumFractionDigits: 0, 
+                maximumFractionDigits: 0 
+              })}
+            </span>
+          </div>
+        ))}
+      </div>
+    );
+  }
+  return null;
+};
+
 type Period = "month" | "year";
 
 // AVISO: Datos estáticos de ejemplo (reemplazar por datos reales)
@@ -44,7 +67,7 @@ export function SalesTrendChart({ period }: { period: Period }) {
           <CartesianGrid strokeDasharray="3 3" stroke="currentColor" opacity={0.1} />
           <XAxis dataKey="label" tick={{ fontSize: 12 }} stroke="currentColor" opacity={0.5} />
           <YAxis tick={{ fontSize: 12 }} stroke="currentColor" opacity={0.5} tickFormatter={(v) => `$${Math.round(v/1000)}k`} />
-          <Tooltip formatter={(v: number) => [`$${v.toLocaleString()}`, "Ventas"]} labelFormatter={(l) => `${l}`} />
+          <Tooltip content={<CustomTooltip />} />
           <Area type="monotone" dataKey="ventas" stroke="#fb923c" fill="url(#ventasGrad)" name="Ventas" />
         </AreaChart>
       </ResponsiveContainer>

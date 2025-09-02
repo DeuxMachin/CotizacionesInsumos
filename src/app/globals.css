@@ -163,7 +163,6 @@ p, .text-body {
 .text-2xl { font-size: 1.25rem; }   /* Reducido */
 
 
-
 @layer components {
   .section-title { 
     font-family: var(--font-display);
@@ -504,4 +503,77 @@ p, .text-body {
     -ms-overflow-style: none;  /* IE and Edge */
     scrollbar-width: none;  /* Firefox */
   }
+}
+
+/* Estilos para tooltips de Recharts (gráficos) */
+.recharts-tooltip-wrapper {
+  z-index: 1000;
+}
+
+.recharts-default-tooltip {
+  background-color: var(--bg-primary) !important;
+  border: 1px solid var(--border-subtle) !important;
+  border-radius: 8px !important;
+  box-shadow: var(--shadow-md) !important;
+  padding: 8px 12px !important;
+  font-family: var(--font-sans) !important;
+}
+
+.recharts-tooltip-label {
+  color: var(--text-primary) !important;
+  font-weight: 500 !important;
+  font-size: 0.875rem !important;
+  margin-bottom: 4px !important;
+}
+
+.recharts-tooltip-item {
+  color: var(--text-secondary) !important;
+  font-size: 0.875rem !important;
+  line-height: 1.5 !important;
+}
+
+.recharts-tooltip-item-name {
+  color: var(--text-primary) !important;
+  font-weight: 500 !important;
+}
+
+.recharts-tooltip-item-value {
+  color: var(--accent-primary) !important;
+  font-weight: 600 !important;
+}
+
+/* Estilos específicos para modo oscuro */
+.dark .recharts-default-tooltip {
+  background-color: var(--bg-primary) !important;
+  border-color: var(--border-subtle) !important;
+}
+
+.dark .recharts-tooltip-label {
+  color: var(--text-primary) !important;
+}
+
+.dark .recharts-tooltip-item {
+  color: var(--text-secondary) !important;
+}
+
+.dark .recharts-tooltip-item-name {
+  color: var(--text-primary) !important;
+}
+
+.dark .recharts-tooltip-item-value {
+  color: var(--accent-primary) !important;
+}
+
+/* Estilos para leyendas de Recharts */
+.recharts-legend-wrapper {
+  font-family: var(--font-sans) !important;
+}
+
+.recharts-legend-item {
+  color: var(--text-primary) !important;
+  font-size: 0.875rem !important;
+}
+
+.dark .recharts-legend-item {
+  color: var(--text-primary) !important;
 }
