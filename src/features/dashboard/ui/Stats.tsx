@@ -1,0 +1,84 @@
+"use client";
+
+import { FiFileText, FiUsers, FiBox, FiTrendingUp } from "react-icons/fi";
+
+// Datos de las estadísticas con iconos y colores mejorados
+const statsData = [
+  {
+    icon: <FiFileText className="w-6 h-6" />,
+    label: "Cotizaciones Activas", 
+    value: "24",
+    change: "+12% desde el mes pasado",
+    changeType: "positive" as const,
+  color: "bg-orange-100 text-orange-600"
+  },
+  {
+    icon: <FiUsers className="w-6 h-6" />,
+    label: "Clientes Registrados",
+    value: "156", 
+    change: "+8% desde el mes pasado",
+    changeType: "positive" as const,
+    color: "bg-blue-100 text-blue-600"
+  },
+  {
+    icon: <FiBox className="w-6 h-6" />,
+    label: "Productos en Catálogo",
+    value: "89",
+    change: "+3% desde el mes pasado", 
+    changeType: "positive" as const,
+    color: "bg-green-100 text-green-600"
+  },
+  {
+    icon: <FiTrendingUp className="w-6 h-6" />,
+    label: "Ventas del Mes",
+    value: "$45,230",
+    change: "+15% desde el mes pasado",
+    changeType: "positive" as const,
+    color: "bg-amber-100 text-amber-600"
+  },
+];
+
+export function Stats() {
+  return (
+    <div className="grid gap-3 sm:gap-4 lg:gap-6 grid-cols-2 lg:grid-cols-4">
+      {statsData.map((stat, index) => (
+        <div 
+          key={stat.label}
+          className="stat-card group animate-slideUp"
+          style={{ animationDelay: `${index * 100}ms` }}
+        >
+          {/* Icono con fondo colorido */}
+          <div className={`
+            inline-flex h-8 w-8 sm:h-10 sm:w-10 lg:h-12 lg:w-12 items-center justify-center rounded-lg mb-3 sm:mb-4 
+            ${stat.color} group-hover:scale-110 transition-transform duration-200
+          `}>
+            <div className="w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6">
+              {stat.icon}
+            </div>
+          </div>
+          
+          {/* Valor principal */}
+          <div className="stat-number mb-1 text-lg sm:text-xl lg:text-2xl">
+            {stat.value}
+          </div>
+          
+          {/* Etiqueta descriptiva */}
+          <div className="stat-label mb-2 sm:mb-3 text-xs sm:text-sm">
+            {stat.label}
+          </div>
+          
+          {/* Indicador de cambio - oculto en mobile */}
+          <div className={`
+            stat-change hidden sm:block
+            ${stat.changeType === 'positive' 
+              ? 'stat-change-positive' 
+              : 'stat-change-negative'
+            }
+          `}>
+            {stat.change}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
