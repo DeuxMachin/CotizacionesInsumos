@@ -4,13 +4,26 @@ import React from "react";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { ChartCard } from "./ChartCard";
 
+// Interfaces para el tooltip de Recharts
+interface TooltipPayload {
+  name: string;
+  value: number;
+  color: string;
+}
+
+interface CustomTooltipProps {
+  active?: boolean;
+  payload?: TooltipPayload[];
+  label?: string;
+}
+
 // Componente personalizado para el tooltip
-const CustomTooltip = ({ active, payload, label }: any) => {
+const CustomTooltip = ({ active, payload, label }: CustomTooltipProps) => {
   if (active && payload && payload.length) {
     return (
       <div className="recharts-default-tooltip">
         <div className="recharts-tooltip-label">{label}</div>
-        {payload.map((entry: any, index: number) => (
+        {payload.map((entry: TooltipPayload, index: number) => (
           <div key={index} className="recharts-tooltip-item">
             <span className="recharts-tooltip-item-name">{entry.name}: </span>
             <span className="recharts-tooltip-item-value">
