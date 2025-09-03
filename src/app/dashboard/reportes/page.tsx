@@ -1,76 +1,178 @@
 "use client";
 
 import { useState } from "react";
-import dynamic from "next/dynamic";
-import { useAuth } from "@/features/auth/model/useAuth";
+import { FiBarChart2, FiDownload } from "react-icons/fi";
+import { SalesTrendChart } from "@/features/reports/ui/charts/SalesTrendChart";
+import { CategoryDistributionChart } from "@/features/reports/ui/charts/CategoryDistributionChart";
+import { TopProductsChart } from "@/features/reports/ui/charts/TopProductsChart";
+import { ClientStatusChart } from "@/features/reports/ui/charts/ClientStatusChart";
+import { FinancialKPIs } from '@/features/reports/ui/FinancialKPIs';
+import { MonthlySalesChart } from '@/features/reports/ui/MonthlySalesChart';
 
-const SalesSummaryKPIs = dynamic(() => import("@/features/reports/ui/SalesSummaryKPIs").then(m => m.SalesSummaryKPIs), {
-  ssr: false,
-  loading: () => <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-    {[1, 2, 3, 4].map((i) => (
-      <div key={i} className="rounded-xl p-4 sm:p-5 shadow-sm animate-pulse" style={{ backgroundColor: 'var(--bg-primary)', border: '1px solid var(--border-subtle)' }}>
-        <div className="h-3 w-20 bg-gray-200 dark:bg-gray-700 rounded mb-3"></div>
-        <div className="h-5 w-24 bg-gray-200 dark:bg-gray-700 rounded"></div>
-      </div>
-    ))}
-  </div>
-});
-
-const PeriodToggle = dynamic(() => import("@/features/reports/ui/PeriodToggle").then(m => m.PeriodToggle), {
-  ssr: false,
-  loading: () => <div className="inline-flex rounded-lg overflow-hidden h-8 w-32 animate-pulse" style={{ backgroundColor: 'var(--bg-primary)', border: '1px solid var(--border-subtle)' }}></div>
-});
-
-const SalesTrendChart = dynamic(() => import("@/features/reports/ui/SalesTrendChart").then(m => m.SalesTrendChart), {
-  ssr: false,
-  loading: () => <div className="h-64 rounded-lg" style={{ backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border)' }} />
-});
-const FinancialSummaryChart = dynamic(() => import("@/features/reports/ui/FinancialSummaryChart").then(m => m.FinancialSummaryChart), {
-  ssr: false,
-  loading: () => <div className="h-64 rounded-lg" style={{ backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border)' }} />
-});
-const AdminReports = dynamic(() => import("@/features/reports/ui/AdminReports").then(m => m.AdminReports), {
-  ssr: false,
-  loading: () => <div className="h-96 rounded-lg" style={{ backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border)' }} />
-});
-const SellerReports = dynamic(() => import("@/features/reports/ui/SellerReports").then(m => m.SellerReports), {
-  ssr: false,
-  loading: () => <div className="h-96 rounded-lg" style={{ backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border)' }} />
-});
+export type ReportPeriod = "Último mes" | "Últimos 3 meses" | "Últimos 6 meses" | "Último año";
 
 export default function ReportesPage() {
-  const { user } = useAuth();
-  const role = (user?.role ?? "").toLowerCase();
-  const isAdmin = role === "admin" || role.includes("admin");
-  const [trendPeriod, setTrendPeriod] = useState<"month" | "year">("month");
+  const [selectedPeriod, setSelectedPeriod] = useState<ReportPeriod>("Últimos 6 meses");
+
+  const periods: ReportPeriod[] = [
+    "Último mes",
+    "Últimos 3 meses", 
+    "Últimos 6 meses",
+    "Último año"
+  ];
+
+  const handleExport = () => {
+    alert("Función de exportar en desarrollo");
+  };
 
   return (
-    <div className="space-y-4 sm:space-y-6 animate-fadeIn">
-      <div className="flex items-start justify-between">
-        <div className="flex-1">
-          {/* KPIs también visibles en Reportes para contexto */}
-          <SalesSummaryKPIs />
+    <div className="space-y-6 animate-fadeIn">
+      {/* Header con selector de período y botón exportar */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 p-1">
+        {/* Título y descripción */}
+        <div className="flex items-center gap-3">
+          <div className="p-3 rounded-xl" style={{ backgroundColor: 'var(--accent-bg)', color: 'var(--accent-text)' }}>
+            <FiBarChart2 className="w-6 h-6" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>
+              Reportes
+            </h1>
+            <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>
+              Analiza el rendimiento y genera reportes detallados
+            </p>
+          </div>
         </div>
-        <div className="flex-shrink-0">
-          <button className="btn-secondary"><span>Exportar Reporte</span></button>
+
+        {/* Controles del período y exportar */}
+        <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
+          {/* Selector de período */}
+          <div className="relative">
+            <select
+              value={selectedPeriod}
+              onChange={(e) => setSelectedPeriod(e.target.value as ReportPeriod)}
+              className="appearance-none px-4 py-2.5 pr-10 rounded-lg border text-sm font-medium min-w-[160px] focus:outline-none focus:ring-2 focus:ring-purple-500/20 transition-all"
+              style={{ 
+                backgroundColor: 'var(--bg-primary)',
+                borderColor: 'var(--border)',
+                color: 'var(--text-primary)'
+              }}
+            >
+              {periods.map((period) => (
+                <option key={period} value={period}>
+                  {period}
+                </option>
+              ))}
+            </select>
+            <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+              <svg className="w-4 h-4" style={{ color: 'var(--text-tertiary)' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </div>
+          </div>
+
+          {/* Botón exportar */}
+          <button
+            onClick={handleExport}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-lg font-medium text-sm transition-all hover:scale-105 active:scale-95"
+            style={{ 
+              backgroundColor: 'var(--accent-bg)',
+              color: 'var(--accent-text)'
+            }}
+          >
+            <FiDownload className="w-4 h-4" />
+            Exportar
+          </button>
         </div>
       </div>
 
-      {/* Selector de periodo + Tendencia de ventas */}
-      <div className="space-y-3">
-        <div className="flex items-center justify-end">
-          <PeriodToggle value={trendPeriod} onChange={setTrendPeriod} />
+      {/* KPIs Financieros Principales */}
+      <FinancialKPIs period={selectedPeriod} />
+
+      {/* Gráfico de Ventas Mensuales */}
+      <MonthlySalesChart period={selectedPeriod} />
+      
+      {/* Gráficos principales */}
+      <div className="grid lg:grid-cols-2 gap-6">
+        {/* Tendencia de Ventas */}
+        <div 
+          className="p-6 rounded-xl border"
+          style={{ 
+            backgroundColor: 'var(--bg-primary)',
+            borderColor: 'var(--border-subtle)'
+          }}
+        >
+          <div className="mb-6">
+            <h3 className="text-lg font-semibold mb-1" style={{ color: 'var(--text-primary)' }}>
+              Tendencia de Ventas
+            </h3>
+            <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+              Evolución de ventas en los últimos 6 meses
+            </p>
+          </div>
+          <SalesTrendChart period={selectedPeriod} />
         </div>
-        <SalesTrendChart period={trendPeriod} />
+
+        {/* Distribución por Categoría */}
+        <div 
+          className="p-6 rounded-xl border"
+          style={{ 
+            backgroundColor: 'var(--bg-primary)',
+            borderColor: 'var(--border-subtle)'
+          }}
+        >
+          <div className="mb-6">
+            <h3 className="text-lg font-semibold mb-1" style={{ color: 'var(--text-primary)' }}>
+              Distribución por Categoría
+            </h3>
+            <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+              Ventas por categoría de productos
+            </p>
+          </div>
+          <CategoryDistributionChart period={selectedPeriod} />
+        </div>
       </div>
 
-      {/* Resumen financiero (compras/ventas/IVA) */}
-      <div className="grid gap-3 sm:gap-4 lg:gap-6 xl:grid-cols-2">
-        <FinancialSummaryChart period={trendPeriod} />
-      </div>
+      {/* Reportes detallados */}
+      <div className="grid lg:grid-cols-2 gap-6">
+        {/* Productos más vendidos */}
+        <div 
+          className="p-6 rounded-xl border"
+          style={{ 
+            backgroundColor: 'var(--bg-primary)',
+            borderColor: 'var(--border-subtle)'
+          }}
+        >
+          <div className="mb-6">
+            <h3 className="text-lg font-semibold mb-1" style={{ color: 'var(--text-primary)' }}>
+              Productos Más Vendidos
+            </h3>
+            <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+              Top 5 productos por ingresos generados
+            </p>
+          </div>
+          <TopProductsChart period={selectedPeriod} />
+        </div>
 
-      {/* Reportes según rol */}
-      {isAdmin ? <AdminReports period={trendPeriod} /> : <SellerReports period={trendPeriod} />}
+        {/* Estado de Clientes */}
+        <div 
+          className="p-6 rounded-xl border"
+          style={{ 
+            backgroundColor: 'var(--bg-primary)',
+            borderColor: 'var(--border-subtle)'
+          }}
+        >
+          <div className="mb-6">
+            <h3 className="text-lg font-semibold mb-1" style={{ color: 'var(--text-primary)' }}>
+              Estado de Clientes
+            </h3>
+            <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+              Distribución de clientes por estado
+            </p>
+          </div>
+          <ClientStatusChart period={selectedPeriod} />
+        </div>
+      </div>
     </div>
   );
 }
