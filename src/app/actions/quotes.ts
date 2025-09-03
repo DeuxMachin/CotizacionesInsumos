@@ -14,7 +14,6 @@ const QuoteSchema = z.object({
   amount: z.number().positive(),
 });
 
-type QuoteFormData = z.infer<typeof QuoteSchema>;
 
 // Mock de base de datos (en producción, esto sería una conexión real a la BD)
 const quotesDB: Quote[] = [];
@@ -36,9 +35,7 @@ export async function createQuote(formData: FormData) {
     
     
     
-    // Registrar la acción en el log de auditoría
-    await logAuditAction('create_quote', newId);
-    
+
     // Revalidar la ruta para actualizar los datos mostrados
     revalidatePath('/dashboard/cotizaciones');
     
@@ -57,7 +54,7 @@ export async function createQuote(formData: FormData) {
 /**
  * Server Action para actualizar una cotización existente
  */
-export async function updateQuote(quoteId: string, formData: FormData) {
+export async function updateQuote(quoteId: string) {
 
   // Procesamiento de datos para adaptarlos al formato esperado
 
@@ -76,8 +73,7 @@ export async function updateQuote(quoteId: string, formData: FormData) {
     
  
     
-    // Registrar la acción en el log de auditoría
-    await logAuditAction('update_quote', quoteId);
+
     
     // Revalidar la ruta para actualizar los datos mostrados
     revalidatePath('/dashboard/cotizaciones');
@@ -112,8 +108,7 @@ export async function changeQuoteStatus(quoteId: string, newStatus: QuoteStatus)
       
     };
     
-    // Registrar la acción en el log de auditoría
-    await logAuditAction('change_quote_status', quoteId, { status: newStatus });
+
     
     // Revalidar las rutas para actualizar los datos mostrados
     revalidatePath('/dashboard/cotizaciones');
@@ -140,9 +135,7 @@ export async function deleteQuote(quoteId: string) {
     // Eliminar la cotización (en producción, podría ser una eliminación lógica)
     quotesDB.splice(quoteIndex, 1);
     
-    // Registrar la acción en el log de auditoría
-    await logAuditAction('delete_quote', quoteId);
-    
+ 
     // Revalidar la ruta para actualizar los datos mostrados
     revalidatePath('/dashboard/cotizaciones');
     
@@ -152,10 +145,4 @@ export async function deleteQuote(quoteId: string) {
   }
 }
 
-/**
- * Función auxiliar para registrar acciones en el log de auditoría
- */
-async function logAuditAction(action: string, resourceId: string, details?: Record<string, unknown>) {
-  // Aquí iría la lógica para registrar en el log de auditoría
-  console.log(`[AUDIT] ${action} - Resource: ${resourceId}`, details || '');
-}
+

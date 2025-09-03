@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useMemo } from 'react';
-import type { IconType } from 'react-icons';
+
 import { useRouter, useParams } from 'next/navigation';
 import { 
   FiArrowLeft, 
@@ -17,10 +17,10 @@ import {
   FiCheck,
   FiX,
   FiAlertCircle,
-  FiTrendingUp,
-  FiTrendingDown,
+
   FiChevronDown,
-  FiCopy
+  FiCopy,
+  FiMapPin
 } from 'react-icons/fi';
 import { clientsExtended, type ClientExtended } from '@/features/clients/model/clientsExtended';
 import { quotesData } from '@/features/quotes/model/mock';
@@ -50,34 +50,34 @@ function InfoCard({ title, icon, children, collapsible = false, defaultExpanded 
 
   return (
     <div 
-      className="rounded-xl border overflow-hidden"
+      className="rounded-lg border overflow-hidden w-full mb-4 sm:mb-6"
       style={{ backgroundColor: 'var(--card-bg)', borderColor: 'var(--border)' }}
     >
       <div 
-        className={`px-6 py-4 flex items-center justify-between ${collapsible ? 'cursor-pointer' : ''}`}
+        className={`px-4 py-3 flex items-center justify-between ${collapsible ? 'cursor-pointer' : ''}`}
         style={{ backgroundColor: 'var(--bg-secondary)' }}
         onClick={collapsible ? () => setIsExpanded(!isExpanded) : undefined}
       >
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 min-w-0 flex-1">
           <div 
-            className="p-2 rounded-lg"
+            className="p-2 rounded flex-shrink-0"
             style={{ backgroundColor: 'var(--accent-bg)', color: 'var(--accent-text)' }}
           >
             {icon}
           </div>
-          <h3 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>
+          <h3 className="text-lg font-semibold truncate" style={{ color: 'var(--text-primary)' }}>
             {title}
           </h3>
         </div>
         {collapsible && (
           <FiChevronDown 
-            className={`w-5 h-5 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
+            className={`w-5 h-5 transition-transform flex-shrink-0 ${isExpanded ? 'rotate-180' : ''}`}
             style={{ color: 'var(--text-secondary)' }}
           />
         )}
       </div>
       {(!collapsible || isExpanded) && (
-        <div className="p-6">
+        <div className="p-3 sm:p-4">
           {children}
         </div>
       )}
@@ -102,7 +102,11 @@ function InfoRow({ label, value, type = 'text', copyable = false }: InfoRowProps
       case 'percentage':
         return `${val}%`;
       case 'phone':
-        return val.toString().replace(/(\d{2})(\d{4})(\d{4})/, '+56 $1 $2 $3');
+        const phoneStr = val.toString();
+        if (phoneStr.length === 9) {
+          return phoneStr.replace(/(\d{1})(\d{4})(\d{4})/, '+56 $1 $2 $3');
+        }
+        return phoneStr;
       case 'email':
         return val.toString();
       default:
@@ -116,22 +120,22 @@ function InfoRow({ label, value, type = 'text', copyable = false }: InfoRowProps
   };
 
   return (
-    <div className="flex items-center justify-between py-3 border-b last:border-b-0" style={{ borderColor: 'var(--border)' }}>
-      <span className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
+    <div className="flex flex-col sm:flex-row sm:items-center justify-between py-2 border-b" style={{ borderColor: 'var(--border)' }}>
+      <div className="text-sm mb-1 sm:mb-0" style={{ color: 'var(--text-secondary)' }}>
         {label}
-      </span>
-      <div className="flex items-center gap-2">
-        <span className="font-medium text-right" style={{ color: 'var(--text-primary)' }}>
+      </div>
+      <div className="flex items-center gap-2 max-w-full sm:max-w-[60%]">
+        <span className="font-medium text-sm truncate" style={{ color: 'var(--text-primary)' }}>
           {formatValue(value)}
         </span>
         {copyable && value && (
           <button
             onClick={handleCopy}
-            className="p-1 rounded transition-colors opacity-60 hover:opacity-100"
+            className="p-1 rounded opacity-60 hover:opacity-100 flex-shrink-0"
             style={{ color: 'var(--text-secondary)' }}
             title="Copiar"
           >
-            <FiCopy className="w-3 h-3" />
+            <FiCopy className="w-4 h-4" />
           </button>
         )}
       </div>
@@ -139,95 +143,83 @@ function InfoRow({ label, value, type = 'text', copyable = false }: InfoRowProps
   );
 }
 
-interface StatCardProps {
+interface StatCardSimpleProps {
   label: string;
-  value: number;
-  type: 'success' | 'warning' | 'danger' | 'neutral';
+  value: string;
   icon: React.ReactNode;
-  trend?: { value: number; isPositive: boolean };
+  color: string;
+  bgColor: string;
 }
 
-function StatCard({ label, value, type, icon, trend }: StatCardProps) {
-  const colors = {
-    success: { bg: 'var(--success-bg)', text: 'var(--success-text)' },
-    warning: { bg: 'var(--warning-bg)', text: 'var(--warning-text)' },
-    danger: { bg: 'var(--danger-bg)', text: 'var(--danger-text)' },
-    neutral: { bg: 'var(--neutral-bg)', text: 'var(--neutral-text)' }
-  };
-
+function StatCardSimple({ label, value, icon, color, bgColor }: StatCardSimpleProps) {
   return (
     <div 
-      className="rounded-xl p-4 border"
+      className="p-4 rounded-lg border flex items-center gap-3"
       style={{ backgroundColor: 'var(--card-bg)', borderColor: 'var(--border)' }}
     >
-      <div className="flex items-start justify-between mb-2">
-        <div 
-          className="p-3 rounded-lg"
-          style={{ backgroundColor: colors[type].bg, color: colors[type].text }}
-        >
-          {icon}
+      <div 
+        className="p-2 rounded-lg flex-shrink-0"
+        style={{ backgroundColor: bgColor, color: color }}
+      >
+        {icon}
+      </div>
+      <div className="min-w-0 flex-grow">
+        <div className="text-base sm:text-lg font-semibold truncate" style={{ color: 'var(--text-primary)' }}>
+          {value}
         </div>
-        {trend && (
-          <div className="flex items-center gap-1 text-xs">
-            {trend.isPositive ? (
-              <FiTrendingUp className="w-3 h-3" style={{ color: 'var(--success-text)' }} />
-            ) : (
-              <FiTrendingDown className="w-3 h-3" style={{ color: 'var(--danger-text)' }} />
-            )}
-            <span style={{ color: trend.isPositive ? 'var(--success-text)' : 'var(--danger-text)' }}>
-              {Math.abs(trend.value)}%
-            </span>
-          </div>
-        )}
-      </div>
-      <div className="text-2xl font-bold mb-1" style={{ color: 'var(--text-primary)' }}>
-        {formatCLP(value)}
-      </div>
-      <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-        {label}
+        <div className="text-xs truncate" style={{ color: 'var(--text-secondary)' }}>
+          {label}
+        </div>
       </div>
     </div>
   );
 }
 
 function StatusBadge({ status }: { status: ClientExtended['status'] }) {
-  const colors: Record<ClientExtended['status'], { bg: string; text: string; icon: IconType }> = {
-    vigente: { bg: 'var(--success-bg)', text: 'var(--success-text)', icon: FiCheck },
-    moroso: { bg: 'var(--warning-bg)', text: 'var(--warning-text)', icon: FiAlertCircle },
-    inactivo: { bg: 'var(--neutral-bg)', text: 'var(--neutral-text)', icon: FiX }
+  const colors: Record<ClientExtended['status'], { bg: string; text: string }> = {
+    vigente: { bg: 'var(--success-bg)', text: 'var(--success-text)' },
+    moroso: { bg: 'var(--warning-bg)', text: 'var(--warning-text)' },
+    inactivo: { bg: 'var(--neutral-bg)', text: 'var(--neutral-text)' }
+  };
+
+  const labels: Record<ClientExtended['status'], string> = {
+    vigente: 'Vigente',
+    moroso: 'Moroso',
+    inactivo: 'Inactivo'
   };
 
   const config = colors[status];
-  const IconComponent = config.icon;
 
   return (
-    <div 
-      className="inline-flex items-center gap-2 px-3 py-2 rounded-full text-sm font-medium"
+    <span 
+      className="px-2 py-1 text-xs font-medium rounded-full whitespace-nowrap inline-flex items-center justify-center"
       style={{ backgroundColor: config.bg, color: config.text }}
     >
-      <IconComponent className="w-4 h-4" />
-      {status.charAt(0).toUpperCase() + status.slice(1)}
-    </div>
+      {labels[status]}
+    </span>
   );
 }
 
 function ClientDetailPage() {
   const router = useRouter();
-  const params = useParams<{ id: string }>();
+  const params = useParams();
   const { canEdit, canDelete } = useActionAuthorization();
-
-  const clientId = params.id;
-  const client = clientsExtended.find((c: ClientExtended) => c.id === clientId);
-
-  // Filtrar cotizaciones del cliente
+  
+  // Obtener cliente por ID
+  const client = useMemo(() => {
+    const clientId = params.id;
+    return clientsExtended.find(c => c.id === clientId) || null;
+  }, [params.id]);
+  
+  // Obtener cotizaciones del cliente
   const clientQuotes = useMemo(() => {
     if (!client) return [];
-    return quotesData.filter(quote => 
-      quote.cliente.razonSocial.toLowerCase().includes(client.razonSocial.toLowerCase().split(' ')[0]) ||
-      quote.cliente.rut === client.rut
-    );
+    const normalizeRut = (rut: string | undefined) => (rut || '').replace(/\./g, '').replace(/\s+/g, '').toUpperCase();
+    const clientRut = normalizeRut(client.rut);
+    return quotesData.filter(q => normalizeRut(q.cliente?.rut) === clientRut);
   }, [client]);
 
+  // Si el cliente no existe, mostrar página de error
   if (!client) {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: 'var(--bg-primary)' }}>
@@ -254,106 +246,134 @@ function ClientDetailPage() {
   const totalPendiente = client.pending + client.partial + client.overdue;
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: 'var(--bg-primary)' }}>
+    <div className="animate-fadeIn pb-8" style={{ backgroundColor: 'var(--bg-primary)' }}>
       {/* Header */}
       <div 
         className="sticky top-0 z-10 border-b"
         style={{ backgroundColor: 'var(--card-bg)', borderColor: 'var(--border)' }}
       >
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center gap-4">
+        <div className="max-w-7xl mx-auto px-3 sm:px-4">
+          <div className="flex items-center justify-between py-2 sm:py-3">
+            <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1 mr-1 sm:mr-2">
               <button
                 onClick={() => router.push('/dashboard/clientes')}
-                className="p-2 rounded-lg transition-colors"
+                className="p-2 rounded-lg transition-colors flex-shrink-0"
                 style={{ 
                   backgroundColor: 'var(--bg-secondary)', 
                   color: 'var(--text-secondary)',
                   border: '1px solid var(--border)'
                 }}
-                onMouseEnter={(e: React.MouseEvent<HTMLButtonElement>) => (e.currentTarget.style.backgroundColor = 'var(--accent-bg)')}
-                onMouseLeave={(e: React.MouseEvent<HTMLButtonElement>) => (e.currentTarget.style.backgroundColor = 'var(--bg-secondary)')}
+                aria-label="Volver a clientes"
               >
                 <FiArrowLeft className="w-5 h-5" />
               </button>
-              <div className="flex items-center gap-3">
-                <FiBriefcase className="w-6 h-6" style={{ color: 'var(--accent-primary)' }} />
-                <div>
-                  <h1 className="text-xl font-bold" style={{ color: 'var(--text-primary)' }}>
-                    {client.razonSocial}
-                  </h1>
-                  <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-                    RUT: {client.rut}
-                  </p>
-                </div>
+              <div className="min-w-0 flex-1 w-full">
+                <h1 className="text-lg sm:text-xl font-bold leading-tight" style={{ color: 'var(--text-primary)', wordBreak: 'break-word', overflowWrap: 'anywhere' }}>
+                  {client.razonSocial}
+                </h1>
+                <p className="text-xs sm:text-sm" style={{ color: 'var(--text-secondary)' }}>
+                  RUT: {client.rut}
+                </p>
               </div>
             </div>
-            <div className="flex items-center gap-2">
+            
+            <div className="flex items-center gap-2 gap-y-2 flex-shrink-0 flex-wrap justify-end">
               <StatusBadge status={client.status} />
-              {canEdit('clients') && (
-                <button className="btn-secondary flex items-center gap-2">
-                  <FiEdit3 className="w-4 h-4" />
-                  Editar
-                </button>
-              )}
-              {canDelete('clients') && (
-                <button className="btn-secondary text-red-600 flex items-center gap-2">
-                  <FiTrash2 className="w-4 h-4" />
-                  Eliminar
-                </button>
-              )}
+              
+              {/* Botones de escritorio */}
+              <div className="hidden md:flex items-center gap-2">
+                {canEdit('clients') && (
+                  <button className="btn-secondary flex items-center gap-2">
+                    <FiEdit3 className="w-4 h-4" />
+                    Editar
+                  </button>
+                )}
+                {canDelete('clients') && (
+                  <button className="btn-secondary text-red-600 flex items-center gap-2">
+                    <FiTrash2 className="w-4 h-4" />
+                    Eliminar
+                  </button>
+                )}
+              </div>
+              
+              {/* Botones móviles */}
+              <div className="flex md:hidden items-center gap-1">
+                {canEdit('clients') && (
+                  <button 
+                    className="p-2 rounded-lg transition-colors"
+                    style={{ backgroundColor: 'var(--bg-secondary)', color: 'var(--text-secondary)' }}
+                    title="Editar cliente"
+                  >
+                    <FiEdit3 className="w-4 h-4" />
+                  </button>
+                )}
+                {canDelete('clients') && (
+                  <button 
+                    className="p-2 rounded-lg transition-colors text-red-600"
+                    style={{ backgroundColor: 'var(--bg-secondary)' }}
+                    title="Eliminar cliente"
+                  >
+                    <FiTrash2 className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         </div>
       </div>
 
       {/* Content */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-7xl mx-auto px-3 sm:px-4 py-4 sm:py-6">
         {/* Estadísticas Financieras */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <StatCard 
+  <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-4 mb-4 sm:mb-6" role="region" aria-label="Resumen financiero del cliente">
+          <StatCardSimple 
             label="Total Pagado"
-            value={client.paid}
-            type="success"
-            icon={<FiCheck className="w-5 h-5" />}
+            value={formatCLP(client.paid)}
+            icon={<FiCheck className="w-4 h-4" />}
+            color="var(--success-text)"
+            bgColor="var(--success-bg)"
           />
-          <StatCard 
+          <StatCardSimple 
             label="Pendiente de Pago"
-            value={client.pending}
-            type="warning"
-            icon={<FiClock className="w-5 h-5" />}
+            value={formatCLP(client.pending)}
+            icon={<FiClock className="w-4 h-4" />}
+            color="var(--warning-text)"
+            bgColor="var(--warning-bg)"
           />
-          <StatCard 
+          <StatCardSimple 
             label="Pagos Parciales"
-            value={client.partial}
-            type="neutral"
-            icon={<FiDollarSign className="w-5 h-5" />}
+            value={formatCLP(client.partial)}
+            icon={<FiDollarSign className="w-4 h-4" />}
+            color="var(--neutral-text)"
+            bgColor="var(--neutral-bg)"
           />
-          <StatCard 
+          <StatCardSimple 
             label="Pagos Vencidos"
-            value={client.overdue}
-            type="danger"
-            icon={<FiAlertCircle className="w-5 h-5" />}
+            value={formatCLP(client.overdue)}
+            icon={<FiAlertCircle className="w-4 h-4" />}
+            color="var(--danger-text)"
+            bgColor="var(--danger-bg)"
           />
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* Layout de dos columnas */}
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-6">
           {/* Columna principal */}
-          <div className="lg:col-span-2 space-y-8">
+          <div className="lg:col-span-2">
             {/* Información Básica */}
             <InfoCard 
               title="Información Básica" 
-              icon={<FiBriefcase className="w-5 h-5" />}
+              icon={<FiBriefcase className="w-4 h-4 sm:w-5 sm:h-5" />}
             >
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 w-full">
+                <div className="w-full">
                   <InfoRow label="Tipo" value={client.tipoEmpresa || 'Empresa'} />
                   <InfoRow label="Nombre/Razón Social" value={client.razonSocial} />
                   <InfoRow label="Nombre Fantasía" value={client.fantasyName || '-'} />
                   <InfoRow label="RUT" value={client.rut} copyable />
                   <InfoRow label="Giro" value={client.giro || '-'} />
                 </div>
-                <div>
+                <div className="w-full">
                   <InfoRow label="Región" value={client.region || '-'} />
                   <InfoRow label="Ciudad" value={client.ciudad || '-'} />
                   <InfoRow label="Comuna" value={client.comuna || '-'} />
@@ -365,23 +385,25 @@ function ClientDetailPage() {
             {/* Información de Contacto */}
             <InfoCard 
               title="Información de Contacto" 
-              icon={<FiPhone className="w-5 h-5" />}
+              icon={<FiPhone className="w-4 h-4 sm:w-5 sm:h-5" />}
             >
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <h4 className="font-medium mb-3 flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
-                    <FiUser className="w-4 h-4" />
-                    Contacto Principal
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-6 w-full">
+                <div className="w-full">
+                  <h4 className="font-medium mb-2 sm:mb-3 flex items-center gap-2 text-sm sm:text-base truncate" 
+                      style={{ color: 'var(--text-primary)' }}>
+                    <FiUser className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
+                    <span className="truncate">Contacto Principal</span>
                   </h4>
                   <InfoRow label="Nombre" value={client.contactoNombre || client.contactName || '-'} />
                   <InfoRow label="Teléfono" value={client.contactoTelefono || client.contactPhone || '-'} type="phone" copyable />
                   <InfoRow label="Email" value={client.contactoEmail || client.email || '-'} type="email" copyable />
                   <InfoRow label="Móvil" value={client.mobile || '-'} type="phone" copyable />
                 </div>
-                <div>
-                  <h4 className="font-medium mb-3 flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
-                    <FiCreditCard className="w-4 h-4" />
-                    Responsable de Pagos
+                <div className="w-full">
+                  <h4 className="font-medium mb-2 sm:mb-3 flex items-center gap-2 text-sm sm:text-base truncate"
+                      style={{ color: 'var(--text-primary)' }}>
+                    <FiCreditCard className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
+                    <span className="truncate">Responsable de Pagos</span>
                   </h4>
                   <InfoRow label="Nombre" value={client.paymentResponsible || '-'} />
                   <InfoRow label="Teléfono" value={client.paymentPhone || '-'} type="phone" copyable />
@@ -394,68 +416,107 @@ function ClientDetailPage() {
             {/* Historial de Cotizaciones */}
             <InfoCard 
               title={`Historial de Cotizaciones (${clientQuotes.length})`}
-              icon={<FiFileText className="w-5 h-5" />}
+              icon={<FiFileText className="w-4 h-4 sm:w-5 sm:h-5" />}
             >
               {clientQuotes.length > 0 ? (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr 
-                        className="border-b"
-                        style={{ borderColor: 'var(--border)' }}
+                <div className="w-full">
+                  {/* Vista de tabla para desktop */}
+      <div className="hidden md:block w-full overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b" style={{ borderColor: 'var(--border)' }}>
+                          <th className="text-left pb-3 px-2" style={{ color: 'var(--text-secondary)' }}>Número</th>
+                          <th className="text-left pb-3 px-2" style={{ color: 'var(--text-secondary)' }}>Fecha</th>
+                          <th className="text-left pb-3 px-2" style={{ color: 'var(--text-secondary)' }}>Estado</th>
+                          <th className="text-right pb-3 px-2" style={{ color: 'var(--text-secondary)' }}>Total</th>
+                          <th className="text-center pb-3 px-2" style={{ color: 'var(--text-secondary)' }}>Acciones</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {clientQuotes.map((quote, index) => (
+                          <tr 
+                            key={quote.id}
+                            className="border-b last:border-b-0 hover:bg-opacity-50 transition-colors"
+                            style={{ 
+                              borderColor: 'var(--border)',
+                              backgroundColor: index % 2 === 0 ? 'transparent' : 'var(--bg-secondary)'
+                            }}
+                          >
+                            <td className="py-3 px-2">
+                              <div className="font-medium" style={{ color: 'var(--accent-primary)' }}>
+                                {quote.numero}
+                              </div>
+                              <div className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                                {quote.id.substring(0, 8)}...
+                              </div>
+                            </td>
+                            <td className="py-3 px-2" style={{ color: 'var(--text-primary)' }}>
+                              {new Date(quote.fechaCreacion).toLocaleDateString('es-CL')}
+                            </td>
+                            <td className="py-3 px-2">
+                              <Badge status={quote.estado} />
+                            </td>
+                            <td className="py-3 px-2 text-right font-medium" style={{ color: 'var(--text-primary)' }}>
+                              {formatCLP(quote.total)}
+                            </td>
+                            <td className="py-3 px-2 text-center">
+                              <button 
+                                onClick={() => router.push(`/dashboard/cotizaciones/${quote.id}`)}
+                                className="btn-secondary text-xs px-3 py-1"
+                              >
+                                Ver
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Vista de tarjetas para móvil */}
+      <div className="md:hidden grid grid-cols-1 gap-2.5 w-full">
+                    {clientQuotes.map((quote) => (
+                      <div 
+                        key={quote.id}
+        className="p-3 rounded-lg border"
+                        style={{ backgroundColor: 'var(--bg-secondary)', borderColor: 'var(--border)' }}
                       >
-                        <th className="text-left pb-3" style={{ color: 'var(--text-secondary)' }}>Número</th>
-                        <th className="text-left pb-3" style={{ color: 'var(--text-secondary)' }}>Fecha</th>
-                        <th className="text-left pb-3" style={{ color: 'var(--text-secondary)' }}>Estado</th>
-                        <th className="text-right pb-3" style={{ color: 'var(--text-secondary)' }}>Total</th>
-                        <th className="text-center pb-3" style={{ color: 'var(--text-secondary)' }}>Acciones</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {clientQuotes.map((quote, index) => (
-                        <tr 
-                          key={quote.id}
-                          className={`border-b last:border-b-0 hover:bg-opacity-50 transition-colors ${
-                            index % 2 === 0 ? '' : ''
-                          }`}
-                          style={{ 
-                            borderColor: 'var(--border)',
-                            backgroundColor: index % 2 === 0 ? 'transparent' : 'var(--bg-secondary)'
-                          }}
-                        >
-                          <td className="py-3">
-                            <div className="font-medium" style={{ color: 'var(--accent-primary)' }}>
+                        <div className="flex items-start justify-between mb-3 w-full">
+                          <div className="min-w-0 flex-grow mr-2">
+                            <div className="font-medium text-sm truncate" style={{ color: 'var(--accent-primary)' }}>
                               {quote.numero}
                             </div>
-                            <div className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                              {quote.id}
+                            <div className="text-xs truncate" style={{ color: 'var(--text-muted)' }}>
+                              {quote.id.substring(0, 8)}...
                             </div>
-                          </td>
-                          <td className="py-3" style={{ color: 'var(--text-primary)' }}>
-                            {new Date(quote.fechaCreacion).toLocaleDateString('es-CL')}
-                          </td>
-                          <td className="py-3">
+                          </div>
+                          <div className="flex-shrink-0">
                             <Badge status={quote.estado} />
-                          </td>
-                          <td className="py-3 text-right font-medium" style={{ color: 'var(--text-primary)' }}>
+                          </div>
+                        </div>
+                        
+                        <div className="flex items-center justify-between mb-3 w-full">
+                          <span className="text-xs truncate" style={{ color: 'var(--text-secondary)' }}>
+                            {new Date(quote.fechaCreacion).toLocaleDateString('es-CL')}
+                          </span>
+                          <span className="font-medium text-sm truncate ml-2" style={{ color: 'var(--text-primary)' }}>
                             {formatCLP(quote.total)}
-                          </td>
-                          <td className="py-3 text-center">
-                            <button 
-                              onClick={() => router.push(`/dashboard/cotizaciones/${quote.id}`)}
-                              className="btn-secondary text-xs px-3 py-1"
-                            >
-                              Ver
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                          </span>
+                        </div>
+                        
+                        <button 
+                          onClick={() => router.push(`/dashboard/cotizaciones/${quote.id}`)}
+                          className="btn-secondary text-xs px-3 py-2 w-full"
+                        >
+                          Ver Detalle
+                        </button>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               ) : (
-                <div className="text-center py-8">
-                  <FiFileText className="w-12 h-12 mx-auto mb-4" style={{ color: 'var(--text-muted)' }} />
+                <div className="text-center py-6 w-full">
+                  <FiFileText className="w-10 h-10 mx-auto mb-3" style={{ color: 'var(--text-muted)' }} />
                   <h4 className="font-medium mb-2" style={{ color: 'var(--text-primary)' }}>
                     Sin cotizaciones
                   </h4>
@@ -467,32 +528,33 @@ function ClientDetailPage() {
             </InfoCard>
           </div>
 
-          {/* Sidebar */}
-          <div className="space-y-8">
+          {/* Columna lateral */}
+          <div>
             {/* Información de Crédito */}
             <InfoCard 
               title="Información de Crédito" 
-              icon={<FiCreditCard className="w-5 h-5" />}
+              icon={<FiCreditCard className="w-4 h-4 sm:w-5 sm:h-5" />}
             >
-              <div className="space-y-3">
+              <div className="space-y-2.5 sm:space-y-3 w-full">
                 <InfoRow label="Crédito Actual" value={client.credit} type="currency" />
                 <InfoRow label="Línea de Crédito" value={client.creditLine} type="currency" />
                 <InfoRow label="Días Adicionales" value={`${client.additionalDays} días`} />
                 <InfoRow label="Descuento" value={client.discount} type="percentage" />
-                <div className="flex items-center justify-between py-3">
-                  <span className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between py-2 sm:py-3 border-b" 
+                     style={{ borderColor: 'var(--border)' }}>
+                  <span className="text-xs sm:text-sm font-medium mb-1 sm:mb-0" style={{ color: 'var(--text-secondary)' }}>
                     Restricción al Vencido
                   </span>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1 sm:gap-2">
                     {client.retention === 'SI' ? (
-                      <div className="flex items-center gap-1" style={{ color: 'var(--danger-text)' }}>
-                        <FiCheck className="w-4 h-4" />
-                        <span className="font-medium">SÍ</span>
+                      <div className="flex items-center gap-0.5 sm:gap-1" style={{ color: 'var(--danger-text)' }}>
+                        <FiCheck className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
+                        <span className="font-medium text-xs sm:text-sm">SÍ</span>
                       </div>
                     ) : (
-                      <div className="flex items-center gap-1" style={{ color: 'var(--success-text)' }}>
-                        <FiX className="w-4 h-4" />
-                        <span className="font-medium">NO</span>
+                      <div className="flex items-center gap-0.5 sm:gap-1" style={{ color: 'var(--success-text)' }}>
+                        <FiX className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
+                        <span className="font-medium text-xs sm:text-sm">NO</span>
                       </div>
                     )}
                   </div>
@@ -503,28 +565,25 @@ function ClientDetailPage() {
             {/* Resumen Financiero */}
             <InfoCard 
               title="Resumen Financiero" 
-              icon={<FiDollarSign className="w-5 h-5" />}
+              icon={<FiDollarSign className="w-4 h-4 sm:w-5 sm:h-5" />}
             >
-              <div className="space-y-3">
-                <div className="flex items-center justify-between py-2">
-                  <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>Total Movimientos</span>
-                  <span className="font-bold text-lg" style={{ color: 'var(--text-primary)' }}>
+              <div className="space-y-2 sm:space-y-3 w-full">
+                <div className="flex items-center justify-between py-1 sm:py-2 w-full">
+                  <span className="text-xs sm:text-sm" style={{ color: 'var(--text-secondary)' }}>Total Movimientos</span>
+                  <span className="font-bold text-base sm:text-lg truncate ml-2" style={{ color: 'var(--text-primary)' }}>
                     {formatCLP(totalMovimientos)}
                   </span>
                 </div>
-                <div 
-                  className="border-t pt-3"
-                  style={{ borderColor: 'var(--border)' }}
-                >
-                  <div className="flex items-center justify-between py-1">
-                    <span className="text-sm" style={{ color: 'var(--success-text)' }}>Pagado</span>
-                    <span className="font-medium" style={{ color: 'var(--success-text)' }}>
+                <div className="border-t pt-2 sm:pt-3 w-full" style={{ borderColor: 'var(--border)' }}>
+                  <div className="flex items-center justify-between py-0.5 sm:py-1 w-full">
+                    <span className="text-xs sm:text-sm" style={{ color: 'var(--success-text)' }}>Pagado</span>
+                    <span className="font-medium text-xs sm:text-sm truncate ml-2" style={{ color: 'var(--success-text)' }}>
                       {formatCLP(client.paid)}
                     </span>
                   </div>
-                  <div className="flex items-center justify-between py-1">
-                    <span className="text-sm" style={{ color: 'var(--warning-text)' }}>Por Cobrar</span>
-                    <span className="font-medium" style={{ color: 'var(--warning-text)' }}>
+                  <div className="flex items-center justify-between py-0.5 sm:py-1 w-full">
+                    <span className="text-xs sm:text-sm" style={{ color: 'var(--warning-text)' }}>Por Cobrar</span>
+                    <span className="font-medium text-xs sm:text-sm truncate ml-2" style={{ color: 'var(--warning-text)' }}>
                       {formatCLP(totalPendiente)}
                     </span>
                   </div>
@@ -535,9 +594,9 @@ function ClientDetailPage() {
             {/* Otra Información */}
             <InfoCard 
               title="Otra Información" 
-              icon={<FiFileText className="w-5 h-5" />}
+              icon={<FiMapPin className="w-4 h-4 sm:w-5 sm:h-5" />}
             >
-              <div className="space-y-3">
+              <div className="space-y-2.5 sm:space-y-3 w-full">
                 <InfoRow label="Estado" value={client.status} />
                 <InfoRow label="Correo(s) Electrónico(s)" value={client.email || client.contactoEmail || '-'} type="email" copyable />
                 <InfoRow label="Teléfono" value={client.phone || client.contactoTelefono || '-'} type="phone" copyable />

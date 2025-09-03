@@ -215,7 +215,7 @@ export function ClientsPage() {
             </button>
             {canCreate('clients') && (
               <button 
-                onClick={() => Toast.info('Nueva funcionalidad próximamente')}
+                onClick={() => router.push('/dashboard/clientes/nuevo')}
                 className="btn-primary flex items-center gap-2"
               >
                 <FiPlus className="w-4 h-4" />
