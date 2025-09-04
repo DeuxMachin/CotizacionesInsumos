@@ -1,29 +1,66 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { FiPlus, FiMapPin, FiPhone, FiUser, FiClock, FiArrowLeft, FiArrowRight, FiMap } from "react-icons/fi";
+import { useState, useEffect, useMemo } from "react";
+import { FiPlus, FiMapPin, FiPhone, FiUser, FiClock, FiArrowLeft, FiArrowRight, FiMap, FiFilter } from "react-icons/fi";
 import { useTargets } from "../model/useTargets";
+import { UnifiedFilters, FilterSection, FilterCheckbox, FilterSelect } from "@/shared/ui/UnifiedFilters";
 import dynamic from "next/dynamic";
 const CreateTargetModal = dynamic(() => import("./CreateTargetModal"), { ssr: false, loading: () => null });
 const TargetDetailsModal = dynamic(() => import("./TargetDetailsModal").then(m => m.TargetDetailsModal), { ssr: false, loading: () => null });
 import type { PosibleTarget } from "../model/types";
+
+// Definir tipos de filtros para targets
+interface TargetFilters {
+  estado?: string[];
+  prioridad?: string[];
+  tipoObra?: string[];
+}
 
 export function PosiblesTargetsPage() {
   const { targets, loading, fetchTargets } = useTargets();
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [selectedTarget, setSelectedTarget] = useState<PosibleTarget | null>(null);
   const [currentPage, setCurrentPage] = useState(0);
+  const [showFilters, setShowFilters] = useState(false);
+  const [filters, setFilters] = useState<TargetFilters>({});
   const TARGETS_PER_PAGE = 6;
 
   useEffect(() => {
     fetchTargets();
   }, [fetchTargets]);
 
-  const totalPages = Math.ceil(targets.length / TARGETS_PER_PAGE);
-  const paginatedTargets = targets.slice(
+  // Filtrar targets según los filtros aplicados
+  const filteredTargets = useMemo(() => {
+    return targets.filter((target: PosibleTarget) => {
+      // Filtro por estado
+      if (filters.estado && filters.estado.length > 0) {
+        if (!filters.estado.includes(target.estado)) return false;
+      }
+      
+      // Filtro por prioridad
+      if (filters.prioridad && filters.prioridad.length > 0) {
+        if (!filters.prioridad.includes(target.prioridad)) return false;
+      }
+      
+      // Filtro por tipo de obra
+      if (filters.tipoObra && filters.tipoObra.length > 0) {
+        if (!target.tipoObra || !filters.tipoObra.includes(target.tipoObra)) return false;
+      }
+      
+      return true;
+    });
+  }, [targets, filters]);
+
+  const totalPages = Math.ceil(filteredTargets.length / TARGETS_PER_PAGE);
+  const paginatedTargets = filteredTargets.slice(
     currentPage * TARGETS_PER_PAGE,
     (currentPage + 1) * TARGETS_PER_PAGE
   );
+
+  // Reset page when filters change
+  useEffect(() => {
+    setCurrentPage(0);
+  }, [filters]);
 
   const getEstadoClass = (estado: string) => {
     switch (estado) {
@@ -98,33 +135,52 @@ export function PosiblesTargetsPage() {
             Posibles Targets
           </h1>
           <p className="mt-1" style={{ color: 'var(--text-secondary)' }}>
-            Gestiona oportunidades de negocio encontradas en terreno
+            Gestiona oportunidades de negocio encontradas en terreno ({filteredTargets.length} targets)
           </p>
         </div>
-        <button
-          onClick={() => setShowCreateModal(true)}
-          className="btn-primary flex items-center gap-2"
-        >
-          <FiPlus className="w-4 h-4" />
-          Nuevo Target
-        </button>
+        
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setShowFilters(true)}
+            className="btn-secondary flex items-center gap-2"
+          >
+            <FiFilter className="w-4 h-4" />
+            Filtros
+            {(filters.estado?.length || 0) + (filters.prioridad?.length || 0) + (filters.tipoObra?.length || 0) > 0 && (
+              <span className="bg-blue-500 text-white text-xs px-2 py-0.5 rounded-full">
+                {(filters.estado?.length || 0) + (filters.prioridad?.length || 0) + (filters.tipoObra?.length || 0)}
+              </span>
+            )}
+          </button>
+          
+          <button
+            onClick={() => setShowCreateModal(true)}
+            className="btn-primary flex items-center gap-2"
+          >
+            <FiPlus className="w-4 h-4" />
+            Nuevo Target
+          </button>
+        </div>
       </div>
 
-      {targets.length === 0 ? (
+      {filteredTargets.length === 0 ? (
         <div className="text-center py-12">
           <FiMapPin className="mx-auto h-12 w-12 mb-4" style={{ color: 'var(--text-muted)' }} />
           <h3 className="text-lg font-medium mb-2" style={{ color: 'var(--text-primary)' }}>
-            No hay targets registrados
+            {targets.length === 0 ? 'No hay targets registrados' : 'No se encontraron targets con los filtros aplicados'}
           </h3>
           <p className="mb-6" style={{ color: 'var(--text-secondary)' }}>
-            Comienza agregando el primer posible target encontrado en terreno
+            {targets.length === 0 
+              ? 'Comienza agregando el primer posible target encontrado en terreno'
+              : 'Intenta ajustar los filtros o agregar un nuevo target'
+            }
           </p>
           <button
             onClick={() => setShowCreateModal(true)}
             className="btn-primary flex items-center gap-2 mx-auto"
           >
             <FiPlus className="w-4 h-4" />
-            Agregar Primer Target
+            {targets.length === 0 ? 'Agregar Primer Target' : 'Nuevo Target'}
           </button>
         </div>
       ) : (
@@ -263,7 +319,8 @@ export function PosiblesTargetsPage() {
                 </button>
                 
                 <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-                  Página {currentPage + 1} de {totalPages} • {targets.length} targets
+                  Página {currentPage + 1} de {totalPages} • {filteredTargets.length} targets
+                  {filteredTargets.length !== targets.length && ` (${targets.length} total)`}
                 </span>
                 
                 <button
@@ -302,6 +359,178 @@ export function PosiblesTargetsPage() {
           onClose={() => setSelectedTarget(null)}
         />
       )}
+
+      {/* Componente de Filtros */}
+      {showFilters && (
+        <TargetFiltersPanel
+          filters={filters}
+          onFiltersChange={setFilters}
+          onClose={() => setShowFilters(false)}
+          isOpen={showFilters}
+          targets={targets}
+        />
+      )}
     </div>
+  );
+}
+
+// Componente de filtros para targets
+function TargetFiltersPanel({
+  filters,
+  onFiltersChange,
+  onClose,
+  isOpen,
+  targets
+}: {
+  filters: TargetFilters;
+  onFiltersChange: (filters: TargetFilters) => void;
+  onClose: () => void;
+  isOpen: boolean;
+  targets: PosibleTarget[];
+}) {
+  const [tempFilters, setTempFilters] = useState<TargetFilters>(filters);
+
+  // Obtener valores únicos de los datos
+  const estados = ['pendiente', 'contactado', 'gestionando', 'cerrado', 'descartado'];
+  const prioridades = ['alta', 'media', 'baja'];
+  const tiposObra = [...new Set(targets.filter(t => t.tipoObra).map(t => t.tipoObra!))];
+
+  const aplicarFiltros = () => {
+    onFiltersChange(tempFilters);
+    onClose();
+  };
+
+  const limpiarFiltros = () => {
+    const filtrosVacios: TargetFilters = {};
+    setTempFilters(filtrosVacios);
+    onFiltersChange(filtrosVacios);
+    onClose();
+  };
+
+  const getEstadoLabel = (estado: string) => {
+    const labels: { [key: string]: string } = {
+      pendiente: 'Pendiente',
+      contactado: 'Contactado',
+      gestionando: 'Gestionando',
+      cerrado: 'Cerrado',
+      descartado: 'Descartado'
+    };
+    return labels[estado] || estado;
+  };
+
+  const getPrioridadLabel = (prioridad: string) => {
+    const labels: { [key: string]: string } = {
+      alta: 'Alta',
+      media: 'Media',
+      baja: 'Baja'
+    };
+    return labels[prioridad] || prioridad;
+  };
+
+  const getEstadoColor = (estado: string) => {
+    const colors: { [key: string]: { bg: string; text: string } } = {
+      pendiente: { bg: 'var(--warning-bg)', text: 'var(--warning-text)' },
+      contactado: { bg: 'var(--info-bg)', text: 'var(--info-text)' },
+      gestionando: { bg: 'var(--accent-bg)', text: 'var(--accent-text)' },
+      cerrado: { bg: 'var(--success-bg)', text: 'var(--success-text)' },
+      descartado: { bg: 'var(--neutral-bg)', text: 'var(--neutral-text)' }
+    };
+    return colors[estado] || { bg: 'var(--neutral-bg)', text: 'var(--neutral-text)' };
+  };
+
+  const getPrioridadColor = (prioridad: string) => {
+    const colors: { [key: string]: { bg: string; text: string } } = {
+      alta: { bg: 'var(--danger-bg)', text: 'var(--danger-text)' },
+      media: { bg: 'var(--warning-bg)', text: 'var(--warning-text)' },
+      baja: { bg: 'var(--success-bg)', text: 'var(--success-text)' }
+    };
+    return colors[prioridad] || { bg: 'var(--neutral-bg)', text: 'var(--neutral-text)' };
+  };
+
+  const handleEstadoChange = (estado: string, checked: boolean) => {
+    const currentEstados = tempFilters.estado || [];
+    const updatedEstados = checked
+      ? [...currentEstados, estado]
+      : currentEstados.filter(e => e !== estado);
+    
+    setTempFilters({
+      ...tempFilters,
+      estado: updatedEstados.length > 0 ? updatedEstados : undefined
+    });
+  };
+
+  const handlePrioridadChange = (prioridad: string, checked: boolean) => {
+    const currentPrioridades = tempFilters.prioridad || [];
+    const updatedPrioridades = checked
+      ? [...currentPrioridades, prioridad]
+      : currentPrioridades.filter(p => p !== prioridad);
+    
+    setTempFilters({
+      ...tempFilters,
+      prioridad: updatedPrioridades.length > 0 ? updatedPrioridades : undefined
+    });
+  };
+
+  const handleTipoObraChange = (tipo: string, checked: boolean) => {
+    const currentTipos = tempFilters.tipoObra || [];
+    const updatedTipos = checked
+      ? [...currentTipos, tipo]
+      : currentTipos.filter(t => t !== tipo);
+    
+    setTempFilters({
+      ...tempFilters,
+      tipoObra: updatedTipos.length > 0 ? updatedTipos : undefined
+    });
+  };
+
+  return (
+    <UnifiedFilters
+      isOpen={isOpen}
+      onClose={onClose}
+      onApply={aplicarFiltros}
+      onClear={limpiarFiltros}
+      title="Filtros de Targets"
+      showApplyButton={true}
+    >
+      {/* Sección de Estados */}
+      <FilterSection title="Estado">
+        {estados.map((estado) => (
+          <FilterCheckbox
+            key={estado}
+            checked={tempFilters.estado?.includes(estado) || false}
+            onChange={(checked: boolean) => handleEstadoChange(estado, checked)}
+            label={getEstadoLabel(estado)}
+            color={getEstadoColor(estado)}
+          />
+        ))}
+      </FilterSection>
+
+      {/* Sección de Prioridades */}
+      <FilterSection title="Prioridad">
+        {prioridades.map((prioridad) => (
+          <FilterCheckbox
+            key={prioridad}
+            checked={tempFilters.prioridad?.includes(prioridad) || false}
+            onChange={(checked: boolean) => handlePrioridadChange(prioridad, checked)}
+            label={getPrioridadLabel(prioridad)}
+            color={getPrioridadColor(prioridad)}
+          />
+        ))}
+      </FilterSection>
+
+      {/* Sección de Tipos de Obra */}
+      {tiposObra.length > 0 && (
+        <FilterSection title="Tipo de Obra">
+          {tiposObra.map((tipo) => (
+            <FilterCheckbox
+              key={tipo}
+              checked={tempFilters.tipoObra?.includes(tipo) || false}
+              onChange={(checked: boolean) => handleTipoObraChange(tipo, checked)}
+              label={tipo}
+            />
+          ))}
+        </FilterSection>
+      )}
+    </UnifiedFilters>
   );
 }

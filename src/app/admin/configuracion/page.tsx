@@ -1,7 +1,7 @@
 "use client";
 
-import { SystemSettingsPage } from "@/features/admin/ui/SystemSettingsPage";
+import { SystemConfiguration } from "@/features/admin/ui/SystemConfiguration";
 
 export default function ConfiguracionPage() {
-  return <SystemSettingsPage />;
+  return <SystemConfiguration />;
 }

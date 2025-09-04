@@ -1,12 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import {
-  FiFilter,
-  FiX,
-  FiCalendar,
-  FiUser,
-} from "react-icons/fi";
+import { UnifiedFilters, FilterSection, FilterCheckbox, FilterDateRange, FilterSelect } from "@/shared/ui/UnifiedFilters";
 import type { 
   FiltersBarProps, 
   EstadoObra, 
@@ -19,7 +14,9 @@ export function FiltersBar({
   onFiltrosChange, 
   isOpen, 
   onClose, 
-  vendedores 
+  vendedores,
+  onFiltroChange,
+  onClearFilters 
 }: FiltersBarProps) {
   const [tempFiltros, setTempFiltros] = useState<FiltroObras>(filtros);
 
@@ -35,6 +32,9 @@ export function FiltersBar({
     const filtrosVacios: FiltroObras = {};
     setTempFiltros(filtrosVacios);
     onFiltrosChange(filtrosVacios);
+    if (onClearFilters) {
+      onClearFilters();
+    }
     onClose();
   };
 
@@ -62,235 +62,131 @@ export function FiltersBar({
     return labels[etapa];
   };
 
-  if (!isOpen) return null;
+  const getEstadoColor = (estado: EstadoObra) => {
+    const colors = {
+      planificacion: { bg: 'var(--warning-bg)', text: 'var(--warning-text)' },
+      activa: { bg: 'var(--success-bg)', text: 'var(--success-text)' },
+      pausada: { bg: 'var(--danger-bg)', text: 'var(--danger-text)' },
+      finalizada: { bg: 'var(--info-bg)', text: 'var(--info-text)' },
+      cancelada: { bg: 'var(--danger-bg)', text: 'var(--danger-text)' },
+      sin_contacto: { bg: 'var(--neutral-bg)', text: 'var(--neutral-text)' }
+    };
+    return colors[estado];
+  };
+
+  const getEtapaColor = (etapa: EtapaObra) => {
+    const colors = {
+      fundacion: { bg: 'var(--warning-bg)', text: 'var(--warning-text)' },
+      estructura: { bg: 'var(--info-bg)', text: 'var(--info-text)' },
+      albanileria: { bg: 'var(--success-bg)', text: 'var(--success-text)' },
+      instalaciones: { bg: 'var(--accent-bg)', text: 'var(--accent-text)' },
+      terminaciones: { bg: 'var(--success-bg)', text: 'var(--success-text)' },
+      entrega: { bg: 'var(--info-bg)', text: 'var(--info-text)' }
+    };
+    return colors[etapa];
+  };
+
+  const handleEstadoChange = (estado: EstadoObra, checked: boolean) => {
+    const currentEstados = tempFiltros.estado || [];
+    const updatedEstados = checked 
+      ? [...currentEstados, estado]
+      : currentEstados.filter(e => e !== estado);
+    
+    setTempFiltros({
+      ...tempFiltros,
+      estado: updatedEstados.length > 0 ? updatedEstados : undefined
+    });
+  };
+
+  const handleEtapaChange = (etapa: EtapaObra, checked: boolean) => {
+    const currentEtapas = tempFiltros.etapa || [];
+    const updatedEtapas = checked 
+      ? [...currentEtapas, etapa]
+      : currentEtapas.filter(e => e !== etapa);
+    
+    setTempFiltros({
+      ...tempFiltros,
+      etapa: updatedEtapas.length > 0 ? updatedEtapas : undefined
+    });
+  };
+
+  const formatDateForInput = (date: Date | undefined) => {
+    if (!date) return '';
+    return date.toISOString().split('T')[0];
+  };
+
+  const parseDateFromInput = (dateString: string) => {
+    if (!dateString) return undefined;
+    return new Date(dateString);
+  };
 
   return (
-    <>
-      {/* Backdrop */}
-      <div 
-        className="fixed inset-0 bg-black/50 z-40"
-        onClick={onClose}
-      />
-      
-      {/* Panel de Filtros */}
-      <div 
-        className="fixed right-0 top-0 h-full w-96 z-50 animate-slideIn custom-scrollbar overflow-y-auto"
-        style={{ backgroundColor: 'var(--card-bg)', borderLeft: '1px solid var(--border)' }}
-      >
-        {/* Header */}
-        <div 
-          className="flex items-center justify-between p-6 border-b"
-          style={{ borderColor: 'var(--border)' }}
-        >
-          <div className="flex items-center gap-3">
-            <div 
-              className="p-2 rounded-lg"
-              style={{ backgroundColor: 'var(--accent-bg)', color: 'var(--accent-text)' }}
-            >
-              <FiFilter className="w-5 h-5" />
-            </div>
-            <h2 className="text-xl font-semibold" style={{ color: 'var(--text-primary)' }}>
-              Filtros Avanzados
-            </h2>
-          </div>
-          <button
-            onClick={onClose}
-            className="p-2 rounded-lg transition-colors"
-            style={{ color: 'var(--text-secondary)' }}
-            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--bg-secondary)'}
-            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-          >
-            <FiX className="w-5 h-5" />
-          </button>
-        </div>
+    <UnifiedFilters
+      isOpen={isOpen}
+      onClose={onClose}
+      onApply={aplicarFiltros}
+      onClear={limpiarFiltros}
+      title="Filtros de Obras"
+      showApplyButton={true}
+    >
+      {/* Sección de Estados */}
+      <FilterSection title="Estado de la Obra">
+        {estados.map((estado) => (
+          <FilterCheckbox
+            key={estado}
+            checked={tempFiltros.estado?.includes(estado) || false}
+            onChange={(checked) => handleEstadoChange(estado, checked)}
+            label={getEstadoLabel(estado)}
+            color={getEstadoColor(estado)}
+          />
+        ))}
+      </FilterSection>
 
-        {/* Contenido */}
-        <div className="p-6 space-y-6">
-          {/* Estados */}
-          <div>
-            <label className="text-sm font-medium mb-3 block" style={{ color: 'var(--text-primary)' }}>
-              Estados de Obra
-            </label>
-            <div className="space-y-2">
-              {estados.map((estado) => (
-                <label key={estado} className="flex items-center gap-3 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={tempFiltros.estado?.includes(estado) || false}
-                    onChange={(e) => {
-                      const estadosActuales = tempFiltros.estado || [];
-                      if (e.target.checked) {
-                        setTempFiltros({
-                          ...tempFiltros,
-                          estado: [...estadosActuales, estado]
-                        });
-                      } else {
-                        setTempFiltros({
-                          ...tempFiltros,
-                          estado: estadosActuales.filter(e => e !== estado)
-                        });
-                      }
-                    }}
-                    className="w-4 h-4 rounded border-2 transition-colors"
-                    style={{ 
-                      borderColor: 'var(--border)',
-                      accentColor: 'var(--accent-primary)'
-                    }}
-                  />
-                  <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-                    {getEstadoLabel(estado)}
-                  </span>
-                </label>
-              ))}
-            </div>
-          </div>
+      {/* Sección de Etapas */}
+      <FilterSection title="Etapa Actual">
+        {etapas.map((etapa) => (
+          <FilterCheckbox
+            key={etapa}
+            checked={tempFiltros.etapa?.includes(etapa) || false}
+            onChange={(checked) => handleEtapaChange(etapa, checked)}
+            label={getEtapaLabel(etapa)}
+            color={getEtapaColor(etapa)}
+          />
+        ))}
+      </FilterSection>
 
-          {/* Etapas */}
-          <div>
-            <label className="text-sm font-medium mb-3 block" style={{ color: 'var(--text-primary)' }}>
-              Etapas de Construcción
-            </label>
-            <div className="space-y-2">
-              {etapas.map((etapa) => (
-                <label key={etapa} className="flex items-center gap-3 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={tempFiltros.etapa?.includes(etapa) || false}
-                    onChange={(e) => {
-                      const etapasActuales = tempFiltros.etapa || [];
-                      if (e.target.checked) {
-                        setTempFiltros({
-                          ...tempFiltros,
-                          etapa: [...etapasActuales, etapa]
-                        });
-                      } else {
-                        setTempFiltros({
-                          ...tempFiltros,
-                          etapa: etapasActuales.filter(et => et !== etapa)
-                        });
-                      }
-                    }}
-                    className="w-4 h-4 rounded border-2 transition-colors"
-                    style={{ 
-                      borderColor: 'var(--border)',
-                      accentColor: 'var(--accent-primary)'
-                    }}
-                  />
-                  <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-                    {getEtapaLabel(etapa)}
-                  </span>
-                </label>
-              ))}
-            </div>
-          </div>
+      {/* Sección de Vendedores */}
+      {vendedores && vendedores.length > 0 && (
+        <FilterSection title="Vendedor Asignado">
+          <FilterSelect
+            value={tempFiltros.vendedor || ''}
+            onChange={(value) => setTempFiltros({
+              ...tempFiltros,
+              vendedor: value || undefined
+            })}
+            options={vendedores.map(v => ({ value: v.id, label: v.nombre }))}
+            label=""
+            placeholder="Todos los vendedores"
+          />
+        </FilterSection>
+      )}
 
-          {/* Vendedor */}
-          <div>
-            <label className="text-sm font-medium mb-3 flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
-              <FiUser className="w-4 h-4" />
-              Vendedor Asignado
-            </label>
-            <select
-              value={tempFiltros.vendedor || ''}
-              onChange={(e) => setTempFiltros({
-                ...tempFiltros,
-                vendedor: e.target.value || undefined
-              })}
-              className="w-full px-3 py-2 rounded-lg border transition-colors"
-              style={{
-                backgroundColor: 'var(--bg-primary)',
-                borderColor: 'var(--border)',
-                color: 'var(--text-primary)'
-              }}
-            >
-              <option value="">Todos los vendedores</option>
-              {vendedores.map((vendedor) => (
-                <option key={vendedor.id} value={vendedor.id}>
-                  {vendedor.nombre}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Rango de Fechas */}
-          <div>
-            <label className="text-sm font-medium mb-3 flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
-              <FiCalendar className="w-4 h-4" />
-              Rango de Fechas
-            </label>
-            <div className="space-y-3">
-              <div>
-                <label className="text-xs" style={{ color: 'var(--text-muted)' }}>Desde</label>
-                <input
-                  type="date"
-                  value={tempFiltros.fechaDesde?.toISOString().split('T')[0] || ''}
-                  onChange={(e) => setTempFiltros({
-                    ...tempFiltros,
-                    fechaDesde: e.target.value ? new Date(e.target.value) : undefined
-                  })}
-                  className="w-full px-3 py-2 rounded-lg border transition-colors text-sm"
-                  style={{
-                    backgroundColor: 'var(--bg-primary)',
-                    borderColor: 'var(--border)',
-                    color: 'var(--text-primary)'
-                  }}
-                />
-              </div>
-              <div>
-                <label className="text-xs" style={{ color: 'var(--text-muted)' }}>Hasta</label>
-                <input
-                  type="date"
-                  value={tempFiltros.fechaHasta?.toISOString().split('T')[0] || ''}
-                  onChange={(e) => setTempFiltros({
-                    ...tempFiltros,
-                    fechaHasta: e.target.value ? new Date(e.target.value) : undefined
-                  })}
-                  className="w-full px-3 py-2 rounded-lg border transition-colors text-sm"
-                  style={{
-                    backgroundColor: 'var(--bg-primary)',
-                    borderColor: 'var(--border)',
-                    color: 'var(--text-primary)'
-                  }}
-                />
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Footer con Acciones */}
-        <div 
-          className="sticky bottom-0 p-6 border-t"
-          style={{ 
-            borderColor: 'var(--border)',
-            backgroundColor: 'var(--card-bg)'
-          }}
-        >
-          <div className="flex gap-3">
-            <button
-              onClick={limpiarFiltros}
-              className="flex-1 px-4 py-2 text-sm rounded-lg border transition-colors"
-              style={{
-                borderColor: 'var(--border)',
-                color: 'var(--text-secondary)',
-                backgroundColor: 'transparent'
-              }}
-              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--bg-secondary)'}
-              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-            >
-              Limpiar Todo
-            </button>
-            <button
-              onClick={aplicarFiltros}
-              className="flex-1 px-4 py-2 text-sm rounded-lg text-white transition-colors"
-              style={{ backgroundColor: 'var(--accent-primary)' }}
-              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--accent-hover)'}
-              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--accent-primary)'}
-            >
-              Aplicar Filtros
-            </button>
-          </div>
-        </div>
-      </div>
-    </>
+      {/* Sección de Fechas */}
+      <FilterSection title="Rango de Fechas">
+        <FilterDateRange
+          startDate={formatDateForInput(tempFiltros.fechaDesde)}
+          endDate={formatDateForInput(tempFiltros.fechaHasta)}
+          onStartDateChange={(date) => setTempFiltros({
+            ...tempFiltros,
+            fechaDesde: parseDateFromInput(date)
+          })}
+          onEndDateChange={(date) => setTempFiltros({
+            ...tempFiltros,
+            fechaHasta: parseDateFromInput(date)
+          })}
+          label="Fecha de creación"
+        />
+      </FilterSection>
+    </UnifiedFilters>
   );
 }
