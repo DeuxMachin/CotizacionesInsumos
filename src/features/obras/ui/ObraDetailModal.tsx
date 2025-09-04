@@ -190,7 +190,25 @@ export function ObraDetailModal({
 
   return (
     <Modal open={isOpen} onClose={onClose}>
-      <div className="w-full max-h-[90vh] overflow-y-auto custom-scrollbar">
+      <div className="w-full max-h-[90vh] overflow-y-auto custom-scrollbar relative">
+        {/* Botón de cierre (X) */}
+        <div className="absolute top-4 right-4 z-10">
+          <button 
+            onClick={onClose}
+            className="p-2 rounded-full hover:bg-opacity-80 transition-colors"
+            style={{
+              backgroundColor: 'var(--bg-secondary)',
+              color: 'var(--text-secondary)'
+            }}
+            aria-label="Cerrar"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+        </div>
+        
         {/* Header Principal */}
         <div className="p-4 sm:p-6" style={{ borderBottom: '1px solid var(--border)' }}>
           <div className="flex flex-col gap-4">

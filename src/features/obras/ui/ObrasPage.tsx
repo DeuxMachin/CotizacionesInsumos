@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import { useRouter } from "next/navigation";
 import { 
   FiTool, 
   FiHome, 
@@ -33,10 +34,6 @@ import type {
   GetEtapaColor
 } from "../types/obras";
 import dynamic from "next/dynamic";
-const ObraDetailModal = dynamic(() => import("./ObraDetailModal").then(m => m.ObraDetailModal), {
-  loading: () => <div className="p-6">Cargando detalle…</div>,
-  ssr: false,
-});
 const CreateObraModal = dynamic(() => import("./CreateObraModal").then(m => m.CreateObraModal), {
   loading: () => <div className="p-6">Cargando formulario…</div>,
   ssr: false,
@@ -44,6 +41,7 @@ const CreateObraModal = dynamic(() => import("./CreateObraModal").then(m => m.Cr
 import { FiltersBar } from "./FiltersBar";
 
 export function ObrasPage() {
+  const router = useRouter();
   const { 
     obras, 
     todasLasObras,
@@ -67,8 +65,6 @@ export function ObrasPage() {
   const [selectedEtapas, setSelectedEtapas] = useState<EtapaObra[]>([]);
   const [showFilters, setShowFilters] = useState(false);
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
-  const [selectedObra, setSelectedObra] = useState<Obra | null>(null);
-  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
   // Aplicar filtros
@@ -147,13 +143,7 @@ export function ObrasPage() {
   };
 
   const handleVerDetalle = (obra: Obra) => {
-    setSelectedObra(obra);
-    setIsDetailModalOpen(true);
-  };
-
-  const handleCloseModal = () => {
-    setIsDetailModalOpen(false);
-    setSelectedObra(null);
+    router.push(`/dashboard/obras/${obra.id}`);
   };
 
   const handleClearFilters = () => {
@@ -179,18 +169,6 @@ export function ObrasPage() {
       ...filtros,
       [key]: value
     });
-  };
-
-  const handleUpdateObra = async (obraActualizada: Obra): Promise<boolean> => {
-    try {
-      // Aquí iría la lógica para actualizar la obra
-      // Por ahora simulamos una actualización exitosa
-      console.log('Actualizando obra:', obraActualizada);
-      return true;
-    } catch (error) {
-      console.error('Error actualizando obra:', error);
-      return false;
-    }
   };
 
   const handleCreateObra = async (nuevaObra: Omit<Obra, 'id' | 'fechaCreacion' | 'fechaActualizacion' | 'fechaUltimoContacto'>): Promise<boolean> => {
@@ -384,20 +362,20 @@ export function ObrasPage() {
       </div>
 
       {/* Estadísticas rápidas */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
         <div 
           className="p-4 rounded-lg"
           style={{ backgroundColor: 'var(--card-bg)', border: '1px solid var(--border)' }}
         >
-          <div className="flex items-center gap-3">
+          <div className="flex items-start gap-3">
             <div 
-              className="p-2 rounded"
+              className="p-2 rounded flex-shrink-0 mt-1"
               style={{ backgroundColor: 'var(--info-bg)', color: 'var(--info-text)' }}
             >
               <FiTool className="w-5 h-5" />
             </div>
-            <div>
-              <div className="text-2xl font-semibold" style={{ color: 'var(--text-primary)' }}>
+            <div className="min-w-0 w-full">
+              <div className="text-xl md:text-2xl font-semibold" style={{ color: 'var(--text-primary)' }}>
                 {estadisticas.totalObras}
               </div>
               <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>
@@ -411,15 +389,15 @@ export function ObrasPage() {
           className="p-4 rounded-lg"
           style={{ backgroundColor: 'var(--card-bg)', border: '1px solid var(--border)' }}
         >
-          <div className="flex items-center gap-3">
+          <div className="flex items-start gap-3">
             <div 
-              className="p-2 rounded"
+              className="p-2 rounded flex-shrink-0 mt-1"
               style={{ backgroundColor: 'var(--success-bg)', color: 'var(--success-text)' }}
             >
               <FiActivity className="w-5 h-5" />
             </div>
-            <div>
-              <div className="text-2xl font-semibold" style={{ color: 'var(--text-primary)' }}>
+            <div className="min-w-0 w-full">
+              <div className="text-xl md:text-2xl font-semibold" style={{ color: 'var(--text-primary)' }}>
                 {estadisticas.obrasPorEstado.activa || 0}
               </div>
               <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>
@@ -433,15 +411,15 @@ export function ObrasPage() {
           className="p-4 rounded-lg"
           style={{ backgroundColor: 'var(--card-bg)', border: '1px solid var(--border)' }}
         >
-          <div className="flex items-center gap-3">
+          <div className="flex items-start gap-3">
             <div 
-              className="p-2 rounded"
+              className="p-2 rounded flex-shrink-0 mt-1"
               style={{ backgroundColor: 'var(--warning-bg)', color: 'var(--warning-text)' }}
             >
               <FiClock className="w-5 h-5" />
             </div>
-            <div>
-              <div className="text-2xl font-semibold" style={{ color: 'var(--text-primary)' }}>
+            <div className="min-w-0 w-full">
+              <div className="text-xl md:text-2xl font-semibold" style={{ color: 'var(--text-primary)' }}>
                 {estadisticas.obrasPorEstado.planificacion || 0}
               </div>
               <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>
@@ -455,15 +433,15 @@ export function ObrasPage() {
           className="p-4 rounded-lg"
           style={{ backgroundColor: 'var(--card-bg)', border: '1px solid var(--border)' }}
         >
-          <div className="flex items-center gap-3">
+          <div className="flex items-start gap-3">
             <div 
-              className="p-2 rounded"
+              className="p-2 rounded flex-shrink-0 mt-1"
               style={{ backgroundColor: 'var(--accent-bg)', color: 'var(--accent-text)' }}
             >
               <FiDollarSign className="w-5 h-5" />
             </div>
-            <div>
-              <div className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>
+            <div className="min-w-0 w-full">
+              <div className="text-base md:text-lg font-semibold break-words" style={{ color: 'var(--text-primary)' }}>
                 {formatMoney(estadisticas.valorTotalEstimado)}
               </div>
               <div className="text-xs" style={{ color: 'var(--text-secondary)' }}>
@@ -477,15 +455,15 @@ export function ObrasPage() {
           className="p-4 rounded-lg"
           style={{ backgroundColor: 'var(--card-bg)', border: '1px solid var(--border)' }}
         >
-          <div className="flex items-center gap-3">
+          <div className="flex items-start gap-3">
             <div 
-              className="p-2 rounded"
+              className="p-2 rounded flex-shrink-0 mt-1"
               style={{ backgroundColor: 'var(--success-bg)', color: 'var(--success-text)' }}
             >
               <FiTrendingUp className="w-5 h-5" />
             </div>
-            <div>
-              <div className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>
+            <div className="min-w-0 w-full">
+              <div className="text-base md:text-lg font-semibold break-words" style={{ color: 'var(--text-primary)' }}>
                 {formatMoney(estadisticas.materialVendidoTotal)}
               </div>
               <div className="text-xs" style={{ color: 'var(--text-secondary)' }}>
@@ -611,19 +589,6 @@ export function ObrasPage() {
         </div>
       )}
 
-      {/* Modal de Detalle de Obra */}
-      {selectedObra && (
-        <ObraDetailModal
-          obra={selectedObra}
-          isOpen={isDetailModalOpen}
-          onClose={handleCloseModal}
-          onUpdate={handleUpdateObra}
-          formatMoney={formatMoney}
-          getEstadoColor={getEstadoColor}
-          getEtapaColor={getEtapaColor}
-        />
-      )}
-
       {/* Modal de Nueva Obra */}
       <CreateObraModal
         isOpen={isCreateModalOpen}
@@ -729,15 +694,15 @@ function ObraCard({ obra, getEstadoColor, getEtapaColor, formatMoney, onEliminar
           className="grid grid-cols-2 gap-4 py-3 border-t border-b"
           style={{ borderColor: 'var(--border)' }}
         >
-          <div>
+          <div className="min-w-0">
             <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Valor Estimado</p>
-            <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
+            <p className="text-sm font-semibold break-words" style={{ color: 'var(--text-primary)' }}>
               {obra.valorEstimado ? formatMoney(obra.valorEstimado) : 'N/A'}
             </p>
           </div>
-          <div>
+          <div className="min-w-0">
             <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Material Vendido</p>
-            <p className="text-sm font-semibold" style={{ color: 'var(--success-text)' }}>
+            <p className="text-sm font-semibold break-words" style={{ color: 'var(--success-text)' }}>
               {formatMoney(obra.materialVendido)}
             </p>
           </div>
@@ -811,26 +776,26 @@ function ObrasTable({ obras, getEstadoColor, formatMoney, onEliminar, onVerDetal
       className="rounded-lg overflow-hidden"
       style={{ backgroundColor: 'var(--card-bg)', border: '1px solid var(--border)' }}
     >
-      <div className="overflow-x-auto">
-        <table className="w-full">
+      <div className="overflow-x-auto w-full" style={{ WebkitOverflowScrolling: 'touch' }}>
+        <table className="w-full min-w-[900px]">
           <thead style={{ backgroundColor: 'var(--bg-secondary)' }}>
             <tr>
-              <th className="px-4 py-3 text-left text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
+              <th className="px-4 py-3 text-left text-sm font-medium w-1/5" style={{ color: 'var(--text-secondary)' }}>
                 Obra / Constructora
               </th>
-              <th className="px-4 py-3 text-left text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
+              <th className="px-4 py-3 text-left text-sm font-medium w-[12%]" style={{ color: 'var(--text-secondary)' }}>
                 Estado
               </th>
-              <th className="px-4 py-3 text-left text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
+              <th className="px-4 py-3 text-left text-sm font-medium w-[12%]" style={{ color: 'var(--text-secondary)' }}>
                 Etapa
               </th>
-              <th className="px-4 py-3 text-left text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
+              <th className="px-4 py-3 text-left text-sm font-medium w-1/4" style={{ color: 'var(--text-secondary)' }}>
                 Valor / Vendido
               </th>
-              <th className="px-4 py-3 text-left text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
+              <th className="px-4 py-3 text-left text-sm font-medium w-[12%]" style={{ color: 'var(--text-secondary)' }}>
                 Vendedor
               </th>
-              <th className="px-4 py-3 text-center text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
+              <th className="px-4 py-3 text-center text-sm font-medium w-[10%]" style={{ color: 'var(--text-secondary)' }}>
                 Acciones
               </th>
             </tr>
@@ -874,10 +839,10 @@ function ObrasTable({ obras, getEstadoColor, formatMoney, onEliminar, onVerDetal
                   </td>
                   <td className="px-4 py-4">
                     <div>
-                      <div className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
+                      <div className="text-sm font-medium break-words" style={{ color: 'var(--text-primary)' }}>
                         {obra.valorEstimado ? formatMoney(obra.valorEstimado) : 'N/A'}
                       </div>
-                      <div className="text-sm" style={{ color: 'var(--success-text)' }}>
+                      <div className="text-sm break-words" style={{ color: 'var(--success-text)' }}>
                         {formatMoney(obra.materialVendido)}
                       </div>
                     </div>

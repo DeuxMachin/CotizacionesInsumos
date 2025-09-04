@@ -6,6 +6,7 @@ import { clientsExtended, type ClientExtended, type ClientStatus } from "../mode
 import { Toast } from "@/shared/ui/Toast";
 import { useAuth } from "@/features/auth/model/useAuth";
 import { useActionAuthorization } from "@/middleware/AuthorizationMiddleware";
+import { ClientFiltersPanel } from "./ClientFiltersPanel";
 import { 
   FiUsers, 
   FiSearch, 
@@ -336,13 +337,13 @@ export function ClientsPage() {
         >
           <div className="flex items-center gap-3">
             <div 
-              className="p-2 rounded"
+              className="p-2 rounded flex-shrink-0"
               style={{ backgroundColor: 'var(--info-bg)', color: 'var(--info-text)' }}
             >
               <FiUsers className="w-5 h-5" />
             </div>
-            <div>
-              <div className="text-2xl font-semibold" style={{ color: 'var(--text-primary)' }}>
+            <div className="min-w-0 w-full">
+              <div className="text-xl md:text-2xl font-semibold truncate" style={{ color: 'var(--text-primary)' }}>
                 {stats.total}
               </div>
               <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>
@@ -358,13 +359,13 @@ export function ClientsPage() {
         >
           <div className="flex items-center gap-3">
             <div 
-              className="p-2 rounded"
+              className="p-2 rounded flex-shrink-0"
               style={{ backgroundColor: 'var(--success-bg)', color: 'var(--success-text)' }}
             >
               <FiActivity className="w-5 h-5" />
             </div>
-            <div>
-              <div className="text-2xl font-semibold" style={{ color: 'var(--text-primary)' }}>
+            <div className="min-w-0 w-full">
+              <div className="text-xl md:text-2xl font-semibold truncate" style={{ color: 'var(--text-primary)' }}>
                 {stats.vigentes}
               </div>
               <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>
@@ -380,13 +381,13 @@ export function ClientsPage() {
         >
           <div className="flex items-center gap-3">
             <div 
-              className="p-2 rounded"
+              className="p-2 rounded flex-shrink-0"
               style={{ backgroundColor: 'var(--warning-bg)', color: 'var(--warning-text)' }}
             >
               <FiClock className="w-5 h-5" />
             </div>
-            <div>
-              <div className="text-2xl font-semibold" style={{ color: 'var(--text-primary)' }}>
+            <div className="min-w-0 w-full">
+              <div className="text-xl md:text-2xl font-semibold truncate" style={{ color: 'var(--text-primary)' }}>
                 {stats.morosos}
               </div>
               <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>
@@ -402,13 +403,13 @@ export function ClientsPage() {
         >
           <div className="flex items-center gap-3">
             <div 
-              className="p-2 rounded"
+              className="p-2 rounded flex-shrink-0"
               style={{ backgroundColor: 'var(--neutral-bg)', color: 'var(--neutral-text)' }}
             >
               <FiUsers className="w-5 h-5" />
             </div>
-            <div>
-              <div className="text-2xl font-semibold" style={{ color: 'var(--text-primary)' }}>
+            <div className="min-w-0 w-full">
+              <div className="text-xl md:text-2xl font-semibold truncate" style={{ color: 'var(--text-primary)' }}>
                 {stats.inactivos}
               </div>
               <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>
@@ -575,7 +576,8 @@ export function ClientsPage() {
 
       {/* Panel de Filtros */}
       {showFilters && (
-        <FiltersPanel
+        <ClientFiltersPanel
+          isOpen={showFilters}
           selectedStates={selectedStates}
           setSelectedStates={setSelectedStates}
           selectedRegions={selectedRegions}
@@ -666,15 +668,15 @@ function ClientCard({ client, getStatusColor, formatMoney, onEliminar, onVerDeta
           className="grid grid-cols-2 gap-4 py-3 border-t border-b"
           style={{ borderColor: 'var(--border)' }}
         >
-          <div>
+          <div className="min-w-0">
             <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Total Movimientos</p>
-            <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
+            <p className="text-sm font-semibold truncate" style={{ color: 'var(--text-primary)' }}>
               {formatMoney(totalMovimientos)}
             </p>
           </div>
-          <div>
+          <div className="min-w-0">
             <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Por Cobrar</p>
-            <p className="text-sm font-semibold" style={{ color: 'var(--warning-text)' }}>
+            <p className="text-sm font-semibold truncate" style={{ color: 'var(--warning-text)' }}>
               {formatMoney(client.pending + client.partial + client.overdue)}
             </p>
           </div>
@@ -755,8 +757,8 @@ function ClientsTable({ clients, getStatusColor, formatMoney, onEliminar, onVerD
       className="rounded-lg overflow-hidden"
       style={{ backgroundColor: 'var(--card-bg)', border: '1px solid var(--border)' }}
     >
-      <div className="overflow-x-auto">
-        <table className="w-full">
+      <div className="overflow-x-auto w-full" style={{ WebkitOverflowScrolling: 'touch' }}>
+        <table className="w-full min-w-[800px]">
           <thead style={{ backgroundColor: 'var(--bg-secondary)' }}>
             <tr>
               <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--text-primary)' }}>
@@ -834,7 +836,7 @@ function ClientsTable({ clients, getStatusColor, formatMoney, onEliminar, onVerD
                     </div>
                   </td>
                   <td className="px-6 py-4">
-                    <div className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
+                    <div className="text-sm font-medium truncate max-w-[150px]" style={{ color: 'var(--text-primary)' }}>
                       {formatMoney(totalMovimientos)}
                     </div>
                   </td>
@@ -894,131 +896,5 @@ function ClientsTable({ clients, getStatusColor, formatMoney, onEliminar, onVerD
     </div>
   );
 }
-
-// Componente del panel de filtros
-function FiltersPanel({ 
-  selectedStates, 
-  setSelectedStates, 
-  selectedRegions, 
-  setSelectedRegions, 
-  regiones, 
-  onClose, 
-  onClear 
-}: {
-  selectedStates: ClientStatus[];
-  setSelectedStates: (states: ClientStatus[]) => void;
-  selectedRegions: string[];
-  setSelectedRegions: (regions: string[]) => void;
-  regiones: string[];
-  onClose: () => void;
-  onClear: () => void;
-}) {
-  const estados: ClientStatus[] = ['vigente', 'moroso', 'inactivo'];
-
-  const handleStateChange = (state: ClientStatus) => {
-    setSelectedStates(
-      selectedStates.includes(state)
-        ? selectedStates.filter(s => s !== state)
-        : [...selectedStates, state]
-    );
-  };
-
-  const handleRegionChange = (region: string) => {
-    setSelectedRegions(
-      selectedRegions.includes(region)
-        ? selectedRegions.filter(r => r !== region)
-        : [...selectedRegions, region]
-    );
-  };
-
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div 
-        className="rounded-xl shadow-xl max-w-2xl w-full max-h-[80vh] overflow-y-auto"
-        style={{ backgroundColor: 'var(--card-bg)' }}
-      >
-        <div className="p-6">
-          <div className="flex items-center justify-between mb-6">
-            <h3 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>
-              Filtros Avanzados
-            </h3>
-            <button
-              onClick={onClose}
-              className="p-2 rounded-lg transition-colors"
-              style={{ color: 'var(--text-secondary)' }}
-              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--bg-secondary)'}
-              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-            >
-              <FiX className="w-5 h-5" />
-            </button>
-          </div>
-
-          <div className="space-y-6">
-            {/* Estados */}
-            <div>
-              <h4 className="text-sm font-medium mb-3" style={{ color: 'var(--text-primary)' }}>
-                Estados
-              </h4>
-              <div className="grid grid-cols-3 gap-3">
-                {estados.map((estado) => (
-                  <label key={estado} className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={selectedStates.includes(estado)}
-                      onChange={() => handleStateChange(estado)}
-                      className="rounded"
-                    />
-                    <span className="text-sm" style={{ color: 'var(--text-primary)' }}>
-                      {estado.charAt(0).toUpperCase() + estado.slice(1)}
-                    </span>
-                  </label>
-                ))}
-              </div>
-            </div>
-
-            {/* Regiones */}
-            <div>
-              <h4 className="text-sm font-medium mb-3" style={{ color: 'var(--text-primary)' }}>
-                Regiones
-              </h4>
-              <div className="grid grid-cols-2 gap-3 max-h-48 overflow-y-auto">
-                {regiones.map((region) => (
-                  <label key={region} className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={selectedRegions.includes(region)}
-                      onChange={() => handleRegionChange(region)}
-                      className="rounded"
-                    />
-                    <span className="text-sm" style={{ color: 'var(--text-primary)' }}>
-                      {region}
-                    </span>
-                  </label>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-3 mt-6 pt-6 border-t" style={{ borderColor: 'var(--border)' }}>
-            <button
-              onClick={onClear}
-              className="btn-secondary flex-1"
-            >
-              Limpiar Filtros
-            </button>
-            <button
-              onClick={onClose}
-              className="btn-primary flex-1"
-            >
-              Aplicar Filtros
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-
 
 export default ClientsPage;

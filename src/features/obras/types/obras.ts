@@ -134,8 +134,8 @@ export interface FiltersBarProps {
   isOpen: boolean;
   filtros: FiltroObras;
   vendedores: OpcionVendedor[];
-  onFiltroChange: OnFiltroChange;
-  onClearFilters: () => void;
+  onFiltroChange?: OnFiltroChange;
+  onClearFilters?: () => void;
   onClose: () => void;
   onFiltrosChange: (filtros: FiltroObras) => void;
 }

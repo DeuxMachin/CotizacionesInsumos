@@ -24,6 +24,7 @@ import {
 import { useQuotes } from '../model/useQuotes';
 import { Quote, QuoteStatus } from '@/core/domain/quote/Quote';
 
+// Import the filters panel component
 import { QuoteFiltersPanel } from './QuoteFiltersPanel';
 
 interface QuoteCardProps {
