@@ -1,8 +1,9 @@
 "use client";
 
-import React from 'react';
-import { FiUser, FiMapPin, FiPhone, FiMail, FiBriefcase } from 'react-icons/fi';
+import React, { useState } from 'react';
+import { FiUser, FiMapPin, FiPhone, FiMail, FiBriefcase, FiInfo } from 'react-icons/fi';
 import { ClientInfo } from '@/core/domain/quote/Quote';
+import { ClientAutocomplete } from './ClientAutocomplete';
 
 interface ClientFormProps {
   data: Partial<ClientInfo>;
@@ -11,11 +12,31 @@ interface ClientFormProps {
 }
 
 export function ClientForm({ data, onChange }: ClientFormProps) {
+  const [isExistingClient, setIsExistingClient] = useState(false);
+  const [showClientSearch, setShowClientSearch] = useState(true);
+  const [rutSearch, setRutSearch] = useState('');
+  const [razonSocialSearch, setRazonSocialSearch] = useState('');
+
   const handleInputChange = (field: keyof ClientInfo, value: string) => {
     onChange({
       ...data,
       [field]: value
     });
+  };
+
+  const handleClientSelect = (clientData: Partial<ClientInfo>) => {
+    onChange(clientData);
+    setIsExistingClient(true);
+    setShowClientSearch(false);
+  };
+
+  const handleManualInput = () => {
+    setIsExistingClient(false);
+    setShowClientSearch(false);
+  };
+
+  const toggleClientSearch = () => {
+    setShowClientSearch(!showClientSearch);
   };
 
   const formatRUT = (rut: string) => {
@@ -59,6 +80,118 @@ export function ClientForm({ data, onChange }: ClientFormProps) {
         </div>
       </div>
 
+      {/* Botón para mostrar/ocultar búsqueda de clientes */}
+      <div className="mb-4">
+        <button
+          type="button"
+          onClick={toggleClientSearch}
+          className="inline-flex items-center px-4 py-2 border rounded-md shadow-sm text-sm font-medium"
+          style={{ 
+            backgroundColor: 'var(--accent-bg)', 
+            color: 'var(--accent-text)',
+            borderColor: 'var(--accent-primary)'
+          }}
+        >
+          <FiUser className="mr-2 -ml-1 h-5 w-5" />
+          {showClientSearch ? 'Ocultar búsqueda de clientes' : 'Buscar cliente existente'}
+        </button>
+      </div>
+
+      {/* Autocompletado de clientes existentes */}
+      {showClientSearch && (
+        <div 
+          className="p-4 rounded-lg border"
+          style={{ 
+            backgroundColor: 'var(--info-bg)', 
+            borderColor: 'var(--border)',
+            borderStyle: 'dashed'
+          }}
+        >
+          <div className="flex items-center gap-2 mb-3">
+            <FiInfo className="w-5 h-5" style={{ color: 'var(--info-text)' }} />
+            <h3 className="font-medium" style={{ color: 'var(--info-text)' }}>
+              ¿Es un cliente existente?
+            </h3>
+          </div>
+          <p className="text-sm mb-4" style={{ color: 'var(--text-secondary)' }}>
+            Busque por RUT o razón social para autocompletar los datos del cliente
+          </p>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>
+                Buscar por RUT
+              </label>
+              <ClientAutocomplete
+                value={rutSearch}
+                field="rut"
+                placeholder="Ej: 12.345.678-9"
+                onClientSelect={handleClientSelect}
+                onValueChange={setRutSearch}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>
+                Buscar por Razón Social
+              </label>
+              <ClientAutocomplete
+                value={razonSocialSearch}
+                field="razonSocial"
+                placeholder="Ej: Constructora ABC Ltda"
+                onClientSelect={handleClientSelect}
+                onValueChange={setRazonSocialSearch}
+              />
+            </div>
+          </div>
+          
+          <div className="mt-4 pt-4 border-t" style={{ borderColor: 'var(--border)' }}>
+            <button
+              type="button"
+              onClick={handleManualInput}
+              className="text-sm underline"
+              style={{ color: 'var(--accent-primary)' }}
+            >
+              O ingrese los datos manualmente
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Mostrar datos del cliente seleccionado */}
+      {isExistingClient && data.razonSocial && (
+        <div 
+          className="p-4 rounded-lg border"
+          style={{ 
+            backgroundColor: 'var(--success-bg)', 
+            borderColor: 'var(--border)'
+          }}
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <FiUser className="w-5 h-5" style={{ color: 'var(--success-text)' }} />
+              <h3 className="font-medium" style={{ color: 'var(--success-text)' }}>
+                Cliente seleccionado: {data.razonSocial}
+              </h3>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setIsExistingClient(false);
+                setShowClientSearch(true);
+              }}
+              className="text-sm underline"
+              style={{ color: 'var(--success-text)' }}
+            >
+              Cambiar cliente
+            </button>
+          </div>
+          <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>
+            Los datos han sido autocompletados. Puede modificarlos si es necesario.
+          </p>
+        </div>
+      )}
+
+      {/* Formulario principal */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
         {/* Razón Social */}
         <div className="md:col-span-2">
@@ -161,28 +294,9 @@ export function ClientForm({ data, onChange }: ClientFormProps) {
                 borderColor: 'var(--border)',
                 color: 'var(--text-primary)'
               }}
-              placeholder="Dirección completa"
+              placeholder="Ej: Av. Providencia 1234, Oficina 567"
             />
           </div>
-        </div>
-
-        {/* Comuna */}
-        <div>
-          <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>
-            Comuna
-          </label>
-          <input
-            type="text"
-            value={data.comuna || ''}
-            onChange={(e) => handleInputChange('comuna', e.target.value)}
-            className="w-full px-4 py-3 rounded-lg border transition-colors focus:ring-2 focus:ring-offset-2"
-            style={{
-              backgroundColor: 'var(--input-bg)',
-              borderColor: 'var(--border)',
-              color: 'var(--text-primary)'
-            }}
-            placeholder="Comuna"
-          />
         </div>
 
         {/* Ciudad */}
@@ -200,110 +314,98 @@ export function ClientForm({ data, onChange }: ClientFormProps) {
               borderColor: 'var(--border)',
               color: 'var(--text-primary)'
             }}
-            placeholder="Ciudad"
+            placeholder="Santiago"
           />
         </div>
-      </div>
 
-      {/* Información de Contacto */}
-      <div 
-        className="border-t pt-6"
-        style={{ borderColor: 'var(--border)' }}
-      >
-        <h3 className="text-lg font-semibold mb-4" style={{ color: 'var(--text-primary)' }}>
-          Información de Contacto
-        </h3>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
-          {/* Nombre del Contacto */}
-          <div>
-            <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>
-              Nombre del Contacto
-            </label>
+        {/* Comuna */}
+        <div>
+          <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>
+            Comuna
+          </label>
+          <input
+            type="text"
+            value={data.comuna || ''}
+            onChange={(e) => handleInputChange('comuna', e.target.value)}
+            className="w-full px-4 py-3 rounded-lg border transition-colors focus:ring-2 focus:ring-offset-2"
+            style={{
+              backgroundColor: 'var(--input-bg)',
+              borderColor: 'var(--border)',
+              color: 'var(--text-primary)'
+            }}
+            placeholder="Providencia"
+          />
+        </div>
+
+        {/* Contacto - Nombre */}
+        <div className="md:col-span-2">
+          <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>
+            Nombre de Contacto
+          </label>
+          <div className="relative">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <FiUser className="w-5 h-5" style={{ color: 'var(--text-muted)' }} />
+            </div>
             <input
               type="text"
               value={data.nombreContacto || ''}
               onChange={(e) => handleInputChange('nombreContacto', e.target.value)}
-              className="w-full px-4 py-3 rounded-lg border transition-colors focus:ring-2 focus:ring-offset-2"
+              className="w-full pl-10 pr-4 py-3 rounded-lg border transition-colors focus:ring-2 focus:ring-offset-2"
               style={{
                 backgroundColor: 'var(--input-bg)',
                 borderColor: 'var(--border)',
                 color: 'var(--text-primary)'
               }}
-              placeholder="Nombre de la persona de contacto"
+              placeholder="Ej: Juan Pérez"
             />
           </div>
+        </div>
 
-          {/* Teléfono Empresa */}
-          <div>
-            <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>
-              Teléfono Empresa
-            </label>
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <FiPhone className="w-5 h-5" style={{ color: 'var(--text-muted)' }} />
-              </div>
-              <input
-                type="tel"
-                value={data.telefono || ''}
-                onChange={(e) => handleInputChange('telefono', e.target.value)}
-                className="w-full pl-10 pr-4 py-3 rounded-lg border transition-colors focus:ring-2 focus:ring-offset-2"
-                style={{
-                  backgroundColor: 'var(--input-bg)',
-                  borderColor: 'var(--border)',
-                  color: 'var(--text-primary)'
-                }}
-                placeholder="+56 2 2345 6789"
-              />
+        {/* Contacto - Email */}
+        <div>
+          <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>
+            Email de Contacto
+          </label>
+          <div className="relative">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <FiMail className="w-5 h-5" style={{ color: 'var(--text-muted)' }} />
             </div>
+            <input
+              type="email"
+              value={data.email || ''}
+              onChange={(e) => handleInputChange('email', e.target.value)}
+              className="w-full pl-10 pr-4 py-3 rounded-lg border transition-colors focus:ring-2 focus:ring-offset-2"
+              style={{
+                backgroundColor: 'var(--input-bg)',
+                borderColor: 'var(--border)',
+                color: 'var(--text-primary)'
+              }}
+              placeholder="ejemplo@dominio.cl"
+            />
           </div>
+        </div>
 
-          {/* Teléfono Contacto */}
-          <div>
-            <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>
-              Teléfono Contacto
-            </label>
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <FiPhone className="w-5 h-5" style={{ color: 'var(--text-muted)' }} />
-              </div>
-              <input
-                type="tel"
-                value={data.telefonoContacto || ''}
-                onChange={(e) => handleInputChange('telefonoContacto', e.target.value)}
-                className="w-full pl-10 pr-4 py-3 rounded-lg border transition-colors focus:ring-2 focus:ring-offset-2"
-                style={{
-                  backgroundColor: 'var(--input-bg)',
-                  borderColor: 'var(--border)',
-                  color: 'var(--text-primary)'
-                }}
-                placeholder="+56 9 8765 4321"
-              />
+        {/* Contacto - Teléfono */}
+        <div>
+          <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>
+            Teléfono de Contacto
+          </label>
+          <div className="relative">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <FiPhone className="w-5 h-5" style={{ color: 'var(--text-muted)' }} />
             </div>
-          </div>
-
-          {/* Email */}
-          <div>
-            <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>
-              Email
-            </label>
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <FiMail className="w-5 h-5" style={{ color: 'var(--text-muted)' }} />
-              </div>
-              <input
-                type="email"
-                value={data.email || ''}
-                onChange={(e) => handleInputChange('email', e.target.value)}
-                className="w-full pl-10 pr-4 py-3 rounded-lg border transition-colors focus:ring-2 focus:ring-offset-2"
-                style={{
-                  backgroundColor: 'var(--input-bg)',
-                  borderColor: 'var(--border)',
-                  color: 'var(--text-primary)'
-                }}
-                placeholder="contacto@empresa.cl"
-              />
-            </div>
+            <input
+              type="tel"
+              value={data.telefonoContacto || ''}
+              onChange={(e) => handleInputChange('telefonoContacto', e.target.value)}
+              className="w-full pl-10 pr-4 py-3 rounded-lg border transition-colors focus:ring-2 focus:ring-offset-2"
+              style={{
+                backgroundColor: 'var(--input-bg)',
+                borderColor: 'var(--border)',
+                color: 'var(--text-primary)'
+              }}
+              placeholder="+56 9 1234 5678"
+            />
           </div>
         </div>
       </div>
@@ -311,7 +413,7 @@ export function ClientForm({ data, onChange }: ClientFormProps) {
       {/* Información adicional */}
       <div 
         className="p-4 rounded-lg"
-        style={{ backgroundColor: 'var(--info-bg)', border: '1px solid var(--info-border)' }}
+        style={{ backgroundColor: 'var(--info-bg)', border: '1px solid var(--border)' }}
       >
         <p className="text-sm" style={{ color: 'var(--info-text)' }}>
           <strong>Tip:</strong> Los campos marcados con (*) son obligatorios. La información del cliente será utilizada para generar la cotización y los documentos relacionados.
@@ -320,3 +422,5 @@ export function ClientForm({ data, onChange }: ClientFormProps) {
     </div>
   );
 }
+
+export default ClientForm;

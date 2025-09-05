@@ -1,6 +1,8 @@
+"use client";
+
 import { useState, useCallback } from 'react';
 
-import { Client } from './clients';
+import { Client, searchClients, getAllClients, getClientById } from './clients';
 import { Toast } from '@/shared/ui/Toast';
 
 // Tipo para el nuevo cliente (sin campos calculados)
@@ -174,6 +176,9 @@ export function useClients() {
     validatePhone,
     formatPhone,
     getRegiones,
-    getTiposEmpresa
+    getTiposEmpresa,
+    searchClients,
+    getAllClients,
+    getClientById
   };
 }

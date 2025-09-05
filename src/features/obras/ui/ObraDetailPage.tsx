@@ -232,13 +232,26 @@ export function ObraDetailPage({
                       </button>
                     </div>
                   ) : (
-                    <button
-                      onClick={() => setIsEditing(true)}
-                      className="btn-primary text-xs px-2 py-1 flex items-center gap-1"
-                    >
-                      <FiEdit3 className="w-3 h-3" />
-                      <span className="hidden sm:inline">Editar</span>
-                    </button>
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => router.push(`/dashboard/cotizaciones/nueva-obra?obraId=${obra.id}`)}
+                        className="text-xs px-2 py-1 flex items-center gap-1 rounded transition-all duration-200 font-medium text-white"
+                        style={{ backgroundColor: 'var(--accent-primary)' }}
+                        title="Crear cotización para esta obra"
+                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--accent-hover)'}
+                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--accent-primary)'}
+                      >
+                        <FiDollarSign className="w-3 h-3" />
+                        <span className="hidden sm:inline">Cotizar</span>
+                      </button>
+                      <button
+                        onClick={() => setIsEditing(true)}
+                        className="btn-primary text-xs px-2 py-1 flex items-center gap-1"
+                      >
+                        <FiEdit3 className="w-3 h-3" />
+                        <span className="hidden sm:inline">Editar</span>
+                      </button>
+                    </div>
                   )}
                 </div>
               </div>

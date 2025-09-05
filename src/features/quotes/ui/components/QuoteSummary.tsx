@@ -451,3 +451,5 @@ export function QuoteSummary({ formData, totals, formatMoney }: QuoteSummaryProp
     </div>
   );
 }
+
+export default QuoteSummary;

@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import React, { useState, useEffect, useMemo } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { 
   FiArrowLeft, 
   FiSave, 
@@ -12,14 +12,17 @@ import {
   FiDollarSign,
   FiInfo,
   FiAlertCircle,
-  FiCheck
+  FiCheck,
+  FiTool
 } from 'react-icons/fi';
 import { useQuotes } from '../model/useQuotes';
+import { useObras } from '@/features/obras/model/useObras';
 import { Quote, QuoteStatus, ClientInfo, QuoteItem, DeliveryInfo, CommercialTerms } from '@/core/domain/quote/Quote';
-
+import { Obra } from '@/features/obras/types/obras';
 import dynamic from 'next/dynamic';
 
-
+// Cargar componentes de formulario dinámicamente en cliente para evitar referencias
+// de módulo como 'object' en desarrollo y garantizar su renderizado.
 const ClientForm = dynamic(() => import('@/features/quotes/ui/components/ClientFormNew').then(m => m.ClientForm), { ssr: false });
 const ProductsForm = dynamic(() => import('@/features/quotes/ui/components/ProductsForm').then(m => m.ProductsForm), { ssr: false });
 const DeliveryForm = dynamic(() => import('@/features/quotes/ui/components/DeliveryForm').then(m => m.DeliveryForm), { ssr: false });
@@ -27,13 +30,6 @@ const CommercialTermsForm = dynamic(() => import('@/features/quotes/ui/component
 const QuoteSummary = dynamic(() => import('@/features/quotes/ui/components/QuoteSummary').then(m => m.QuoteSummary), { ssr: false });
 
 type FormStep = 'client' | 'products' | 'delivery' | 'terms' | 'summary';
-
-type StepConfig = {
-  id: FormStep;
-  label: string;
-  icon: React.ComponentType<{ className?: string }>;
-  required: boolean;
-};
 
 interface FormData {
   cliente: Partial<ClientInfo>;
@@ -44,7 +40,7 @@ interface FormData {
   estado: QuoteStatus;
 }
 
-const STEPS: StepConfig[] = [
+const STEPS = [
   { id: 'client', label: 'Cliente', icon: FiUser, required: true },
   { id: 'products', label: 'Productos', icon: FiPackage, required: true },
   { id: 'delivery', label: 'Despacho', icon: FiTruck, required: false },
@@ -52,10 +48,16 @@ const STEPS: StepConfig[] = [
   { id: 'summary', label: 'Resumen', icon: FiDollarSign, required: true }
 ];
 
-export function NewQuotePage() {
+export function NewQuoteFromObraPage() {
   const router = useRouter();
-  const { crearCotizacion, formatMoney } = useQuotes();
+  const searchParams = useSearchParams();
+  const obraId = searchParams.get('obraId');
   
+  const { crearCotizacion, formatMoney } = useQuotes();
+  const { obtenerObra } = useObras();
+  
+  const [obra, setObra] = useState<Obra | null>(null);
+  const [loadingObra, setLoadingObra] = useState(true);
   const [currentStep, setCurrentStep] = useState<FormStep>('client');
   const [formData, setFormData] = useState<FormData>({
     cliente: {},
@@ -67,7 +69,63 @@ export function NewQuotePage() {
   
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string[]>>({});
-  const [visitedSteps, setVisitedSteps] = useState<Set<FormStep>>(new Set(['client'])); // Marcar el primer paso como visitado
+  const [visitedSteps, setVisitedSteps] = useState<Set<FormStep>>(new Set(['client']));
+
+  // Cargar datos de la obra y precompletar el formulario
+  useEffect(() => {
+    if (!obraId) {
+      router.push('/dashboard/cotizaciones/nueva');
+      return;
+    }
+
+    const fetchObra = () => {
+      try {
+        const obraData = obtenerObra(obraId);
+        if (!obraData) {
+          router.push('/dashboard/cotizaciones/nueva');
+          return;
+        }
+        
+        setObra(obraData);
+        
+        // Precompletar los datos del cliente basado en la obra
+        const clienteData: Partial<ClientInfo> = {
+          razonSocial: obraData.constructora.nombre,
+          rut: obraData.constructora.rut,
+          giro: "Construcción", // Valor por defecto para constructoras
+          direccion: obraData.constructora.direccion || obraData.direccionObra,
+          ciudad: "Santiago", // Valor por defecto, podría extraerse de la dirección
+          comuna: "Santiago", // Valor por defecto, podría extraerse de la dirección
+          telefono: obraData.constructora.telefono,
+          email: obraData.constructora.email,
+          nombreContacto: obraData.constructora.contactoPrincipal.nombre,
+          telefonoContacto: obraData.constructora.contactoPrincipal.telefono,
+        };
+
+        // Precompletar datos de despacho si tenemos dirección de obra
+        const despachoData: Partial<DeliveryInfo> = obraData.direccionObra ? {
+          direccion: obraData.direccionObra,
+          ciudad: "Santiago", // Valor por defecto
+          comuna: "Santiago", // Valor por defecto
+          observaciones: `Entrega en obra: ${obraData.nombreEmpresa}`
+        } : {};
+
+        setFormData(prev => ({
+          ...prev,
+          cliente: clienteData,
+          despacho: despachoData
+        }));
+        
+      } catch (error) {
+        console.error('Error al cargar la obra:', error);
+        router.push('/dashboard/cotizaciones/nueva');
+      } finally {
+        setLoadingObra(false);
+      }
+    };
+
+    fetchObra();
+  }, [obraId, obtenerObra, router]);
 
   // Validación de pasos
   const validateStep = (step: FormStep): string[] => {
@@ -83,7 +141,6 @@ export function NewQuotePage() {
         if (formData.items.length === 0) stepErrors.push('Debe agregar al menos un producto');
         break;
       case 'summary':
-        // Validación final
         const clientErrors = validateStep('client');
         const productErrors = validateStep('products');
         stepErrors.push(...clientErrors, ...productErrors);
@@ -98,7 +155,6 @@ export function NewQuotePage() {
   };
 
   const isStepCompleted = (step: FormStep): boolean => {
-    // Solo marcar como completado si el paso ha sido visitado y tiene datos válidos
     if (!visitedSteps.has(step)) return false;
     
     switch (step) {
@@ -107,10 +163,8 @@ export function NewQuotePage() {
       case 'products':
         return formData.items.length > 0;
       case 'delivery':
-        // Opcional - se marca como completado si se visitó (aunque esté vacío)
         return true;
       case 'terms':
-        // Opcional - se marca como completado si se visitó
         return true;
       case 'summary':
         return isStepValid('client') && isStepValid('products');
@@ -120,12 +174,10 @@ export function NewQuotePage() {
   };
 
   const handleStepChange = (step: FormStep) => {
-    // Solo validar si el usuario está tratando de avanzar a un paso posterior
     const currentIndex = STEPS.findIndex(s => s.id === currentStep);
     const targetIndex = STEPS.findIndex(s => s.id === step);
     
     if (targetIndex > currentIndex) {
-      // Validar paso actual antes de avanzar
       const currentErrors = validateStep(currentStep);
       if (currentErrors.length > 0 && STEPS.find(s => s.id === currentStep)?.required) {
         setErrors(prev => ({ ...prev, [currentStep]: currentErrors }));
@@ -133,7 +185,6 @@ export function NewQuotePage() {
       }
     }
     
-    // Limpiar errores del paso anterior si es válido
     if (validateStep(currentStep).length === 0) {
       setErrors(prev => {
         const newErrors = { ...prev };
@@ -142,7 +193,6 @@ export function NewQuotePage() {
       });
     }
     
-    // Marcar el nuevo paso como visitado
     setVisitedSteps(prev => new Set([...prev, step]));
     setCurrentStep(step);
   };
@@ -188,13 +238,13 @@ export function NewQuotePage() {
         despacho: Object.keys(formData.despacho).length > 0 ? formData.despacho as DeliveryInfo : undefined,
         condicionesComerciales: formData.condicionesComerciales as CommercialTerms,
         estado: status,
-        vendedorId: 'USER001', // Esto se obtendrá del usuario autenticado
-        vendedorNombre: 'Usuario Actual', // Esto se obtendrá del usuario autenticado
+        vendedorId: 'USER001',
+        vendedorNombre: 'Usuario Actual',
         subtotal,
         descuentoTotal,
         iva,
         total,
-        notas: formData.notas,
+        notas: formData.notas ? `${formData.notas}\n\nCotización generada para obra: ${obra?.nombreEmpresa}` : `Cotización generada para obra: ${obra?.nombreEmpresa}`,
         fechaExpiracion: formData.condicionesComerciales.validezOferta ? 
           new Date(Date.now() + formData.condicionesComerciales.validezOferta * 24 * 60 * 60 * 1000).toISOString().split('T')[0] : 
           undefined
@@ -223,7 +273,6 @@ export function NewQuotePage() {
       [section]: data
     }));
     
-    // Limpiar errores del paso actual si los datos son válidos
     setTimeout(() => {
       if (validateStep(currentStep).length === 0) {
         setErrors(prev => {
@@ -236,18 +285,6 @@ export function NewQuotePage() {
   };
 
   const renderStepContent = () => {
-    // Diagnóstico detallado para cada componente (solo en desarrollo)
-    if (process.env.NODE_ENV === 'development') {
-      console.log('ClientForm type:', typeof ClientForm);
-      console.log('ProductsForm type:', typeof ProductsForm);
-      console.log('DeliveryForm type:', typeof DeliveryForm);
-      console.log('CommercialTermsForm type:', typeof CommercialTermsForm);
-      console.log('QuoteSummary type:', typeof QuoteSummary);
-    }
-
-    // Nota: En Next.js (App Router) los Client Components pueden llegar como
-    // referencias de cliente (objetos) durante el desarrollo. Evitamos bloquear
-    // el render por el tipo y dejamos que React/Next maneje el client reference.
     switch (currentStep) {
       case 'client':
         return (
@@ -297,8 +334,19 @@ export function NewQuotePage() {
     }
   };
 
+  if (loadingObra) {
+    return (
+      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: 'var(--bg-primary)' }}>
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 mx-auto mb-4" style={{ borderColor: 'var(--accent-primary)' }}></div>
+          <p style={{ color: 'var(--text-secondary)' }}>Cargando datos de la obra...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen overflow-x-hidden" style={{ backgroundColor: 'var(--bg-primary)' }}>
+    <div className="min-h-screen" style={{ backgroundColor: 'var(--bg-primary)' }}>
       {/* Header */}
       <div 
         className="sticky top-0 z-10 border-b"
@@ -308,36 +356,46 @@ export function NewQuotePage() {
           <div className="flex flex-col sm:flex-row items-center justify-between h-auto sm:h-16 py-3 sm:py-0 gap-2 sm:gap-0">
             <div className="flex items-center gap-4 w-full sm:w-auto">
               <button
-                onClick={() => router.push('/dashboard/cotizaciones')}
+                onClick={() => router.push(`/dashboard/obras/${obraId}`)}
                 className="p-2 rounded-lg transition-colors"
                 style={{ 
                   backgroundColor: 'var(--bg-secondary)', 
                   color: 'var(--text-secondary)',
                   border: '1px solid var(--border)'
                 }}
-                aria-label="Volver a cotizaciones"
+                aria-label="Volver a detalle de obra"
               >
                 <FiArrowLeft className="w-5 h-5" />
               </button>
-              <h1 className="text-lg sm:text-xl font-bold" style={{ color: 'var(--text-primary)' }}>
-                Nueva Cotización
-              </h1>
+              
+              <div>
+                <h1 className="text-lg sm:text-xl font-bold flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
+                  <FiTool className="w-5 h-5" style={{ color: 'var(--accent-primary)' }} />
+                  Nueva Cotización para Obra
+                </h1>
+                {obra && (
+                  <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+                    {obra.nombreEmpresa} • {obra.constructora.nombre}
+                  </p>
+                )}
+              </div>
             </div>
-            
+
             <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto justify-end">
               <button
                 onClick={() => handleSave('borrador')}
                 disabled={loading}
-                className="btn-secondary flex items-center gap-2 px-3 sm:px-4 py-2 text-sm"
+                className="btn-secondary flex items-center gap-2 px-3 py-2 text-sm"
               >
                 <FiSave className="w-4 h-4" />
                 <span className="hidden sm:inline">Guardar Borrador</span>
                 <span className="inline sm:hidden">Guardar</span>
               </button>
+              
               <button
                 onClick={() => handleSave('enviada')}
                 disabled={loading || !isStepValid('summary')}
-                className="btn-primary flex items-center gap-2 px-3 sm:px-4 py-2 text-sm"
+                className="btn-primary flex items-center gap-2 px-3 py-2 text-sm"
               >
                 <FiSend className="w-4 h-4" />
                 <span className="hidden sm:inline">Enviar Cotización</span>
@@ -348,7 +406,7 @@ export function NewQuotePage() {
         </div>
       </div>
 
-      {/* Main Content with Sidebar and Content */}
+      {/* Contenido principal */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-8">
         <div className="flex flex-col lg:flex-row gap-4 sm:gap-8">
           {/* Sidebar de pasos - Visible solo en lg y superiores */}
@@ -399,7 +457,9 @@ export function NewQuotePage() {
                           <div className="flex items-center gap-2">
                             <span className="text-sm font-medium">{step.label}</span>
                             {step.required && (
-                              <span style={{ color: 'var(--danger-text)' }}>*</span>
+                              <span className="text-xs px-1.5 py-0.5 rounded" style={{ backgroundColor: 'var(--warning-bg)', color: 'var(--warning-text)' }}>
+                                Req.
+                              </span>
                             )}
                           </div>
                           {hasErrors && (
@@ -459,8 +519,7 @@ export function NewQuotePage() {
                           )}
                         </div>
                         <span 
-                          className="text-xs font-medium max-w-[90px] truncate"
-                          title={step.label}
+                          className="text-xs font-medium"
                           style={{ 
                             color: isActive ? 'var(--accent-primary)' : 
                                   'var(--text-secondary)'
@@ -485,86 +544,51 @@ export function NewQuotePage() {
           {/* Contenido del formulario */}
           <div className="lg:w-3/4 w-full">
             <div 
-              className="rounded-lg p-4 sm:p-6"
+              className="rounded-lg p-6 mb-6"
               style={{ backgroundColor: 'var(--card-bg)', border: '1px solid var(--border)' }}
             >
-              {/* Error Messages */}
-              {visitedSteps.has(currentStep) && errors[currentStep] && errors[currentStep].length > 0 && (
-                <div 
-                  className="mb-6 p-4 rounded-lg border"
-                  style={{ 
-                    backgroundColor: 'var(--danger-bg)', 
-                    borderColor: 'var(--danger-border)',
-                    color: 'var(--danger-text)'
-                  }}
-                >
-                  <div className="flex items-center gap-2 mb-2">
-                    <FiAlertCircle className="w-5 h-5" />
-                    <span className="font-medium">Errores en este paso:</span>
+              {obra && (
+                <div className="mb-6 p-4 rounded-lg" style={{ backgroundColor: 'var(--info-bg)', border: '1px solid var(--border)' }}>
+                  <div className="flex items-center gap-3">
+                    <FiTool className="w-5 h-5" style={{ color: 'var(--info-text)' }} />
+                    <div>
+                      <h4 className="font-medium" style={{ color: 'var(--info-text)' }}>
+                        Cotización para obra: {obra.nombreEmpresa}
+                      </h4>
+                      <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+                        Los datos del cliente han sido precompletos basados en la información de la obra
+                      </p>
+                    </div>
                   </div>
-                  <ul className="list-disc list-inside space-y-1">
-                    {errors[currentStep].map((error, index) => (
-                      <li key={index} className="text-sm">{error}</li>
-                    ))}
-                  </ul>
                 </div>
               )}
-
-              {/* Step Content */}
+              
               {renderStepContent()}
+            </div>
 
-              {/* Navegación de pasos */}
-              <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-6 pt-6 border-t" style={{ borderColor: 'var(--border)' }}>
-                <button
-                  onClick={handlePrevious}
-                  disabled={currentStep === 'client'}
-                  className="btn-secondary flex items-center gap-2 w-full sm:w-auto"
-                >
-                  <FiArrowLeft className="w-4 h-4" />
-                  Anterior
-                </button>
+            {/* Navegación de pasos */}
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-6">
+              <button
+                onClick={handlePrevious}
+                disabled={currentStep === 'client'}
+                className="btn-secondary flex items-center gap-2 w-full sm:w-auto"
+              >
+                <FiArrowLeft className="w-4 h-4" />
+                Anterior
+              </button>
 
-                <div className="text-sm hidden sm:block" style={{ color: 'var(--text-secondary)' }}>
-                  Paso {STEPS.findIndex(s => s.id === currentStep) + 1} de {STEPS.length}
-                </div>
-
-                {currentStep === 'summary' ? (
-                  <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
-                    <button
-                      onClick={() => handleSave('borrador')}
-                      disabled={loading}
-                      className="btn-secondary flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed w-full sm:w-auto"
-                    >
-                      {loading ? (
-                        <div className="animate-spin rounded-full h-4 w-4 border-2 border-current border-t-transparent"></div>
-                      ) : (
-                        <FiSave className="w-4 h-4" />
-                      )}
-                      Guardar Borrador
-                    </button>
-                    <button
-                      onClick={() => handleSave('enviada')}
-                      disabled={loading}
-                      className="btn-primary flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed w-full sm:w-auto"
-                    >
-                      {loading ? (
-                        <div className="animate-spin rounded-full h-4 w-4 border-2 border-current border-t-transparent"></div>
-                      ) : (
-                        <FiSend className="w-4 h-4" />
-                      )}
-                      Enviar Cotización
-                    </button>
-                  </div>
-                ) : (
-                  <button
-                    onClick={handleNext}
-                    className="btn-primary flex items-center gap-2 w-full sm:w-auto"
-                  >
-                    Siguiente
-                    <FiArrowLeft className="w-4 h-4 rotate-180" />
-                  </button>
-                )}
+              <div className="text-sm hidden sm:block" style={{ color: 'var(--text-secondary)' }}>
+                Paso {STEPS.findIndex(s => s.id === currentStep) + 1} de {STEPS.length}
               </div>
+
+              <button
+                onClick={handleNext}
+                disabled={currentStep === 'summary'}
+                className="btn-primary flex items-center gap-2 w-full sm:w-auto"
+              >
+                Siguiente
+                <FiArrowLeft className="w-4 h-4 rotate-180" />
+              </button>
             </div>
           </div>
         </div>
@@ -572,5 +596,3 @@ export function NewQuotePage() {
     </div>
   );
 }
-
-export default NewQuotePage;
