@@ -2,6 +2,9 @@ const express = require('express');
 const cors = require('cors');
 require('dotenv').config();
 
+// Importar configuración de base de datos
+const { testConnection } = require('./config/database');
+
 const app = express();
 const PORT = process.env.PORT || 3001;
 
@@ -38,6 +41,57 @@ app.get('/health', (req, res) => {
 });
 
 // Rutas de la API
+const quotesRoutes = require('./routes/quotes');
+const clientesRoutes = require('./routes/clientes');
+const productosRoutes = require('./routes/productos');
+const obrasRoutes = require('./routes/obras');
+const dashboardRoutes = require('./routes/dashboard');
+
+app.use('/api/quotes', quotesRoutes);
+app.use('/api/clientes', clientesRoutes);
+app.use('/api/productos', productosRoutes);
+app.use('/api/obras', obrasRoutes);
+app.use('/api/dashboard', dashboardRoutes);
+
+// Ruta de prueba de conexión a la base de datos
+app.get('/api/test-db', async (req, res) => {
+  try {
+    const { queryHelpers } = require('./config/database');
+    const healthCheck = await queryHelpers.healthCheck();
+    
+    if (!healthCheck.success) {
+      throw new Error(healthCheck.error);
+    }
+    
+    // Intentar obtener info básica de una tabla
+    let tableInfo = {};
+    try {
+      const totalClientes = await queryHelpers.getCount('clientes');
+      tableInfo.total_clientes = totalClientes;
+    } catch (tableError) {
+      tableInfo.table_error = tableError.message;
+      tableInfo.note = 'Conexión establecida pero tabla puede tener RLS activo';
+    }
+    
+    res.json({
+      success: true,
+      message: 'Conexión a Supabase establecida',
+      data: {
+        ...tableInfo,
+        timestamp: new Date().toISOString(),
+        supabase_url: process.env.SUPABASE_URL
+      }
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: 'Error de conexión a la base de datos',
+      message: error.message,
+      details: 'Verifica que el SUPABASE_URL y SUPABASE_SERVICE_ROLE_KEY sean correctos'
+    });
+  }
+});
+
 app.get('/api/test', (req, res) => {
   res.json({
     message: 'Ruta de prueba funcionando correctamente',
@@ -65,9 +119,22 @@ app.use('*', (req, res) => {
 });
 
 // Iniciar servidor
-app.listen(PORT, () => {
-  console.log(`🚀 API ejecutándose en http://localhost:${PORT}`);
-  console.log(`🔧 Entorno: ${process.env.NODE_ENV || 'development'}`);
-});
+const startServer = async () => {
+  // Probar conexión a la base de datos
+  const dbConnected = await testConnection();
+  
+  if (!dbConnected) {
+    console.error('❌ No se pudo conectar a la base de datos');
+    console.log('Verifica tus variables de entorno en el archivo .env');
+    process.exit(1);
+  }
+  
+  app.listen(PORT, () => {
+    console.log(`🚀 API ejecutándose en http://localhost:${PORT}`);
+    console.log(`🔧 Entorno: ${process.env.NODE_ENV || 'development'}`);
+  });
+};
+
+startServer();
 
 module.exports = app;
