@@ -1,7 +1,8 @@
 "use client";
 
 import React from 'react';
-import type { ClientInfo, QuoteItem, DeliveryInfo, CommercialTerms } from '@/core/domain/quote/Quote';
+import type { ClientInfo, QuoteItem, DeliveryInfo, CommercialTerms, Quote } from '@/core/domain/quote/Quote';
+import { PDFDownloadButton } from '@/features/reports/ui/pdf/PDFDownloadButton';
 import { 
   FiDollarSign, 
   FiUser, 
@@ -39,6 +40,31 @@ interface QuoteSummaryProps {
 export function QuoteSummary({ formData, totals, formatMoney }: QuoteSummaryProps) {
   const { cliente, items, despacho, condicionesComerciales, notas } = formData;
   const { subtotal, descuentoTotal, iva, total } = totals;
+
+  // Función helper para crear un objeto Quote compatible con PDF generator
+  const createQuoteFromFormData = (formData: FormData, totals: { subtotal: number; descuentoTotal: number; iva: number; total: number }): Quote => {
+    return {
+      id: 'preview',
+      numero: `PREV-${Date.now()}`,
+      fechaCreacion: new Date().toISOString(),
+      fechaModificacion: new Date().toISOString(),
+      fechaExpiracion: formData.condicionesComerciales.validezOferta ? 
+        new Date(Date.now() + formData.condicionesComerciales.validezOferta * 24 * 60 * 60 * 1000).toISOString() : 
+        undefined,
+      cliente: formData.cliente as ClientInfo,
+      items: formData.items,
+      despacho: Object.keys(formData.despacho).length > 0 ? formData.despacho as DeliveryInfo : undefined,
+      condicionesComerciales: formData.condicionesComerciales as CommercialTerms,
+      estado: formData.estado as any,
+      vendedorId: 'USER001', // TODO: Obtener del usuario autenticado
+      vendedorNombre: 'Usuario Actual', // TODO: Obtener del usuario autenticado
+      subtotal: totals.subtotal,
+      descuentoTotal: totals.descuentoTotal,
+      iva: totals.iva,
+      total: totals.total,
+      notas: formData.notas
+    };
+  };
 
   return (
     <div className="space-y-6">
@@ -393,6 +419,15 @@ export function QuoteSummary({ formData, totals, formatMoney }: QuoteSummaryProp
                   {formatMoney(total)}
                 </span>
               </div>
+            </div>
+            
+            {/* Botón de descarga PDF */}
+            <div className="mt-4 pt-4" style={{ borderTop: '1px solid var(--border)' }}>
+              <PDFDownloadButton 
+                quote={createQuoteFromFormData(formData, totals)}
+                className="w-full"
+                showPreview={true}
+              />
             </div>
           </div>
 
