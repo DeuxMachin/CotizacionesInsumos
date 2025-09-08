@@ -43,7 +43,7 @@ export const ROLE_PERMISSIONS: Record<string, Permission[]> = {
     { resource: 'settings', actions: ['read', 'update', 'manage'] },
   ],
   
-  user: [
+  vendedor: [
     // Vendedor/Usuario estándar
     { resource: 'dashboard', actions: ['read'] },
     { resource: 'quotes', actions: ['create', 'read', 'update', 'export'] },
@@ -52,6 +52,24 @@ export const ROLE_PERMISSIONS: Record<string, Permission[]> = {
     { resource: 'targets', actions: ['create', 'read', 'update'] },
     { resource: 'stock', actions: ['read'] },
     { resource: 'reports', actions: ['read'] },
+  ],
+  
+  user: [
+    // Vendedor/Usuario estándar (alias)
+    { resource: 'dashboard', actions: ['read'] },
+    { resource: 'quotes', actions: ['create', 'read', 'update', 'export'] },
+    { resource: 'clients', actions: ['create', 'read', 'update'] },
+    { resource: 'obras', actions: ['create', 'read', 'update'] },
+    { resource: 'targets', actions: ['create', 'read', 'update'] },
+    { resource: 'stock', actions: ['read'] },
+    { resource: 'reports', actions: ['read'] },
+  ],
+  
+  cliente: [
+    // Cliente - acceso limitado
+    { resource: 'dashboard', actions: ['read'] },
+    { resource: 'quotes', actions: ['read'] },
+    { resource: 'clients', actions: ['read'] },
   ],
   
   demo: [

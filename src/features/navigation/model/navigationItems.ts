@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo } from "react";
 import { FiHome, FiFileText, FiUsers, FiPackage, FiBarChart2, FiMapPin, FiSettings, FiShield, FiTool } from "react-icons/fi";
 import type { Section } from "./useSection";
 import { usePermissions, type Resource, type Action } from "@/features/auth/model/permissions";
@@ -112,10 +113,10 @@ export const ALL_NAVIGATION_ITEMS: NavigationItem[] = [
 export function useNavigationItems(userRole: string) {
   const { hasAnyPermission, canRead } = usePermissions(userRole.toLowerCase());
 
-  const getFilteredNavigationItems = (): NavigationItem[] => {
+  const navigationItems = useMemo(() => {
     return ALL_NAVIGATION_ITEMS.filter(item => {
       // Verificar si el usuario tiene permisos para ver este elemento
-  const hasRequiredPermissions = hasAnyPermission(item.resource, item.requiredActions);
+      const hasRequiredPermissions = hasAnyPermission(item.resource, item.requiredActions);
 
       // Si es adminOnly, verificar que sea admin
       if (item.adminOnly && userRole.toLowerCase() !== 'admin') {
@@ -129,26 +130,28 @@ export function useNavigationItems(userRole: string) {
 
       return hasRequiredPermissions;
     });
-  };
+  }, [userRole, hasAnyPermission, canRead]);
 
-  const getVisibleSections = (): Section[] => {
-    return getFilteredNavigationItems().map(item => item.key);
-  };
+  const visibleSections = useMemo(() => {
+    return navigationItems.map(item => item.key);
+  }, [navigationItems]);
 
-  const canAccessSection = (section: Section): boolean => {
-    const item = ALL_NAVIGATION_ITEMS.find(nav => nav.key === section);
-    if (!item) return false;
+  const canAccessSection = useMemo(() => {
+    return (section: Section): boolean => {
+      const item = ALL_NAVIGATION_ITEMS.find(nav => nav.key === section);
+      if (!item) return false;
 
-    if (item.adminOnly && userRole.toLowerCase() !== 'admin') {
-      return false;
-    }
+      if (item.adminOnly && userRole.toLowerCase() !== 'admin') {
+        return false;
+      }
 
-  return hasAnyPermission(item.resource, item.requiredActions);
-  };
+      return hasAnyPermission(item.resource, item.requiredActions);
+    };
+  }, [userRole, hasAnyPermission]);
 
   return {
-    navigationItems: getFilteredNavigationItems(),
-    visibleSections: getVisibleSections(),
+    navigationItems,
+    visibleSections,
     canAccessSection,
     allItems: ALL_NAVIGATION_ITEMS,
   };

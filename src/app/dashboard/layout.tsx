@@ -14,38 +14,38 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   // Aplicar el sistema de cierre de sesión por inactividad
-  useInactivityTimeout();
+  // useInactivityTimeout(); // Comentado temporalmente para debugging
 
   // Prefetch de rutas frecuentes para evitar latencia del primer click en dev
-  const router = useRouter();
-  useEffect(() => {
-    const routesToPrefetch = [
-      "/dashboard",
-      "/dashboard/obras",
-      "/dashboard/clientes",
-      "/dashboard/cotizaciones",
-      "/dashboard/stock",
-      "/dashboard/reportes",
-      "/dashboard/posibles-targets",
-      "/admin"
-    ];
+  // const router = useRouter();
+  // useEffect(() => {
+  //   const routesToPrefetch = [
+  //     "/dashboard",
+  //     "/dashboard/obras",
+  //     "/dashboard/clientes",
+  //     "/dashboard/cotizaciones",
+  //     "/dashboard/stock",
+  //     "/dashboard/reportes",
+  //     "/dashboard/posibles-targets",
+  //     "/admin"
+  //   ];
     
-    // Prefetch all main routes on dashboard load
-    const prefetchRoutes = async () => {
-      try {
-        // Prefetch in sequence with slight delay to avoid network contention
-        for (const route of routesToPrefetch) {
-          await router.prefetch(route);
-          // Small delay between prefetches
-          await new Promise(resolve => setTimeout(resolve, 50));
-        }
-      } catch (e) {
-        console.warn("Error prefetching routes:", e);
-      }
-    };
+  //   // Prefetch all main routes on dashboard load
+  //   const prefetchRoutes = async () => {
+  //     try {
+  //       // Prefetch in sequence with slight delay to avoid network contention
+  //       for (const route of routesToPrefetch) {
+  //         await router.prefetch(route);
+  //         // Small delay between prefetches
+  //         await new Promise(resolve => setTimeout(resolve, 50));
+  //       }
+  //     } catch (e) {
+  //       console.warn("Error prefetching routes:", e);
+  //     }
+  //   };
     
-    prefetchRoutes();
-  }, [router]);
+  //   prefetchRoutes();
+  // }, [router]);
 
   return (
     <div 

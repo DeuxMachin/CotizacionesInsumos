@@ -27,11 +27,11 @@ export function AuthRedirect({
       router.push(nonAuthRedirectTo);
     } else if (!requireAuth && isAuthenticated && authRedirectTo) {
       // Si no requiere autenticación y está autenticado, redirigir según el rol
-      const redirectPath = authRedirectTo || (user?.role === 'admin' ? '/admin' : '/dashboard');
+      const redirectPath = authRedirectTo || (user?.rol === 'admin' ? '/admin' : '/dashboard');
       console.log("Ya autenticado, redirigiendo a", redirectPath);
       router.push(redirectPath);
     }
-  }, [isAuthenticated, requireAuth, router, authRedirectTo, nonAuthRedirectTo, user?.role]);
+  }, [isAuthenticated, requireAuth, router, authRedirectTo, nonAuthRedirectTo, user?.rol]);
 
   // Solo mostrar el contenido si cumple con los requisitos de autenticación
   if (requireAuth && !isAuthenticated) {

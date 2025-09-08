@@ -3,55 +3,25 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { useEffect } from "react";
-
-interface User {
-  id: string;
-  email: string;
-  name: string;
-  role: string;
-}
+import { AuthService, type AuthUser } from "@/services/authService";
 
 interface AuthState {
-  user: User | null;
+  user: AuthUser | null;
   isAuthenticated: boolean;
   isLoading: boolean;
   lastActivity: number | null;
   login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => void;
   updateActivity: () => void;
+  initializeAuth: () => Promise<void>;
 }
 
-// Tiempo de inactividad antes de cerrar sesión (10 minutos en milisegundos)
-const INACTIVITY_TIMEOUT = 10 * 60 * 1000;
-
-// Datos de prueba para el frontend
-const mockUsers = [
-  {
-    id: "1",
-    email: "admin@empresa.com",
-    password: "admin123",
-    name: "Administrador",
-    role: "admin"
-  },
-  {
-    id: "2", 
-    email: "user@empresa.com",
-    password: "user123",
-    name: "Usuario",
-    role: "user"
-  },
-  {
-    id: "3",
-    email: "demo@empresa.com", 
-    password: "demo123",
-    name: "Demo User",
-    role: "demo"
-  }
-];
+// Tiempo de inactividad antes de cerrar sesión (30 minutos en milisegundos)
+const INACTIVITY_TIMEOUT = 30 * 60 * 1000;
 
 export const useAuth = create<AuthState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       user: null,
       isAuthenticated: false,
       isLoading: false,
@@ -61,74 +31,90 @@ export const useAuth = create<AuthState>()(
         set({ lastActivity: Date.now() });
       },
 
+      initializeAuth: async () => {
+        set({ isLoading: true });
+        try {
+          // Para nuestra implementación actual, no mantenemos sesión persistente
+          // Simplemente marcamos como no autenticado para forzar login
+          set({
+            user: null,
+            isAuthenticated: false
+          });
+        } catch (error) {
+          console.error('Error inicializando autenticación:', error);
+          set({
+            user: null,
+            isAuthenticated: false
+          });
+        } finally {
+          set({ isLoading: false });
+        }
+      },
+
       login: async (email: string, password: string) => {
         set({ isLoading: true });
         
         try {
-          // Simular delay de red
-          await new Promise(resolve => setTimeout(resolve, 1500));
+          const result = await AuthService.signIn(email, password);
+          
+          set({
+            user: result.user,
+            isAuthenticated: true,
+            lastActivity: Date.now(),
+            isLoading: false
+          });
 
-          const user = mockUsers.find(
-            u => u.email === email && u.password === password
-          );
-
-          if (user) {
-            const { password: _pw, ...userWithoutPassword } = user;
-            void _pw;
-            
-            set({ 
-              user: userWithoutPassword, 
-              isAuthenticated: true, 
-              isLoading: false,
-              lastActivity: Date.now()
-            });
-            
-            // Escribir cookie accesible por middleware
-            try {
-              const cookiePayload = encodeURIComponent(JSON.stringify({
-                isAuthenticated: true,
-                user: userWithoutPassword,
-              }));
-              document.cookie = `auth-storage=${cookiePayload}; path=/; SameSite=Lax`;
-            } catch {}
-            
-            return { success: true };
-          } else {
-            set({ isLoading: false });
-            return { 
-              success: false, 
-              error: "Email o contraseña incorrectos" 
-            };
+          // Escribir cookie para middleware
+          try {
+            const cookiePayload = encodeURIComponent(JSON.stringify({
+              isAuthenticated: true,
+              user: result.user,
+            }));
+            document.cookie = `auth-storage=${cookiePayload}; path=/; SameSite=Lax`;
+          } catch (cookieError) {
+            console.error('Error escribiendo cookie:', cookieError);
           }
+
+          return { success: true };
         } catch (error) {
-          console.error("Error en login:", error);
           set({ isLoading: false });
-          return {
-            success: false,
-            error: "Error inesperado al iniciar sesión"
+          const errorMessage = error instanceof Error ? error.message : 'Error de autenticación';
+          return { 
+            success: false, 
+            error: errorMessage
           };
         }
       },
 
-      logout: () => {
-        
-        
-        set({ user: null, isAuthenticated: false, lastActivity: null });
-        
-  // Borrar cookie usada por middleware
-  document.cookie = 'auth-storage=; Max-Age=0; path=/; SameSite=Lax';
-        
-  // Redirect to login page
-  window.location.href = '/login';
-      },
+      logout: async () => {
+        set({ isLoading: true });
+        try {
+          await AuthService.signOut();
+        } catch (error) {
+          console.error('Error durante logout:', error);
+        } finally {
+          set({
+            user: null,
+            isAuthenticated: false,
+            lastActivity: null,
+            isLoading: false
+          });
+
+          // Borrar cookie
+          document.cookie = 'auth-storage=; Max-Age=0; path=/; SameSite=Lax';
+          
+          // Redirigir al login
+          window.location.href = '/login';
+        }
+      }
     }),
     {
       name: "auth-storage",
-      partialize: (state) => ({ 
-        user: state.user, 
+      partialize: (state) => ({
+        user: state.user,
         isAuthenticated: state.isAuthenticated,
         lastActivity: state.lastActivity
-      }),
+      })
     }
   )
 );
@@ -146,29 +132,57 @@ export function useInactivityTimeout() {
     };
 
     // Eventos de actividad del usuario
-    window.addEventListener('mousemove', handleActivity);
-    window.addEventListener('keydown', handleActivity);
-    window.addEventListener('click', handleActivity);
-    window.addEventListener('scroll', handleActivity);
-    window.addEventListener('touchstart', handleActivity);
+    const events = ['mousemove', 'keydown', 'click', 'scroll', 'touchstart'];
+    events.forEach(event => {
+      window.addEventListener(event, handleActivity);
+    });
 
     // Verificar inactividad cada minuto
     const checkInactivity = setInterval(() => {
       if (lastActivity && Date.now() - lastActivity > INACTIVITY_TIMEOUT) {
-        // Mostrar mensaje antes de cerrar sesión
         alert('Su sesión ha expirado por inactividad.');
         logout();
       }
-    }, 60000); // Revisar cada minuto
+    }, 60000);
 
     return () => {
-      // Limpiar event listeners
-      window.removeEventListener('mousemove', handleActivity);
-      window.removeEventListener('keydown', handleActivity);
-      window.removeEventListener('click', handleActivity);
-      window.removeEventListener('scroll', handleActivity);
-      window.removeEventListener('touchstart', handleActivity);
+      events.forEach(event => {
+        window.removeEventListener(event, handleActivity);
+      });
       clearInterval(checkInactivity);
     };
   }, [isAuthenticated, lastActivity, logout, updateActivity]);
+}
+
+// Hook de inicialización que debe usarse en el layout principal
+export function useAuthInitialization() {
+  const { initializeAuth, isAuthenticated } = useAuth();
+
+  useEffect(() => {
+    // Inicializar autenticación al cargar la app
+    initializeAuth();
+
+    // Configurar listener de cambios de autenticación de Supabase
+    const authSubscription = AuthService.onAuthStateChange((session, user) => {
+      if (session && user) {
+        useAuth.setState({
+          user,
+          isAuthenticated: true,
+          lastActivity: Date.now()
+        });
+      } else {
+        useAuth.setState({
+          user: null,
+          isAuthenticated: false,
+          lastActivity: null
+        });
+      }
+    });
+
+    return () => {
+      authSubscription.data.subscription.unsubscribe();
+    };
+  }, [initializeAuth]);
+
+  return { isAuthenticated };
 }

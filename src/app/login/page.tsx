@@ -6,17 +6,28 @@ import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 
 export default function LoginPage() {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user, isLoading } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
-    // Si ya está autenticado, redirigir según el rol
-    if (isAuthenticated) {
-      const user = useAuth.getState().user;
-      const redirectPath = user?.role === 'admin' ? '/admin' : '/dashboard';
+    // Solo redirigir si está realmente autenticado y tenemos los datos del usuario
+    if (isAuthenticated && user && !isLoading) {
+      const redirectPath = user.rol === 'admin' ? '/admin' : '/dashboard';
       router.replace(redirectPath);
     }
-  }, [isAuthenticated, router]);
+  }, [isAuthenticated, user, isLoading, router]);
+
+  // Mostrar loading mientras se verifica el estado de autenticación
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: 'var(--bg-primary)' }}>
+        <div className="flex items-center gap-3" style={{ color: 'var(--text-primary)' }}>
+          <div className="w-6 h-6 border-2 border-current border-t-transparent rounded-full animate-spin" style={{ borderColor: 'var(--accent-primary)' }}></div>
+          <span>Verificando sesión...</span>
+        </div>
+      </div>
+    );
+  }
 
   return <LoginForm />;
 }
