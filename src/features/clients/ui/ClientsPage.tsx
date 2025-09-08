@@ -68,7 +68,7 @@ export function ClientsPage() {
   const [page, setPage] = useState(1);
   
   const pageSize = 12; // Más elementos por página como en ObrasPage
-  const isAdmin = user?.role?.toLowerCase() === 'admin';
+  const isAdmin = user?.rol?.toLowerCase() === 'admin';
 
   // Filtros y datos procesados
   const data = useMemo(() => {

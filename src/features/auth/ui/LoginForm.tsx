@@ -1,17 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "../model/useAuth";
-import { FiMail, FiLock, FiEye, FiEyeOff, FiArrowRight, FiCheck } from "react-icons/fi";
+import { SecurityService } from "@/services/securityService";
+import { FiMail, FiLock, FiEye, FiEyeOff, FiArrowRight, FiShield } from "react-icons/fi";
 import { Logo } from "@/shared/ui/Logo";
-import { BRAND } from "@/shared/ui/brand";
-
-const demoCredentials = [
-  { email: "admin@empresa.com", password: "admin123", role: "Administrador" },
-  { email: "user@empresa.com", password: "user123", role: "Usuario" },
-  { email: "demo@empresa.com", password: "demo123", role: "Demo" },
-];
 
 export function LoginForm() {
   const [formData, setFormData] = useState({
@@ -20,67 +14,183 @@ export function LoginForm() {
   });
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
-  const [showDemoCredentials, setShowDemoCredentials] = useState(false);
+  const [isFormValid, setIsFormValid] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState({
+    email: "",
+    password: ""
+  });
+  const [isLocked, setIsLocked] = useState(false);
+  const [lockoutTime, setLockoutTime] = useState("");
 
   const { login, isLoading } = useAuth();
   const router = useRouter();
+
+  // Validar formulario en tiempo real
+  const validateForm = () => {
+    const emailValid = Boolean(formData.email.trim() && /\S+@\S+\.\S+/.test(formData.email));
+    const passwordValid = Boolean(formData.password.length >= 6);
+    setIsFormValid(emailValid && passwordValid);
+  };
+
+  // Actualizar validación cuando cambian los campos
+  useEffect(() => {
+    validateForm();
+    
+    // Verificar si la cuenta está bloqueada cuando cambia el email
+    if (formData.email.trim()) {
+      const lockStatus = SecurityService.isAccountLocked(formData.email);
+      setIsLocked(lockStatus.locked);
+      
+      if (lockStatus.locked && lockStatus.remainingTime) {
+        setLockoutTime(SecurityService.getRemainingLockoutTime(lockStatus.remainingTime));
+      }
+    } else {
+      setIsLocked(false);
+      setLockoutTime("");
+    }
+  }, [formData.email, formData.password]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
 
+    // Verificar si la cuenta está bloqueada
+    const lockStatus = SecurityService.isAccountLocked(formData.email);
+    if (lockStatus.locked) {
+      const remainingTime = lockStatus.remainingTime 
+        ? SecurityService.getRemainingLockoutTime(lockStatus.remainingTime)
+        : "unos minutos";
+      setError(`Cuenta temporalmente bloqueada. Intente nuevamente en ${remainingTime}.`);
+      return;
+    }
+
+    // Validaciones básicas
+    if (!formData.email.trim()) {
+      setError("El email es requerido");
+      return;
+    }
+
+    if (!/\S+@\S+\.\S+/.test(formData.email)) {
+      setError("Ingrese un email válido");
+      return;
+    }
+
+    if (!formData.password.trim()) {
+      setError("La contraseña es requerida");
+      return;
+    }
+
+    if (formData.password.length < 6) {
+      setError("La contraseña debe tener al menos 6 caracteres");
+      return;
+    }
+
     try {
-      const result = await login(formData.email, formData.password);
+      const result = await login(formData.email.trim(), formData.password);
       
       if (!result.success) {
-        setError(result.error || "Error desconocido");
-      } else {
-        console.log("Login exitoso, redirigiendo...");
+        // Registrar intento fallido
+        SecurityService.registerFailedAttempt(formData.email);
         
-        // Redirección manual basada en el email
-        const isAdmin = formData.email === "admin@empresa.com";
-        router.push(isAdmin ? "/admin" : "/dashboard");
+        // Verificar si ahora está bloqueada
+        const newLockStatus = SecurityService.isAccountLocked(formData.email);
+        if (newLockStatus.locked) {
+          const remainingTime = newLockStatus.remainingTime 
+            ? SecurityService.getRemainingLockoutTime(newLockStatus.remainingTime)
+            : "unos minutos";
+          setError(`Demasiados intentos fallidos. Cuenta bloqueada por ${remainingTime}.`);
+          setIsLocked(true);
+          setLockoutTime(remainingTime);
+        } else {
+          setError(result.error || "Error de autenticación");
+        }
+      } else {
+        // Login exitoso - resetear intentos
+        SecurityService.resetAttempts(formData.email);
+        
+        // Esperar un momento para que el estado se actualice
+        await new Promise(resolve => setTimeout(resolve, 50));
+        
+        const currentUser = useAuth.getState().user;
+        
+        // Redirigir según el rol del usuario
+        if (currentUser) {
+          const redirectPath = currentUser.rol === 'admin' ? '/admin' : '/dashboard';
+          router.push(redirectPath);
+        } else {
+          router.push('/dashboard');
+        }
       }
     } catch (err) {
       console.error("Error en login:", err);
+      SecurityService.registerFailedAttempt(formData.email);
       setError("Ocurrió un error inesperado. Intente nuevamente.");
     }
   };
 
-  const handleDemoLogin = (credentials: typeof demoCredentials[0]) => {
-    setFormData({
-      email: credentials.email,
-      password: credentials.password
-    });
-  };
-
   return (
-    <div className="relative min-h-screen overflow-hidden bg-gradient-to-br from-orange-50 via-white to-orange-50">
+    <div 
+      className="relative min-h-screen overflow-hidden"
+      style={{ 
+        background: 'linear-gradient(135deg, var(--accent-bg) 0%, var(--bg-primary) 50%, var(--accent-bg) 100%)'
+      }}
+    >
       {/* Decoración de fondo */}
       <div className="pointer-events-none absolute inset-0">
-        <div className="absolute -top-10 -left-10 w-80 h-80 bg-orange-200/40 blur-3xl rounded-full animate-blob" />
-        <div className="absolute top-40 right-10 w-96 h-96 bg-amber-200/40 blur-3xl rounded-full animate-blob animation-delay-2000" />
-        <div className="absolute -bottom-16 left-1/3 w-96 h-96 bg-orange-300/30 blur-3xl rounded-full animate-blob animation-delay-4000" />
+        <div 
+          className="absolute -top-10 -left-10 w-80 h-80 blur-3xl rounded-full animate-pulse opacity-30"
+          style={{ backgroundColor: 'var(--accent-primary)' }}
+        />
+        <div 
+          className="absolute top-40 right-10 w-96 h-96 blur-3xl rounded-full animate-pulse opacity-20"
+          style={{ backgroundColor: 'var(--accent-secondary)' }}
+        />
+        <div 
+          className="absolute -bottom-16 left-1/3 w-96 h-96 blur-3xl rounded-full animate-pulse opacity-25"
+          style={{ backgroundColor: 'var(--accent-primary)' }}
+        />
       </div>
 
       {/* Contenido centrado */}
       <div className="relative z-10 px-4 py-10 sm:px-6 md:px-8 lg:px-10 min-h-screen grid place-items-center">
         <div className="w-full max-w-5xl">
-          {/* Card premium con panel lateral en desktop */}
-          <div className="grid lg:grid-cols-2 rounded-3xl overflow-hidden shadow-2xl border border-orange-100 bg-white/80 backdrop-blur-xl">
+          {/* Card con panel lateral en desktop */}
+          <div 
+            className="grid lg:grid-cols-2 rounded-3xl overflow-hidden border"
+            style={{ 
+              backgroundColor: 'var(--card-bg)',
+              borderColor: 'var(--border-subtle)',
+              boxShadow: 'var(--shadow-md)'
+            }}
+          >
             {/* Panel lateral (solo desktop) */}
-            <div className="hidden lg:flex flex-col justify-between p-10 bg-gradient-to-br from-orange-500 to-orange-600 text-white relative">
+            <div 
+              className="hidden lg:flex flex-col justify-between p-10 text-white relative"
+              style={{ 
+                background: 'linear-gradient(135deg, var(--accent-primary) 0%, var(--accent-secondary) 100%)'
+              }}
+            >
               <div>
-                <h2 className="text-3xl font-extrabold leading-tight">Gestiona cotizaciones con estilo</h2>
-                <p className="mt-3 text-orange-100 text-lg">Una experiencia rápida, moderna y centrada en productividad.</p>
+                <h2 className="text-3xl font-extrabold leading-tight">
+                  Gestiona cotizaciones con estilo
+                </h2>
+                <p className="mt-3 text-white/90 text-lg">
+                  Una experiencia rápida, moderna y centrada en productividad.
+                </p>
               </div>
-              <ul className="mt-10 space-y-4 text-orange-50/90">
-                {["Nueva cotización en segundos","Métricas claras y accionables","Interfaz responsive y accesible"].map((f) => (
-                  <li key={f} className="flex items-center gap-3">
+              <ul className="mt-10 space-y-4 text-white/80">
+                {[
+                  "Nueva cotización en segundos",
+                  "Métricas claras y accionables", 
+                  "Interfaz responsive y accesible"
+                ].map((feature) => (
+                  <li key={feature} className="flex items-center gap-3">
                     <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-white/20">
-                      <FiCheck className="w-3.5 h-3.5" />
+                      <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                      </svg>
                     </span>
-                    <span>{f}</span>
+                    <span>{feature}</span>
                   </li>
                 ))}
               </ul>
@@ -91,107 +201,149 @@ export function LoginForm() {
               {/* Marca */}
               <div className="mb-8 flex items-center gap-3">
                 <Logo height={32} />
-                <div className="hidden sm:block text-gray-600">Sistema de Cotizaciones</div>
-              </div>
-
-              <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Bienvenido</h1>
-              <p className="mt-2 text-gray-600">Accede a tu panel administrativo</p>
-
-              {/* Credenciales demo */}
-              <div className="mt-6 bg-orange-50/70 border border-orange-200 rounded-xl p-4">
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className="font-medium text-orange-900">Credenciales de prueba</h3>
-                  <button
-                    onClick={() => setShowDemoCredentials(!showDemoCredentials)}
-                    className="text-orange-600 hover:text-orange-700 text-sm font-medium"
-                  >
-                    {showDemoCredentials ? 'Ocultar' : 'Mostrar'}
-                  </button>
+                <div 
+                  className="hidden sm:block"
+                  style={{ color: 'var(--text-secondary)' }}
+                >
+                  Sistema de Cotizaciones
                 </div>
-                {showDemoCredentials && (
-                  <div className="grid sm:grid-cols-2 gap-2">
-                    {demoCredentials.map((cred, index) => (
-                      <button
-                        key={index}
-                        onClick={() => handleDemoLogin(cred)}
-                        className="text-left p-3 bg-white rounded-lg border border-orange-200 hover:border-orange-300 transition-colors group"
-                      >
-                        <div className="flex justify-between items-center">
-                          <div>
-                            <div className="font-medium text-orange-900">{cred.email}</div>
-                            <div className="text-sm text-orange-600">{cred.role}</div>
-                          </div>
-                          <FiArrowRight className="w-4 h-4 text-orange-400 group-hover:text-orange-600 transition-colors" />
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                )}
               </div>
 
-              <form onSubmit={handleSubmit} className="mt-6 space-y-5">
+              <h1 
+                className="text-2xl sm:text-3xl font-bold"
+                style={{ color: 'var(--text-primary)' }}
+              >
+                Bienvenido
+              </h1>
+              <p 
+                className="mt-2"
+                style={{ color: 'var(--text-secondary)' }}
+              >
+                Accede a tu panel administrativo
+              </p>
+
+              <form onSubmit={handleSubmit} className="mt-8 space-y-5">
                 {/* Email */}
                 <div>
-                  <label className="text-sm font-medium text-gray-700">Email</label>
+                  <label 
+                    className="text-sm font-medium"
+                    style={{ color: 'var(--text-primary)' }}
+                  >
+                    Email
+                  </label>
                   <div className="relative mt-1">
-                    <FiMail className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
+                    <FiMail 
+                      className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5"
+                      style={{ color: 'var(--text-muted)' }}
+                    />
                     <input
                       type="email"
                       value={formData.email}
-                      onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
-                      className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all"
+                      onChange={(e) => {
+                        setFormData(prev => ({ ...prev, email: e.target.value }));
+                        setError(""); // Limpiar error cuando el usuario empiece a escribir
+                      }}
+                      className="w-full pl-10 pr-4 py-3 rounded-xl border transition-all focus:outline-none focus:ring-2"
+                      style={{
+                        backgroundColor: 'var(--bg-primary)',
+                        borderColor: error && !formData.email.trim() ? 'var(--danger)' : 'var(--border)',
+                        color: 'var(--text-primary)',
+                        '--tw-ring-color': 'var(--accent-primary)'
+                      } as any}
                       placeholder="tu@email.com"
                       required
+                      autoComplete="email"
                     />
                   </div>
                 </div>
 
                 {/* Password */}
                 <div>
-                  <label className="text-sm font-medium text-gray-700">Contraseña</label>
+                  <label 
+                    className="text-sm font-medium"
+                    style={{ color: 'var(--text-primary)' }}
+                  >
+                    Contraseña
+                  </label>
                   <div className="relative mt-1">
-                    <FiLock className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
+                    <FiLock 
+                      className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5"
+                      style={{ color: 'var(--text-muted)' }}
+                    />
                     <input
                       type={showPassword ? 'text' : 'password'}
                       value={formData.password}
-                      onChange={(e) => setFormData(prev => ({ ...prev, password: e.target.value }))}
-                      className="w-full pl-10 pr-12 py-3 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all"
+                      onChange={(e) => {
+                        setFormData(prev => ({ ...prev, password: e.target.value }));
+                        setError(""); // Limpiar error cuando el usuario empiece a escribir
+                      }}
+                      className="w-full pl-10 pr-12 py-3 rounded-xl border transition-all focus:outline-none focus:ring-2"
+                      style={{
+                        backgroundColor: 'var(--bg-primary)',
+                        borderColor: error && formData.password.length < 6 ? 'var(--danger)' : 'var(--border)',
+                        color: 'var(--text-primary)',
+                        '--tw-ring-color': 'var(--accent-primary)'
+                      } as any}
                       placeholder="••••••••"
                       required
+                      autoComplete="current-password"
+                      minLength={6}
                     />
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 transition-colors"
+                      style={{ color: 'var(--text-muted)' }}
                     >
                       {showPassword ? <FiEyeOff className="w-5 h-5" /> : <FiEye className="w-5 h-5" />}
                     </button>
                   </div>
-                  <div className="mt-2 flex items-center justify-between text-sm">
-                    <label className="inline-flex items-center gap-2 text-gray-600">
-                      <input type="checkbox" className="rounded border-gray-300 text-orange-600 focus:ring-orange-500" />
-                      Recuérdame
-                    </label>
-                    <button type="button" className="text-orange-600 hover:text-orange-700">¿Olvidaste tu contraseña?</button>
-                  </div>
                 </div>
 
-                {/* Error */}
+                {/* Error o advertencia de bloqueo */}
                 {error && (
-                  <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl text-sm">
+                  <div 
+                    className="px-4 py-3 rounded-xl text-sm border flex items-center gap-2"
+                    style={{ 
+                      backgroundColor: isLocked ? 'var(--warning-bg)' : 'var(--danger-bg)',
+                      borderColor: isLocked ? 'var(--warning)' : 'var(--danger)',
+                      color: isLocked ? 'var(--warning-text)' : 'var(--danger-text)'
+                    }}
+                  >
+                    {isLocked && <FiShield className="w-4 h-4" />}
                     {error}
                   </div>
                 )}
 
+                {/* Advertencia cuando se acerque al límite */}
+                {!error && !isLocked && formData.email.trim() && (() => {
+                  const attempts = SecurityService.isAccountLocked(formData.email);
+                  return null; // Por seguridad, no mostrar número de intentos restantes
+                })()} 
+
+                {/* Submit Button */}
                 <button
                   type="submit"
-                  disabled={isLoading}
-                  className={`w-full bg-gradient-to-r ${BRAND.accentFrom} ${BRAND.accentTo} text-white py-3 px-4 rounded-xl font-medium shadow-md hover:shadow-lg hover:brightness-105 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all transform hover:scale-[1.02] active:scale-[0.98]`}
+                  disabled={isLoading || !isFormValid || isLocked}
+                  className="w-full py-3 px-4 rounded-xl font-medium transition-all transform hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none focus:outline-none focus:ring-2 focus:ring-offset-2 text-white"
+                  style={{
+                    background: (isFormValid && !isLoading && !isLocked)
+                      ? 'linear-gradient(135deg, var(--accent-primary) 0%, var(--accent-secondary) 100%)'
+                      : 'var(--border)',
+                    boxShadow: (isFormValid && !isLoading && !isLocked) ? 'var(--shadow)' : 'none',
+                    '--tw-ring-color': 'var(--accent-primary)',
+                    '--tw-ring-offset-color': 'var(--bg-primary)'
+                  } as any}
                 >
                   {isLoading ? (
                     <div className="flex items-center justify-center gap-3">
                       <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin"></div>
                       Iniciando sesión...
+                    </div>
+                  ) : isLocked ? (
+                    <div className="flex items-center justify-center gap-2">
+                      <FiShield className="w-5 h-5" />
+                      <span>Cuenta Bloqueada</span>
                     </div>
                   ) : (
                     <div className="flex items-center justify-center gap-2">
@@ -201,7 +353,13 @@ export function LoginForm() {
                   )}
                 </button>
 
-                <p className="text-center text-xs text-gray-500">© 2025 Panel Admin – Sistema de Cotizaciones</p>
+                {/* Footer */}
+                <p 
+                  className="text-center text-xs mt-6"
+                  style={{ color: 'var(--text-muted)' }}
+                >
+                  © 2025 Sistema de Cotizaciones – Acceso Seguro
+                </p>
               </form>
             </div>
           </div>

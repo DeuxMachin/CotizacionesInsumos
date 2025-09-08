@@ -21,7 +21,7 @@ export function ProtectedRoute({
   requireAdmin = false 
 }: ProtectedRouteProps) {
   const { user, isAuthenticated } = useAuth();
-  const { hasPermission } = usePermissions(user?.role || '');
+  const { hasPermission } = usePermissions(user?.rol || '');
   const router = useRouter();
   
   useEffect(() => {
@@ -38,7 +38,7 @@ export function ProtectedRoute({
   }
 
   // Si requiere admin y no es admin, mostrar fallback
-  if (requireAdmin && user?.role?.toLowerCase() !== 'admin') {
+  if (requireAdmin && user?.rol?.toLowerCase() !== 'admin') {
     return fallback || <UnauthorizedView />;
   }
 
@@ -68,10 +68,10 @@ export function ProtectedComponent({
   fallback = null 
 }: ProtectedComponentProps) {
   const { user } = useAuth();
-  const { hasAnyPermission, hasAllPermissions } = usePermissions(user?.role || '');
+  const { hasAnyPermission, hasAllPermissions } = usePermissions(user?.rol || '');
 
   // Si requiere admin y no es admin, no mostrar
-  if (requireAdmin && user?.role?.toLowerCase() !== 'admin') {
+  if (requireAdmin && user?.rol?.toLowerCase() !== 'admin') {
     return fallback;
   }
 
@@ -110,7 +110,7 @@ function UnauthorizedView() {
 // Hook para verificación rápida de permisos en componentes
 export function useProtectedAction() {
   const { user } = useAuth();
-  const { hasPermission, canWrite, canRead, canManage } = usePermissions(user?.role || '');
+  const { hasPermission, canWrite, canRead, canManage } = usePermissions(user?.rol || '');
 
   const canPerform = (resource: Resource, action: Action): boolean => {
     return hasPermission(resource, action);
@@ -121,7 +121,7 @@ export function useProtectedAction() {
   };
 
   const isAdmin = (): boolean => {
-    return user?.role?.toLowerCase() === 'admin';
+    return user?.rol?.toLowerCase() === 'admin';
   };
 
   const canEditResource = (resource: Resource): boolean => {
