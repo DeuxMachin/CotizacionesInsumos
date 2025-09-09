@@ -398,42 +398,8 @@ export type Database = {
         }
       }
       ,
-      obra_etapas: {
-        Row: {
-          id: number
-          obra_id: number
-          etapa: string
-          fecha_inicio_plan: string | null
-          fecha_fin_plan: string | null
-          estado: string
-          notas: string | null
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          id?: number
-          obra_id: number
-          etapa: string
-          fecha_inicio_plan?: string | null
-          fecha_fin_plan?: string | null
-          estado?: string
-          notas?: string | null
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          id?: number
-          obra_id?: number
-          etapa?: string
-          fecha_inicio_plan?: string | null
-          fecha_fin_plan?: string | null
-          estado?: string
-          notas?: string | null
-          created_at?: string
-          updated_at?: string
-        }
-      }
-      ,
+
+    
       targets: {
         Row: {
           id: number

@@ -219,6 +219,23 @@ export function useObras() {
     }
   }, [service, user?.id, filtros, isAdmin]);
 
+  const actualizarObra = useCallback(async (obra: Obra): Promise<boolean> => {
+    setLoading(true);
+    try {
+      const ok = await service.actualizarObra(obra);
+      if (ok) {
+        // Refrescar lista y/o actualizar item en memoria
+        setData(prev => prev.map(o => (o.id === obra.id ? obra : o)));
+      }
+      return ok;
+    } catch (error) {
+      console.error('Error actualizando obra:', error);
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  }, [service]);
+
   return {
     obras: obrasPaginadas,
     todasLasObras: obrasFiltradas, // Para estadísticas
@@ -231,6 +248,7 @@ export function useObras() {
     actualizarEstadoObra,
     eliminarObra,
     crearObra,
+  actualizarObra,
     // Funciones de paginación
     goToPage,
     goToNextPage,

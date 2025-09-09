@@ -267,4 +267,60 @@ export class SupabaseObrasService implements IObrasService {
     }
     return true;
   }
+
+  async actualizarObra(obra: Obra): Promise<boolean> {
+    const update: Database["public"]["Tables"]["obras"]["Update"] = {
+      nombre: obra.nombreEmpresa,
+      direccion: obra.direccionObra,
+      comuna: obra.comuna ?? null,
+      ciudad: obra.ciudad ?? null,
+      cliente_id: obra.clienteId ?? null,
+      vendedor_id: obra.vendedorAsignado ?? null,
+      tipo_obra_id: obra.tipoObraId ?? null,
+      tamano_obra_id: obra.tamanoObraId ?? null,
+      estado: obra.estado,
+      etapa_actual: obra.etapaActual,
+      descripcion: obra.descripcion ?? null,
+      fecha_inicio: obra.fechaInicio?.toISOString().slice(0, 10) ?? null,
+      fecha_estimada_fin: obra.fechaEstimadaFin ? obra.fechaEstimadaFin.toISOString().slice(0, 10) : null,
+      valor_estimado: obra.valorEstimado ?? null,
+      material_vendido: obra.materialVendido ?? 0,
+      proximo_seguimiento: obra.proximoSeguimiento ? obra.proximoSeguimiento.toISOString().slice(0, 10) : null,
+      notas: obra.notas ?? null,
+    };
+
+    const { error } = await supabase
+      .from('obras')
+      .update(update)
+      .eq('id', Number(obra.id));
+    if (error) throw error;
+
+    // Actualizar/crear contacto principal si viene
+    const cp = obra.constructora?.contactoPrincipal;
+    if (cp && cp.nombre) {
+      // Buscar si existe contacto principal
+      const { data: existing, error: fetchErr } = await supabase
+        .from('obra_contactos')
+        .select('id')
+        .eq('obra_id', Number(obra.id))
+        .eq('es_principal', true)
+        .limit(1);
+      if (fetchErr) throw fetchErr;
+
+      if (existing && existing.length > 0) {
+        const { error: upErr } = await supabase
+          .from('obra_contactos')
+          .update({ nombre: cp.nombre, cargo: cp.cargo, telefono: cp.telefono || null, email: cp.email || null })
+          .eq('id', existing[0].id);
+        if (upErr) throw upErr;
+      } else {
+        const { error: insErr } = await supabase
+          .from('obra_contactos')
+          .insert({ obra_id: Number(obra.id), nombre: cp.nombre, cargo: cp.cargo, telefono: cp.telefono || null, email: cp.email || null, es_principal: true });
+        if (insErr) throw insErr;
+      }
+    }
+
+    return true;
+  }
 }

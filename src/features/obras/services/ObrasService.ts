@@ -1,6 +1,6 @@
 "use client";
 
-import type { Obra, EstadoObra, FiltroObras, EstadisticasObras } from "../model/types";
+import type { Obra, EstadoObra, FiltroObras, EstadisticasObras } from "../types/obras";
 
 export interface IObrasService {
   /**
@@ -32,4 +32,9 @@ export interface IObrasService {
    * Crea una nueva obra
    */
   crearObra(obra: Omit<Obra, 'id' | 'fechaCreacion' | 'fechaActualizacion' | 'fechaUltimoContacto'>, userId?: string): Promise<boolean>;
+
+  /**
+   * Actualiza una obra existente
+   */
+  actualizarObra(obra: Obra): Promise<boolean>;
 }

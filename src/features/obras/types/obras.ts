@@ -126,15 +126,6 @@ export interface ObrasTableProps {
   onEstadoChange?: (obraId: string, nuevoEstado: EstadoObra) => void;
 }
 
-export interface ObraDetailModalProps {
-  obra: Obra;
-  isOpen: boolean;
-  onClose: () => void;
-  onUpdate: OnObraUpdate;
-  formatMoney: (amount: number) => string;
-  getEstadoColor: GetEstadoColor;
-  getEtapaColor: GetEtapaColor;
-}
 
 export interface FiltersBarProps {
   isOpen: boolean;
