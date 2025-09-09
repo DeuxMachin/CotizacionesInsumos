@@ -1,0 +1,57 @@
+<!-- Placeholder SVG para template de cotización -->
+<svg width="2480" height="3508" viewBox="0 0 2480 3508" xmlns="http://www.w3.org/2000/svg">
+  <!-- Fondo blanco -->
+  <rect width="2480" height="3508" fill="white"/>
+  
+  <!-- Encabezado empresa -->
+  <rect x="100" y="100" width="500" height="150" fill="#f8f9fa" stroke="#e9ecef" stroke-width="2"/>
+  <text x="120" y="130" font-family="Arial" font-size="16" fill="#666">LOGO EMPRESA</text>
+  <text x="120" y="155" font-family="Arial" font-size="14" fill="#666">Razón Social</text>
+  <text x="120" y="175" font-family="Arial" font-size="14" fill="#666">RUT: XX.XXX.XXX-X</text>
+  <text x="120" y="195" font-family="Arial" font-size="14" fill="#666">Dirección</text>
+  <text x="120" y="215" font-family="Arial" font-size="14" fill="#666">Teléfono - Email</text>
+  
+  <!-- Información cotización -->
+  <rect x="1400" y="100" width="480" height="150" fill="#f8f9fa" stroke="#e9ecef" stroke-width="2"/>
+  <text x="1420" y="130" font-family="Arial" font-size="14" font-weight="bold" fill="#333">COTIZACIÓN N°:</text>
+  <text x="1420" y="155" font-family="Arial" font-size="14" fill="#333">FECHA:</text>
+  <text x="1420" y="175" font-family="Arial" font-size="14" fill="#333">VÁLIDA HASTA:</text>
+  
+  <!-- Cliente -->
+  <rect x="100" y="300" width="1780" height="200" fill="#f8f9fa" stroke="#e9ecef" stroke-width="2"/>
+  <text x="120" y="330" font-family="Arial" font-size="16" font-weight="bold" fill="#333">DATOS DEL CLIENTE</text>
+  
+  <!-- Tabla productos -->
+  <rect x="100" y="550" width="1780" height="40" fill="#e9ecef" stroke="#dee2e6" stroke-width="1"/>
+  <text x="120" y="575" font-family="Arial" font-size="12" font-weight="bold" fill="#333">DESCRIPCIÓN</text>
+  <text x="800" y="575" font-family="Arial" font-size="12" font-weight="bold" fill="#333">CANT.</text>
+  <text x="1000" y="575" font-family="Arial" font-size="12" font-weight="bold" fill="#333">PRECIO UNIT.</text>
+  <text x="1200" y="575" font-family="Arial" font-size="12" font-weight="bold" fill="#333">DESC.</text>
+  <text x="1400" y="575" font-family="Arial" font-size="12" font-weight="bold" fill="#333">SUBTOTAL</text>
+  
+  <!-- Líneas de productos -->
+  <rect x="100" y="590" width="1780" height="800" fill="white" stroke="#dee2e6" stroke-width="1"/>
+  
+  <!-- Totales -->
+  <rect x="1400" y="1450" width="480" height="200" fill="#f8f9fa" stroke="#e9ecef" stroke-width="2"/>
+  <text x="1420" y="1480" font-family="Arial" font-size="12" fill="#333">SUBTOTAL:</text>
+  <text x="1420" y="1505" font-family="Arial" font-size="12" fill="#333">DESCUENTO:</text>
+  <text x="1420" y="1530" font-family="Arial" font-size="12" fill="#333">IVA (19%):</text>
+  <text x="1420" y="1560" font-family="Arial" font-size="14" font-weight="bold" fill="#333">TOTAL:</text>
+  
+  <!-- Condiciones comerciales -->
+  <rect x="100" y="1450" width="600" height="200" fill="#f8f9fa" stroke="#e9ecef" stroke-width="2"/>
+  <text x="120" y="1480" font-family="Arial" font-size="14" font-weight="bold" fill="#333">CONDICIONES COMERCIALES</text>
+  
+  <!-- Notas -->
+  <rect x="100" y="1700" width="1780" height="150" fill="#f8f9fa" stroke="#e9ecef" stroke-width="2"/>
+  <text x="120" y="1730" font-family="Arial" font-size="14" font-weight="bold" fill="#333">NOTAS</text>
+  
+  <!-- Líneas de guía (opcional, para referencia) -->
+  <defs>
+    <pattern id="grid" width="50" height="50" patternUnits="userSpaceOnUse">
+      <path d="M 50 0 L 0 0 0 50" fill="none" stroke="#f0f0f0" stroke-width="1" opacity="0.3"/>
+    </pattern>
+  </defs>
+  <rect width="2480" height="3508" fill="url(#grid)" opacity="0.1"/>
+</svg>
