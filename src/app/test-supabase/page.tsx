@@ -36,10 +36,16 @@ function StatsCard({ title, value, subtitle, color = 'blue' }: {
 }
 
 // Componente para mostrar tablas
-function DataTable({ title, data, columns, loading, error }: {
+type ColumnDef<T extends Record<string, unknown>> = {
+  key: keyof T & string;
+  label: string;
+  render?: (value: T[keyof T], row: T) => React.ReactNode;
+};
+
+function DataTable<T extends Record<string, unknown>>({ title, data, columns, loading, error }: {
   title: string
-  data: any[]
-  columns: { key: string; label: string; render?: (value: any, row: any) => React.ReactNode }[]
+  data: T[]
+  columns: ColumnDef<T>[]
   loading: boolean
   error: string | null
 }) {
@@ -120,7 +126,7 @@ function DataTable({ title, data, columns, loading, error }: {
                       >
                         {column.render 
                           ? column.render(row[column.key], row)
-                          : row[column.key] || '-'
+                          : (row[column.key] as React.ReactNode) || '-'
                         }
                       </td>
                     ))}

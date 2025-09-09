@@ -4,7 +4,12 @@ import { useState } from 'react'
 
 export default function TestAuthPage() {
   const [loading, setLoading] = useState(false)
-  const [results, setResults] = useState<any[]>([])
+  type CreateUserResult = {
+    email: string
+    status: 'created' | 'skipped' | 'error'
+    message: string
+  }
+  const [results, setResults] = useState<CreateUserResult[]>([])
   const [error, setError] = useState<string | null>(null)
 
   const createTestUsers = async () => {

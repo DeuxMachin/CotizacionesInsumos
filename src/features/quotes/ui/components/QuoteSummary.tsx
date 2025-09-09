@@ -54,8 +54,8 @@ export function QuoteSummary({ formData, totals, formatMoney }: QuoteSummaryProp
       cliente: formData.cliente as ClientInfo,
       items: formData.items,
       despacho: Object.keys(formData.despacho).length > 0 ? formData.despacho as DeliveryInfo : undefined,
-      condicionesComerciales: formData.condicionesComerciales as CommercialTerms,
-      estado: formData.estado as any,
+  condicionesComerciales: formData.condicionesComerciales as CommercialTerms,
+  estado: formData.estado as Quote['estado'],
       vendedorId: 'USER001', // TODO: Obtener del usuario autenticado
       vendedorNombre: 'Usuario Actual', // TODO: Obtener del usuario autenticado
       subtotal: totals.subtotal,

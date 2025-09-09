@@ -29,7 +29,7 @@ export class AuthService {
       }
 
       // Simular una sesión para mantener compatibilidad
-      const mockSession = {
+  const mockSession = {
         access_token: 'mock-token',
         refresh_token: 'mock-refresh',
         expires_in: 3600,
@@ -37,7 +37,7 @@ export class AuthService {
       }
 
       return {
-        session: mockSession as any,
+        session: mockSession as unknown as Session,
         user: result.data.user as AuthUser
       }
     } catch (error) {
@@ -88,7 +88,7 @@ export class AuthService {
   }
 
   // Simular suscripción a cambios de autenticación
-  static onAuthStateChange(callback: (session: any | null, user: AuthUser | null) => void) {
+  static onAuthStateChange(callback: (session: Session | null, user: AuthUser | null) => void) {
     // Retornar un objeto que simule la suscripción de Supabase
     return {
       data: {

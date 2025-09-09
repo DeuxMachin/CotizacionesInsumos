@@ -4,7 +4,7 @@ import { supabase } from '@/lib/supabase'
 // Hook para manejar llamadas a la API de manera consistente
 export function useSupabaseQuery<T>(
   queryFn: () => Promise<T>,
-  dependencies: any[] = []
+  dependencies: unknown[] = []
 ) {
   const [data, setData] = useState<T | null>(null)
   const [loading, setLoading] = useState(true)
@@ -325,10 +325,10 @@ export function useSimpleUserCount() {
 export function useRealtimeSubscription<T>(
   table: string,
   filter?: string,
-  callback?: (payload: any) => void
+  callback?: (payload: T) => void
 ) {
   useEffect(() => {
-    let subscription: any
+    let subscription: ReturnType<typeof supabase.channel> | null = null
 
     const setupSubscription = () => {
       subscription = supabase
@@ -341,7 +341,7 @@ export function useRealtimeSubscription<T>(
         }, (payload) => {
           console.log(`Cambio en ${table}:`, payload)
           if (callback) {
-            callback(payload)
+            callback(payload as unknown as T)
           }
         })
         .subscribe()

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, lazy, Suspense } from "react";
+import { useState, useEffect, useRef, lazy, Suspense } from "react";
 import { FiUsers, FiSettings, FiDatabase, FiBarChart } from "react-icons/fi";
 import { UsersManagementPage } from "./UsersManagementPage";
 import { useAdminStats, useSimpleUserCount } from '@/hooks/useSupabase';
@@ -80,10 +80,24 @@ export function AdminPanel() {
   const [activeSection, setActiveSection] = useState<AdminSection>('overview');
   
   // Obtener datos reales de la base de datos
-  const { data: adminStats, loading: loadingAdminStats, error: errorAdminStats } = useAdminStats();
+  const { data: adminStats, loading: loadingAdminStats, error: errorAdminStats, refetch: refetchAdminStats } = useAdminStats();
   
   // Hook backup para usuarios
-  const { data: userCount, loading: loadingUserCount } = useSimpleUserCount();
+  const { data: userCount, loading: loadingUserCount, refetch: refetchUserCount } = useSimpleUserCount();
+  
+  // Refrescar datos SOLAMENTE al volver desde otra sección hacia overview (no en cada render)
+  const prevSectionRef = useRef<AdminSection | null>(null);
+  useEffect(() => {
+    const prev = prevSectionRef.current;
+    if (activeSection === 'overview' && prev && prev !== 'overview') {
+      refetchAdminStats();
+      refetchUserCount();
+    }
+    prevSectionRef.current = activeSection;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeSection]);
+
+  // Realtime deshabilitado para evitar parpadeo y recargas constantes
   
 
   

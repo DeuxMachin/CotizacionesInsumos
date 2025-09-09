@@ -249,7 +249,9 @@ export function LoginForm() {
                         borderColor: error && !formData.email.trim() ? 'var(--danger)' : 'var(--border)',
                         color: 'var(--text-primary)',
                         '--tw-ring-color': 'var(--accent-primary)'
-                      } as any}
+                      } as React.CSSProperties & {
+                        '--tw-ring-color': string;
+                      }}
                       placeholder="tu@email.com"
                       required
                       autoComplete="email"
@@ -283,7 +285,9 @@ export function LoginForm() {
                         borderColor: error && formData.password.length < 6 ? 'var(--danger)' : 'var(--border)',
                         color: 'var(--text-primary)',
                         '--tw-ring-color': 'var(--accent-primary)'
-                      } as any}
+                      } as React.CSSProperties & {
+                        '--tw-ring-color': string;
+                      }}
                       placeholder="••••••••"
                       required
                       autoComplete="current-password"
@@ -317,7 +321,8 @@ export function LoginForm() {
 
                 {/* Advertencia cuando se acerque al límite */}
                 {!error && !isLocked && formData.email.trim() && (() => {
-                  const attempts = SecurityService.isAccountLocked(formData.email);
+                  // No need to store the return value in unused variable
+                  SecurityService.isAccountLocked(formData.email);
                   return null; // Por seguridad, no mostrar número de intentos restantes
                 })()} 
 
@@ -333,7 +338,10 @@ export function LoginForm() {
                     boxShadow: (isFormValid && !isLoading && !isLocked) ? 'var(--shadow)' : 'none',
                     '--tw-ring-color': 'var(--accent-primary)',
                     '--tw-ring-offset-color': 'var(--bg-primary)'
-                  } as any}
+                  } as React.CSSProperties & {
+                    '--tw-ring-color': string;
+                    '--tw-ring-offset-color': string;
+                  }}
                 >
                   {isLoading ? (
                     <div className="flex items-center justify-center gap-3">

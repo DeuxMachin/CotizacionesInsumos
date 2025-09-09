@@ -3,6 +3,7 @@
 import { useAuth } from "@/features/auth/model/useAuth";
 import { usePermissions, type Resource, type Action } from "@/features/auth/model/permissions";
 import { useNavigationItems } from "@/features/navigation/model/navigationItems";
+import type { Section } from "@/features/navigation/model/useSection";
 import { useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
 
@@ -22,7 +23,7 @@ export function SafeAuthorizationMiddleware({ children }: { children: React.Reac
     }
 
     // Mapear pathname a sección
-    const pathToSection: Record<string, string> = {
+  const pathToSection: Record<string, Section> = {
       '/dashboard': 'dashboard',
       '/cotizaciones': 'cotizaciones',
       '/clientes': 'clientes',
@@ -34,10 +35,10 @@ export function SafeAuthorizationMiddleware({ children }: { children: React.Reac
       '/admin/configuracion': 'configuracion',
     };
 
-    const currentSection = pathToSection[pathname];
+  const currentSection = pathToSection[pathname];
     
     // Solo verificar autorización para rutas protegidas
-    if (currentSection && !canAccessSection(currentSection as any)) {
+  if (currentSection && !canAccessSection(currentSection as Section)) {
       console.warn(`User ${user.rol} attempted to access unauthorized section: ${currentSection}`);
       
       // Redirigir al dashboard usando el router de Next.js

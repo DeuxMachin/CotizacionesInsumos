@@ -73,9 +73,9 @@ export class SecurityService {
       const stored = localStorage.getItem(this.STORAGE_KEY);
       if (!stored) return;
       
-      const attempts = JSON.parse(stored);
-      const now = Date.now();
-      const cleanedAttempts: any = {};
+  const attempts = JSON.parse(stored) as Record<string, { count: number; lastAttempt: number }>;
+  const now = Date.now();
+  const cleanedAttempts: Record<string, { count: number; lastAttempt: number }> = {};
       
       for (const [email, data] of Object.entries(attempts)) {
         const attemptData = data as { count: number; lastAttempt: number };

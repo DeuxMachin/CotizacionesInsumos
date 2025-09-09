@@ -1,11 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { ClientesService } from '@/services/clientesService'
 
+export const dynamic = 'force-dynamic' // Make this route dynamic
+
 // GET /api/clientes/[id] - Obtener cliente por ID
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
-) {
+): Promise<Response> {
   try {
     const id = parseInt(params.id)
     
@@ -35,7 +37,7 @@ export async function GET(
 export async function PUT(
   request: NextRequest,
   { params }: { params: { id: string } }
-) {
+): Promise<Response> {
   try {
     const id = parseInt(params.id)
     const body = await request.json()
@@ -77,7 +79,7 @@ export async function PUT(
 export async function DELETE(
   request: NextRequest,
   { params }: { params: { id: string } }
-) {
+): Promise<Response> {
   try {
     const id = parseInt(params.id)
 
