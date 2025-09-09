@@ -21,7 +21,6 @@ export interface ContactoObra {
   cargo: string;
   telefono: string;
   email?: string;
-  whatsapp?: string;
 }
 
 export interface EmpresaConstructora {
@@ -46,6 +45,8 @@ export interface Obra {
   
   descripcion?: string;
   direccionObra: string;
+  comuna?: string;
+  ciudad?: string;
   fechaInicio: Date;
   fechaEstimadaFin?: Date;
   fechaUltimoContacto: Date;
@@ -57,6 +58,11 @@ export interface Obra {
   fechaCreacion: Date;
   fechaActualizacion: Date;
   notas?: string;
+
+  // Relaciones (IDs)
+  clienteId?: number;          // clientes.id
+  tipoObraId?: number;         // obra_tipos.id
+  tamanoObraId?: number;       // obra_tamanos.id
 }
 
 // Tipos para filtros

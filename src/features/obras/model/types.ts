@@ -21,7 +21,6 @@ export interface ContactoObra {
   cargo: string;
   telefono: string;
   email?: string;
-  whatsapp?: string;
 }
 
 export interface EmpresaConstructora {

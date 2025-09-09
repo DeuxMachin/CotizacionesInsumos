@@ -250,6 +250,18 @@ export type Database = {
           vendedor_id: string | null
           tipo_obra_id: number | null
           tamano_obra_id: number | null
+          estado?: string | null
+          etapa_actual?: string | null
+          descripcion?: string | null
+          fecha_inicio?: string | null
+          fecha_estimada_fin?: string | null
+          fecha_ultimo_contacto?: string | null
+          valor_estimado?: number | null
+          material_vendido?: number | null
+          proximo_seguimiento?: string | null
+          notas?: string | null
+          created_at?: string | null
+          updated_at?: string | null
         }
         Insert: {
           id?: number
@@ -261,6 +273,18 @@ export type Database = {
           vendedor_id?: string | null
           tipo_obra_id?: number | null
           tamano_obra_id?: number | null
+          estado?: string | null
+          etapa_actual?: string | null
+          descripcion?: string | null
+          fecha_inicio?: string | null
+          fecha_estimada_fin?: string | null
+          fecha_ultimo_contacto?: string | null
+          valor_estimado?: number | null
+          material_vendido?: number | null
+          proximo_seguimiento?: string | null
+          notas?: string | null
+          created_at?: string | null
+          updated_at?: string | null
         }
         Update: {
           id?: number
@@ -272,6 +296,282 @@ export type Database = {
           vendedor_id?: string | null
           tipo_obra_id?: number | null
           tamano_obra_id?: number | null
+          estado?: string | null
+          etapa_actual?: string | null
+          descripcion?: string | null
+          fecha_inicio?: string | null
+          fecha_estimada_fin?: string | null
+          fecha_ultimo_contacto?: string | null
+          valor_estimado?: number | null
+          material_vendido?: number | null
+          proximo_seguimiento?: string | null
+          notas?: string | null
+          created_at?: string | null
+          updated_at?: string | null
+        }
+      }
+      ,
+      obra_tipos: {
+        Row: {
+          id: number
+          nombre: string
+          descripcion: string | null
+        }
+        Insert: {
+          id?: number
+          nombre: string
+          descripcion?: string | null
+        }
+        Update: {
+          id?: number
+          nombre?: string
+          descripcion?: string | null
+        }
+      }
+      ,
+      obra_tamanos: {
+        Row: {
+          id: number
+          nombre: string
+          descripcion: string | null
+        }
+        Insert: {
+          id?: number
+          nombre: string
+          descripcion?: string | null
+        }
+        Update: {
+          id?: number
+          nombre?: string
+          descripcion?: string | null
+        }
+      }
+      ,
+      target_tipos: {
+        Row: {
+          id: number
+          nombre: string
+          descripcion: string | null
+        }
+        Insert: {
+          id?: number
+          nombre: string
+          descripcion?: string | null
+        }
+        Update: {
+          id?: number
+          nombre?: string
+          descripcion?: string | null
+        }
+      }
+      ,
+      obra_contactos: {
+        Row: {
+          id: number
+          obra_id: number
+          nombre: string
+          cargo: string
+          telefono: string | null
+          email: string | null
+          es_principal: boolean
+          created_at: string
+        }
+        Insert: {
+          id?: number
+          obra_id: number
+          nombre: string
+          cargo: string
+          telefono?: string | null
+          email?: string | null
+          es_principal?: boolean
+          created_at?: string
+        }
+        Update: {
+          id?: number
+          obra_id?: number
+          nombre?: string
+          cargo?: string
+          telefono?: string | null
+          email?: string | null
+          es_principal?: boolean
+          created_at?: string
+        }
+      }
+      ,
+      obra_etapas: {
+        Row: {
+          id: number
+          obra_id: number
+          etapa: string
+          fecha_inicio_plan: string | null
+          fecha_fin_plan: string | null
+          estado: string
+          notas: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: number
+          obra_id: number
+          etapa: string
+          fecha_inicio_plan?: string | null
+          fecha_fin_plan?: string | null
+          estado?: string
+          notas?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: number
+          obra_id?: number
+          etapa?: string
+          fecha_inicio_plan?: string | null
+          fecha_fin_plan?: string | null
+          estado?: string
+          notas?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      ,
+      targets: {
+        Row: {
+          id: number
+          titulo: string
+          descripcion: string | null
+          estado: string
+          prioridad: string
+          tipo_id: number | null
+          direccion: string | null
+          comuna: string | null
+          ciudad: string | null
+          region: string | null
+          lat: number | null
+          lng: number | null
+          creado_por: string
+          asignado_a: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: number
+          titulo: string
+          descripcion?: string | null
+          estado?: string
+          prioridad?: string
+          tipo_id?: number | null
+          direccion?: string | null
+          comuna?: string | null
+          ciudad?: string | null
+          region?: string | null
+          lat?: number | null
+          lng?: number | null
+          creado_por: string
+          asignado_a?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: number
+          titulo?: string
+          descripcion?: string | null
+          estado?: string
+          prioridad?: string
+          tipo_id?: number | null
+          direccion?: string | null
+          comuna?: string | null
+          ciudad?: string | null
+          region?: string | null
+          lat?: number | null
+          lng?: number | null
+          creado_por?: string
+          asignado_a?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      ,
+      target_contactos: {
+        Row: {
+          id: number
+          target_id: number
+          nombre: string | null
+          empresa: string | null
+          telefono: string | null
+          email: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: number
+          target_id: number
+          nombre?: string | null
+          empresa?: string | null
+          telefono?: string | null
+          email?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: number
+          target_id?: number
+          nombre?: string | null
+          empresa?: string | null
+          telefono?: string | null
+          email?: string | null
+          created_at?: string
+        }
+      }
+      ,
+      target_notas: {
+        Row: {
+          id: number
+          target_id: number
+          nota: string
+          creado_por: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: number
+          target_id: number
+          nota: string
+          creado_por?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: number
+          target_id?: number
+          nota?: string
+          creado_por?: string | null
+          created_at?: string
+        }
+      }
+      ,
+      target_eventos: {
+        Row: {
+          id: number
+          target_id: number
+          tipo: string
+          detalle: string | null
+          fecha_evento: string
+          creado_por: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: number
+          target_id: number
+          tipo: string
+          detalle?: string | null
+          fecha_evento?: string
+          creado_por?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: number
+          target_id?: number
+          tipo?: string
+          detalle?: string | null
+          fecha_evento?: string
+          creado_por?: string | null
+          created_at?: string
         }
       }
     }

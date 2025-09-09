@@ -1215,25 +1215,7 @@ export function ObraDetailModal({
                       </div>
                     )}
                     
-                    {obra.constructora.contactoPrincipal.whatsapp && (
-                      <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-                        <div className="flex items-center gap-2 flex-1 min-w-0">
-                          <FiMessageSquare className="w-4 h-4 flex-shrink-0" style={{ color: 'var(--text-muted)' }} />
-                          <div className="min-w-0">
-                            <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>WhatsApp</p>
-                            <p className="text-sm font-medium truncate" style={{ color: 'var(--text-primary)' }}>
-                              {obra.constructora.contactoPrincipal.whatsapp}
-                            </p>
-                          </div>
-                        </div>
-                        <button
-                          className="text-xs px-2 py-1 rounded flex-shrink-0 text-white"
-                          style={{ backgroundColor: '#25D366' }}
-                        >
-                          WhatsApp
-                        </button>
-                      </div>
-                    )}
+                    {/* WhatsApp eliminado: usar teléfono único */}
                   </div>
                 </div>
               )}

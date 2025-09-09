@@ -512,7 +512,7 @@ export function ObrasPage() {
               : 'Comienza agregando tu primera obra'
             }
           </p>
-          <button className="btn-primary flex items-center gap-2 mx-auto">
+          <button onClick={() => setIsCreateModalOpen(true)} className="btn-primary flex items-center gap-2 mx-auto">
             <FiPlus className="w-4 h-4" />
             Nueva Obra
           </button>

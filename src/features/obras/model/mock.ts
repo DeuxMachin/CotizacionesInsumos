@@ -13,7 +13,7 @@ const mockConstructoras: EmpresaConstructora[] = [
       cargo: "Jefe de Obra",
       telefono: "+56 9 8765 4321",
       email: "carlos.rodriguez@sanmartin.cl",
-      whatsapp: "+56987654321"
+  // whatsapp eliminado, usar teléfono
     }
   },
   {
@@ -27,7 +27,7 @@ const mockConstructoras: EmpresaConstructora[] = [
       cargo: "Gerente de Proyectos",
       telefono: "+56 9 5432 1098",
       email: "m.gonzalez@losandes.cl",
-      whatsapp: "+56954321098"
+  // whatsapp eliminado, usar teléfono
     }
   },
   {
@@ -53,7 +53,7 @@ const mockConstructoras: EmpresaConstructora[] = [
       cargo: "Coordinadora de Obra",
       telefono: "+56 9 7890 1234",
       email: "a.sepulveda@edisur.cl",
-      whatsapp: "+56978901234"
+  // whatsapp eliminado, usar teléfono
     }
   }
 ];

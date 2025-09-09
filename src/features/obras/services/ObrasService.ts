@@ -27,4 +27,9 @@ export interface IObrasService {
    * Elimina una obra del sistema
    */
   eliminarObra(id: string): Promise<boolean>;
+
+  /**
+   * Crea una nueva obra
+   */
+  crearObra(obra: Omit<Obra, 'id' | 'fechaCreacion' | 'fechaActualizacion' | 'fechaUltimoContacto'>, userId?: string): Promise<boolean>;
 }

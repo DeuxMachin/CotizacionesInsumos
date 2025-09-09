@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { 
   FiX, 
   FiSave, 
@@ -14,6 +14,8 @@ import {
   FiTool
 } from "react-icons/fi";
 import { Modal } from "@/shared/ui/Modal";
+import { ClientesService } from "@/services/clientesService";
+import { supabase, type Database } from "@/lib/supabase";
 import type { Obra, EstadoObra, EtapaObra, ContactoObra, EmpresaConstructora } from "../types/obras";
 
 interface CreateObraModalProps {
@@ -58,6 +60,8 @@ export function CreateObraModal({
   const [nombreEmpresa, setNombreEmpresa] = useState('');
   const [descripcion, setDescripcion] = useState('');
   const [direccionObra, setDireccionObra] = useState('');
+  const [comuna, setComuna] = useState('');
+  const [ciudad, setCiudad] = useState('');
   const [fechaInicio, setFechaInicio] = useState('');
   const [fechaEstimadaFin, setFechaEstimadaFin] = useState('');
   const [valorEstimado, setValorEstimado] = useState('');
@@ -73,13 +77,20 @@ export function CreateObraModal({
   const [constructoraTelefono, setConstructoraTelefono] = useState('');
   const [constructoraEmail, setConstructoraEmail] = useState('');
   const [constructoraDireccion, setConstructoraDireccion] = useState('');
+  // Cliente vinculado y autocompletado
+  const [clienteId, setClienteId] = useState<number | undefined>(undefined);
+  const [clienteQuery, setClienteQuery] = useState('');
+  const [clienteResults, setClienteResults] = useState<Array<Database['public']['Tables']['clientes']['Row']>>([]);
+  const [searchingClientes, setSearchingClientes] = useState(false);
+  const [showClienteDropdown, setShowClienteDropdown] = useState(false);
+  const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Contacto principal
   const [contactoNombre, setContactoNombre] = useState('');
   const [contactoCargo, setContactoCargo] = useState('');
   const [contactoTelefono, setContactoTelefono] = useState('');
   const [contactoEmail, setContactoEmail] = useState('');
-  const [contactoWhatsapp, setContactoWhatsapp] = useState('');
+  // WhatsApp se unifica con teléfono; no se maneja por separado
 
   const estadosObra: { value: EstadoObra; label: string; color: string }[] = [
     { value: 'planificacion', label: 'Planificación', color: 'var(--info-text)' },
@@ -99,6 +110,62 @@ export function CreateObraModal({
     { value: 'entrega', label: 'Entrega', color: '#6B7280' }
   ];
 
+  // Catálogos: tipos y tamaños
+  type ObraTipo = Database['public']['Tables']['obra_tipos']['Row'];
+  type ObraTamano = Database['public']['Tables']['obra_tamanos']['Row'];
+  const [tiposObra, setTiposObra] = useState<ObraTipo[]>([]);
+  const [tamanosObra, setTamanosObra] = useState<ObraTamano[]>([]);
+  const [tipoObraId, setTipoObraId] = useState<number | undefined>(undefined);
+  const [tamanoObraId, setTamanoObraId] = useState<number | undefined>(undefined);
+
+  // Cargar catálogos al abrir
+  useEffect(() => {
+    if (!isOpen) return;
+    (async () => {
+      const [{ data: tipos }, { data: tamanos }] = await Promise.all([
+        supabase.from('obra_tipos').select('*').order('nombre'),
+        supabase.from('obra_tamanos').select('*').order('nombre')
+      ]);
+      setTiposObra(tipos || []);
+      setTamanosObra(tamanos || []);
+    })();
+  }, [isOpen]);
+
+  // Buscar cliente con debounce
+  const onClienteQueryChange = (value: string) => {
+    setClienteQuery(value);
+    setShowClienteDropdown(true);
+    if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
+    searchTimeoutRef.current = setTimeout(async () => {
+      const term = value.trim();
+      if (term.length < 2) {
+        setClienteResults([]);
+        return;
+      }
+      setSearchingClientes(true);
+      try {
+        const results = await ClientesService.search(term);
+        setClienteResults(results || []);
+      } catch (e) {
+        console.error('Error buscando clientes:', e);
+      } finally {
+        setSearchingClientes(false);
+      }
+    }, 250);
+  };
+
+  const onClienteSelect = (cli: Database['public']['Tables']['clientes']['Row']) => {
+    setClienteId(cli.id);
+    setClienteQuery(`${cli.nombre_razon_social} (${cli.rut})`);
+    setShowClienteDropdown(false);
+    setConstructoraNombre(cli.nombre_razon_social || '');
+    setConstructoraRut(cli.rut || '');
+    setConstructoraTelefono(cli.telefono || cli.celular || '');
+    setConstructoraEmail(cli.email_pago || '');
+    setConstructoraDireccion(cli.direccion || '');
+  // No autocompletar información de la obra (dirección/comuna/ciudad)
+  };
+
   // Validación del formulario
   const validateForm = (): boolean => {
     const newErrors: FormErrors = {};
@@ -117,9 +184,7 @@ export function CreateObraModal({
       newErrors.constructora = { ...newErrors.constructora, rut: 'Formato de RUT inválido (ej: 12345678-9)' };
     }
 
-    if (!constructoraTelefono.trim()) {
-      newErrors.constructora = { ...newErrors.constructora, telefono: 'El teléfono de la constructora es obligatorio' };
-    }
+  // Teléfono de la constructora ya no es obligatorio
 
     if (!contactoNombre.trim()) {
       newErrors.constructora = { 
@@ -184,7 +249,9 @@ export function CreateObraModal({
   const resetForm = () => {
     setNombreEmpresa('');
     setDescripcion('');
-    setDireccionObra('');
+  setDireccionObra('');
+  setComuna('');
+  setCiudad('');
     setFechaInicio('');
     setFechaEstimadaFin('');
     setValorEstimado('');
@@ -198,11 +265,17 @@ export function CreateObraModal({
     setConstructoraTelefono('');
     setConstructoraEmail('');
     setConstructoraDireccion('');
+  setClienteId(undefined);
+  setClienteQuery('');
+  setClienteResults([]);
+  setShowClienteDropdown(false);
+  setTipoObraId(undefined);
+  setTamanoObraId(undefined);
     setContactoNombre('');
     setContactoCargo('');
     setContactoTelefono('');
     setContactoEmail('');
-    setContactoWhatsapp('');
+  // sin whatsapp separado
     setErrors({});
     setShowSuccess(false);
   };
@@ -222,7 +295,7 @@ export function CreateObraModal({
         cargo: contactoCargo.trim(),
         telefono: contactoTelefono.trim(),
         email: contactoEmail.trim(),
-        whatsapp: contactoWhatsapp.trim()
+  // whatsapp eliminado; usar teléfono
       };
 
       const constructora: EmpresaConstructora = {
@@ -238,6 +311,8 @@ export function CreateObraModal({
         nombreEmpresa: nombreEmpresa.trim(),
         descripcion: descripcion.trim(),
         direccionObra: direccionObra.trim(),
+  comuna: comuna.trim() || undefined,
+  ciudad: ciudad.trim() || undefined,
         fechaInicio: new Date(fechaInicio),
         fechaEstimadaFin: fechaEstimadaFin ? new Date(fechaEstimadaFin) : undefined,
         valorEstimado: valorEstimado ? Number(valorEstimado) : 0,
@@ -248,10 +323,11 @@ export function CreateObraModal({
         etapaActual,
         etapasCompletadas: [],
         constructora,
-        contactoPrincipal,
-        vendedorAsignado: currentUserName,
-        nombreVendedor: currentUserName,
-        vendedorId: currentUserId
+        vendedorAsignado: currentUserId,
+  nombreVendedor: currentUserName,
+  clienteId: clienteId,
+  tipoObraId: tipoObraId,
+  tamanoObraId: tamanoObraId,
       };
 
       const success = await onSave(nuevaObra);
@@ -399,27 +475,42 @@ export function CreateObraModal({
                   )}
                 </div>
 
-                {/* Estado */}
+                {/* Comuna */}
                 <div>
                   <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>
-                    Estado
+                    Comuna
                   </label>
-                  <select
-                    value={estado}
-                    onChange={(e) => setEstado(e.target.value as EstadoObra)}
+                  <input
+                    type="text"
+                    value={comuna}
+                    onChange={(e) => setComuna(e.target.value)}
+                    placeholder="Comuna"
                     className="w-full px-3 py-2 rounded-lg border focus:outline-none focus:ring-2 focus:ring-blue-500"
                     style={{ 
                       backgroundColor: 'var(--input-bg)',
                       borderColor: 'var(--input-border)',
                       color: 'var(--text-primary)'
                     }}
-                  >
-                    {estadosObra.map((estado) => (
-                      <option key={estado.value} value={estado.value}>
-                        {estado.label}
-                      </option>
-                    ))}
-                  </select>
+                  />
+                </div>
+
+                {/* Ciudad */}
+                <div>
+                  <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>
+                    Ciudad
+                  </label>
+                  <input
+                    type="text"
+                    value={ciudad}
+                    onChange={(e) => setCiudad(e.target.value)}
+                    placeholder="Ciudad"
+                    className="w-full px-3 py-2 rounded-lg border focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    style={{ 
+                      backgroundColor: 'var(--input-bg)',
+                      borderColor: 'var(--input-border)',
+                      color: 'var(--text-primary)'
+                    }}
+                  />
                 </div>
 
                 {/* Etapa Actual */}
@@ -462,6 +553,228 @@ export function CreateObraModal({
                       color: 'var(--text-primary)'
                     }}
                   />
+                </div>
+              </div>
+            </div>
+
+            
+
+            {/* Información de la Constructora y Cliente */}
+            <div 
+              className="p-4 rounded-lg"
+              style={{ 
+                backgroundColor: 'var(--card-bg)',
+                border: '1px solid var(--border)'
+              }}
+            >
+              <h3 className="text-base font-semibold flex items-center gap-2 mb-4" style={{ color: 'var(--text-primary)' }}>
+                <FiBriefcase className="w-4 h-4" style={{ color: 'var(--accent-primary)' }} />
+                Empresa Constructora
+              </h3>
+
+              {/* Autocompletar cliente */}
+              <div className="mb-3">
+                <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>
+                  Buscar cliente (RUT o nombre)
+                </label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={clienteQuery}
+                    onChange={(e) => onClienteQueryChange(e.target.value)}
+                    onFocus={() => setShowClienteDropdown(true)}
+                    placeholder="Ej: 76.123.456-7 o Constructora XYZ"
+                    className="w-full px-3 py-2 rounded-lg border"
+                    style={{ backgroundColor: 'var(--input-bg)', borderColor: 'var(--input-border)', color: 'var(--text-primary)' }}
+                  />
+                  {showClienteDropdown && (
+                    <div className="absolute z-20 mt-1 w-full max-h-56 overflow-auto rounded-md border shadow-sm" style={{ background: 'var(--card-bg)', borderColor: 'var(--border)' }}>
+                      {searchingClientes ? (
+                        <div className="p-2 text-sm" style={{ color: 'var(--text-secondary)' }}>
+                          Buscando...
+                        </div>
+                      ) : clienteResults.length === 0 ? (
+                        <div className="p-2 text-sm" style={{ color: 'var(--text-secondary)' }}>
+                          Sin resultados. Continúa escribiendo o completa manualmente.
+                        </div>
+                      ) : (
+                        clienteResults.map((c) => (
+                          <button
+                            key={c.id}
+                            type="button"
+                            onClick={() => onClienteSelect(c)}
+                            className="w-full text-left px-3 py-2 hover:bg-black/5"
+                            style={{ color: 'var(--text-primary)' }}
+                          >
+                            <div className="text-sm font-medium">{c.nombre_razon_social}</div>
+                            <div className="text-xs" style={{ color: 'var(--text-secondary)' }}>{c.rut} • {c.comuna || ''} {c.ciudad ? `- ${c.ciudad}` : ''}</div>
+                          </button>
+                        ))
+                      )}
+                    </div>
+                  )}
+                </div>
+                <p className="mt-1 text-xs" style={{ color: 'var(--text-muted)' }}>
+                  Al seleccionar un cliente, se rellenarán automáticamente los datos de la constructora y la ubicación.
+                </p>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>
+                    Nombre de la empresa constructora *
+                  </label>
+                  <input
+                    type="text"
+                    value={constructoraNombre}
+                    onChange={(e) => setConstructoraNombre(e.target.value)}
+                    placeholder="Nombre de la empresa constructora"
+                    className="w-full px-3 py-2 rounded-lg border focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    style={{ 
+                      backgroundColor: 'var(--input-bg)',
+                      borderColor: errors.constructora?.nombre ? 'var(--danger-border)' : 'var(--input-border)',
+                      color: 'var(--text-primary)'
+                    }}
+                  />
+                  {errors.constructora?.nombre && (
+                    <span className="text-xs mt-1 flex items-center gap-1" style={{ color: 'var(--danger-text)' }}>
+                      <FiAlertCircle className="w-3 h-3" />
+                      {errors.constructora.nombre}
+                    </span>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>
+                    RUT *
+                  </label>
+                  <input
+                    type="text"
+                    value={constructoraRut}
+                    onChange={handleRutChange}
+                    placeholder="12345678-9"
+                    className="w-full px-3 py-2 rounded-lg border focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    style={{ 
+                      backgroundColor: 'var(--input-bg)',
+                      borderColor: errors.constructora?.rut ? 'var(--danger-border)' : 'var(--input-border)',
+                      color: 'var(--text-primary)'
+                    }}
+                  />
+                  {errors.constructora?.rut && (
+                    <span className="text-xs mt-1 flex items-center gap-1" style={{ color: 'var(--danger-text)' }}>
+                      <FiAlertCircle className="w-3 h-3" />
+                      {errors.constructora.rut}
+                    </span>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>
+                    Teléfono
+                  </label>
+                  <input
+                    type="tel"
+                    value={constructoraTelefono}
+                    onChange={(e) => setConstructoraTelefono(e.target.value)}
+                    placeholder="+56 9 1234 5678"
+                    className="w-full px-3 py-2 rounded-lg border focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    style={{ 
+                      backgroundColor: 'var(--input-bg)',
+                      borderColor: errors.constructora?.telefono ? 'var(--danger-border)' : 'var(--input-border)',
+                      color: 'var(--text-primary)'
+                    }}
+                  />
+                  {errors.constructora?.telefono && (
+                    <span className="text-xs mt-1 flex items-center gap-1" style={{ color: 'var(--danger-text)' }}>
+                      <FiAlertCircle className="w-3 h-3" />
+                      {errors.constructora.telefono}
+                    </span>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>
+                    Email
+                  </label>
+                  <input
+                    type="email"
+                    value={constructoraEmail}
+                    onChange={(e) => setConstructoraEmail(e.target.value)}
+                    placeholder="constructora@ejemplo.com"
+                    className="w-full px-3 py-2 rounded-lg border focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    style={{ 
+                      backgroundColor: 'var(--input-bg)',
+                      borderColor: 'var(--input-border)',
+                      color: 'var(--text-primary)'
+                    }}
+                  />
+                </div>
+
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>
+                    Dirección
+                  </label>
+                  <input
+                    type="text"
+                    value={constructoraDireccion}
+                    onChange={(e) => setConstructoraDireccion(e.target.value)}
+                    placeholder="Dirección de la oficina principal"
+                    className="w-full px-3 py-2 rounded-lg border focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    style={{ 
+                      backgroundColor: 'var(--input-bg)',
+                      borderColor: 'var(--input-border)',
+                      color: 'var(--text-primary)'
+                    }}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Clasificación de Obra */}
+            <div 
+              className="p-4 rounded-lg"
+              style={{ 
+                backgroundColor: 'var(--card-bg)',
+                border: '1px solid var(--border)'
+              }}
+            >
+              <h3 className="text-base font-semibold flex items-center gap-2 mb-4" style={{ color: 'var(--text-primary)' }}>
+                <FiTool className="w-4 h-4" style={{ color: 'var(--accent-primary)' }} />
+                Clasificación de la Obra
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>
+                    Tipo de obra
+                  </label>
+                  <select
+                    value={tipoObraId ?? ''}
+                    onChange={(e) => setTipoObraId(e.target.value ? Number(e.target.value) : undefined)}
+                    className="w-full px-3 py-2 rounded-lg border"
+                    style={{ backgroundColor: 'var(--input-bg)', borderColor: 'var(--input-border)', color: 'var(--text-primary)' }}
+                  >
+                    <option value="">Selecciona un tipo</option>
+                    {tiposObra.map((t) => (
+                      <option key={t.id} value={t.id}>{t.nombre}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>
+                    Tamaño de obra
+                  </label>
+                  <select
+                    value={tamanoObraId ?? ''}
+                    onChange={(e) => setTamanoObraId(e.target.value ? Number(e.target.value) : undefined)}
+                    className="w-full px-3 py-2 rounded-lg border"
+                    style={{ backgroundColor: 'var(--input-bg)', borderColor: 'var(--input-border)', color: 'var(--text-primary)' }}
+                  >
+                    <option value="">Selecciona un tamaño</option>
+                    {tamanosObra.map((t) => (
+                      <option key={t.id} value={t.id}>{t.nombre}</option>
+                    ))}
+                  </select>
                 </div>
               </div>
             </div>
@@ -560,129 +873,27 @@ export function CreateObraModal({
                     }}
                   />
                 </div>
-              </div>
-            </div>
 
-            {/* Información de la Constructora */}
-            <div 
-              className="p-4 rounded-lg"
-              style={{ 
-                backgroundColor: 'var(--card-bg)',
-                border: '1px solid var(--border)'
-              }}
-            >
-              <h3 className="text-base font-semibold flex items-center gap-2 mb-4" style={{ color: 'var(--text-primary)' }}>
-                <FiBriefcase className="w-4 h-4" style={{ color: 'var(--accent-primary)' }} />
-                Empresa Constructora
-              </h3>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                <div>
+                <div className="md:col-span-2 lg:col-span-4">
                   <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>
-                    Nombre de la empresa constructora *
+                    Estado
                   </label>
-                  <input
-                    type="text"
-                    value={constructoraNombre}
-                    onChange={(e) => setConstructoraNombre(e.target.value)}
-                    placeholder="Nombre de la empresa constructora"
-                    className="w-full px-3 py-2 rounded-lg border focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    style={{ 
-                      backgroundColor: 'var(--input-bg)',
-                      borderColor: errors.constructora?.nombre ? 'var(--danger-border)' : 'var(--input-border)',
-                      color: 'var(--text-primary)'
-                    }}
-                  />
-                  {errors.constructora?.nombre && (
-                    <span className="text-xs mt-1 flex items-center gap-1" style={{ color: 'var(--danger-text)' }}>
-                      <FiAlertCircle className="w-3 h-3" />
-                      {errors.constructora.nombre}
-                    </span>
-                  )}
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>
-                    RUT *
-                  </label>
-                  <input
-                    type="text"
-                    value={constructoraRut}
-                    onChange={handleRutChange}
-                    placeholder="12345678-9"
-                    className="w-full px-3 py-2 rounded-lg border focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    style={{ 
-                      backgroundColor: 'var(--input-bg)',
-                      borderColor: errors.constructora?.rut ? 'var(--danger-border)' : 'var(--input-border)',
-                      color: 'var(--text-primary)'
-                    }}
-                  />
-                  {errors.constructora?.rut && (
-                    <span className="text-xs mt-1 flex items-center gap-1" style={{ color: 'var(--danger-text)' }}>
-                      <FiAlertCircle className="w-3 h-3" />
-                      {errors.constructora.rut}
-                    </span>
-                  )}
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>
-                    Teléfono *
-                  </label>
-                  <input
-                    type="tel"
-                    value={constructoraTelefono}
-                    onChange={(e) => setConstructoraTelefono(e.target.value)}
-                    placeholder="+56 9 1234 5678"
-                    className="w-full px-3 py-2 rounded-lg border focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    style={{ 
-                      backgroundColor: 'var(--input-bg)',
-                      borderColor: errors.constructora?.telefono ? 'var(--danger-border)' : 'var(--input-border)',
-                      color: 'var(--text-primary)'
-                    }}
-                  />
-                  {errors.constructora?.telefono && (
-                    <span className="text-xs mt-1 flex items-center gap-1" style={{ color: 'var(--danger-text)' }}>
-                      <FiAlertCircle className="w-3 h-3" />
-                      {errors.constructora.telefono}
-                    </span>
-                  )}
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>
-                    Email
-                  </label>
-                  <input
-                    type="email"
-                    value={constructoraEmail}
-                    onChange={(e) => setConstructoraEmail(e.target.value)}
-                    placeholder="constructora@ejemplo.com"
+                  <select
+                    value={estado}
+                    onChange={(e) => setEstado(e.target.value as EstadoObra)}
                     className="w-full px-3 py-2 rounded-lg border focus:outline-none focus:ring-2 focus:ring-blue-500"
                     style={{ 
                       backgroundColor: 'var(--input-bg)',
                       borderColor: 'var(--input-border)',
                       color: 'var(--text-primary)'
                     }}
-                  />
-                </div>
-
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>
-                    Dirección
-                  </label>
-                  <input
-                    type="text"
-                    value={constructoraDireccion}
-                    onChange={(e) => setConstructoraDireccion(e.target.value)}
-                    placeholder="Dirección de la oficina principal"
-                    className="w-full px-3 py-2 rounded-lg border focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    style={{ 
-                      backgroundColor: 'var(--input-bg)',
-                      borderColor: 'var(--input-border)',
-                      color: 'var(--text-primary)'
-                    }}
-                  />
+                  >
+                    {estadosObra.map((estado) => (
+                      <option key={estado.value} value={estado.value}>
+                        {estado.label}
+                      </option>
+                    ))}
+                  </select>
                 </div>
               </div>
             </div>
@@ -797,23 +1008,7 @@ export function CreateObraModal({
                   )}
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>
-                    WhatsApp
-                  </label>
-                  <input
-                    type="tel"
-                    value={contactoWhatsapp}
-                    onChange={(e) => setContactoWhatsapp(e.target.value)}
-                    placeholder="+56 9 1234 5678"
-                    className="w-full px-3 py-2 rounded-lg border focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    style={{ 
-                      backgroundColor: 'var(--input-bg)',
-                      borderColor: 'var(--input-border)',
-                      color: 'var(--text-primary)'
-                    }}
-                  />
-                </div>
+                {/* WhatsApp eliminado: usar teléfono */}
               </div>
             </div>
 
