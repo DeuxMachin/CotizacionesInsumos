@@ -1,9 +1,10 @@
 'use client'
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { FiX, FiMapPin, FiSearch, FiLoader, FiCheckCircle, FiMap, FiUser, FiCalendar, FiFileText, FiPhone, FiMail, FiHome, FiClock, FiAlertTriangle, FiChevronLeft, FiChevronRight } from "react-icons/fi";
 import { Modal } from "../../../shared/ui/Modal";
 import { useTargets } from "../model/useTargets";
+import { supabase } from '@/lib/supabase';
 
 interface CreateTargetModalProps {
   isOpen: boolean;
@@ -55,6 +56,14 @@ export default function CreateTargetModal({ isOpen, onClose }: CreateTargetModal
     fechaEstimadaInicio: "",
     observaciones: ""
   });
+  const [tipos, setTipos] = useState<string[]>([]);
+
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase.from('target_tipos').select('nombre').order('nombre');
+      setTipos((data || []).map(t => t.nombre));
+    })();
+  }, []);
   // const [errors, setErrors] = useState<Record<string, string>>({});
 
   const steps = [
@@ -248,6 +257,7 @@ export default function CreateTargetModal({ isOpen, onClose }: CreateTargetModal
         lng: formData.lng,
         ciudad: formData.ciudad,
         region: formData.region,
+        comuna: undefined,
         contactoNombre: formData.contactoNombre,
         contactoTelefono: formData.contactoTelefono,
         contactoEmail: formData.contactoEmail,
@@ -576,12 +586,9 @@ export default function CreateTargetModal({ isOpen, onClose }: CreateTargetModal
                       className="form-input mt-2 py-2 sm:py-3 text-base sm:text-lg"
                     >
                       <option value="">Selecciona el tipo de proyecto...</option>
-                      <option value="Residencial">🏠 Residencial</option>
-                      <option value="Comercial">🏢 Comercial</option>
-                      <option value="Industrial">🏭 Industrial</option>
-                      <option value="Infraestructura">🛤️ Infraestructura</option>
-                      <option value="Remodelación">🔨 Remodelación</option>
-                      <option value="Otro">⚙️ Otro</option>
+                      {tipos.map(t => (
+                        <option key={t} value={t}>{t}</option>
+                      ))}
                     </select>
                   </div>
 
@@ -697,7 +704,30 @@ export default function CreateTargetModal({ isOpen, onClose }: CreateTargetModal
                     <input
                       type="tel"
                       value={formData.contactoTelefono}
-                      onChange={(e) => setFormData(prev => ({ ...prev, contactoTelefono: e.target.value }))}
+                      onChange={(e) => {
+                        // Formatear y normalizar teléfono para cumplir con +569XXXXXXXX (solo números)
+                        const rawValue = e.target.value.replace(/\D/g, '');
+                        let formattedValue = rawValue;
+                        
+                        // Si empieza a escribir, asegurar formato +569
+                        if (rawValue.length > 0 && !rawValue.startsWith('569')) {
+                          if (rawValue.startsWith('9')) {
+                            formattedValue = `56${rawValue}`;
+                          } else if (!rawValue.startsWith('56')) {
+                            formattedValue = `569${rawValue}`;
+                          }
+                        }
+                        
+                        // Agregar el + al inicio si tiene números
+                        if (formattedValue.length > 0) {
+                          formattedValue = `+${formattedValue}`;
+                        }
+                        
+                        setFormData(prev => ({ 
+                          ...prev, 
+                          contactoTelefono: formattedValue 
+                        }));
+                      }}
                       placeholder="+56 9 XXXX XXXX"
                       className="form-input mt-2 py-2 sm:py-3 text-base sm:text-lg"
                     />

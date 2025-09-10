@@ -142,6 +142,7 @@ export type Database = {
           doc_tipo: string | null
           doc_folio_asociado: string | null
           created_at: string
+          vendedor_id: string
         }
         Insert: {
           id?: number
@@ -169,6 +170,7 @@ export type Database = {
           doc_tipo?: string | null
           doc_folio_asociado?: string | null
           created_at?: string
+          vendedor_id: string
         }
         Update: {
           id?: number
@@ -196,6 +198,21 @@ export type Database = {
           doc_tipo?: string | null
           doc_folio_asociado?: string | null
           created_at?: string
+          vendedor_id?: string
+        }
+      }
+      cotizacion_clientes: {
+        Row: {
+          cotizacion_id: number
+          cliente_id: number
+        }
+        Insert: {
+          cotizacion_id: number
+          cliente_id: number
+        }
+        Update: {
+          cotizacion_id?: number
+          cliente_id?: number
         }
       }
       productos: {
