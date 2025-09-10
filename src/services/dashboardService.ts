@@ -1,5 +1,4 @@
 import { supabase } from '../lib/supabase'
-import type { Database } from '../lib/supabase'
 
 // Servicio para Obras
 export class ObrasService {

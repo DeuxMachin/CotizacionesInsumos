@@ -172,7 +172,7 @@ const ITEMS_PER_PAGE = 10;
 
 export function useQuotes(): UseQuotesReturn {
   const { user } = useAuth();
-  const isAdmin = user?.role === 'admin';
+  const isAdmin = user?.rol === 'admin';
   
   // Estado local
   const [allQuotes, setAllQuotes] = useState<Quote[]>([]);
@@ -441,8 +441,8 @@ export function useQuotes(): UseQuotesReturn {
     canDelete,
     
     // Info del usuario
-    userId: user?.id || null,
-    userName: user?.name || null,
+  userId: user?.id || null,
+  userName: [user?.nombre, user?.apellido].filter(Boolean).join(' ') || user?.email || null,
     isAdmin
   };
 }

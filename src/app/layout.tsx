@@ -4,7 +4,6 @@ export const metadata = { title: "Panel Administrativo - Cotizaciones" };
 import "./globals.css";
 import { Inter, JetBrains_Mono, Lexend } from "next/font/google";
 import { ThemeProvider } from "next-themes";
-import { SafeAuthorizationMiddleware } from "@/middleware/SafeAuthorizationMiddleware";
 import Script from "next/script";
 
 // Fuente principal para texto general - muy profesional y legible

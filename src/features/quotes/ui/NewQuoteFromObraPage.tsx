@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { 
   FiArrowLeft, 
@@ -78,35 +78,38 @@ export function NewQuoteFromObraPage() {
       return;
     }
 
-    const fetchObra = () => {
+    const fetchObra = async () => {
       try {
-        const obraData = obtenerObra(obraId);
+        // obtenerObra es asíncrona -> esperamos su resolución
+        const obraData = await obtenerObra(obraId);
         if (!obraData) {
-          router.push('/dashboard/cotizaciones/nueva');
-          return;
+          // No encontrada: redirigimos y abortamos
+            router.push('/dashboard/cotizaciones/nueva');
+            return;
         }
-        
+
         setObra(obraData);
-        
+
         // Precompletar los datos del cliente basado en la obra
+        // NOTE: Estos valores son placeholders mientras se conecta la persistencia real (no usar ANY)
         const clienteData: Partial<ClientInfo> = {
           razonSocial: obraData.constructora.nombre,
           rut: obraData.constructora.rut,
-          giro: "Construcción", // Valor por defecto para constructoras
+          giro: 'Construcción', // placeholder
           direccion: obraData.constructora.direccion || obraData.direccionObra,
-          ciudad: "Santiago", // Valor por defecto, podría extraerse de la dirección
-          comuna: "Santiago", // Valor por defecto, podría extraerse de la dirección
+          ciudad: obraData.ciudad || 'Santiago', // placeholder
+          comuna: obraData.comuna || 'Santiago', // placeholder
           telefono: obraData.constructora.telefono,
           email: obraData.constructora.email,
           nombreContacto: obraData.constructora.contactoPrincipal.nombre,
-          telefonoContacto: obraData.constructora.contactoPrincipal.telefono,
+          telefonoContacto: obraData.constructora.contactoPrincipal.telefono
         };
 
         // Precompletar datos de despacho si tenemos dirección de obra
         const despachoData: Partial<DeliveryInfo> = obraData.direccionObra ? {
           direccion: obraData.direccionObra,
-          ciudad: "Santiago", // Valor por defecto
-          comuna: "Santiago", // Valor por defecto
+          ciudad: obraData.ciudad || 'Santiago', // placeholder
+          comuna: obraData.comuna || 'Santiago', // placeholder
           observaciones: `Entrega en obra: ${obraData.nombreEmpresa}`
         } : {};
 
@@ -115,7 +118,7 @@ export function NewQuoteFromObraPage() {
           cliente: clienteData,
           despacho: despachoData
         }));
-        
+
       } catch (error) {
         console.error('Error al cargar la obra:', error);
         router.push('/dashboard/cotizaciones/nueva');

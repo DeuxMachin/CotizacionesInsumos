@@ -209,9 +209,16 @@ export function useObras() {
         setData(obras);
       }
       return ok;
-    } catch (error: any) {
-      const details = error?.details || error?.message || error;
-      const hint = error?.hint;
+    } catch (error: unknown) {
+      let details: string;
+      let hint: string | undefined;
+      if (error && typeof error === 'object') {
+        const errObj = error as { details?: string; message?: string; hint?: string };
+        details = errObj.details || errObj.message || 'Error desconocido';
+        hint = errObj.hint;
+      } else {
+        details = String(error);
+      }
       console.error('Error creando obra:', { message: details, hint });
       return false;
     } finally {

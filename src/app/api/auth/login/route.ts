@@ -45,7 +45,7 @@ export async function POST(request: NextRequest) {
       .eq('id', user.id)
 
     // Remover password_hash de la respuesta
-    const { password_hash, ...userWithoutPassword } = user
+    const {  ...userWithoutPassword } = user
 
     return NextResponse.json({
       success: true,

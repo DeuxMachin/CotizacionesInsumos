@@ -12,13 +12,7 @@ function StatsCard({ title, value, subtitle, color = 'blue' }: {
   subtitle?: string
   color?: 'blue' | 'green' | 'orange' | 'purple' | 'red'
 }) {
-  const colorClasses = {
-    blue: 'from-blue-500 to-blue-600',
-    green: 'from-green-500 to-green-600',
-    orange: 'from-orange-500 to-orange-600',
-    purple: 'from-purple-500 to-purple-600',
-    red: 'from-red-500 to-red-600'
-  }
+
 
   return (
     <div 
@@ -166,7 +160,7 @@ export default function SupabaseTestPage() {
   const { data: obras, loading: loadingObras, error: errorObras } = useObras()
   const { data: usuarios, loading: loadingUsuarios, error: errorUsuarios } = useUsuarios()
   const { data: targets, loading: loadingTargets, error: errorTargets } = useTargets()
-  const { data: estadisticas, loading: loadingEstadisticas, error: errorEstadisticas } = useEstadisticas()
+  const { data: estadisticas } = useEstadisticas()
 
   // Probar la conexión al cargar el componente
   useEffect(() => {
@@ -179,7 +173,7 @@ export default function SupabaseTestPage() {
       setErrorMessage(null)
 
       // Hacer una consulta simple para probar la conexión
-      const { data, error } = await supabase
+      const {  error } = await supabase
         .from('clientes')
         .select('count')
         .limit(1)
@@ -205,7 +199,7 @@ export default function SupabaseTestPage() {
         estado: 'activo'
       }
 
-      const { data, error } = await supabase
+      const {  error } = await supabase
         .from('clientes')
         .insert(testCliente)
         .select()

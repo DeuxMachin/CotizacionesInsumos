@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useMemo } from 'react';
+import type { QuoteStatus } from '@/core/domain/quote/Quote';
 
 import { useRouter, useParams } from 'next/navigation';
 import { 
@@ -22,8 +23,8 @@ import {
   FiCopy,
   FiMapPin
 } from 'react-icons/fi';
-import { clientsExtended, type ClientExtended } from '@/features/clients/model/clientsExtended';
-import { quotesData } from '@/features/quotes/model/mock';
+import { type ClientExtended, mapRowToClientExtended } from '@/features/clients/model/clientsExtended';
+// Eliminado quotesData mock: ahora se obtienen cotizaciones reales desde la API
 import { Badge } from '@/shared/ui/Badge';
 import { Toast } from '@/shared/ui/Toast';
 import { useActionAuthorization } from '@/middleware/AuthorizationMiddleware';
@@ -188,16 +189,55 @@ function StatusBadge({ status }: { status: ClientExtended['status'] }) {
     inactivo: 'Inactivo'
   };
 
-  const config = colors[status];
+  // Fallback defensivo por si llega un estado inesperado desde la BD
+  const config = colors[status] ?? colors.vigente;
+  const label = labels[status] ?? labels.vigente;
 
   return (
-    <span 
+    <span
       className="px-2 py-1 text-xs font-medium rounded-full whitespace-nowrap inline-flex items-center justify-center"
       style={{ backgroundColor: config.bg, color: config.text }}
     >
-      {labels[status]}
+      {label}
     </span>
   );
+}
+
+// Tipos mínimos para cotizaciones provenientes del backend
+interface QuoteRow {
+  id: string;
+  folio?: string | null;
+  created_at?: string | null;
+  fecha_emision?: string | null;
+  estado?: string | null;
+  total_final?: number | null;
+  total_neto?: number | null;
+}
+
+interface ClientQuote {
+  id: string;
+  numero: string;
+  fechaCreacion: string;
+  estado: QuoteStatus;
+  total: number;
+}
+
+interface ClientEditForm {
+  estado: ClientExtended['status'];
+  nombre_razon_social: string;
+  nombre_fantasia: string;
+  giro: string;
+  direccion: string;
+  ciudad: string;
+  comuna: string;
+  contacto_pago: string;
+  email_pago: string;
+  telefono_pago: string;
+  telefono: string;
+  celular: string;
+  linea_credito: number;
+  descuento_cliente_pct: number;
+  forma_pago: string;
 }
 
 function ClientDetailPage() {
@@ -206,18 +246,185 @@ function ClientDetailPage() {
   const { canEdit, canDelete } = useActionAuthorization();
   
   // Obtener cliente por ID
-  const client = useMemo(() => {
-    const clientId = params.id;
-    return clientsExtended.find(c => c.id === clientId) || null;
+  const [client, setClient] = React.useState<ClientExtended | null>(null);
+  const [loading, setLoading] = React.useState(true);
+  const [error, setError] = React.useState<string | null>(null);
+  const [editing, setEditing] = React.useState(false);
+  const [saving, setSaving] = React.useState(false);
+
+  // Form state (se inicializa cuando se abre edición)
+  const [form, setForm] = React.useState<ClientEditForm>({
+    estado: 'vigente',
+    nombre_razon_social: '',
+    nombre_fantasia: '',
+    giro: '',
+    direccion: '',
+    ciudad: '',
+    comuna: '',
+    contacto_pago: '',
+    email_pago: '',
+    telefono_pago: '',
+    telefono: '',
+    celular: '',
+    linea_credito: 0,
+    descuento_cliente_pct: 0,
+    forma_pago: ''
+  });
+
+  const openEdit = () => {
+    if (!client) return;
+    setForm({
+      estado: client.status,
+      nombre_razon_social: client.razonSocial,
+      nombre_fantasia: client.fantasyName || '',
+      giro: client.giro || '',
+      direccion: client.direccion || '',
+      ciudad: client.ciudad || '',
+      comuna: client.comuna || '',
+      contacto_pago: client.paymentResponsible || client.contactoNombre || '',
+      email_pago: client.paymentEmail || client.contactoEmail || '',
+      telefono_pago: client.paymentPhone || client.contactoTelefono || '',
+      telefono: client.phone || '',
+      celular: client.mobile || '',
+      linea_credito: client.creditLine || 0,
+      descuento_cliente_pct: client.discount || 0,
+      forma_pago: client.transferInfo || ''
+    });
+    setEditing(true);
+  };
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    setForm(f => ({ ...f, [name]: name === 'linea_credito' || name === 'descuento_cliente_pct' ? Number(value) : value }));
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!client) return;
+    try {
+      setSaving(true);
+      const res = await fetch(`/api/clientes/${client.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(form)
+      });
+      if (!res.ok) throw new Error('Error al actualizar');
+      const body = await res.json();
+      // Actualizar estado local del cliente
+      setClient(mapRowToClientExtended(body.data));
+      setEditing(false);
+      Toast.success('Actualizado');
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        console.error(err);
+        Toast.error(err.message || 'Error al actualizar');
+      } else {
+        console.error('Unknown error', err);
+        Toast.error('Error al actualizar');
+      }
+    } finally { setSaving(false); }
+  };
+
+  React.useEffect(() => {
+    const id = Number(params.id);
+    if (Number.isNaN(id)) { setError('ID inválido'); setLoading(false); return; }
+    let cancelled = false;
+    async function load() {
+      try {
+        setLoading(true); setError(null);
+        const res = await fetch(`/api/clientes/${id}`);
+        if (!res.ok) throw new Error('Error al obtener cliente');
+        const body = await res.json();
+        if (!cancelled) setClient(body.data ? mapRowToClientExtended(body.data) : null);
+      } catch (e: unknown) {
+        if (!cancelled) { setError(e instanceof Error ? e.message : 'Error desconocido'); }
+      } finally { if (!cancelled) setLoading(false); }
+    }
+    load();
+    return () => { cancelled = true; };
   }, [params.id]);
   
-  // Obtener cotizaciones del cliente
-  const clientQuotes = useMemo(() => {
-    if (!client) return [];
-    const normalizeRut = (rut: string | undefined) => (rut || '').replace(/\./g, '').replace(/\s+/g, '').toUpperCase();
-    const clientRut = normalizeRut(client.rut);
-    return quotesData.filter(q => normalizeRut(q.cliente?.rut) === clientRut);
+  // Estado para cotizaciones reales del cliente
+  const [quotes, setQuotes] = React.useState<QuoteRow[]>([]);
+  const [quotesLoading, setQuotesLoading] = React.useState(false);
+  const [quotesError, setQuotesError] = React.useState<string | null>(null);
+
+  // Cargar cotizaciones del cliente por ID (cliente_principal_id)
+  React.useEffect(() => {
+    if (!client) return;
+    let cancelled = false;
+    async function loadQuotes() {
+      try {
+        setQuotesLoading(true); setQuotesError(null);
+        const clientId = client?.id;
+        if (!clientId) return;
+        const res = await fetch(`/api/cotizaciones?cliente_id=${clientId}`);
+        if (!res.ok) throw new Error('Error al cargar cotizaciones');
+        const body = await res.json();
+        if (!cancelled) setQuotes((body.data || []) as QuoteRow[]);
+      } catch (e) {
+        if (!cancelled) {
+          const msg = e instanceof Error ? e.message : 'Error desconocido';
+          setQuotesError(msg);
+        }
+      } finally { if (!cancelled) setQuotesLoading(false); }
+    }
+    loadQuotes();
+    return () => { cancelled = true; };
   }, [client]);
+
+  // Adaptador mínimo para campos usados en la UI (folio/numero, fecha, estado, total)
+  const clientQuotes: ClientQuote[] = useMemo(() => {
+    const allowed: QuoteStatus[] = ['borrador','enviada','aceptada','rechazada','expirada'];
+    return quotes.map((q) => {
+      const raw = (q.estado ?? 'borrador') as string;
+      const estado: QuoteStatus = (allowed.includes(raw as QuoteStatus) ? raw : 'borrador') as QuoteStatus;
+      return {
+        id: q.id,
+        numero: q.folio ?? `COT-${q.id}`,
+        fechaCreacion: q.created_at ?? q.fecha_emision ?? new Date().toISOString(),
+        estado,
+        total: (q.total_final ?? q.total_neto ?? 0) || 0
+      };
+    });
+  }, [quotes]);
+
+  // Totales financieros derivados de las cotizaciones reales
+  const financialTotals = useMemo(() => {
+    const totalPagado = 0; // TODO: cuando exista relación de pagos reales
+    const totalCotizado = clientQuotes.reduce((sum, q) => sum + (q.total || 0), 0);
+    // Suponemos que todo lo cotizado aún está "por cobrar" salvo lógica futura de facturación/pagos
+    return {
+      paid: totalPagado,
+      pending: totalCotizado - totalPagado,
+      partial: 0,
+      overdue: 0,
+      movimientos: totalCotizado
+    };
+  }, [clientQuotes]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: 'var(--bg-primary)' }}>
+        <p style={{ color: 'var(--text-secondary)' }}>Cargando cliente...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: 'var(--bg-primary)' }}>
+        <div className="text-center">
+          <FiUser className="w-16 h-16 mx-auto mb-4" style={{ color: 'var(--text-muted)' }} />
+          <h2 className="text-2xl font-bold mb-2" style={{ color: 'var(--text-primary)' }}>
+            Error
+          </h2>
+            <p className="mb-6" style={{ color: 'var(--text-secondary)' }}>{error}</p>
+          <button onClick={() => router.push('/dashboard/clientes')} className="btn-primary">Volver a Clientes</button>
+        </div>
+      </div>
+    );
+  }
 
   // Si el cliente no existe, mostrar página de error
   if (!client) {
@@ -242,10 +449,10 @@ function ClientDetailPage() {
     );
   }
 
-  const totalMovimientos = client.paid + client.pending + client.partial + client.overdue;
-  const totalPendiente = client.pending + client.partial + client.overdue;
+  // Reemplazar totales mock por totales basados en cotizaciones
+  const totalMovimientos = financialTotals.movimientos;
 
-  return (
+  const pageContent = (
     <div className="animate-fadeIn pb-8" style={{ backgroundColor: 'var(--bg-primary)' }}>
       {/* Header */}
       <div 
@@ -283,7 +490,7 @@ function ClientDetailPage() {
               {/* Botones de escritorio */}
               <div className="hidden md:flex items-center gap-2">
                 {canEdit('clients') && (
-                  <button className="btn-secondary flex items-center gap-2">
+                  <button onClick={openEdit} className="btn-secondary flex items-center gap-2">
                     <FiEdit3 className="w-4 h-4" />
                     Editar
                   </button>
@@ -300,6 +507,7 @@ function ClientDetailPage() {
               <div className="flex md:hidden items-center gap-1">
                 {canEdit('clients') && (
                   <button 
+                    onClick={openEdit}
                     className="p-2 rounded-lg transition-colors"
                     style={{ backgroundColor: 'var(--bg-secondary)', color: 'var(--text-secondary)' }}
                     title="Editar cliente"
@@ -325,39 +533,38 @@ function ClientDetailPage() {
       {/* Content */}
       <div className="max-w-7xl mx-auto px-3 sm:px-4 py-4 sm:py-6">
         {/* Estadísticas Financieras */}
-  <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-4 mb-4 sm:mb-6" role="region" aria-label="Resumen financiero del cliente">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-4 mb-4 sm:mb-6" role="region" aria-label="Resumen financiero del cliente">
           <StatCardSimple 
             label="Total Pagado"
-            value={formatCLP(client.paid)}
+            value={formatCLP(financialTotals.paid)}
             icon={<FiCheck className="w-4 h-4" />}
             color="var(--success-text)"
             bgColor="var(--success-bg)"
           />
           <StatCardSimple 
             label="Pendiente de Pago"
-            value={formatCLP(client.pending)}
+            value={formatCLP(financialTotals.pending)}
             icon={<FiClock className="w-4 h-4" />}
             color="var(--warning-text)"
             bgColor="var(--warning-bg)"
           />
           <StatCardSimple 
             label="Pagos Parciales"
-            value={formatCLP(client.partial)}
+            value={formatCLP(financialTotals.partial)}
             icon={<FiDollarSign className="w-4 h-4" />}
             color="var(--neutral-text)"
             bgColor="var(--neutral-bg)"
           />
           <StatCardSimple 
             label="Pagos Vencidos"
-            value={formatCLP(client.overdue)}
+            value={formatCLP(financialTotals.overdue)}
             icon={<FiAlertCircle className="w-4 h-4" />}
             color="var(--danger-text)"
             bgColor="var(--danger-bg)"
           />
         </div>
-
         {/* Layout de dos columnas */}
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-6">
           {/* Columna principal */}
           <div className="lg:col-span-2">
             {/* Información Básica */}
@@ -365,7 +572,7 @@ function ClientDetailPage() {
               title="Información Básica" 
               icon={<FiBriefcase className="w-4 h-4 sm:w-5 sm:h-5" />}
             >
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 w-full">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 w-full">
                 <div className="w-full">
                   <InfoRow label="Tipo" value={client.tipoEmpresa || 'Empresa'} />
                   <InfoRow label="Nombre/Razón Social" value={client.razonSocial} />
@@ -415,10 +622,20 @@ function ClientDetailPage() {
 
             {/* Historial de Cotizaciones */}
             <InfoCard 
-              title={`Historial de Cotizaciones (${clientQuotes.length})`}
+              title={`Historial de Cotizaciones (${quotesLoading ? '...' : clientQuotes.length})`}
               icon={<FiFileText className="w-4 h-4 sm:w-5 sm:h-5" />}
             >
-              {clientQuotes.length > 0 ? (
+              {quotesError && (
+                <div className="text-center py-4 text-sm" style={{ color: 'var(--danger-text)' }}>
+                  {quotesError}
+                </div>
+              )}
+              {!quotesError && quotesLoading && (
+                <div className="text-center py-4 text-sm" style={{ color: 'var(--text-secondary)' }}>
+                  Cargando cotizaciones...
+                </div>
+              )}
+              {!quotesLoading && !quotesError && clientQuotes.length > 0 ? (
                 <div className="w-full">
                   {/* Vista de tabla para desktop */}
       <div className="hidden md:block w-full overflow-x-auto">
@@ -578,13 +795,13 @@ function ClientDetailPage() {
                   <div className="flex items-center justify-between py-0.5 sm:py-1 w-full">
                     <span className="text-xs sm:text-sm" style={{ color: 'var(--success-text)' }}>Pagado</span>
                     <span className="font-medium text-xs sm:text-sm truncate ml-2" style={{ color: 'var(--success-text)' }}>
-                      {formatCLP(client.paid)}
+                      {formatCLP(financialTotals.paid)}
                     </span>
                   </div>
                   <div className="flex items-center justify-between py-0.5 sm:py-1 w-full">
                     <span className="text-xs sm:text-sm" style={{ color: 'var(--warning-text)' }}>Por Cobrar</span>
                     <span className="font-medium text-xs sm:text-sm truncate ml-2" style={{ color: 'var(--warning-text)' }}>
-                      {formatCLP(totalPendiente)}
+                      {formatCLP(financialTotals.pending)}
                     </span>
                   </div>
                 </div>
@@ -607,6 +824,126 @@ function ClientDetailPage() {
         </div>
       </div>
     </div>
+  );
+  // Render principal con modal de edición
+  return (
+    <>
+      {pageContent}
+      <EditModal 
+        open={editing} 
+        onClose={() => setEditing(false)} 
+        onSubmit={handleSubmit} 
+        form={form} 
+        onChange={handleChange} 
+        saving={saving} 
+      />
+    </>
+  );
+}
+
+// Modal simple inline (sin portal) para edición
+interface EditModalProps {
+  open: boolean;
+  onClose: () => void;
+  onSubmit: (e: React.FormEvent) => void;
+  form: ClientEditForm;
+  onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => void;
+  saving: boolean;
+}
+
+function EditModal({ open, onClose, onSubmit, form, onChange, saving }: EditModalProps) {
+  if (!open) return null;
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40">
+      <div className="w-full max-w-3xl max-h-[90vh] overflow-y-auto rounded-lg border shadow-lg" style={{ backgroundColor: 'var(--card-bg)', borderColor: 'var(--border)' }}>
+        <div className="flex items-center justify-between px-4 py-3 border-b" style={{ borderColor: 'var(--border)' }}>
+          <h2 className="font-semibold" style={{ color: 'var(--text-primary)' }}>Editar Cliente</h2>
+          <button onClick={onClose} className="text-sm opacity-70 hover:opacity-100" style={{ color: 'var(--text-secondary)' }}>Cerrar</button>
+        </div>
+        <form onSubmit={onSubmit} className="p-4 space-y-6">
+          {/* Estado */}
+          <div>
+            <h3 className="text-sm font-medium mb-2" style={{ color: 'var(--text-primary)' }}>Estado</h3>
+            <select name="estado" value={form.estado} onChange={onChange} className="w-full p-2 rounded border bg-transparent" style={{ borderColor: 'var(--border)', color: 'var(--text-primary)' }}>
+              <option value="vigente">Vigente</option>
+              <option value="moroso">Moroso</option>
+              <option value="inactivo">Inactivo</option>
+            </select>
+          </div>
+          {/* Información Básica */}
+          <div>
+            <h3 className="text-sm font-medium mb-2" style={{ color: 'var(--text-primary)' }}>Información Básica</h3>
+            <div className="grid md:grid-cols-2 gap-4">
+              <div className="space-y-3">
+                <Field label="Razón Social" name="nombre_razon_social" value={form.nombre_razon_social} onChange={onChange} />
+                <Field label="Nombre Fantasía" name="nombre_fantasia" value={form.nombre_fantasia} onChange={onChange} />
+                <Field label="Giro" name="giro" value={form.giro} onChange={onChange} />
+                <Field label="Dirección" name="direccion" value={form.direccion} onChange={onChange} />
+              </div>
+              <div className="space-y-3">
+                <Field label="Ciudad" name="ciudad" value={form.ciudad} onChange={onChange} />
+                <Field label="Comuna" name="comuna" value={form.comuna} onChange={onChange} />
+                <Field label="Forma de Pago" name="forma_pago" value={form.forma_pago} onChange={onChange} />
+              </div>
+            </div>
+          </div>
+          {/* Contacto */}
+            <div>
+              <h3 className="text-sm font-medium mb-2" style={{ color: 'var(--text-primary)' }}>Contacto & Pagos</h3>
+              <div className="grid md:grid-cols-2 gap-4">
+                <div className="space-y-3">
+                  <Field label="Contacto Pago" name="contacto_pago" value={form.contacto_pago} onChange={onChange} />
+                  <Field label="Email Pago" name="email_pago" value={form.email_pago} onChange={onChange} />
+                  <Field label="Teléfono Pago" name="telefono_pago" value={form.telefono_pago} onChange={onChange} />
+                </div>
+                <div className="space-y-3">
+                  <Field label="Teléfono" name="telefono" value={form.telefono} onChange={onChange} />
+                  <Field label="Celular" name="celular" value={form.celular} onChange={onChange} />
+                </div>
+              </div>
+            </div>
+          {/* Crédito */}
+          <div>
+            <h3 className="text-sm font-medium mb-2" style={{ color: 'var(--text-primary)' }}>Crédito</h3>
+            <div className="grid md:grid-cols-2 gap-4">
+              <Field type="number" label="Línea de Crédito" name="linea_credito" value={form.linea_credito} onChange={onChange} />
+              <Field type="number" label="Descuento (%)" name="descuento_cliente_pct" value={form.descuento_cliente_pct} onChange={onChange} />
+            </div>
+          </div>
+          <div className="flex justify-end gap-3 pt-2">
+            <button type="button" onClick={onClose} className="btn-secondary">Cancelar</button>
+            <button disabled={saving} type="submit" className="btn-primary flex items-center gap-2 disabled:opacity-60">
+              {saving && <span className="animate-spin h-4 w-4 border-2 border-white/40 border-t-white rounded-full"></span>}
+              Guardar Cambios
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+interface FieldProps {
+  label: string;
+  name: keyof ClientEditForm;
+  value: string | number;
+  onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => void;
+  type?: string;
+}
+
+function Field({ label, name, value, onChange, type = 'text' }: FieldProps) {
+  return (
+    <label className="block text-sm">
+      <span className="block mb-1" style={{ color: 'var(--text-secondary)' }}>{label}</span>
+      <input
+        name={name}
+        value={value}
+        onChange={onChange}
+        type={type}
+        className="w-full p-2 rounded border bg-transparent"
+        style={{ borderColor: 'var(--border)', color: 'var(--text-primary)' }}
+      />
+    </label>
   );
 }
 

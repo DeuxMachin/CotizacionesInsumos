@@ -9,10 +9,10 @@ import type { Quote } from '@/core/domain/quote/Quote';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params;
+    const { id } = await context.params;
     const { searchParams } = new URL(request.url);
     const preview = searchParams.get('preview') === 'true';
     

@@ -15,12 +15,9 @@ export function LoginForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [isFormValid, setIsFormValid] = useState(false);
-  const [fieldErrors, setFieldErrors] = useState({
-    email: "",
-    password: ""
-  });
+
   const [isLocked, setIsLocked] = useState(false);
-  const [lockoutTime, setLockoutTime] = useState("");
+  const [, setLockoutTime] = useState("");
 
   const { login, isLoading } = useAuth();
   const router = useRouter();

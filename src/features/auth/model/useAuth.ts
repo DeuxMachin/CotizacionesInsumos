@@ -21,7 +21,7 @@ const INACTIVITY_TIMEOUT = 30 * 60 * 1000;
 
 export const useAuth = create<AuthState>()(
   persist(
-    (set, get) => ({
+    (set) => ({
       user: null,
       isAuthenticated: false,
       isLoading: false,

@@ -46,7 +46,7 @@ const roleOptions: Array<{ value: 'admin' | 'vendedor'; label: string; descripti
 export function UsersManagementPage() {
   const { user: currentUser } = useAuth();
   // Cargar usuarios desde la BD
-  const { data: dbUsers, loading: loadingUsers, error: loadError, refetch } = useUsuarios();
+  const { data: dbUsers, loading: loadingUsers, refetch } = useUsuarios();
   const users: User[] = useMemo(() => {
     type DbUser = {
       id: string;

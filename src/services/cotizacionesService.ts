@@ -1,7 +1,7 @@
 import { supabase } from '../lib/supabase'
 import type { Database } from '../lib/supabase'
 
-type Cotizacion = Database['public']['Tables']['cotizaciones']['Row']
+
 type CotizacionInsert = Database['public']['Tables']['cotizaciones']['Insert']
 type CotizacionUpdate = Database['public']['Tables']['cotizaciones']['Update']
 

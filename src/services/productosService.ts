@@ -1,7 +1,7 @@
 import { supabase } from '../lib/supabase'
 import type { Database } from '../lib/supabase'
 
-type Producto = Database['public']['Tables']['productos']['Row']
+
 type ProductoInsert = Database['public']['Tables']['productos']['Insert']
 type ProductoUpdate = Database['public']['Tables']['productos']['Update']
 

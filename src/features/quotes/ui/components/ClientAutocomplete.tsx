@@ -2,9 +2,8 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { FiSearch, FiUser, FiCheck, FiX } from 'react-icons/fi';
-import { useClients } from '@/features/clients/model/useClients';
 import { ClientInfo } from '@/core/domain/quote/Quote';
-import { Client } from '@/features/clients/model/clients';
+import { Client, ClienteRow, mapClienteRowToClient } from '@/features/clients/model/clients';
 
 interface ClientAutocompleteProps {
   value: string;
@@ -19,27 +18,46 @@ export function ClientAutocomplete({
   onClientSelect, 
   onValueChange, 
   placeholder, 
-  field 
+  field: _field // se mantiene en la interfaz por compatibilidad, no usado directamente
 }: ClientAutocompleteProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [searchResults, setSearchResults] = useState<Client[]>([]);
   const [selectedIndex, setSelectedIndex] = useState(-1);
-  const { searchClients } = useClients();
+  // Manejo de búsqueda remota
+  const pendingRequest = useRef<AbortController | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Buscar clientes cuando cambia el valor
+  // Buscar clientes vía API cuando cambia el valor (debounce)
   useEffect(() => {
-    if (value && value.length >= 2) {
-      const results = searchClients(value);
-      setSearchResults(results);
-      setIsOpen(results.length > 0);
-      setSelectedIndex(-1);
-    } else {
+    if (!value || value.length < 2) {
       setSearchResults([]);
       setIsOpen(false);
+      pendingRequest.current?.abort();
+      return;
     }
-  }, [value, searchClients]);
+    const controller = new AbortController();
+    pendingRequest.current?.abort();
+    pendingRequest.current = controller;
+    const timeout = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/clientes?search=${encodeURIComponent(value)}`, { signal: controller.signal });
+        if (!res.ok) throw new Error('Error buscando clientes');
+        type ClientesSearchApiResponse = { data?: ClienteRow[] | null };
+        const body: ClientesSearchApiResponse = await res.json();
+        const rows: ClienteRow[] = body.data ?? [];
+        const mapped: Client[] = rows.map(mapClienteRowToClient);
+        setSearchResults(mapped);
+        setIsOpen(mapped.length > 0);
+        setSelectedIndex(-1);
+      } catch (err) {
+        if (err instanceof DOMException && err.name === 'AbortError') return;
+        setSearchResults([]);
+        setIsOpen(false);
+      }
+    }, 250);
+    return () => { clearTimeout(timeout); controller.abort(); };
+  }, [value]);
 
   // Cerrar cuando se hace click fuera
   useEffect(() => {
@@ -90,15 +108,15 @@ export function ClientAutocomplete({
     const clientData: Partial<ClientInfo> = {
       razonSocial: client.razonSocial,
       rut: client.rut,
-      nombreFantasia: client.razonSocial, // Podríamos agregar este campo a Client si es necesario
-      giro: client.giro,
-      direccion: client.direccion,
-      ciudad: client.ciudad,
-      comuna: client.comuna,
-      telefono: client.contactoTelefono,
-      email: client.contactoEmail,
-      nombreContacto: client.contactoNombre,
-      telefonoContacto: client.contactoTelefono
+      nombreFantasia: client.razonSocial,
+      giro: client.giro ?? undefined,
+      direccion: client.direccion ?? undefined,
+      ciudad: client.ciudad ?? undefined,
+      comuna: client.comuna ?? undefined,
+      telefono: client.contactoTelefono || undefined,
+      email: client.contactoEmail || undefined,
+      nombreContacto: client.contactoNombre || undefined,
+      telefonoContacto: client.contactoTelefono || undefined
     };
 
     onClientSelect(clientData);

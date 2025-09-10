@@ -36,69 +36,73 @@ type JoinedObra = ObrasRow & {
   tamano?: { id: number; nombre: string } | null;
 };
 
+// Tipo intermedio para el resultado crudo de Supabase (con alias de relaciones)
+type SupabaseJoinedObra = {
+  id: number; nombre: string; direccion: string | null; comuna: string | null; ciudad: string | null; vendedor_id: string | null; cliente_id: number | null; tipo_obra_id: number | null; tamano_obra_id: number | null;
+  estado?: string | null; etapa_actual?: string | null; descripcion?: string | null; fecha_inicio?: string | null; fecha_estimada_fin?: string | null; fecha_ultimo_contacto?: string | null; valor_estimado?: number | null; material_vendido?: number | null; proximo_seguimiento?: string | null; notas?: string | null; created_at?: string | null; updated_at?: string | null;
+  cliente?: { id: number; rut: string | null; nombre_razon_social: string | null; telefono: string | null; celular: string | null; email_pago: string | null; direccion: string | null; comuna: string | null; ciudad: string | null } | null;
+  vendedor?: { id: string; nombre: string | null; apellido: string | null; email: string } | null;
+  contactos?: Array<{ id: number; nombre: string | null; cargo: string | null; telefono: string | null; email: string | null; es_principal: boolean }> | null;
+  tipo?: { id: number; nombre: string } | null;
+  tamano?: { id: number; nombre: string } | null;
+};
+
 function safeDate(d?: string | null, fallback?: Date): Date | undefined {
   return d ? new Date(d) : fallback;
 }
 
 function toEstado(value?: string | null): EstadoObra {
-  const v = (value || '').toLowerCase() as EstadoObra;
-  return (
-    [
-      'planificacion','activa','pausada','finalizada','cancelada','sin_contacto'
-    ] as EstadoObra[]
-  ).includes(v) ? v : 'planificacion';
+  const v = (value || '').toLowerCase();
+  const allowed: EstadoObra[] = ['planificacion','activa','pausada','finalizada','cancelada','sin_contacto'];
+  return (allowed as string[]).includes(v) ? (v as EstadoObra) : 'planificacion';
 }
 
 function toEtapa(value?: string | null): EtapaObra {
-  const v = (value || '').toLowerCase() as EtapaObra;
-  return (
-    [
-      'fundacion','estructura','albanileria','instalaciones','terminaciones','entrega'
-    ] as EtapaObra[]
-  ).includes(v) ? v : 'fundacion';
+  const v = (value || '').toLowerCase();
+  const allowed: EtapaObra[] = ['fundacion','estructura','albanileria','instalaciones','terminaciones','entrega'];
+  return (allowed as string[]).includes(v) ? (v as EtapaObra) : 'fundacion';
 }
 
 function mapDbRowToObra(row: JoinedObra): Obra {
-  // The DB schema for obras is minimal; our UI Obra domain contains nested constructora/contact info
-  // Until those are normalized in DB, map what's available and leave placeholders.
   const principal = (row.contactos || []).find(c => c.es_principal) || (row.contactos || [])[0];
   const cliente = row.cliente;
   const vendedor = row.vendedor;
   const nombreVendedor = [vendedor?.nombre, vendedor?.apellido].filter(Boolean).join(' ') || (vendedor?.email || '');
+
   return {
     id: String(row.id),
     nombreEmpresa: row.nombre,
     constructora: {
-      nombre: cliente?.nombre_razon_social || "",
-      rut: cliente?.rut || "",
-      telefono: cliente?.telefono || cliente?.celular || "",
+      nombre: cliente?.nombre_razon_social || '',
+      rut: cliente?.rut || '',
+      telefono: cliente?.telefono || cliente?.celular || '',
       email: cliente?.email_pago || undefined,
       direccion: cliente?.direccion || undefined,
       contactoPrincipal: {
-        nombre: principal?.nombre || "",
-        cargo: principal?.cargo || "",
-        telefono: principal?.telefono || "",
+        nombre: principal?.nombre || '',
+        cargo: principal?.cargo || '',
+        telefono: principal?.telefono || '',
         email: principal?.email || undefined,
       },
     },
-    vendedorAsignado: row.vendedor_id ?? "",
+    vendedorAsignado: row.vendedor_id ?? '',
     nombreVendedor,
-    estado: toEstado((row as any).estado ?? null),
-    etapaActual: toEtapa((row as any).etapa_actual ?? null),
+    estado: toEstado(row.estado ?? null),
+    etapaActual: toEtapa(row.etapa_actual ?? null),
     etapasCompletadas: [],
-    descripcion: (row as any).descripcion || undefined,
-    direccionObra: [row.direccion, row.comuna, row.ciudad].filter(Boolean).join(", "),
+    descripcion: row.descripcion || undefined,
+    direccionObra: [row.direccion, row.comuna, row.ciudad].filter(Boolean).join(', '),
     comuna: row.comuna ?? undefined,
     ciudad: row.ciudad ?? undefined,
-    fechaInicio: safeDate((row as any).fecha_inicio, new Date())!,
-    fechaEstimadaFin: safeDate((row as any).fecha_estimada_fin),
-    fechaUltimoContacto: safeDate((row as any).fecha_ultimo_contacto, new Date())!,
-    valorEstimado: (row as any).valor_estimado ?? undefined,
-    materialVendido: (row as any).material_vendido ?? 0,
-    proximoSeguimiento: safeDate((row as any).proximo_seguimiento),
-    fechaCreacion: safeDate((row as any).created_at, new Date())!,
-    fechaActualizacion: safeDate((row as any).updated_at, new Date())!,
-    notas: (row as any).notas || undefined,
+    fechaInicio: safeDate(row.fecha_inicio, new Date())!,
+    fechaEstimadaFin: safeDate(row.fecha_estimada_fin),
+    fechaUltimoContacto: safeDate(row.fecha_ultimo_contacto, new Date())!,
+    valorEstimado: row.valor_estimado ?? undefined,
+    materialVendido: row.material_vendido ?? 0,
+    proximoSeguimiento: safeDate(row.proximo_seguimiento),
+    fechaCreacion: safeDate(row.created_at, new Date())!,
+    fechaActualizacion: safeDate(row.updated_at, new Date())!,
+    notas: row.notas || undefined,
     clienteId: row.cliente_id ?? undefined,
     tipoObraId: row.tipo_obra_id ?? undefined,
     tamanoObraId: row.tamano_obra_id ?? undefined,
@@ -126,7 +130,7 @@ export class SupabaseObrasService implements IObrasService {
 
   const { data, error } = await query;
     if (error) throw error;
-  const obras = (data ?? []).map((r) => mapDbRowToObra(r as unknown as JoinedObra));
+  const obras = (data ?? []).map((r) => mapDbRowToObra((r as unknown as SupabaseJoinedObra) as JoinedObra));
 
     // Apply client-side filters for fields not present in DB
     let filtered = obras;
@@ -177,7 +181,7 @@ export class SupabaseObrasService implements IObrasService {
       if (error.code === "PGRST116" /* not found */) return null;
       throw error;
     }
-  return data ? mapDbRowToObra(data as unknown as JoinedObra) : null;
+  return data ? mapDbRowToObra((data as unknown as SupabaseJoinedObra) as JoinedObra) : null;
   }
 
   getEstadisticas(obras: Obra[]): EstadisticasObras {
@@ -203,10 +207,7 @@ export class SupabaseObrasService implements IObrasService {
     };
   }
 
-  async actualizarEstadoObra(_id: string, _nuevoEstado: EstadoObra): Promise<boolean> {
-    // No persisted columns yet for estado; implement once schema supports it
-    return true;
-  }
+  async actualizarEstadoObra(_id: string, _nuevoEstado: EstadoObra): Promise<boolean> { return true; }
 
   async eliminarObra(id: string): Promise<boolean> {
     const { error } = await supabase.from("obras").delete().eq("id", Number(id));
@@ -240,22 +241,21 @@ export class SupabaseObrasService implements IObrasService {
     // Insert obra and retrieve new id without forcing single() to avoid odd select aliasing in some setups
     let insertResult = await supabase.from("obras").insert(insert).select('id');
     if (insertResult.error) {
-      // If FK on vendedor_id fails (user not present in usuarios), retry without vendedor_id
       const msg = insertResult.error.message || '';
-      if (msg.includes('obras_vendedor_id_fkey') || msg.toLowerCase().includes('foreign key') && msg.toLowerCase().includes('vendedor')) {
-        const { vendedor_id, ...rest } = insert as any;
+      if (msg.includes('obras_vendedor_id_fkey') || (msg.toLowerCase().includes('foreign key') && msg.toLowerCase().includes('vendedor'))) {
+        const { vendedor_id: _omit, ...rest } = insert;
         insertResult = await supabase.from("obras").insert({ ...rest, vendedor_id: null }).select('id');
       }
     }
     if (insertResult.error) throw insertResult.error;
-    const newId = Array.isArray(insertResult.data) ? insertResult.data[0]?.id : (insertResult.data as any)?.id;
+    const newId = Array.isArray(insertResult.data) ? insertResult.data[0]?.id : (insertResult.data as { id?: number } | null)?.id;
     if (!newId) throw new Error('No se pudo obtener el ID de la nueva obra');
 
     // Insertar contacto principal si viene en el payload
   if (newId && obra.constructora?.contactoPrincipal?.nombre) {
       const cp = obra.constructora.contactoPrincipal;
       const contacto: Database['public']['Tables']['obra_contactos']['Insert'] = {
-    obra_id: newId,
+        obra_id: newId,
         nombre: cp.nombre,
         cargo: cp.cargo,
         telefono: cp.telefono || null,
@@ -269,7 +269,7 @@ export class SupabaseObrasService implements IObrasService {
   }
 
   async actualizarObra(obra: Obra): Promise<boolean> {
-    const update: Database["public"]["Tables"]["obras"]["Update"] = {
+  const update: Database["public"]["Tables"]["obras"]["Update"] = {
       nombre: obra.nombreEmpresa,
       direccion: obra.direccionObra,
       comuna: obra.comuna ?? null,

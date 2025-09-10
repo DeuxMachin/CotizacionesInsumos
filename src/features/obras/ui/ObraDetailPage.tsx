@@ -3,14 +3,13 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import {
-  FiMapPin,
+
   FiPhone,
   FiMail,
   FiUser,
   FiClock,
   FiTool,
   FiDollarSign,
-  FiTrendingUp,
   FiActivity,
   FiCheckCircle,
   FiAlertCircle,
@@ -24,11 +23,6 @@ import {
   FiBox,
   FiChevronLeft,
   FiChevronRight,
-  FiHelpCircle,
-  FiCalendar,
-  FiEye,
-  FiPercent,
-  FiMoreHorizontal,
   FiArrowLeft
 } from 'react-icons/fi';
 import { Obra, EtapaObra, EstadoObra, ContactoObra } from '../types/obras';

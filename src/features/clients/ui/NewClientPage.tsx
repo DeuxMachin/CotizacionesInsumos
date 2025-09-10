@@ -5,14 +5,14 @@ import { useRouter } from 'next/navigation';
 import { 
   FiArrowLeft, 
   FiSave, 
-  FiSend, 
+
   FiUser, 
-  FiMapPin, 
+
   FiPhone, 
-  FiMail,
+
   FiBriefcase,
   FiDollarSign,
-  FiInfo,
+
   FiAlertCircle,
   FiCheck,
   FiHelpCircle

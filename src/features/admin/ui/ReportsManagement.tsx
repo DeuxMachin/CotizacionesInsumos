@@ -79,7 +79,6 @@ const formats = [
 export function ReportsManagement() {
   const { data: adminStats, loading: loadingStats } = useAdminStats();
   const [reports] = useState<Report[]>(availableReports);
-  const [selectedReport, setSelectedReport] = useState<string>('');
   const [dateRange, setDateRange] = useState('last-30-days');
   const [format, setFormat] = useState('pdf');
   const [isGenerating, setIsGenerating] = useState<string | null>(null);

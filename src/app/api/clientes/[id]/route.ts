@@ -3,15 +3,22 @@ import { ClientesService } from '@/services/clientesService'
 
 export const dynamic = 'force-dynamic' // Make this route dynamic
 
+// Helper para extraer y validar ID desde params asíncronos
+async function extractId(paramsPromise: Promise<{ id: string }>): Promise<number | null> {
+  const { id } = await paramsPromise;
+  const parsed = parseInt(id, 10);
+  return Number.isNaN(parsed) ? null : parsed;
+}
+
 // GET /api/clientes/[id] - Obtener cliente por ID
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ): Promise<Response> {
   try {
-    const id = parseInt(params.id)
+    const id = await extractId(context.params);
     
-    if (isNaN(id)) {
+    if (id === null) {
       return NextResponse.json({
         success: false,
         error: 'ID inválido'
@@ -36,13 +43,13 @@ export async function GET(
 // PUT /api/clientes/[id] - Actualizar cliente
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ): Promise<Response> {
   try {
-    const id = parseInt(params.id)
+    const id = await extractId(context.params);
     const body = await request.json()
 
-    if (isNaN(id)) {
+    if (id === null) {
       return NextResponse.json({
         success: false,
         error: 'ID inválido'
@@ -60,7 +67,7 @@ export async function PUT(
       }
     }
 
-    const cliente = await ClientesService.update(id, body)
+  const cliente = await ClientesService.update(id, body)
 
     return NextResponse.json({
       success: true,
@@ -78,12 +85,12 @@ export async function PUT(
 // DELETE /api/clientes/[id] - Eliminar cliente (cambiar estado)
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ): Promise<Response> {
   try {
-    const id = parseInt(params.id)
+    const id = await extractId(context.params);
 
-    if (isNaN(id)) {
+    if (id === null) {
       return NextResponse.json({
         success: false,
         error: 'ID inválido'

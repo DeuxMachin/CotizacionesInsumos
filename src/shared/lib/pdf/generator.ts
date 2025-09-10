@@ -7,7 +7,7 @@ import puppeteer from 'puppeteer';
 import fs from 'fs';
 import path from 'path';
 import type { Quote } from '@/core/domain/quote/Quote';
-import { QUOTE_COORDINATES, A4_WIDTH_PX, A4_HEIGHT_PX, createAbsoluteStyle, FONTS } from './coordinates';
+import {  A4_WIDTH_PX, A4_HEIGHT_PX, FONTS } from './coordinates';
 import { formatCLP, formatDate, formatRUT, formatMultilineText } from './formatters';
 
 export interface PDFGenerationOptions {
@@ -61,12 +61,11 @@ const COMPANY_STATIC_INFO = {
 /**
  * Genera el HTML para la cotización. Si condensed=true usa la plantilla de una sola página.
  */
-export function generateQuoteHTML(quote: Quote, backgroundImagePath?: string, condensed: boolean = true): string {
+export function generateQuoteHTML(quote: Quote, _backgroundImagePath?: string  ): string {
+  // Legacy absolute template removed; always use condensed template for now.
   const quoteNumber = quote.numero || `COT-${Date.now()}`;
   const quoteDate = quote.fechaCreacion ? new Date(quote.fechaCreacion) : new Date();
-  return condensed
-    ? generateCondensedHTML(quote, quoteNumber, quoteDate)
-    : generateLegacyAbsoluteHTML(quote, quoteNumber, quoteDate, backgroundImagePath || '');
+  return generateCondensedHTML(quote, quoteNumber, quoteDate);
 }
 
 /**
@@ -75,9 +74,6 @@ export function generateQuoteHTML(quote: Quote, backgroundImagePath?: string, co
 function generateCondensedHTML(quote: Quote, quoteNumber: string, quoteDate: Date): string {
   const { cliente, items, condicionesComerciales, notas, despacho } = quote;
 
-  // Área disponible aprox para tabla (restando header + cliente + totales + condiciones)
-  const PAGE_HEIGHT = A4_HEIGHT_PX; // total px a 300dpi (≈ 2480px) – pero trabajaremos en escala CSS 96dpi equivalente para HTML (CONVERSIÓN)
-  // En condensed simplificamos usando 96dpi: transform scale para asegurar 1:1 en PDF.
 
   // Ajuste dinámico de tamaño de fuente y altura de fila según número de items
   const baseFont = 11; // px
@@ -236,194 +232,10 @@ function generateCondensedHTML(quote: Quote, quoteNumber: string, quoteDate: Dat
     </div></body></html>`;
 }
 
-/** Plantilla anterior absoluta (legacy) por si se requiere fondo rasterizado. */
-function generateLegacyAbsoluteHTML(quote: Quote, quoteNumber: string, quoteDate: Date, backgroundImagePath: string){
-  const { cliente, items, despacho, condicionesComerciales, notas } = quote;
-  return `<!DOCTYPE html><html><head><meta charset='utf-8'><style>body{margin:0;font-family:${FONTS.primary.family};font-size:${FONTS.primary.size.normal};background:url('${backgroundImagePath}') no-repeat 0 0/ ${A4_WIDTH_PX}px ${A4_HEIGHT_PX}px;width:${A4_WIDTH_PX}px;height:${A4_HEIGHT_PX}px;position:relative;} .absolute-element{position:absolute;font-size:10px;}</style></head><body>${generateQuoteContent(quote, quoteNumber, quoteDate)}</body></html>`;
-}
 
-/**
- * Genera el contenido principal de la cotización
- */
-function generateQuoteContent(quote: Quote, quoteNumber: string, quoteDate: Date): string {
-  const { cliente, items, despacho, condicionesComerciales, notas } = quote;
-  
-  return `
-    <!-- Número de cotización -->
-    <div class="absolute-element font-bold text-large" style="${createStyleString(QUOTE_COORDINATES.quoteNumber)}">
-      Cotización N° ${quoteNumber}
-    </div>
-    
-    <!-- Fecha -->
-    <div class="absolute-element text-right" style="${createStyleString(QUOTE_COORDINATES.quoteDate)}">
-      Fecha: ${formatDate(quoteDate)}
-      ${quote.fechaExpiracion ? `<br>Válida hasta: ${formatDate(quote.fechaExpiracion)}` : ''}
-    </div>
-    
-    <!-- Información del cliente -->
-    <div class="absolute-element" style="${createStyleString(QUOTE_COORDINATES.clientInfo)}">
-      <div class="font-bold text-large">${cliente.razonSocial}</div>
-      ${cliente.nombreFantasia ? `<div>${cliente.nombreFantasia}</div>` : ''}
-      <div>RUT: ${formatRUT(cliente.rut)}</div>
-      ${cliente.giro ? `<div>Giro: ${cliente.giro}</div>` : ''}
-      ${cliente.direccion ? `<div>Dirección: ${cliente.direccion}</div>` : ''}
-      ${cliente.comuna || cliente.ciudad ? `<div>${[cliente.comuna, cliente.ciudad].filter(Boolean).join(', ')}</div>` : ''}
-      ${cliente.telefono ? `<div>Teléfono: ${cliente.telefono}</div>` : ''}
-      ${cliente.email ? `<div>Email: ${cliente.email}</div>` : ''}
-    </div>
-    
-    <!-- Tabla de productos -->
-    ${generateProductsTable(items)}
-    
-    <!-- Totales -->
-    ${generateTotalsSection(quote)}
-    
-    <!-- Condiciones comerciales -->
-    ${generateTermsSection(condicionesComerciales)}
-    
-    <!-- Notas -->
-    ${notas ? generateNotesSection(notas) : ''}
-  `;
-}
 
-/**
- * Genera la tabla de productos
- */
-function generateProductsTable(items: Quote['items']): string {
-  const { x, y, width, headerHeight, rowHeight, maxRows } = QUOTE_COORDINATES.productsTable;
-  
-  // Calcular si necesitamos paginación
-  const itemsToShow = items.slice(0, maxRows);
-  const hasMoreItems = items.length > maxRows;
-  
-  let tableHTML = `
-    <div class="absolute-element" style="${createStyleString({ x, y, width, height: headerHeight + (itemsToShow.length * rowHeight) + (hasMoreItems ? rowHeight : 0) })}">
-      <table>
-  `;
-  
-  // Encabezados (opcional si ya están en el fondo)
-  // tableHTML += `
-  //   <thead>
-  //     <tr style="height: ${headerHeight}px;">
-  //       <th style="width: 40%;">Descripción</th>
-  //       <th style="width: 15%;">Cantidad</th>
-  //       <th style="width: 20%;">Precio Unit.</th>
-  //       <th style="width: 10%;">Desc.</th>
-  //       <th style="width: 15%;">Subtotal</th>
-  //     </tr>
-  //   </thead>
-  // `;
-  
-  // Filas de productos
-  tableHTML += '<tbody>';
-  
-  itemsToShow.forEach((item, index) => {
-    const precio = item.descuento ? 
-      item.precioUnitario * (1 - item.descuento / 100) : 
-      item.precioUnitario;
-    
-    tableHTML += `
-      <tr style="height: ${rowHeight}px;">
-        <td style="width: 40%;">${item.descripcion}</td>
-        <td style="width: 15%; text-align: center;">${item.cantidad} ${item.unidad}</td>
-        <td style="width: 20%; text-align: right;">${formatCLP(item.precioUnitario)}</td>
-        <td style="width: 10%; text-align: center;">${item.descuento ? `${item.descuento}%` : '-'}</td>
-        <td style="width: 15%; text-align: right;">${formatCLP(item.subtotal)}</td>
-      </tr>
-    `;
-  });
-  
-  // Si hay más items, mostrar indicador
-  if (hasMoreItems) {
-    tableHTML += `
-      <tr style="height: ${rowHeight}px;">
-        <td colspan="5" style="text-align: center; font-style: italic;">
-          ... y ${items.length - maxRows} productos más (ver páginas siguientes)
-        </td>
-      </tr>
-    `;
-  }
-  
-  tableHTML += '</tbody></table></div>';
-  
-  return tableHTML;
-}
 
-/**
- * Genera la sección de totales
- */
-function generateTotalsSection(quote: Quote): string {
-  const style = createStyleString(QUOTE_COORDINATES.totals);
-  
-  return `
-    <div class="absolute-element" style="${style}">
-      <div class="text-right">
-        <div>Subtotal: ${formatCLP(quote.subtotal)}</div>
-        ${quote.descuentoTotal > 0 ? `<div>Descuento: -${formatCLP(quote.descuentoTotal)}</div>` : ''}
-        ${quote.despacho?.costoDespacho ? `<div>Despacho: ${formatCLP(quote.despacho.costoDespacho)}</div>` : ''}
-        <div>IVA (19%): ${formatCLP(quote.iva)}</div>
-        <div class="font-bold text-large">TOTAL: ${formatCLP(quote.total)}</div>
-      </div>
-    </div>
-  `;
-}
 
-/**
- * Genera la sección de condiciones comerciales
- */
-function generateTermsSection(terms: Quote['condicionesComerciales']): string {
-  if (!terms || Object.keys(terms).length === 0) return '';
-  
-  const style = createStyleString(QUOTE_COORDINATES.terms);
-  
-  let content = '<div class="font-bold">Condiciones Comerciales:</div>';
-  
-  if (terms.validezOferta) {
-    content += `<div>• Válida por ${terms.validezOferta} días</div>`;
-  }
-  
-  if (terms.formaPago) {
-    content += `<div>• Forma de pago: ${terms.formaPago}</div>`;
-  }
-  
-  if (terms.tiempoEntrega) {
-    content += `<div>• Tiempo de entrega: ${terms.tiempoEntrega}</div>`;
-  }
-  
-  if (terms.garantia) {
-    content += `<div>• Garantía: ${terms.garantia}</div>`;
-  }
-  
-  return `<div class="absolute-element text-small" style="${style}">${content}</div>`;
-}
-
-/**
- * Genera la sección de notas
- */
-function generateNotesSection(notas: string): string {
-  const style = createStyleString(QUOTE_COORDINATES.notes);
-  const lines = formatMultilineText(notas, 100);
-  const content = lines.slice(0, 5).join('<br>'); // Máximo 5 líneas
-  
-  return `
-    <div class="absolute-element text-small" style="${style}">
-      <div class="font-bold">Notas:</div>
-      <div>${content}</div>
-    </div>
-  `;
-}
-
-/**
- * Convierte un objeto de estilo a string CSS
- */
-function createStyleString(coords: { x: number; y: number; width?: number; height?: number }): string {
-  const { x, y, width, height } = coords;
-  const style = createAbsoluteStyle(x, y, width, height);
-  
-  return Object.entries(style)
-    .map(([key, value]) => `${key.replace(/[A-Z]/g, match => `-${match.toLowerCase()}`)}: ${value}`)
-    .join('; ');
-}
 
 /**
  * Genera PDF usando Puppeteer
@@ -433,7 +245,7 @@ export async function generatePDF(
   backgroundImagePath?: string,
   options: PDFGenerationOptions = DEFAULT_PDF_OPTIONS
 ): Promise<Buffer> {
-  const html = generateQuoteHTML(quote, backgroundImagePath, options.condensed !== false);
+  const html = generateQuoteHTML(quote, backgroundImagePath);
   
   let browser;
   try {
@@ -452,8 +264,8 @@ export async function generatePDF(
           executablePath,
           headless: true,
         });
-      } catch (chromiumError) {
-        console.warn('Failed to use @sparticuz/chromium, falling back to local puppeteer');
+      } catch (e) {
+        console.warn('Failed to use @sparticuz/chromium, falling back to local puppeteer', e);
         browser = await puppeteer.launch({
           headless: true,
           args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-web-security']
@@ -470,7 +282,7 @@ export async function generatePDF(
     const page = await browser.newPage();
     
     // Configurar viewport: si condensed usamos dimensiones CSS aproximadas (96dpi) para A4
-    if (options.condensed !== false) {
+  if (options.condensed !== false) { // still honor viewport sizing path; condensed always true currently
       const MM_TO_PX = 96/25.4;
       await page.setViewport({
         width: Math.round(210 * MM_TO_PX),
@@ -498,7 +310,7 @@ export async function generatePDF(
       printBackground: options.printBackground,
       displayHeaderFooter: options.displayHeaderFooter,
       preferCSSPageSize: true,
-      ...(options.condensed === false ? { width: `${A4_WIDTH_PX}px`, height: `${A4_HEIGHT_PX}px` } : {})
+  ...(options.condensed === false ? { width: `${A4_WIDTH_PX}px`, height: `${A4_HEIGHT_PX}px` } : {})
     });
     
     return Buffer.from(pdfBuffer);
