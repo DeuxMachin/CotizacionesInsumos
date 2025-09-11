@@ -2,6 +2,7 @@
 
 import { create } from "zustand";
 import { supabase } from '@/lib/supabase';
+import type { Database } from '@/lib/supabase';
 import { useAuth } from '@/features/auth/model/useAuth';
 import type { PosibleTarget, CreateTargetData, UpdateTargetData } from "./types";
 
@@ -35,9 +36,13 @@ export const useTargets = create<TargetsStore>((set, get) => ({
       if (targetsError) throw targetsError;
 
       // 2. IDs para joins secundarios
-      const targetIds = targetsData?.map(t => t.id) || [];
-      let contactos: any[] = [];
-      let eventos: any[] = [];
+  const targetIds = targetsData?.map(t => t.id) || [];
+  type ContactoRow = Database['public']['Tables']['target_contactos']['Row'];
+  type EventoRow = Database['public']['Tables']['target_eventos']['Row'];
+  type TipoRow = Database['public']['Tables']['target_tipos']['Row'];
+  type UsuarioRow = Database['public']['Tables']['usuarios']['Row'];
+  let contactos: ContactoRow[] = [];
+  let eventos: EventoRow[] = [];
 
       if (targetIds.length > 0) {
         const [{ data: contactosData }, { data: eventosData }] = await Promise.all([
@@ -50,7 +55,7 @@ export const useTargets = create<TargetsStore>((set, get) => ({
 
       // 3. Tipos
       const tipoIds = targetsData?.filter(t => t.tipo_id).map(t => t.tipo_id) || [];
-      let tipos: any[] = [];
+  let tipos: TipoRow[] = [];
       if (tipoIds.length) {
         const { data: tiposData } = await supabase.from('target_tipos').select('*').in('id', tipoIds);
         tipos = tiposData || [];
@@ -58,7 +63,7 @@ export const useTargets = create<TargetsStore>((set, get) => ({
 
       // 4. Usuarios asignados (gestionados)
       const asignadoIds = targetsData?.filter(t => t.asignado_a).map(t => t.asignado_a) || [];
-      let usuarios: any[] = [];
+  let usuarios: Pick<UsuarioRow, 'id' | 'nombre' | 'apellido'>[] = [];
       if (asignadoIds.length) {
         const { data: usuariosData } = await supabase.from('usuarios').select('id, nombre, apellido').in('id', asignadoIds);
         usuarios = usuariosData || [];
@@ -106,8 +111,9 @@ export const useTargets = create<TargetsStore>((set, get) => ({
       });
 
       set({ targets: mapped, loading: false });
-    } catch (e: any) {
-      set({ error: e.message || 'Error al cargar targets', loading: false });
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : 'Error al cargar targets';
+      set({ error: msg, loading: false });
     }
   },
 
@@ -130,17 +136,17 @@ export const useTargets = create<TargetsStore>((set, get) => ({
       }
 
       // Insert target
-      const insertPayload: any = {
+      const insertPayload: Database['public']['Tables']['targets']['Insert'] = {
         titulo: data.titulo,
-        descripcion: data.descripcion,
+        descripcion: data.descripcion || null,
         estado: 'pendiente',
         prioridad: data.prioridad,
-        direccion: data.direccion,
-        ciudad: data.ciudad,
-        region: data.region,
-        comuna: data.comuna,
-        lat: data.lat,
-        lng: data.lng,
+        direccion: data.direccion || null,
+        ciudad: data.ciudad || null,
+        region: data.region || null,
+        comuna: data.comuna || null,
+        lat: data.lat ?? null,
+        lng: data.lng ?? null,
         creado_por: userId,
         tipo_id: tipoId || null
       };
@@ -189,7 +195,7 @@ export const useTargets = create<TargetsStore>((set, get) => ({
           }));
           // No abortamos todo si falla contacto; solo registramos error
         } else {
-          insertedContacto = contactoData as any;
+          insertedContacto = contactoData;
         }
       }
 
@@ -252,18 +258,18 @@ export const useTargets = create<TargetsStore>((set, get) => ({
 
       set({ targets: [nuevo, ...get().targets], loading: false });
       return nuevo;
-    } catch (e: any) {
-  const msg = e instanceof Error ? e.message : typeof e === 'string' ? e : 'Error desconocido creando target';
-  console.error('[createTarget] failure', e);
-  set({ error: msg || 'Error al crear target', loading: false });
-  throw new Error(msg);
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : typeof e === 'string' ? e : 'Error desconocido creando target';
+      console.error('[createTarget] failure', e);
+      set({ error: msg || 'Error al crear target', loading: false });
+      throw new Error(msg);
     }
   },
 
   updateTarget: async (id: number, data: UpdateTargetData) => {
     set({ loading: true, error: null });
     try {
-      const payload: any = {};
+  const payload: Database['public']['Tables']['targets']['Update'] = {};
       if (data.titulo) payload.titulo = data.titulo;
       if (data.descripcion) payload.descripcion = data.descripcion;
       if (data.direccion) payload.direccion = data.direccion;
@@ -297,7 +303,7 @@ export const useTargets = create<TargetsStore>((set, get) => ({
         const contactoEmail = data.contactoEmail?.trim() || null;
         const contactoEmpresa = data.contactoEmpresa?.trim() || null;
         
-        const contactoPayload: any = {
+  const contactoPayload: Database['public']['Tables']['target_contactos']['Insert'] | Database['public']['Tables']['target_contactos']['Update'] = {
           nombre: contactoNombre,
           telefono: contactoTelefono,
           email: contactoEmail,
@@ -356,9 +362,10 @@ export const useTargets = create<TargetsStore>((set, get) => ({
 
       // refrescar local
       await get().fetchTargets();
-    } catch (e: any) {
-      set({ error: e.message || 'Error al actualizar target', loading: false });
-      throw e;
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : 'Error al actualizar target';
+      set({ error: msg, loading: false });
+      throw e as Error;
     } finally {
       set({ loading: false });
     }
@@ -370,9 +377,10 @@ export const useTargets = create<TargetsStore>((set, get) => ({
       const { error: delError } = await supabase.from('targets').delete().eq('id', id);
       if (delError) throw delError;
       set({ targets: get().targets.filter(t => t.id !== id), loading: false });
-    } catch (e: any) {
-      set({ error: e.message || 'Error al eliminar target', loading: false });
-      throw e;
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : 'Error al eliminar target';
+      set({ error: msg, loading: false });
+      throw e as Error;
     }
   },
 
@@ -403,9 +411,10 @@ export const useTargets = create<TargetsStore>((set, get) => ({
       }
 
       await get().fetchTargets();
-    } catch (error: any) {
-      set({ error: error.message || 'Error al tomar target', loading: false });
-      throw error;
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : 'Error al tomar target';
+      set({ error: msg, loading: false });
+      throw error as Error;
     } finally {
       set({ loading: false });
     }
@@ -420,9 +429,10 @@ export const useTargets = create<TargetsStore>((set, get) => ({
         .eq('id', id);
       if (upError) throw upError;
       await get().fetchTargets();
-    } catch (error: any) {
-      set({ error: error.message || 'Error al liberar target', loading: false });
-      throw error;
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : 'Error al liberar target';
+      set({ error: msg, loading: false });
+      throw error as Error;
     } finally {
       set({ loading: false });
     }

@@ -1,5 +1,4 @@
-import { supabase } from '@/lib/supabase'
-import type { User, Session } from '@supabase/supabase-js'
+import type {  Session } from '@supabase/supabase-js'
 
 export interface AuthUser {
   id: string
@@ -101,9 +100,5 @@ export class AuthService {
     }
   }
 
-  // Actualizar último login
-  static async updateLastLogin(userId: string) {
-    // Esta funcionalidad ya está en la API de login
-    return Promise.resolve()
-  }
+
 }

@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
+import type { Database } from '@/lib/supabase';
 
 export interface Product {
   id: number;
@@ -45,7 +46,8 @@ export function useProducts(): UseProductsReturn {
       if (catErr) throw catErr;
       if (prodErr) throw prodErr;
       setCategories((catData || []).map(c => ({ id: c.id, nombre: c.nombre, descripcion: c.descripcion })));
-      const mapped: Product[] = (prodData || []).map((p: any) => ({
+      type ProductoWithCategorias = Database['public']['Tables']['productos']['Row'] & { producto_categorias?: { categoria_id: number; categorias_productos?: { id: number; nombre: string; descripcion: string | null } | null }[] };
+      const mapped: Product[] = (prodData as unknown as ProductoWithCategorias[] | null || []).map((p) => ({
         id: p.id,
         sku: p.sku,
         nombre: p.nombre,
@@ -53,10 +55,10 @@ export function useProducts(): UseProductsReturn {
         unidad: p.unidad,
         precio_venta_neto: p.precio_venta_neto,
         activo: p.activo,
-        categorias: (p.producto_categorias || []).map((pc: any) => ({ id: pc.categoria_id, nombre: pc.categorias_productos?.nombre }))
+        categorias: (p.producto_categorias || []).map((pc) => ({ id: pc.categoria_id, nombre: pc.categorias_productos?.nombre || '' }))
       }));
       setProducts(mapped);
-    } catch (e: any) {
+    } catch (e: unknown) {
       console.error('Error loading products', e);
       setError('Error al cargar productos');
     } finally {

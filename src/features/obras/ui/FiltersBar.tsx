@@ -15,7 +15,7 @@ export function FiltersBar({
   isOpen, 
   onClose, 
   vendedores,
-  onFiltroChange,
+  
   onClearFilters 
 }: FiltersBarProps) {
   const [tempFiltros, setTempFiltros] = useState<FiltroObras>(filtros);

@@ -18,7 +18,7 @@ export function ClientAutocomplete({
   onClientSelect, 
   onValueChange, 
   placeholder, 
-  field: _field // se mantiene en la interfaz por compatibilidad, no usado directamente
+
 }: ClientAutocompleteProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [searchResults, setSearchResults] = useState<Client[]>([]);

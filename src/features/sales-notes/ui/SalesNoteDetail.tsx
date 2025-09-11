@@ -1,8 +1,8 @@
 "use client";
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { FiArrowLeft, FiPackage, FiUser, FiMapPin, FiPhone, FiMail, FiPlus, FiSave, FiCheck, FiPercent, FiTrash2 } from 'react-icons/fi';
-import { NotasVentaService, SalesNoteRecord } from '@/services/notasVentaService';
+import { FiArrowLeft, FiPackage, FiUser, FiMapPin,  FiPlus, FiSave, FiCheck, FiPercent, FiTrash2 } from 'react-icons/fi';
+import { NotasVentaService, SalesNoteRecord, SalesNoteItemRow } from '@/services/notasVentaService';
 
 interface SalesNoteDetailProps {
   id: number;
@@ -19,7 +19,7 @@ interface NewItemDraft {
 export const SalesNoteDetail: React.FC<SalesNoteDetailProps> = ({ id }) => {
   const router = useRouter();
   const [nota, setNota] = useState<SalesNoteRecord | null>(null);
-  const [items, setItems] = useState<any[]>([]);
+  const [items, setItems] = useState<SalesNoteItemRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -35,14 +35,14 @@ export const SalesNoteDetail: React.FC<SalesNoteDetailProps> = ({ id }) => {
         const data = await NotasVentaService.getById(id);
         const its = await NotasVentaService.getItems(id);
         setNota(data); setItems(its);
-      } catch (e:any) { setError(e.message || 'Error cargando nota de venta'); }
+      } catch (e: unknown) { setError(e instanceof Error ? e.message : 'Error cargando nota de venta'); }
       finally { setLoading(false); }
     })();
   }, [id]);
 
   const formatMoney = (n: number) => new Intl.NumberFormat('es-CL',{style:'currency',currency:'CLP',maximumFractionDigits:0}).format(n||0);
 
-  const recalcTotals = (base: SalesNoteRecord, lineItems: any[]) => {
+  const recalcTotals = (base: SalesNoteRecord, lineItems: SalesNoteItemRow[]) => {
     const subtotal = lineItems.reduce((s,it)=> s + (it.cantidad * it.precio_unitario_neto),0);
     const descLineas = lineItems.reduce((s,it)=> s + (it.descuento_monto || 0),0);
     const descGlobal = base.descuento_global_monto || 0;
@@ -77,7 +77,7 @@ export const SalesNoteDetail: React.FC<SalesNoteDetailProps> = ({ id }) => {
       const updatedNota = await NotasVentaService.update(nota.id, { ...patch });
       setNota(updatedNota);
       setNewItem({ descripcion:'', unidad:'Unidad', cantidad:1, precio_unitario_neto:0, descuento_pct:0 });
-    } catch(e:any){ setError(e.message || 'Error agregando ítem'); }
+  } catch(e: unknown){ setError(e instanceof Error ? e.message : 'Error agregando ítem'); }
     finally { setAdding(false); }
   };
 
@@ -87,15 +87,15 @@ export const SalesNoteDetail: React.FC<SalesNoteDetailProps> = ({ id }) => {
       const patch = recalcTotals(nota, items);
       const saved = await NotasVentaService.update(nota.id, { ...patch, forma_pago_final: nota.forma_pago_final, descuento_global_monto: nota.descuento_global_monto });
       setNota(saved);
-    } catch(e:any){ setError(e.message || 'Error guardando'); }
+    } catch(e: unknown){ setError(e instanceof Error ? e.message : 'Error guardando'); }
     finally { setSaving(false); }
   };
 
   const handleConfirm = async () => {
     if (!nota) return; if(!confirm('¿Confirmar Nota de Venta?')) return;
     setConfirming(true); setError(null);
-    try { const updated = await NotasVentaService.confirm(nota.id); setNota(updated); }
-    catch(e:any){ setError(e.message || 'Error confirmando'); }
+  try { const updated = await NotasVentaService.confirm(nota.id); setNota(updated); }
+  catch(e: unknown){ setError(e instanceof Error ? e.message : 'Error confirmando'); }
     finally { setConfirming(false); }
   };
 
@@ -108,7 +108,7 @@ export const SalesNoteDetail: React.FC<SalesNoteDetailProps> = ({ id }) => {
       // Opcional: si quieres también eliminar la cotización origen (si existe y la regla de negocio lo exige)
       // Redirigir a listado de cotizaciones o futura lista de notas de venta
       router.push('/dashboard/cotizaciones');
-    } catch(e:any){ setError(e.message || 'Error eliminando nota de venta'); }
+  } catch(e: unknown){ setError(e instanceof Error ? e.message : 'Error eliminando nota de venta'); }
     finally { setDeleting(false); }
   };
 

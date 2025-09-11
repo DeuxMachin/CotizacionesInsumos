@@ -59,7 +59,7 @@ const mockProductsData: ProductData[] = [
   }
 ];
 
-export function TopProductsChart({ period }: TopProductsChartProps) {
+export function TopProductsChart({  }: TopProductsChartProps) {
   return (
     <div className="space-y-4">
       {mockProductsData.map((product, index) => (

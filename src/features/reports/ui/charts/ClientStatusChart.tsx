@@ -43,14 +43,14 @@ const mockClientStatusData: ClientStatusData[] = [
   }
 ];
 
-export function ClientStatusChart({ period }: ClientStatusChartProps) {
+export function ClientStatusChart({  }: ClientStatusChartProps) {
   const totalClients = mockClientStatusData.reduce((sum, item) => sum + item.count, 0);
 
   return (
     <div className="space-y-6">
       {/* Estados con barras horizontales mejoradas */}
       <div className="space-y-4">
-        {mockClientStatusData.map((status, index) => (
+        {mockClientStatusData.map((status) => (
           <div 
             key={status.status}
             className="group p-4 rounded-lg transition-all hover:scale-[1.01]"

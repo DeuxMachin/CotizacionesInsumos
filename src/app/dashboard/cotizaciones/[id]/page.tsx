@@ -22,7 +22,8 @@ import {
 } from 'react-icons/fi';
 import { useParams, useRouter } from 'next/navigation';
 import { useQuotes } from '@/features/quotes/model/useQuotes';
-import { NotasVentaService, SalesNoteRecord } from '@/services/notasVentaService';
+import { NotasVentaService, SalesNoteRecord, SalesNoteItemRow } from '@/services/notasVentaService';
+import type { QuoteItem } from '@/core/domain/quote/Quote';
 import { FiCheckCircle, FiShoppingCart } from 'react-icons/fi';
 import { ProductsForm } from '@/features/quotes/ui/components/ProductsForm';
 
@@ -36,16 +37,16 @@ export default function QuoteDetailPage() {
   
   // Estados principales
   const [notaVenta, setNotaVenta] = React.useState<SalesNoteRecord | null>(null);
-  const [nvItems, setNvItems] = React.useState<any[]>([]);
-  const [nvLoading, setNvLoading] = React.useState(false);
+  const [nvItems, setNvItems] = React.useState<SalesNoteItemRow[]>([]);
+  const [, setNvLoading] = React.useState(false);
   const [nvAddDraft, setNvAddDraft] = React.useState({ descripcion:'', unidad:'Unidad', cantidad:1, precio:0, descuento:0 });
   const [nvSaving, setNvSaving] = React.useState(false);
   const [nvError, setNvError] = React.useState<string | null>(null);
   
   // Estados para modal de selección de productos previo a conversión
   const [showProductsModal, setShowProductsModal] = React.useState(false);
-  const [selectedItems, setSelectedItems] = React.useState<any[]>([]);
-  const [isSelectingProducts, setIsSelectingProducts] = React.useState(false);
+  const [selectedItems, setSelectedItems] = React.useState<QuoteItem[]>([]);
+  const [, setIsSelectingProducts] = React.useState(false);
 
   // Estados para conversión a nota de venta
   const [creatingSale, setCreatingSale] = React.useState(false);
@@ -76,7 +77,7 @@ export default function QuoteDetailPage() {
         const its = await NotasVentaService.getItems(nv.id);
         setNvItems(its);
       }
-    } catch (e:any) { setNvError(e.message || 'Error cargando nota de venta'); }
+  } catch (e: unknown) { setNvError(e instanceof Error ? e.message : 'Error cargando nota de venta'); }
     finally { setNvLoading(false); }
   }, [quote]);
 
@@ -113,10 +114,11 @@ export default function QuoteDetailPage() {
       setShowProductsModal(false);
       await loadNotaVenta(); // Recargar datos de la nota
       
-    } catch (e: any) {
+    } catch (e: unknown) {
       console.error('Error creando nota de venta', e);
-      setSaleError(e.message || 'Error desconocido');
-      alert('Error al crear nota de venta: ' + (e.message || ''));
+      const msg = e instanceof Error ? e.message : 'Error desconocido';
+      setSaleError(msg);
+      alert('Error al crear nota de venta: ' + msg);
     } finally {
       setCreatingSale(false);
       setIsSelectingProducts(false);
@@ -199,7 +201,7 @@ export default function QuoteDetailPage() {
   
   // (loadNotaVenta y useEffect ya movidos arriba)
 
-  const recalcNotaVentaTotals = (base: SalesNoteRecord, items: any[]) => {
+  const recalcNotaVentaTotals = (base: SalesNoteRecord, items: SalesNoteItemRow[]) => {
     const subtotal = items.reduce((s,it)=> s + (it.cantidad * it.precio_unitario_neto),0);
     const descLineas = items.reduce((s,it)=> s + (it.descuento_monto || 0),0);
     const descGlobal = base.descuento_global_monto || 0;
@@ -234,7 +236,7 @@ export default function QuoteDetailPage() {
       const updated = await NotasVentaService.update(notaVenta.id, patch);
       setNotaVenta(updated);
       setNvAddDraft({ descripcion:'', unidad:'Unidad', cantidad:1, precio:0, descuento:0 });
-    } catch(e:any){ setNvError(e.message || 'Error agregando ítem'); }
+  } catch(e: unknown){ setNvError(e instanceof Error ? e.message : 'Error agregando ítem'); }
     finally { setNvSaving(false); }
   };
 
@@ -249,7 +251,7 @@ export default function QuoteDetailPage() {
       const patch = recalcNotaVentaTotals(notaVenta, remaining);
       const updated = await NotasVentaService.update(notaVenta.id, patch);
       setNotaVenta(updated);
-    } catch(e:any){ setNvError(e.message || 'Error eliminando ítem'); }
+  } catch(e: unknown){ setNvError(e instanceof Error ? e.message : 'Error eliminando ítem'); }
     finally { setNvSaving(false); }
   };
 

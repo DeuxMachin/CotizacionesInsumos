@@ -70,12 +70,12 @@ export function ClientsPage() {
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [, setError] = useState<string | null>(null);
   const [clients, setClients] = useState<ClientExtended[]>([]);
   interface QuoteAgg { total: number; estadoTotals: Record<string, number>; }
   interface QuoteRow { cliente_principal_id?: number | null; total_final?: number | null; total_neto?: number | null; estado?: string | null; }
   const [quotesAgg, setQuotesAgg] = useState<Record<number, QuoteAgg>>({});
-  const [quotesLoading, setQuotesLoading] = useState(false);
+  const [, setQuotesLoading] = useState(false);
 
   // Fetch de clientes
   useEffect(() => {

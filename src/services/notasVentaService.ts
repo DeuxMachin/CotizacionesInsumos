@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabase';
 import type { Quote, QuoteItem } from '@/core/domain/quote/Quote';
+import type { Database } from '@/lib/supabase';
 
 // Interfaces locales (en espera de tipado generado de Supabase)
 // ===== Nuevas interfaces alineadas al esquema SQL final =====
@@ -58,6 +59,10 @@ export interface SalesNoteRecord extends SalesNoteInput {
   updated_at?: string;
 }
 
+// Precise row types from Supabase schema
+export type SalesNoteRow = Database['public']['Tables']['notas_venta']['Row'];
+export type SalesNoteItemRow = Database['public']['Tables']['nota_venta_items']['Row'];
+
 export class NotasVentaService {
   // Columnas reales según DDL (evita usar columnas antiguas como forma_pago)
   private static readonly SELECT_COLS = [
@@ -104,14 +109,14 @@ export class NotasVentaService {
 
   /** Busca una nota de venta por cotizacion_id y la elimina en cascada */
   static async deleteByCotizacionId(cotizacionId: number) {
-    const { data, error } = await supabase
+  const { data, error } = await supabase
       .from('notas_venta')
       .select('id')
       .eq('cotizacion_id', cotizacionId)
       .maybeSingle();
     if (error) throw error;
     if (!data) return false;
-    await this.deleteById(data.id as any);
+  await this.deleteById(data.id);
     return true;
   }
 
@@ -121,27 +126,23 @@ export class NotasVentaService {
     const allowedKeys: (keyof SalesNoteInput | 'folio')[] = [
       'folio','cotizacion_id','vendedor_id','cliente_principal_id','obra_id','cliente_rut','cliente_razon_social','cliente_giro','cliente_direccion','cliente_comuna','cliente_ciudad','forma_pago_final','plazo_pago','observaciones_comerciales','direccion_despacho','comuna_despacho','ciudad_despacho','costo_despacho','fecha_estimada_entrega','subtotal','descuento_lineas_monto','descuento_global_monto','descuento_total','subtotal_neto_post_desc','iva_pct','iva_monto','total','estado'
     ];
-    const base = { ...nota, folio: nota.folio || await this.generateFolio() } as any;
-    const insertPayload: Record<string, any> = {};
+    const base: Partial<SalesNoteInput> & { folio: string | null } = { ...nota, folio: nota.folio || await this.generateFolio() };
+    const insertPayload: Record<string, unknown> = {};
     for (const k of allowedKeys) {
       if (base[k] !== undefined) insertPayload[k] = base[k];
     }
     if (!insertPayload.vendedor_id) throw new Error('vendedor_id requerido para crear nota de venta');
     if (!insertPayload.estado) insertPayload.estado = 'borrador';
-  console.debug('[NotasVentaService.create] insertPayload', insertPayload);
+    console.debug('[NotasVentaService.create] insertPayload', insertPayload);
     const { data: notaInsert, error: notaError } = await supabase
       .from('notas_venta')
       .insert(insertPayload)
-  .select(this.SELECT_COLS)
+      .select(this.SELECT_COLS)
       .single();
     if (notaError) {
-      console.error('[NotasVentaService.create] Error insert notas_venta', {
-        message: (notaError as any).message,
-        details: (notaError as any).details,
-        hint: (notaError as any).hint,
-        code: (notaError as any).code
-      });
-      throw new Error((notaError as any).message || (notaError as any).details || 'Fallo al insertar nota de venta');
+      console.error('[NotasVentaService.create] Error insert notas_venta', notaError);
+      const errMsg = (notaError as unknown as { message?: string; details?: string }).message || (notaError as unknown as { details?: string }).details || 'Fallo al insertar nota de venta';
+      throw new Error(errMsg);
     }
     if (!notaInsert) throw new Error('No se pudo insertar nota de venta');
 
@@ -159,7 +160,7 @@ export class NotasVentaService {
     // Ítems (tabla singular: nota_venta_items)
     if (items.length) {
       const itemsPayload = items.map(it => ({
-        nota_venta_id: (notaInsert as any).id,
+        nota_venta_id: (notaInsert as unknown as SalesNoteRow).id,
         producto_id: it.producto_id ?? null,
         descripcion: it.descripcion,
         unidad: it.unidad,
@@ -175,36 +176,32 @@ export class NotasVentaService {
         .from('nota_venta_items')
         .insert(itemsPayload);
       if (itemsError) {
-        console.error('[NotasVentaService.create] Error insert nota_venta_items', {
-          message: (itemsError as any).message,
-          details: (itemsError as any).details,
-          hint: (itemsError as any).hint,
-          code: (itemsError as any).code
-        });
-        throw new Error((itemsError as any).message || (itemsError as any).details || 'Fallo al insertar ítems de nota de venta');
+        console.error('[NotasVentaService.create] Error insert nota_venta_items', itemsError);
+        const errMsg = (itemsError as unknown as { message?: string; details?: string }).message || (itemsError as unknown as { details?: string }).details || 'Fallo al insertar ítems de nota de venta';
+        throw new Error(errMsg);
       }
     }
-  return notaInsert as unknown as SalesNoteRecord;
+    return notaInsert as unknown as SalesNoteRecord;
   }
 
   static async getById(id: number) {
     const { data, error } = await supabase
       .from('notas_venta')
-  .select(this.SELECT_COLS)
+      .select(this.SELECT_COLS)
       .eq('id', id)
       .single();
     if (error) throw error;
-  return data as unknown as SalesNoteRecord;
+    return data as unknown as SalesNoteRecord;
   }
 
   static async getItems(notaVentaId: number) {
-    const { data, error } = await supabase
+  const { data, error } = await supabase
       .from('nota_venta_items')
       .select('*')
       .eq('nota_venta_id', notaVentaId)
       .order('id', { ascending: true });
     if (error) throw error;
-    return data as any[]; // TODO: tipar con codegen
+  return data as SalesNoteItemRow[];
   }
 
   static async addItem(notaVentaId: number, item: SalesNoteItemInput) {
@@ -227,15 +224,11 @@ export class NotasVentaService {
       .select()
       .single();
     if (error) {
-      console.error('[NotasVentaService.addItem] Error insert nota_venta_items', {
-        message: (error as any).message,
-        details: (error as any).details,
-        hint: (error as any).hint,
-        code: (error as any).code
-      });
-      throw new Error((error as any).message || (error as any).details || 'Fallo al agregar ítem');
+      console.error('[NotasVentaService.addItem] Error insert nota_venta_items', error);
+      const errMsg = (error as unknown as { message?: string; details?: string }).message || (error as unknown as { details?: string }).details || 'Fallo al agregar ítem';
+      throw new Error(errMsg);
     }
-    return data;
+    return data as SalesNoteItemRow;
   }
 
   static async removeItem(itemId: number) {
@@ -278,10 +271,10 @@ export class NotasVentaService {
       .from('notas_venta')
       .update(patch)
       .eq('id', notaVentaId)
-  .select(this.SELECT_COLS)
+      .select(this.SELECT_COLS)
       .single();
     if (error) throw error;
-  return data as unknown as SalesNoteRecord;
+    return data as unknown as SalesNoteRecord;
   }
 
   static async confirm(notaVentaId: number) {

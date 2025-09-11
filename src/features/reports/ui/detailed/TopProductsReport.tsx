@@ -51,10 +51,10 @@ const mockProductsData: ProductData[] = [
   }
 ];
 
-export function TopProductsReport({ period }: TopProductsReportProps) {
+export function TopProductsReport({  }: TopProductsReportProps) {
   return (
     <div className="space-y-4">
-      {mockProductsData.map((product, index) => (
+      {mockProductsData.map((product) => (
         <div 
           key={product.rank}
           className="group flex items-center gap-4 p-4 rounded-lg transition-all duration-200 hover:scale-[1.01]"

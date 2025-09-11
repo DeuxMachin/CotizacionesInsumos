@@ -4,7 +4,7 @@ import { useRouter, useParams } from 'next/navigation';
 import { useObras } from '@/features/obras/model/useObras';
 import { ObraDetailPage } from '@/features/obras/ui/ObraDetailPage';
 import { useState, useEffect } from 'react';
-import type { Obra, EstadoObra, EtapaObra } from '@/features/obras/model/types';
+import type { Obra, EstadoObra, EtapaObra } from '@/features/obras/types/obras';
 
 export default function ObraDetailPageRoute() {
   const router = useRouter();

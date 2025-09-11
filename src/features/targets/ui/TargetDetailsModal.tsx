@@ -1,7 +1,7 @@
 "use client";
 
 import { Modal } from "@/shared/ui/Modal";
-import { FiMapPin, FiPhone, FiMail, FiUser, FiCalendar, FiClock, FiMap, FiExternalLink, FiEdit3, FiMessageSquare, FiHome, FiFlag, FiChevronRight } from "react-icons/fi";
+import { FiMapPin, FiPhone, FiMail, FiUser, FiCalendar, FiClock, FiMap, FiExternalLink, FiEdit3, FiMessageSquare, FiHome, FiFlag } from "react-icons/fi";
 import type { PosibleTarget } from "../model/types";
 
 interface TargetDetailsModalProps {

@@ -7,13 +7,21 @@ import {
   QuoteFilters, 
   QuotePaginationConfig, 
   QuoteStatusValidator,
-  QuoteIdGenerator,
+  
   QuoteAmountCalculator,
 
 } from '@/core/domain/quote/Quote';
 import { useAuth } from '@/features/auth/model/useAuth';
 import { supabase } from '@/lib/supabase';
-import { mapCotizacionToDomain } from './adapters';
+import { mapCotizacionToDomain, type CotizacionAggregate } from './adapters';
+import type { Database } from '@/lib/supabase';
+
+// DB row aliases to avoid repeating long generic paths
+type CotizacionRow = Database['public']['Tables']['cotizaciones']['Row'];
+type ItemRow = Database['public']['Tables']['cotizacion_items']['Row'];
+type ClienteRow = Database['public']['Tables']['clientes']['Row'];
+type UsuarioRow = Database['public']['Tables']['usuarios']['Row'];
+type DespRow = Database['public']['Tables']['cotizacion_despachos']['Row'];
 
 // Ahora las cotizaciones se cargan desde Supabase (sin mocks)
 
@@ -131,8 +139,8 @@ async function ensureActiveDocumentSeries(docTipo: string, year: number) {
       .eq('activo', true)
       .maybeSingle();
     return finalSerie || null;
-  } catch (e: any) {
-    console.error('[ensureActiveDocumentSeries] Error inesperado:', e.message, e);
+  } catch (e: unknown) {
+    console.error('[ensureActiveDocumentSeries] Error inesperado:', e);
     return null;
   }
 }
@@ -179,14 +187,19 @@ export function useQuotes(): UseQuotesReturn {
         if (dbError) throw dbError;
 
         // Mapear resultados
-        const mapped: Quote[] = (data || []).map(row => mapCotizacionToDomain({
-          cotizacion: row as any,
-          items: (row as any).cotizacion_items || [],
-          clientes_adicionales: (row as any).cotizacion_clientes || [],
-          despacho: (row as any).cotizacion_despachos?.[0] || null,
-          cliente_principal: (row as any).clientes,
-          vendedor: (row as any).usuarios
-        }));
+  type CotizacionRow = Database['public']['Tables']['cotizaciones']['Row'];
+  type ItemRow = Database['public']['Tables']['cotizacion_items']['Row'];
+  type ClienteRow = Database['public']['Tables']['clientes']['Row'];
+  type UsuarioRow = Database['public']['Tables']['usuarios']['Row'];
+  type DespRow = Database['public']['Tables']['cotizacion_despachos']['Row'];
+        const mapped: Quote[] = (data || []).map((row) => mapCotizacionToDomain({
+          cotizacion: row as CotizacionRow,
+          items: ((row as unknown as { cotizacion_items?: ItemRow[] }).cotizacion_items) || [],
+          clientes_adicionales: ((row as unknown as { cotizacion_clientes?: { cliente?: ClienteRow | null }[] }).cotizacion_clientes) || [],
+          despacho: ((row as unknown as { cotizacion_despachos?: DespRow[] }).cotizacion_despachos)?.[0] || null,
+          cliente_principal: (row as unknown as { clientes?: ClienteRow }).clientes,
+          vendedor: (row as unknown as { usuarios?: UsuarioRow }).usuarios
+        } as CotizacionAggregate));
 
         setAllQuotes(mapped);
       } catch (err) {
@@ -327,9 +340,11 @@ export function useQuotes(): UseQuotesReturn {
       // Resolver cliente_principal_id (preferir id directo si viene del selector)
       let clientePrincipalId: number | null = null;
       if (nuevaCotizacion.cliente) {
-        const c = nuevaCotizacion.cliente as any; // dominio
-        if (typeof c.id === 'number') {
-          clientePrincipalId = c.id;
+        const c = nuevaCotizacion.cliente;
+        // Prefer numeric id if present via narrow cast from any external selector shape
+        const maybeId = (c as unknown as { id?: number }).id;
+        if (typeof maybeId === 'number') {
+          clientePrincipalId = maybeId;
         } else if (c.rut) {
           const rawRut = c.rut.trim();
           const normRut = normalizeRut(rawRut);
@@ -348,15 +363,15 @@ export function useQuotes(): UseQuotesReturn {
             } else {
               // Intento de creación básica si tenemos datos mínimos
               if (c.razonSocial || c.nombreFantasia) {
-                const nombre = c.razonSocial || c.nombreFantasia;
-                const insertPayload = {
+                const nombre: string = c.nombreFantasia ?? c.razonSocial;
+                const insertPayload: Database['public']['Tables']['clientes']['Insert'] = {
                   rut: normRut,
                   nombre_razon_social: nombre,
                   nombre_fantasia: c.nombreFantasia || null,
                   direccion: c.direccion || null,
                   ciudad: c.ciudad || null,
                   comuna: c.comuna || null
-                } as any;
+                };
                 console.debug('Creando cliente on-the-fly para cotizacion:', insertPayload);
                 const { data: nuevoCli, error: insCliErr } = await supabase
                   .from('clientes')
@@ -370,8 +385,8 @@ export function useQuotes(): UseQuotesReturn {
                 }
               }
             }
-          } catch (cliLookupErr: any) {
-            console.error('Fallo inesperado buscando/creando cliente:', cliLookupErr.message);
+          } catch (cliLookupErr: unknown) {
+            console.error('Fallo inesperado buscando/creando cliente:', cliLookupErr);
           }
         }
       }
@@ -384,7 +399,7 @@ export function useQuotes(): UseQuotesReturn {
         fechaVencimiento = d.toISOString().split('T')[0];
       }
       // Insert cabecera
-      const cabeceraPayload = {
+      const cabeceraPayload: Database['public']['Tables']['cotizaciones']['Insert'] = {
         estado: nuevaCotizacion.estado || 'borrador',
         vendedor_id: user.id,
         cliente_principal_id: clientePrincipalId || null,
@@ -465,18 +480,18 @@ export function useQuotes(): UseQuotesReturn {
         console.error('Reload cotizaciones error:', reloadErr?.message, reloadErr);
         throw reloadErr;
       }
-      const mapped: Quote[] = (data || []).map(row => mapCotizacionToDomain({
-        cotizacion: row as any,
-        items: (row as any).cotizacion_items || [],
-        clientes_adicionales: (row as any).cotizacion_clientes || [],
-        despacho: (row as any).cotizacion_despachos?.[0] || null,
-        cliente_principal: (row as any).clientes,
-        vendedor: (row as any).usuarios
-      }));
+      const mapped: Quote[] = (data || []).map((row) => mapCotizacionToDomain({
+        cotizacion: row as CotizacionRow,
+        items: ((row as unknown as { cotizacion_items?: ItemRow[] }).cotizacion_items) || [],
+        clientes_adicionales: ((row as unknown as { cotizacion_clientes?: { cliente?: ClienteRow | null }[] }).cotizacion_clientes) || [],
+        despacho: ((row as unknown as { cotizacion_despachos?: DespRow[] }).cotizacion_despachos)?.[0] || null,
+        cliente_principal: (row as unknown as { clientes?: ClienteRow }).clientes,
+        vendedor: (row as unknown as { usuarios?: UsuarioRow }).usuarios
+      } as CotizacionAggregate));
       setAllQuotes(mapped);
       return true;
-    } catch (error: any) {
-      console.error('Error creating quote:', error?.message || error, error || {});
+    } catch (error: unknown) {
+      console.error('Error creating quote:', error);
       return false;
     }
   };
@@ -486,7 +501,7 @@ export function useQuotes(): UseQuotesReturn {
       // Encontrar registro por folio (id en dominio == folio)
       const target = allQuotes.find(q => q.id === id);
       if (!target) throw new Error('Cotización no encontrada');
-      const updates: any = {};
+  const updates: Database['public']['Tables']['cotizaciones']['Update'] = {};
       if (datosActualizados.estado) updates.estado = datosActualizados.estado;
       if (datosActualizados.condicionesComerciales) {
         updates.validez_dias = datosActualizados.condicionesComerciales.validezOferta;
@@ -539,7 +554,8 @@ export function useQuotes(): UseQuotesReturn {
           if (delNV) throw delNV;
         }
       } catch (e) {
-        console.warn('No se pudo eliminar nota de venta asociada (continuando):', (e as any)?.message);
+  const msg = (e as unknown as { message?: string })?.message;
+  console.warn('No se pudo eliminar nota de venta asociada (continuando):', msg);
       }
 
       // 3. Eliminar dependientes de la cotización

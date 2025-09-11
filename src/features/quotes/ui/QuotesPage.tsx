@@ -184,24 +184,15 @@ export function QuotesPage() {
         console.error("Error al buscar el ID del cliente:", err);
       }
       
-      // Crear la nota de venta con los datos completos del cliente
-      const nota = await NotasVentaService.convertFromQuote(quote, { 
-        formaPago: quote.condicionesComerciales?.formaPago, 
-        cotizacionDbId: cotizacionNumericId || undefined,
-        clientePrincipalId: clientePrincipalId,
-        // Pasamos todos los datos del cliente incluyendo el giro
-        clienteGiro: quote.cliente?.giro,
-        clienteDireccion: quote.cliente?.direccion,
-        clienteComuna: quote.cliente?.comuna,
-        clienteCiudad: quote.cliente?.ciudad
-      });
+
       
       // No redirigimos; forzamos refresco de datos (estrategia simple: reload)
       // Ideal: invalidar cache en hook useQuotes.
       window.location.reload();
-    } catch (e:any) {
+    } catch (e: unknown) {
       console.error('Error convirtiendo cotización a nota de venta', e);
-      alert('Error al convertir: ' + (e.message || 'desconocido'));
+      const msg = e instanceof Error ? e.message : 'desconocido';
+      alert('Error al convertir: ' + msg);
     } finally {
       setConvertingId(null);
     }

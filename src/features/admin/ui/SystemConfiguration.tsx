@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { FiSave, FiRefreshCw, FiGlobe, FiMail, FiClock, FiToggleLeft, FiToggleRight, FiCheck, FiSettings } from "react-icons/fi";
+import { FiSave, FiRefreshCw, FiGlobe, FiMail, FiClock,   FiCheck, FiSettings } from "react-icons/fi";
 
 interface SystemSettings {
   siteName: string;
