@@ -42,6 +42,7 @@ interface FormData {
   condicionesComerciales: Partial<CommercialTerms>;
   notas?: string;
   estado: QuoteStatus;
+  descuentoGlobalPct?: number; // porcentaje de descuento global
 }
 
 const STEPS: StepConfig[] = [
@@ -54,7 +55,7 @@ const STEPS: StepConfig[] = [
 
 export function NewQuotePage() {
   const router = useRouter();
-  const { crearCotizacion, formatMoney } = useQuotes();
+  const { crearCotizacion, formatMoney, userId, userName } = useQuotes();
   
   const [currentStep, setCurrentStep] = useState<FormStep>('client');
   const [formData, setFormData] = useState<FormData>({
@@ -62,12 +63,16 @@ export function NewQuotePage() {
     items: [],
     despacho: {},
     condicionesComerciales: {},
-    estado: 'borrador'
+  estado: 'borrador',
+  descuentoGlobalPct: 0
   });
   
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string[]>>({});
   const [visitedSteps, setVisitedSteps] = useState<Set<FormStep>>(new Set(['client'])); // Marcar el primer paso como visitado
+  const [showSendModal, setShowSendModal] = useState(false);
+  const [sendEmail, setSendEmail] = useState('');
+  const [sendEmailError, setSendEmailError] = useState('');
 
   // Validación de pasos
   const validateStep = (step: FormStep): string[] => {
@@ -162,15 +167,19 @@ export function NewQuotePage() {
   };
 
   const calculateTotals = () => {
-    const subtotal = formData.items.reduce((sum, item) => sum + item.subtotal, 0);
-    const descuentoTotal = formData.items.reduce((sum, item) => sum + (item.descuento || 0) * item.precioUnitario * item.cantidad / 100, 0);
-    const iva = (subtotal - descuentoTotal) * 0.19;
-    const total = subtotal - descuentoTotal + iva + (formData.despacho.costoDespacho || 0);
-    
-    return { subtotal, descuentoTotal, iva, total };
+    const lineDiscountTotal = formData.items.reduce((sum, item) => sum + (item.descuento || 0) * item.precioUnitario * item.cantidad / 100, 0);
+    const rawItemsTotal = formData.items.reduce((sum, item) => sum + (item.precioUnitario * item.cantidad), 0);
+    const baseAfterLine = rawItemsTotal - lineDiscountTotal;
+    const globalPct = formData.descuentoGlobalPct ? Math.min(Math.max(formData.descuentoGlobalPct, 0), 100) : 0;
+    const globalDiscountAmount = Math.round(baseAfterLine * (globalPct / 100));
+    const subtotal = baseAfterLine - globalDiscountAmount; // neto antes de IVA y despacho
+    const iva = (subtotal + (formData.despacho.costoDespacho || 0)) * 0.19;
+    const total = subtotal + iva + (formData.despacho.costoDespacho || 0);
+    const descuentoTotal = lineDiscountTotal + globalDiscountAmount; // total mostrado al usuario
+    return { subtotal, descuentoTotal, iva, total, lineDiscountTotal, globalDiscountAmount, globalPct };
   };
 
-  const handleSave = async (status: QuoteStatus = 'borrador') => {
+  const persistQuote = async (status: QuoteStatus) => {
     setLoading(true);
     try {
       const finalErrors = validateStep('summary');
@@ -180,7 +189,7 @@ export function NewQuotePage() {
         return;
       }
 
-      const { subtotal, descuentoTotal, iva, total } = calculateTotals();
+  const { subtotal, descuentoTotal, iva, total, lineDiscountTotal, globalDiscountAmount, globalPct } = calculateTotals();
       
       const newQuote: Omit<Quote, 'id' | 'numero' | 'fechaCreacion' | 'fechaModificacion'> = {
         cliente: formData.cliente as ClientInfo,
@@ -188,8 +197,8 @@ export function NewQuotePage() {
         despacho: Object.keys(formData.despacho).length > 0 ? formData.despacho as DeliveryInfo : undefined,
         condicionesComerciales: formData.condicionesComerciales as CommercialTerms,
         estado: status,
-        vendedorId: 'USER001', // Esto se obtendrá del usuario autenticado
-        vendedorNombre: 'Usuario Actual', // Esto se obtendrá del usuario autenticado
+  vendedorId: userId || 'desconocido',
+  vendedorNombre: userName || 'Usuario',
         subtotal,
         descuentoTotal,
         iva,
@@ -200,7 +209,11 @@ export function NewQuotePage() {
           undefined
       };
 
-      const success = await crearCotizacion(newQuote);
+      const success = await crearCotizacion(newQuote, {
+        globalDiscountPct: globalPct,
+        globalDiscountAmount,
+        lineDiscountTotal
+      });
       if (success) {
         router.push('/dashboard/cotizaciones');
       } else {
@@ -212,6 +225,24 @@ export function NewQuotePage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleSave = async (status: QuoteStatus = 'borrador') => {
+    if (status === 'enviada') {
+      setShowSendModal(true);
+      return;
+    }
+    await persistQuote(status);
+  };
+
+  const handleConfirmSend = async () => {
+    // Validar email simple
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(sendEmail)) {
+      setSendEmailError('Email no válido');
+      return;
+    }
+    setShowSendModal(false);
+    await persistQuote('enviada');
   };
 
   const updateFormData = (
@@ -290,6 +321,7 @@ export function NewQuotePage() {
             totals={calculateTotals()}
             formatMoney={formatMoney}
             errors={errors.summary}
+            onChangeGlobalDiscountPct={(pct:number)=> setFormData(prev=>({...prev, descuentoGlobalPct:pct}))}
           />
         );
       default:
@@ -569,6 +601,28 @@ export function NewQuotePage() {
           </div>
         </div>
       </div>
+      {showSendModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-md rounded-lg p-6" style={{background:'var(--card-bg)', border:'1px solid var(--border)'}}>
+            <h3 className="text-lg font-semibold mb-2" style={{color:'var(--text-primary)'}}>Enviar Cotización</h3>
+            <p className="text-sm mb-4" style={{color:'var(--text-secondary)'}}>Ingresa el correo del destinatario. (Aún no se enviará, solo se registrará el intento y se guardará la cotización como enviada).</p>
+            <label className="block text-sm font-medium mb-1" style={{color:'var(--text-secondary)'}}>Correo destinatario</label>
+            <input
+              type="email"
+              value={sendEmail}
+              onChange={(e)=>{setSendEmail(e.target.value); setSendEmailError('');}}
+              className="w-full mb-2 px-3 py-2 rounded border"
+              style={{background:'var(--input-bg)', borderColor:'var(--border)', color:'var(--text-primary)'}}
+              placeholder="destinatario@empresa.cl"
+            />
+            {sendEmailError && <p className="text-xs mb-2" style={{color:'var(--danger)'}}>{sendEmailError}</p>}
+            <div className="flex justify-end gap-3 mt-2">
+              <button onClick={()=>{setShowSendModal(false);}} className="btn-secondary px-4 py-2 text-sm">Cancelar</button>
+              <button onClick={handleConfirmSend} className="btn-primary px-4 py-2 text-sm">Confirmar y Guardar</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

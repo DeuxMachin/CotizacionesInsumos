@@ -119,100 +119,211 @@ export type Database = {
         Row: {
           id: number
           folio: string | null
-          creada_por: string | null
+          estado: 'borrador' | 'enviada' | 'aceptada' | 'rechazada' | 'expirada'
+          vendedor_id: string
           cliente_principal_id: number | null
           obra_id: number | null
-          estado: 'borrador' | 'enviada' | 'aprobada' | 'rechazada' | 'vencida'
-          fecha_emision: string | null
+          fecha_emision: string
           validez_dias: number
           fecha_vencimiento: string | null
-          moneda: string
-          forma_pago: string | null
+          condicion_pago_id: number | null
+          condicion_pago_texto: string | null
+          plazo_entrega_id: number | null
+          plazo_entrega_texto: string | null
+          forma_pago_texto: string | null
           observaciones_pago: string | null
-          plazo_entrega: string | null
-          comentario: string | null
-          descuento_global: number
+          descuento_global_monto: number
+          descuento_global_pct: number | null
           monto_exento: number
           total_bruto: number
           total_descuento: number
           total_neto: number
-          iva: number
+          iva_pct: number
+          iva_monto: number
           impuesto_adicional: number
           total_final: number
           doc_tipo: string | null
           doc_folio_asociado: string | null
+          hash_cotizacion: string | null
           created_at: string
-          vendedor_id: string
+          updated_at: string
+          nota_venta_id: number | null
         }
         Insert: {
           id?: number
           folio?: string | null
-          creada_por?: string | null
+          estado?: 'borrador' | 'enviada' | 'aceptada' | 'rechazada' | 'expirada'
+
+          vendedor_id: string
           cliente_principal_id?: number | null
           obra_id?: number | null
-          estado?: 'borrador' | 'enviada' | 'aprobada' | 'rechazada' | 'vencida'
-          fecha_emision?: string | null
+          fecha_emision?: string
           validez_dias?: number
           fecha_vencimiento?: string | null
-          moneda?: string
-          forma_pago?: string | null
+          condicion_pago_id?: number | null
+          condicion_pago_texto?: string | null
+          plazo_entrega_id?: number | null
+          plazo_entrega_texto?: string | null
+          forma_pago_texto?: string | null
           observaciones_pago?: string | null
-          plazo_entrega?: string | null
-          comentario?: string | null
-          descuento_global?: number
+          descuento_global_monto?: number
+          descuento_global_pct?: number | null
           monto_exento?: number
           total_bruto?: number
           total_descuento?: number
           total_neto?: number
-          iva?: number
+          iva_pct?: number
+          iva_monto?: number
           impuesto_adicional?: number
           total_final?: number
           doc_tipo?: string | null
           doc_folio_asociado?: string | null
+          hash_cotizacion?: string | null
           created_at?: string
-          vendedor_id: string
+          updated_at?: string
+          nota_venta_id?: number | null
         }
         Update: {
           id?: number
           folio?: string | null
-          creada_por?: string | null
+          estado?: 'borrador' | 'enviada' | 'aceptada' | 'rechazada' | 'expirada'
+
+          vendedor_id?: string
           cliente_principal_id?: number | null
           obra_id?: number | null
-          estado?: 'borrador' | 'enviada' | 'aprobada' | 'rechazada' | 'vencida'
-          fecha_emision?: string | null
+          fecha_emision?: string
           validez_dias?: number
           fecha_vencimiento?: string | null
-          moneda?: string
-          forma_pago?: string | null
+          condicion_pago_id?: number | null
+          condicion_pago_texto?: string | null
+            plazo_entrega_id?: number | null
+          plazo_entrega_texto?: string | null
+          forma_pago_texto?: string | null
           observaciones_pago?: string | null
-          plazo_entrega?: string | null
-          comentario?: string | null
-          descuento_global?: number
+          descuento_global_monto?: number
+          descuento_global_pct?: number | null
           monto_exento?: number
           total_bruto?: number
           total_descuento?: number
           total_neto?: number
-          iva?: number
+          iva_pct?: number
+          iva_monto?: number
           impuesto_adicional?: number
           total_final?: number
           doc_tipo?: string | null
           doc_folio_asociado?: string | null
+          hash_cotizacion?: string | null
           created_at?: string
-          vendedor_id?: string
+          updated_at?: string
+          nota_venta_id?: number | null
         }
       }
       cotizacion_clientes: {
         Row: {
           cotizacion_id: number
           cliente_id: number
+          rol: string | null
+          created_at: string
         }
         Insert: {
           cotizacion_id: number
           cliente_id: number
+          rol?: string | null
+          created_at?: string
         }
         Update: {
           cotizacion_id?: number
           cliente_id?: number
+          rol?: string | null
+          created_at?: string
+        }
+      }
+      cotizacion_items: {
+        Row: {
+          id: number
+          cotizacion_id: number
+          producto_id: number | null
+          descripcion: string | null
+          unidad: string | null
+          cantidad: number
+          precio_unitario_neto: number
+          descuento_pct: number | null
+          descuento_monto: number
+          iva_aplicable: boolean
+          subtotal_neto: number
+          total_neto: number
+          created_at: string
+        }
+        Insert: {
+          id?: number
+          cotizacion_id: number
+          producto_id?: number | null
+          descripcion?: string | null
+          unidad?: string | null
+          cantidad: number
+          precio_unitario_neto: number
+          descuento_pct?: number | null
+          descuento_monto?: number
+          iva_aplicable?: boolean
+          subtotal_neto?: number
+          total_neto?: number
+          created_at?: string
+        }
+        Update: {
+          id?: number
+          cotizacion_id?: number
+          producto_id?: number | null
+          descripcion?: string | null
+          unidad?: string | null
+          cantidad?: number
+          precio_unitario_neto?: number
+          descuento_pct?: number | null
+          descuento_monto?: number
+          iva_aplicable?: boolean
+          subtotal_neto?: number
+          total_neto?: number
+          created_at?: string
+        }
+      }
+      cotizacion_despachos: {
+        Row: {
+          id: number
+          cotizacion_id: number
+          direccion: string
+          complemento: string | null
+          comuna_id: number | null
+          region_id: number | null
+          ciudad_texto: string | null
+          costo: number
+          fecha_entrega: string | null
+          observaciones: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: number
+          cotizacion_id: number
+          direccion: string
+          complemento?: string | null
+          comuna_id?: number | null
+          region_id?: number | null
+          ciudad_texto?: string | null
+          costo?: number
+          fecha_entrega?: string | null
+          observaciones?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: number
+          cotizacion_id?: number
+          direccion?: string
+          complemento?: string | null
+          comuna_id?: number | null
+          region_id?: number | null
+          ciudad_texto?: string | null
+          costo?: number
+          fecha_entrega?: string | null
+          observaciones?: string | null
+          created_at?: string
         }
       }
       productos: {
@@ -254,6 +365,37 @@ export type Database = {
           estado?: string
           activo?: boolean
           created_at?: string
+        }
+      }
+      categorias_productos: {
+        Row: {
+          id: number
+          nombre: string
+          descripcion: string | null
+        }
+        Insert: {
+          id?: number
+          nombre: string
+          descripcion?: string | null
+        }
+        Update: {
+          id?: number
+          nombre?: string
+          descripcion?: string | null
+        }
+      }
+      producto_categorias: {
+        Row: {
+          producto_id: number
+          categoria_id: number
+        }
+        Insert: {
+          producto_id: number
+          categoria_id: number
+        }
+        Update: {
+          producto_id?: number
+          categoria_id?: number
         }
       }
       obras: {
@@ -556,6 +698,236 @@ export type Database = {
           creado_por?: string | null
           created_at?: string
         }
+      }
+      document_series: {
+        Row: {
+          id: number
+            doc_tipo: string
+          anio: number
+          prefijo: string
+          ultimo_numero: number
+          largo: number
+          activo: boolean
+        }
+        Insert: {
+          id?: number
+          doc_tipo: string
+          anio: number
+          prefijo: string
+          ultimo_numero?: number
+          largo?: number
+          activo?: boolean
+        }
+        Update: {
+          id?: number
+          doc_tipo?: string
+          anio?: number
+          prefijo?: string
+          ultimo_numero?: number
+          largo?: number
+          activo?: boolean
+        }
+      }
+      ,
+      notas_venta: {
+        Row: {
+          id: number
+          folio: string | null
+          cotizacion_id: number | null
+          vendedor_id: string
+          cliente_principal_id: number | null
+          obra_id: number | null
+          cliente_rut: string | null
+          cliente_razon_social: string | null
+          cliente_giro: string | null
+          cliente_direccion: string | null
+          cliente_comuna: string | null
+          cliente_ciudad: string | null
+          fecha_emision: string
+          estado: string
+          confirmed_at: string | null
+          forma_pago_final: string | null
+          plazo_pago: string | null
+          observaciones_comerciales: string | null
+          direccion_despacho: string | null
+          comuna_despacho: string | null
+          ciudad_despacho: string | null
+          costo_despacho: number
+          fecha_estimada_entrega: string | null
+          subtotal: number
+          descuento_lineas_monto: number
+          descuento_global_monto: number
+          descuento_total: number
+          subtotal_neto_post_desc: number
+          iva_pct: number
+          iva_monto: number
+          total: number
+          hash_documento: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: number
+          folio?: string | null
+          cotizacion_id?: number | null
+          vendedor_id: string
+          cliente_principal_id?: number | null
+          obra_id?: number | null
+          cliente_rut?: string | null
+          cliente_razon_social?: string | null
+          cliente_giro?: string | null
+          cliente_direccion?: string | null
+          cliente_comuna?: string | null
+          cliente_ciudad?: string | null
+          fecha_emision?: string
+          estado?: string
+          confirmed_at?: string | null
+          forma_pago_final?: string | null
+          plazo_pago?: string | null
+          observaciones_comerciales?: string | null
+          direccion_despacho?: string | null
+          comuna_despacho?: string | null
+          ciudad_despacho?: string | null
+          costo_despacho?: number
+          fecha_estimada_entrega?: string | null
+          subtotal?: number
+          descuento_lineas_monto?: number
+          descuento_global_monto?: number
+          descuento_total?: number
+          subtotal_neto_post_desc?: number
+          iva_pct?: number
+          iva_monto?: number
+          total?: number
+          hash_documento?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: number
+          folio?: string | null
+          cotizacion_id?: number | null
+          vendedor_id?: string
+          cliente_principal_id?: number | null
+          obra_id?: number | null
+          cliente_rut?: string | null
+          cliente_razon_social?: string | null
+          cliente_giro?: string | null
+          cliente_direccion?: string | null
+          cliente_comuna?: string | null
+          cliente_ciudad?: string | null
+          fecha_emision?: string
+          estado?: string
+          confirmed_at?: string | null
+          forma_pago_final?: string | null
+          plazo_pago?: string | null
+          observaciones_comerciales?: string | null
+          direccion_despacho?: string | null
+          comuna_despacho?: string | null
+          ciudad_despacho?: string | null
+          costo_despacho?: number
+          fecha_estimada_entrega?: string | null
+          subtotal?: number
+          descuento_lineas_monto?: number
+          descuento_global_monto?: number
+          descuento_total?: number
+          subtotal_neto_post_desc?: number
+          iva_pct?: number
+          iva_monto?: number
+          total?: number
+          hash_documento?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      ,
+      nota_venta_items: {
+        Row: {
+          id: number
+          nota_venta_id: number
+          producto_id: number | null
+          descripcion: string | null
+          unidad: string | null
+          cantidad: number
+          precio_unitario_neto: number
+          descuento_pct: number | null
+          descuento_monto: number
+          iva_aplicable: boolean
+          subtotal_neto: number
+          total_neto: number
+          created_at: string
+        }
+        Insert: {
+          id?: number
+          nota_venta_id: number
+          producto_id?: number | null
+          descripcion?: string | null
+          unidad?: string | null
+          cantidad: number
+          precio_unitario_neto: number
+          descuento_pct?: number | null
+          descuento_monto?: number
+          iva_aplicable?: boolean
+          subtotal_neto?: number
+          total_neto?: number
+          created_at?: string
+        }
+        Update: {
+          id?: number
+          nota_venta_id?: number
+          producto_id?: number | null
+          descripcion?: string | null
+          unidad?: string | null
+          cantidad?: number
+          precio_unitario_neto?: number
+          descuento_pct?: number | null
+          descuento_monto?: number
+          iva_aplicable?: boolean
+          subtotal_neto?: number
+          total_neto?: number
+          created_at?: string
+        }
+      }
+      ,
+      bodegas: {
+        Row: { id: number; nombre: string; ubicacion: string | null }
+        Insert: { id?: number; nombre: string; ubicacion?: string | null }
+        Update: { id?: number; nombre?: string; ubicacion?: string | null }
+      }
+      ,
+      producto_stock: {
+        Row: { bodega_id: number; producto_id: number; ubicacion: string | null; stock_actual: number; total_valorizado: number }
+        Insert: { bodega_id: number; producto_id: number; ubicacion?: string | null; stock_actual?: number; total_valorizado?: number }
+        Update: { bodega_id?: number; producto_id?: number; ubicacion?: string | null; stock_actual?: number; total_valorizado?: number }
+      }
+      ,
+      condiciones_pago: {
+        Row: { id: number; nombre: string; dias: number | null; descripcion: string | null; activa: boolean; created_at: string; updated_at: string }
+        Insert: { id?: number; nombre: string; dias?: number | null; descripcion?: string | null; activa?: boolean; created_at?: string; updated_at?: string }
+        Update: { id?: number; nombre?: string; dias?: number | null; descripcion?: string | null; activa?: boolean; created_at?: string; updated_at?: string }
+      }
+      ,
+      plazos_entrega: {
+        Row: { id: number; nombre: string; dias_habiles: number | null; descripcion: string | null; activa: boolean; created_at: string; updated_at: string }
+        Insert: { id?: number; nombre: string; dias_habiles?: number | null; descripcion?: string | null; activa?: boolean; created_at?: string; updated_at?: string }
+        Update: { id?: number; nombre?: string; dias_habiles?: number | null; descripcion?: string | null; activa?: boolean; created_at?: string; updated_at?: string }
+      }
+      ,
+      cliente_usuarios: {
+        Row: { cliente_id: number; usuario_id: string; created_at: string; cliente_tipo_id: number | null; es_responsable: boolean; asignado_por: string | null; asignado_at: string; activo: boolean; nota: string | null }
+        Insert: { cliente_id: number; usuario_id: string; created_at?: string; cliente_tipo_id?: number | null; es_responsable?: boolean; asignado_por?: string | null; asignado_at?: string; activo?: boolean; nota?: string | null }
+        Update: { cliente_id?: number; usuario_id?: string; created_at?: string; cliente_tipo_id?: number | null; es_responsable?: boolean; asignado_por?: string | null; asignado_at?: string; activo?: boolean; nota?: string | null }
+      }
+      ,
+      cliente_saldos: {
+        Row: { id: number; cliente_id: number; snapshot_date: string; pagado: number; pendiente: number; vencido: number; created_at: string }
+        Insert: { id?: number; cliente_id: number; snapshot_date?: string; pagado?: number; pendiente?: number; vencido?: number; created_at?: string }
+        Update: { id?: number; cliente_id?: number; snapshot_date?: string; pagado?: number; pendiente?: number; vencido?: number; created_at?: string }
+      }
+      ,
+      cliente_tipos: {
+        Row: { id: number; nombre: string; descripcion: string | null }
+        Insert: { id?: number; nombre: string; descripcion?: string | null }
+        Update: { id?: number; nombre?: string; descripcion?: string | null }
       }
     }
     Views: {

@@ -34,6 +34,7 @@ export interface DeliveryInfo {
 // Item de la cotización
 export interface QuoteItem {
   id: string;
+  productId?: number; // ID real en la BD si corresponde
   codigo: string;
   descripcion: string;
   unidad: string;
@@ -92,6 +93,10 @@ export interface Quote {
   
   /** Descuento total */
   descuentoTotal: number;
+  /** Descuento acumulado de líneas (suma de descuentos por ítem) */
+  descuentoLineasMonto?: number;
+  /** Descuento global aplicado adicionalmente */
+  descuentoGlobalMonto?: number;
   
   /** IVA */
   iva: number;

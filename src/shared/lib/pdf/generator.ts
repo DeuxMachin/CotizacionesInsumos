@@ -219,9 +219,10 @@ function generateCondensedHTML(quote: Quote, quoteNumber: string, quoteDate: Dat
         ${omitted>0?`<div class=\"omitted\">Se omitieron ${omitted} ítems por límite de una página.</div>`:''}
       </div>
       <table class="totals-table">
-        <tr><td style="text-align:right;">Subtotal:</td><td style="text-align:right;">${formatCLP(quote.subtotal)}</td></tr>
-        ${quote.descuentoTotal>0?`<tr><td style=\"text-align:right;\">Dcto. global:</td><td style=\"text-align:right;\">-${formatCLP(quote.descuentoTotal)}</td></tr>`:''}
-        <tr><td style="text-align:right;">Monto neto:</td><td style="text-align:right;">${formatCLP(quote.subtotal - (quote.descuentoTotal||0))}</td></tr>
+        <tr><td style="text-align:right;">Subtotal:</td><td style="text-align:right;">${formatCLP(quote.subtotal + (quote.descuentoLineasMonto||0) + (quote.descuentoGlobalMonto||0))}</td></tr>
+        ${(quote.descuentoLineasMonto||0)>0?`<tr><td style=\"text-align:right;\">Dcto. líneas:</td><td style=\"text-align:right;\">-${formatCLP(quote.descuentoLineasMonto||0)}</td></tr>`:''}
+        ${(quote.descuentoGlobalMonto||0)>0?`<tr><td style=\"text-align:right;\">Dcto. global:</td><td style=\"text-align:right;\">-${formatCLP(quote.descuentoGlobalMonto||0)}</td></tr>`:''}
+        <tr><td style="text-align:right;">Neto afecto:</td><td style="text-align:right;">${formatCLP(quote.subtotal)}</td></tr>
         <tr><td style="text-align:right;">Monto exento:</td><td style="text-align:right;">$ 0</td></tr>
         <tr><td style="text-align:right;">IVA (19%):</td><td style="text-align:right;">${formatCLP(quote.iva)}</td></tr>
         <tr class="total"><td style="text-align:right;">Total:</td><td style="text-align:right;">${formatCLP(quote.total)}</td></tr>
@@ -297,14 +298,34 @@ export async function generatePDF(
       });
     }
     
-    // Cargar contenido HTML
-    await page.setContent(html, { 
-      waitUntil: 'networkidle0',
-      timeout: 30000 
+    // Listeners para depuración (ayuda a detectar cuelgues)
+    page.on('pageerror', (err) => console.error('[PDF][pageerror]', err));
+    page.on('console', (msg) => {
+      const type = msg.type();
+      if (['error', 'warning'].includes(type)) {
+        console[type === 'error' ? 'error' : 'warn']('[PDF][console]', msg.text());
+      }
     });
+
+    // Cargar contenido HTML. Evitamos 'networkidle0' (puede no resolverse si hay listeners abiertos)
+    // porque todo el HTML es inline. Esto reduce riesgos de timeout.
+    await page.setContent(html, {
+      waitUntil: 'domcontentloaded',
+      timeout: 20000
+    });
+
+    // Forzar media screen para que respeten estilos @media print/screen si existen
+    try { await page.emulateMediaType('screen'); } catch {}
+
+    // Pequeña espera opcional para asegurar layout estable (fuentes / render)
+  // Espera micro (100ms) para asegurar cálculo de layout; usamos evaluate + setTimeout para evitar dependencias de métodos no tipados
+  await page.evaluate(() => new Promise(res => setTimeout(res, 100)));
     
     // Generar PDF
-    const pdfBuffer = await page.pdf({
+  // Aumentamos timeout de operación de PDF si el entorno es lento
+  page.setDefaultTimeout(45000);
+
+  const pdfBuffer = await page.pdf({
       format: options.format,
       margin: options.margin,
       printBackground: options.printBackground,

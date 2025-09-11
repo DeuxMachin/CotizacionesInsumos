@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useCallback } from 'react';
+import React from 'react';
 import { 
+  FiCheck,
   FiArrowLeft, 
   FiDownload, 
   FiEdit2, 
@@ -23,18 +24,16 @@ import {
 import { useParams, useRouter } from 'next/navigation';
 import { useQuotes } from '@/features/quotes/model/useQuotes';
 import { NotasVentaService, SalesNoteRecord } from '@/services/notasVentaService';
-import { FiCheckCircle, FiShoppingCart } from 'react-icons/fi';
+import { FiShoppingCart } from 'react-icons/fi';
 import { ProductsForm } from '@/features/quotes/ui/components/ProductsForm';
 
 export default function QuoteDetailPage() {
   const params = useParams();
   const router = useRouter();
-  const { getQuoteById, formatMoney, getStatusColor, loading, eliminarCotizacion } = useQuotes();
+  const { getQuoteById, formatMoney, getStatusColor, loading } = useQuotes();
   
   const quoteFolio = params.id as string; // folio (ej: COT000002)
   const quote = getQuoteById ? getQuoteById(quoteFolio) : null;
-  
-  // Estados principales
   const [notaVenta, setNotaVenta] = React.useState<SalesNoteRecord | null>(null);
   const [nvItems, setNvItems] = React.useState<any[]>([]);
   const [nvLoading, setNvLoading] = React.useState(false);
@@ -42,28 +41,13 @@ export default function QuoteDetailPage() {
   const [nvSaving, setNvSaving] = React.useState(false);
   const [nvError, setNvError] = React.useState<string | null>(null);
   
-  // Estados para modal de selección de productos previo a conversión
-  const [showProductsModal, setShowProductsModal] = React.useState(false);
-  const [selectedItems, setSelectedItems] = React.useState<any[]>([]);
-  const [isSelectingProducts, setIsSelectingProducts] = React.useState(false);
-
   // Estados para conversión a nota de venta
   const [creatingSale, setCreatingSale] = React.useState(false);
   const [saleError, setSaleError] = React.useState<string | null>(null);
+  const [showSaleConversionModal, setShowSaleConversionModal] = React.useState(false);
+  const [saleConversionItems, setSaleConversionItems] = React.useState<any[]>([]);
 
-  // ===== HOOKS CALLBACK ANTES DE RETURNS CONDICIONALES =====
-  const handleDeleteQuote = React.useCallback(async () => {
-    if (!quote) return;
-    if (!confirm('¿Eliminar DEFINITIVAMENTE esta cotización y todos sus datos relacionados (ítems, despacho, clientes adicionales y nota de venta si existe)?')) return;
-    const ok = await eliminarCotizacion(quote.id);
-    if (ok) {
-      router.push('/dashboard/cotizaciones');
-    } else {
-      alert('No se pudo eliminar la cotización');
-    }
-  }, [quote, eliminarCotizacion, router]);
-  
-  // Cargar nota de venta
+  // TODOS los hooks dependientes (useCallback/useEffect) ANTES de cualquier return condicional
   const loadNotaVenta = React.useCallback(async () => {
     if (!quote) return;
     setNvLoading(true);
@@ -80,53 +64,48 @@ export default function QuoteDetailPage() {
     finally { setNvLoading(false); }
   }, [quote]);
 
-  // Abrir selección de productos
-  const handleOpenProductSelection = useCallback(() => {
+  React.useEffect(() => { loadNotaVenta(); }, [loadNotaVenta]);
+
+  // Iniciar flujo de conversión a Nota de Venta
+  const startConvertToSale = () => {
     if (!quote) return;
-    // Inicializa con los items actuales
-    setSelectedItems([...quote.items]);
-    setShowProductsModal(true);
-  }, [quote]);
-  
-  // Cancelar selección de productos
-  const handleCancelProductSelection = useCallback(() => {
-    setShowProductsModal(false);
-    setSelectedItems([]);
-  }, []);
-  
-  // Guardar nota de venta
-  const handleSaveNotaVenta = useCallback(async () => {
-    if (!quote || !selectedItems.length) return;
+    setSaleConversionItems(quote.items);
+    setShowSaleConversionModal(true);
+  };
+
+  // Confirmar conversión con los items seleccionados
+  const confirmConvertToSale = async () => {
+    if (!quote || saleConversionItems.length === 0) {
+      alert('Debe seleccionar al menos un producto para la nota de venta');
+      return;
+    }
     setCreatingSale(true);
     setSaleError(null);
-    setIsSelectingProducts(true);
     
     try {
       const cotizacionNumericId = await NotasVentaService.getCotizacionNumericIdByFolio(quote.id);
-      await NotasVentaService.convertFromQuote(quote, {
+      
+      // Convertir a nota de venta con items editados y finalizarInmediatamente=true
+      const nota = await NotasVentaService.convertFromQuote(quote, {
         formaPago: quote.condicionesComerciales?.formaPago,
         cotizacionDbId: cotizacionNumericId || undefined,
-        itemsOverride: selectedItems,
-        finalizarInmediatamente: true // La nota queda confirmada/aceptada de inmediato
+        itemsOverride: saleConversionItems,
+        finalizarInmediatamente: true // Crear nota como confirmada (no editable)
       });
       
-      setShowProductsModal(false);
-      await loadNotaVenta(); // Recargar datos de la nota
-      
+      // Cerrar modal y actualizar estado
+      setShowSaleConversionModal(false);
+      await loadNotaVenta();
+      alert('Nota de venta creada correctamente');
     } catch (e: any) {
       console.error('Error creando nota de venta', e);
       setSaleError(e.message || 'Error desconocido');
       alert('Error al crear nota de venta: ' + (e.message || ''));
     } finally {
       setCreatingSale(false);
-      setIsSelectingProducts(false);
     }
-  }, [quote, selectedItems, loadNotaVenta]);
+  };
 
-  // Efecto para cargar la nota de venta al inicio
-  React.useEffect(() => { loadNotaVenta(); }, [loadNotaVenta]);
-  
-  // ===== RETURNS CONDICIONALES =====
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -194,10 +173,6 @@ export default function QuoteDetailPage() {
     // Funcionalidad de edición será implementada después
     alert('Funcionalidad de edición en desarrollo');
   };
-
-  // (Las funciones handleOpenProductSelection, handleCancelProductSelection y handleSaveNotaVenta se movieron arriba)
-  
-  // (loadNotaVenta y useEffect ya movidos arriba)
 
   const recalcNotaVentaTotals = (base: SalesNoteRecord, items: any[]) => {
     const subtotal = items.reduce((s,it)=> s + (it.cantidad * it.precio_unitario_neto),0);
@@ -281,22 +256,14 @@ export default function QuoteDetailPage() {
           </div>
           <div className="min-w-0">
             <h1 className="text-xl sm:text-2xl md:text-3xl font-bold truncate" style={{ color: 'var(--text-primary)' }}>
-              {notaVenta 
-                ? `Nota de Venta ${notaVenta.folio || 'NV' + quote.numero.substring(3)}` 
-                : quote.estado === 'aceptada' 
-                  ? `Nota de Venta ${quote.numero.replace('COT', 'NV')}` 
-                  : `Cotización ${quote.numero}`
-              }
+              {notaVenta ? 'Nota de Venta ' : 'Cotización '} {quote.numero}
             </h1>
             <div className="flex items-center flex-wrap gap-2 sm:gap-3 mt-1">
               <span 
-                className={`px-2 sm:px-3 py-1 text-xs sm:text-sm font-medium rounded-full whitespace-nowrap status-badge-${quote.estado}`}
+                className="px-2 sm:px-3 py-1 text-xs sm:text-sm font-medium rounded-full whitespace-nowrap"
                 style={{ backgroundColor: statusColor.bg, color: statusColor.text }}
               >
-                {quote.estado === 'aceptada' && notaVenta ? 'Confirmada' : quote.estado.charAt(0).toUpperCase() + quote.estado.slice(1)}
-                {notaVenta && quote.estado === 'aceptada' && (
-                  <span className="ml-1 inline-flex items-center">• Finalizada</span>
-                )}
+                {quote.estado.charAt(0).toUpperCase() + quote.estado.slice(1)}
               </span>
               {daysUntilExpiration !== null && (
                 <span className="flex items-center gap-1 text-xs sm:text-sm whitespace-nowrap" style={{ color: 'var(--text-secondary)' }}>
@@ -318,7 +285,7 @@ export default function QuoteDetailPage() {
         <div className="flex items-center gap-2 self-end sm:self-auto mt-2 sm:mt-0 flex-wrap">
           {!notaVenta && (
             <button
-              onClick={handleOpenProductSelection}
+              onClick={startConvertToSale}
               disabled={creatingSale}
               className="btn-primary flex items-center gap-1 sm:gap-2 px-2 sm:px-4 py-1 sm:py-2 text-sm"
               style={creatingSale ? { opacity: .7, cursor:'wait' } : {}}
@@ -340,14 +307,6 @@ export default function QuoteDetailPage() {
           >
             <FiEdit2 className="w-3 sm:w-4 h-3 sm:h-4" />
             <span className="hidden xs:inline">Editar</span>
-          </button>
-          <button
-            onClick={handleDeleteQuote}
-            className="flex items-center gap-1 sm:gap-2 px-2 sm:px-4 py-1 sm:py-2 text-sm rounded-lg"
-            style={{ background: 'var(--danger-bg)', color: 'var(--danger-text)' }}
-          >
-            <FiAlertCircle className="w-3 sm:w-4 h-3 sm:h-4" />
-            <span className="hidden xs:inline">Eliminar</span>
           </button>
           {saleError && (
             <span className="text-xs text-red-500 w-full">{saleError}</span>
@@ -449,9 +408,6 @@ export default function QuoteDetailPage() {
             <h3 className="text-lg font-semibold mb-4 flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
               <FiPackage className="w-5 h-5" style={{ color: 'var(--accent-primary)' }} />
               {notaVenta ? 'Ítems Nota de Venta' : 'Detalle de Productos'} ({notaVenta ? nvItems.length : (quote.items?.length || 0)} ítems)
-              {notaVenta && <span className="ml-2 text-xs px-2 py-1 rounded-full" style={{ backgroundColor: 'var(--success-bg)', color: 'var(--success-text)' }}>
-                {notaVenta.estado === 'confirmada' ? 'No Editable' : 'Borrador'}
-              </span>}
             </h3>
             {notaVenta && notaVenta.estado==='borrador' && (
               <div className="grid grid-cols-2 md:grid-cols-7 gap-2 mb-6 text-xs md:text-sm">
@@ -831,60 +787,72 @@ export default function QuoteDetailPage() {
         </div>
       </div>
 
-      {/* Modal de selección de productos para nota de venta */}
-      {showProductsModal && (
-        <div className="fixed inset-0 flex items-center justify-center p-4 z-50" style={{ backgroundColor: 'rgba(0,0,0,0.7)' }}>
-          <div className="rounded-lg w-full max-w-6xl max-h-[90vh] overflow-y-auto" style={{ backgroundColor: 'var(--card-bg)' }}>
-            <div className="p-6 flex justify-between items-center sticky top-0 z-10" style={{ 
-              backgroundColor: 'var(--card-bg)',
-              borderBottom: '1px solid var(--border)'
-            }}>
-              <div>
-                <h2 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>
-                  Crear Nota de Venta
-                </h2>
-                <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-                  Seleccione los productos finales para la nota de venta
-                </p>
-              </div>
-              <div className="flex gap-3">
-                <button
-                  onClick={handleCancelProductSelection}
-                  className="btn-secondary px-4 py-2"
-                  disabled={creatingSale}
-                >
-                  Cancelar
-                </button>
-                <button
-                  onClick={handleSaveNotaVenta}
-                  className="btn-primary flex items-center gap-2 px-4 py-2"
-                  disabled={creatingSale || !selectedItems.length}
-                >
-                  {creatingSale ? (
-                    <>
-                      <div className="animate-spin rounded-full h-4 w-4 border-2" style={{ 
-                        borderTopColor: 'transparent',
-                        borderLeftColor: 'var(--button-text)',
-                        borderRightColor: 'var(--button-text)',
-                        borderBottomColor: 'var(--button-text)'
-                      }} />
-                      Procesando...
-                    </>
-                  ) : (
-                    <>
-                      <FiCheckCircle className="w-4 h-4" />
-                      Guardar Nota de Venta
-                    </>
-                  )}
-                </button>
+      {/* Modal de selección final de productos para Nota de Venta */}
+      {showSaleConversionModal && quote && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white dark:bg-gray-800 rounded-lg w-full max-w-6xl max-h-[90vh] overflow-y-auto p-6">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-xl font-bold" style={{color: 'var(--text-primary)'}}>
+                Finalizar Nota de Venta
+              </h2>
+              <button 
+                onClick={() => setShowSaleConversionModal(false)} 
+                className="text-gray-500 hover:text-gray-700"
+                disabled={creatingSale}
+              >
+                ✖
+              </button>
+            </div>
+
+            <div className="mb-6">
+              <p className="mb-4" style={{color: 'var(--text-secondary)'}}>
+                Configure los productos finales para la Nota de Venta. Una vez creada, la Nota de Venta no podrá ser modificada.
+              </p>
+              <div className="p-4 rounded-lg mb-4" style={{backgroundColor: 'var(--info-bg)', border: '1px solid var(--info-border)'}}>
+                <div className="flex items-start">
+                  <div className="mr-3 text-blue-500">
+                    <FiInfo className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h4 className="font-medium mb-1">Información importante</h4>
+                    <ul className="list-disc pl-5 space-y-1 text-sm">
+                      <li>Puede agregar o eliminar productos antes de crear la Nota de Venta definitiva</li>
+                      <li>Al crear la Nota de Venta, la cotización pasará a estado "Aceptada"</li>
+                      <li>Las Notas de Venta confirmadas no pueden modificarse posteriormente</li>
+                    </ul>
+                  </div>
+                </div>
               </div>
             </div>
-            
-            <div className="p-6" style={{ backgroundColor: 'var(--bg-primary)' }}>
-              <ProductsForm
-                items={selectedItems}
-                onChange={setSelectedItems}
+
+            <div className="mb-6">
+              <ProductsForm 
+                items={saleConversionItems}
+                onChange={setSaleConversionItems}
               />
+            </div>
+
+            <div className="flex justify-end gap-3 border-t pt-4" style={{borderColor: 'var(--border)'}}>
+              <button
+                onClick={() => setShowSaleConversionModal(false)}
+                className="btn-secondary px-4 py-2"
+                disabled={creatingSale}
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={confirmConvertToSale}
+                disabled={creatingSale || saleConversionItems.length === 0}
+                className="btn-primary flex items-center gap-2 px-4 py-2"
+                style={creatingSale ? { opacity: .7, cursor: 'wait' } : {}}
+              >
+                {creatingSale ? (
+                  <span className="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                ) : (
+                  <FiCheck className="w-4 h-4" />
+                )}
+                Guardar Nota de Venta
+              </button>
             </div>
           </div>
         </div>

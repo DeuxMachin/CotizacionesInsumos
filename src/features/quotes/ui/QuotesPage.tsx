@@ -19,8 +19,11 @@ import {
   FiTrendingUp,
   FiChevronLeft,
   FiChevronRight,
-  FiX
+  FiX,
+  FiShoppingCart
 } from 'react-icons/fi';
+import { NotasVentaService } from '@/services/notasVentaService';
+import { supabase } from '@/lib/supabase';
 import { useQuotes } from '../model/useQuotes';
 import { Quote, QuoteStatus } from '@/core/domain/quote/Quote';
 
@@ -38,6 +41,8 @@ interface QuoteCardProps {
   getStatusColor: (status: QuoteStatus) => { bg: string; text: string };
   canEdit: (quote: Quote) => boolean;
   canDelete: (quote: Quote) => boolean;
+  onConvert: (q: Quote) => void;
+  convertingId: string | null;
 }
 
 interface QuotesTableProps {
@@ -51,6 +56,8 @@ interface QuotesTableProps {
   getStatusColor: (status: QuoteStatus) => { bg: string; text: string };
   canEdit: (quote: Quote) => boolean;
   canDelete: (quote: Quote) => boolean;
+  onConvert: (q: Quote) => void;
+  convertingId: string | null;
 }
 
 export function QuotesPage() {
@@ -80,6 +87,7 @@ export function QuotesPage() {
   const [selectedStates, setSelectedStates] = useState<QuoteStatus[]>([]);
   const [showFilters, setShowFilters] = useState(false);
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
+  const [convertingId, setConvertingId] = useState<string | null>(null);
 
   // Aplicar filtros
   React.useMemo(() => {
@@ -144,6 +152,58 @@ export function QuotesPage() {
     const success = await cambiarEstado(id, status);
     if (success) {
       // Podrías mostrar un toast de éxito aquí
+    }
+  };
+
+  const handleConvert = async (quote: Quote) => {
+    if (!confirm('¿Pasar esta cotización a Nota de Venta (borrador)?')) return;
+    setConvertingId(quote.id);
+    try {
+      // Obtener id numérico real de cotización por folio (quote.id es folio)
+      const cotizacionNumericId = await NotasVentaService.getCotizacionNumericIdByFolio(quote.id);
+      
+      // Asegurarnos de obtener el ID numérico del cliente
+      let clientePrincipalId = null;
+      try {
+        if (quote.cliente && quote.cliente.rut) {
+          // Consulta para obtener el ID del cliente a partir del RUT
+          const { data: clienteData } = await supabase
+            .from('clientes')
+            .select('id')
+            .eq('rut', quote.cliente.rut)
+            .single();
+          
+          if (clienteData) {
+            clientePrincipalId = clienteData.id;
+            console.log(`Cliente encontrado con ID: ${clientePrincipalId}`);
+          } else {
+            console.warn(`No se encontró el cliente con RUT: ${quote.cliente.rut}`);
+          }
+        }
+      } catch (err) {
+        console.error("Error al buscar el ID del cliente:", err);
+      }
+      
+      // Crear la nota de venta con los datos completos del cliente
+      const nota = await NotasVentaService.convertFromQuote(quote, { 
+        formaPago: quote.condicionesComerciales?.formaPago, 
+        cotizacionDbId: cotizacionNumericId || undefined,
+        clientePrincipalId: clientePrincipalId,
+        // Pasamos todos los datos del cliente incluyendo el giro
+        clienteGiro: quote.cliente?.giro,
+        clienteDireccion: quote.cliente?.direccion,
+        clienteComuna: quote.cliente?.comuna,
+        clienteCiudad: quote.cliente?.ciudad
+      });
+      
+      // No redirigimos; forzamos refresco de datos (estrategia simple: reload)
+      // Ideal: invalidar cache en hook useQuotes.
+      window.location.reload();
+    } catch (e:any) {
+      console.error('Error convirtiendo cotización a nota de venta', e);
+      alert('Error al convertir: ' + (e.message || 'desconocido'));
+    } finally {
+      setConvertingId(null);
     }
   };
 
@@ -450,6 +510,8 @@ export function QuotesPage() {
               getStatusColor={getStatusColor}
               canEdit={canEdit}
               canDelete={canDelete}
+        onConvert={handleConvert}
+        convertingId={convertingId}
             />
           ))}
         </div>
@@ -465,6 +527,8 @@ export function QuotesPage() {
           getStatusColor={getStatusColor}
           canEdit={canEdit}
           canDelete={canDelete}
+      onConvert={handleConvert}
+      convertingId={convertingId}
         />
       )}
 
@@ -570,7 +634,9 @@ function QuoteCard({
   formatMoney, 
   getStatusColor, 
   canEdit, 
-  canDelete 
+  canDelete,
+  onConvert,
+  convertingId
 }: QuoteCardProps) {
   const statusColor = getStatusColor(quote.estado);
   const [showActions, setShowActions] = useState(false);
@@ -673,6 +739,19 @@ function QuoteCard({
             >
               <FiEye className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />
             </button>
+            {quote.estado !== 'aceptada' && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onConvert(quote);
+                }}
+                disabled={convertingId === quote.id}
+                className="p-2 rounded-lg hover:bg-gray-100 transition-colors disabled:opacity-50"
+                title="Pasar a Venta"
+              >
+                <FiShoppingCart className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />
+              </button>
+            )}
             {canEdit(quote) && (
               <button
                 onClick={(e) => {
@@ -734,11 +813,13 @@ function QuotesTable({
   onEdit, 
   onDelete, 
   onDuplicate, 
-
+  onChangeStatus,
   formatMoney, 
   getStatusColor, 
   canEdit, 
-  canDelete 
+  canDelete,
+  onConvert,
+  convertingId
 }: QuotesTableProps) {
   return (
     <div 
@@ -750,7 +831,7 @@ function QuotesTable({
           <thead style={{ backgroundColor: 'var(--bg-secondary)' }}>
             <tr>
               <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>
-                Cotización
+                Documento
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>
                 Cliente
@@ -783,7 +864,7 @@ function QuotesTable({
                         {quote.numero}
                       </div>
                       <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-                        {quote.items.length} cotizaciones
+                        {quote.items.length} {quote.estado === 'aceptada' ? 'productos' : 'cotizaciones'}
                       </div>
                     </div>
                   </td>
@@ -826,6 +907,16 @@ function QuotesTable({
                       >
                         <FiEye className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />
                       </button>
+                      {quote.estado !== 'aceptada' && (
+                        <button
+                          onClick={() => onConvert(quote)}
+                          disabled={convertingId === quote.id}
+                          className="p-1 rounded hover:bg-gray-100 disabled:opacity-50"
+                          title="Pasar a Venta"
+                        >
+                          <FiShoppingCart className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />
+                        </button>
+                      )}
                       {canEdit(quote) && (
                         <button
                           onClick={() => onEdit(quote)}

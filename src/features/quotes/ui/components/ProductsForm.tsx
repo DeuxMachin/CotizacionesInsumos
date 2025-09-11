@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { 
   FiPackage, 
   FiPlus, 
@@ -10,9 +10,13 @@ import {
   FiSearch,
   FiGrid,
   FiList,
-  FiShoppingCart
+  FiShoppingCart,
+  FiChevronUp,
+  FiChevronDown,
+  FiTrendingDown
 } from 'react-icons/fi';
 import { QuoteItem } from '@/core/domain/quote/Quote';
+import { useProducts } from '../../model/useProducts';
 
 interface ProductsFormProps {
   items: QuoteItem[];
@@ -20,52 +24,117 @@ interface ProductsFormProps {
   errors?: string[];
 }
 
-// Categorías de productos de construcción
-const PRODUCT_CATEGORIES = [
-  { id: 'cement', name: 'Cemento y Mortero', icon: '🏗️' },
-  { id: 'aggregates', name: 'Áridos', icon: '🪨' },
-  { id: 'steel', name: 'Fierro y Acero', icon: '🔧' },
-  { id: 'blocks', name: 'Ladrillos y Bloques', icon: '🧱' },
-  { id: 'wood', name: 'Madera', icon: '🪵' },
-  { id: 'roofing', name: 'Techado', icon: '🏠' },
-  { id: 'insulation', name: 'Aislación', icon: '🧊' },
-  { id: 'plumbing', name: 'Sanitarios', icon: '🚿' },
-  { id: 'electrical', name: 'Eléctricos', icon: '⚡' },
-  { id: 'paint', name: 'Pinturas', icon: '🎨' },
-  { id: 'tools', name: 'Herramientas', icon: '🔨' },
-  { id: 'other', name: 'Otros', icon: '📦' }
-];
-
-// Mock de productos por categoría
-const MOCK_PRODUCTS = {
-  cement: [
-    { codigo: 'CEM-001', descripcion: 'Cemento Portland 25kg', unidad: 'Saco', precio: 8500 },
-    { codigo: 'CEM-002', descripcion: 'Cemento Portland 50kg', unidad: 'Saco', precio: 16800 },
-    { codigo: 'MOR-001', descripcion: 'Mortero Predosificado 25kg', unidad: 'Saco', precio: 7200 }
-  ],
-  aggregates: [
-    { codigo: 'ARE-001', descripcion: 'Arena Lavada m3', unidad: 'm³', precio: 15000 },
-    { codigo: 'GRA-001', descripcion: 'Grava 20mm m3', unidad: 'm³', precio: 18000 },
-    { codigo: 'RIP-001', descripcion: 'Ripio m3', unidad: 'm³', precio: 16500 }
-  ],
-  steel: [
-    { codigo: 'FIE-008', descripcion: 'Fierro 8mm x 12m', unidad: 'Varilla', precio: 4500 },
-    { codigo: 'FIE-010', descripcion: 'Fierro 10mm x 12m', unidad: 'Varilla', precio: 7200 },
-    { codigo: 'FIE-012', descripcion: 'Fierro 12mm x 12m', unidad: 'Varilla', precio: 10800 }
-  ],
-  blocks: [
-    { codigo: 'LAD-001', descripcion: 'Ladrillo Princesa 18x14x29cm', unidad: 'Unidad', precio: 450 },
-    { codigo: 'BLO-001', descripcion: 'Bloque Hormigón 20x20x40cm', unidad: 'Unidad', precio: 2200 },
-    { codigo: 'BLO-002', descripcion: 'Bloque Liviano 10x20x40cm', unidad: 'Unidad', precio: 1800 }
-  ]
+// Fallback icon
+const categoryIcon = (name: string) => {
+  if (/cement/i.test(name)) return '🏗️';
+  if (/ladrill|bloque/i.test(name)) return '�';
+  if (/acero|fierro|metal/i.test(name)) return '�';
+  if (/mader/i.test(name)) return '🪵';
+  if (/pintur|paint/i.test(name)) return '🎨';
+  if (/herramient/i.test(name)) return '�';
+  if (/aisl/i.test(name)) return '🧊';
+  if (/electr/i.test(name)) return '⚡';
+  if (/sanit/i.test(name)) return '🚿';
+  return '📦';
 };
 
+interface CategoryScrollerProps {
+  categories: { id: number; nombre: string }[];
+  selected: number | 'all';
+  onSelect: (id: number | 'all') => void;
+}
+
+const CategoryScroller: React.FC<CategoryScrollerProps> = ({ categories, selected, onSelect }) => {
+  // State for tracking expanded state
+  const [isExpanded, setIsExpanded] = useState<boolean>(false);
+  
+  // Calculate which categories to display
+  const displayCategories = isExpanded ? categories : categories.slice(0, 8);
+  const hiddenCount = categories.length - 8;
+  
+  return (
+    <div className="space-y-4">
+      {/* Categories row */}
+      <div className="flex flex-wrap gap-2 py-1">
+        <CategoryChip 
+          label="Todas" 
+          icon="🗂️" 
+          active={selected==='all'} 
+          onClick={() => onSelect('all')} 
+        />
+        {displayCategories.map(cat => (
+          <CategoryChip 
+            key={cat.id} 
+            label={cat.nombre} 
+            icon={categoryIcon(cat.nombre)} 
+            active={selected===cat.id} 
+            onClick={() => onSelect(cat.id)} 
+          />
+        ))}
+      </div>
+      
+      {/* Toggle button - only show if we have more than 8 categories */}
+      {categories.length > 8 && (
+        <div className="flex justify-start">
+          <button
+            type="button"
+            onClick={() => setIsExpanded(!isExpanded)}
+            className="flex items-center gap-2 px-4 py-2 rounded-md text-sm transition-all"
+            style={{
+              backgroundColor: 'var(--accent-bg)', 
+              borderColor: 'var(--accent-primary)',
+              border: '1px solid var(--accent-primary)',
+              color: 'var(--accent-text)',
+              boxShadow: '0 1px 2px rgba(0,0,0,0.1)'
+            }}
+          >
+            {isExpanded ? (
+              <>
+                <FiChevronUp size={16} /> Ver menos
+              </>
+            ) : (
+              <>
+                <FiChevronDown size={16} /> Ver más ({hiddenCount})
+              </>
+            )}
+          </button>
+        </div>
+      )}
+    </div>
+  );
+};
+
+interface CategoryChipProps { label: string; icon: string; active: boolean; onClick: () => void }
+const CategoryChip: React.FC<CategoryChipProps> = ({ label, icon, active, onClick }) => (
+  <button
+    onClick={onClick}
+    className={`px-3 py-2 rounded-lg flex flex-col items-center justify-center min-w-[90px] text-xs gap-1 transition-all hover:shadow-sm ${active ? 'transform scale-105' : ''}`}
+    style={{
+      backgroundColor: active ? 'var(--accent-bg)' : 'var(--card-bg)',
+      color: active ? 'var(--accent-text)' : 'var(--text-secondary)',
+      border: `1px solid ${active ? 'var(--accent-primary)' : 'var(--border)'}`,
+      boxShadow: active ? '0 2px 4px rgba(0,0,0,0.1)' : 'none'
+    }}
+  >
+    <span className="text-base">{icon}</span>
+    <span className="truncate max-w-[80px] font-medium" title={label}>{label}</span>
+  </button>
+);
+
 export function ProductsForm({ items, onChange }: ProductsFormProps) {
-  const [selectedCategory, setSelectedCategory] = useState('cement');
+  const { products, categories, loading, error } = useProducts();
+  const [selectedCategory, setSelectedCategory] = useState<number | 'all'>('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [dense, setDense] = useState(false);
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
+  const [page, setPage] = useState(1);
+  const PAGE_SIZE = 20;
+  
+  // Agregamos estado para descuento global
+  const [globalDiscount, setGlobalDiscount] = useState<number>(0);
+  
   const [newItem, setNewItem] = useState<Partial<QuoteItem>>({
     codigo: '',
     descripcion: '',
@@ -75,11 +144,23 @@ export function ProductsForm({ items, onChange }: ProductsFormProps) {
     descuento: 0
   });
 
-  const categoryProducts = MOCK_PRODUCTS[selectedCategory as keyof typeof MOCK_PRODUCTS] || [];
-  const filteredProducts = categoryProducts.filter(product =>
-    product.descripcion.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    product.codigo.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredProducts = useMemo(() => {
+    const base = products.filter(p => {
+      const matchesCategory = selectedCategory === 'all' || p.categorias.some(c => c.id === selectedCategory);
+      const term = searchTerm.toLowerCase();
+      const matchesTerm = !term || p.nombre.toLowerCase().includes(term) || (p.sku || '').toLowerCase().includes(term);
+      return matchesCategory && matchesTerm;
+    });
+    // Reset page if filter changes reduces total
+    if ((page - 1) * PAGE_SIZE >= base.length) setPage(1);
+    return base;
+  }, [products, selectedCategory, searchTerm]);
+
+  const paginated = useMemo(() => {
+    const start = (page - 1) * PAGE_SIZE;
+    return filteredProducts.slice(start, start + PAGE_SIZE);
+  }, [filteredProducts, page]);
+  const totalPages = Math.max(1, Math.ceil(filteredProducts.length / PAGE_SIZE));
 
   const calculateSubtotal = (cantidad: number, precioUnitario: number, descuento: number = 0) => {
     const subtotal = cantidad * precioUnitario;
@@ -87,17 +168,17 @@ export function ProductsForm({ items, onChange }: ProductsFormProps) {
     return subtotal - descuentoAmount;
   };
 
-  type MockProduct = { codigo: string; descripcion: string; unidad: string; precio: number };
-  const addProductToQuote = (product: MockProduct) => {
+  const addProductToQuote = (product: { id: number; sku: string | null; nombre: string; unidad: string; precio_venta_neto: number | null; }) => {
     const newQuoteItem: QuoteItem = {
       id: `item-${Date.now()}`,
-      codigo: product.codigo,
-      descripcion: product.descripcion,
+      productId: product.id,
+      codigo: product.sku || `PROD-${product.id}`,
+      descripcion: product.nombre,
       unidad: product.unidad,
       cantidad: 1,
-      precioUnitario: product.precio,
+      precioUnitario: product.precio_venta_neto || 0,
       descuento: 0,
-      subtotal: product.precio
+      subtotal: product.precio_venta_neto || 0
     };
 
     onChange([...items, newQuoteItem]);
@@ -126,63 +207,77 @@ export function ProductsForm({ items, onChange }: ProductsFormProps) {
       onChange([...items, customItem]);
     }
 
-    setNewItem({
-      codigo: '',
-      descripcion: '',
-      unidad: 'Unidad',
-      cantidad: 1,
-      precioUnitario: 0,
-      descuento: 0
-    });
-    setShowAddForm(false);
-  };
-
-  const updateItemQuantity = (index: number, cantidad: number) => {
-    if (cantidad < 1) return;
-    const updatedItems = [...items];
-    updatedItems[index] = {
-      ...updatedItems[index],
-      cantidad,
-      subtotal: calculateSubtotal(cantidad, updatedItems[index].precioUnitario, updatedItems[index].descuento)
+      setNewItem({
+        codigo: '',
+        descripcion: '',
+        unidad: 'Unidad',
+        cantidad: 1,
+        precioUnitario: 0,
+        descuento: 0
+      });
+      setShowAddForm(false);
     };
-    onChange(updatedItems);
-  };
 
-  const updateItemDiscount = (index: number, descuento: number) => {
-    if (descuento < 0 || descuento > 100) return;
-    const updatedItems = [...items];
-    updatedItems[index] = {
-      ...updatedItems[index],
-      descuento,
-      subtotal: calculateSubtotal(updatedItems[index].cantidad, updatedItems[index].precioUnitario, descuento)
+    const updateItemQuantity = (index: number, cantidad: number) => {
+      if (cantidad < 1) return;
+      const updatedItems = [...items];
+      updatedItems[index] = {
+        ...updatedItems[index],
+        cantidad,
+        subtotal: calculateSubtotal(cantidad, updatedItems[index].precioUnitario, updatedItems[index].descuento)
+      };
+      onChange(updatedItems);
     };
-    onChange(updatedItems);
-  };
 
-  const removeItem = (index: number) => {
-    const updatedItems = items.filter((_, i) => i !== index);
-    onChange(updatedItems);
-  };
+    const updateItemDiscount = (index: number, descuento: number) => {
+      if (descuento < 0 || descuento > 100) return;
+      const updatedItems = [...items];
+      updatedItems[index] = {
+        ...updatedItems[index],
+        descuento,
+        subtotal: calculateSubtotal(updatedItems[index].cantidad, updatedItems[index].precioUnitario, descuento)
+      };
+      onChange(updatedItems);
+    };
 
-  const editItem = (index: number) => {
-    const item = items[index];
-    setNewItem({
-      codigo: item.codigo,
-      descripcion: item.descripcion,
-      unidad: item.unidad,
-      cantidad: item.cantidad,
-      precioUnitario: item.precioUnitario,
-      descuento: item.descuento
-    });
-    setEditingIndex(index);
-    setShowAddForm(true);
-  };
+    const removeItem = (index: number) => {
+      const updatedItems = items.filter((_, i) => i !== index);
+      onChange(updatedItems);
+    };
 
-  const totalItems = items.reduce((sum, item) => sum + item.cantidad, 0);
-  const totalAmount = items.reduce((sum, item) => sum + item.subtotal, 0);
+    const editItem = (index: number) => {
+      const item = items[index];
+      setNewItem({
+        codigo: item.codigo,
+        descripcion: item.descripcion,
+        unidad: item.unidad,
+        cantidad: item.cantidad,
+        precioUnitario: item.precioUnitario,
+        descuento: item.descuento
+      });
+      setEditingIndex(index);
+      setShowAddForm(true);
+    };
+
+    const totalItems = items.reduce((sum, item) => sum + item.cantidad, 0);
+  const subtotalAmount = items.reduce((sum, item) => sum + item.subtotal, 0);
+  const globalDiscountAmount = Math.round((subtotalAmount * globalDiscount) / 100);
+  const totalAmount = subtotalAmount - globalDiscountAmount;
 
   return (
     <div className="space-y-6">
+
+            {/* Paginación */}
+            {!loading && filteredProducts.length > PAGE_SIZE && (
+              <div className="flex items-center justify-between mt-4 text-xs">
+                <span style={{color:'var(--text-secondary)'}}>Página {page} / {totalPages}</span>
+                <div className="flex items-center gap-2">
+                  <button disabled={page===1} onClick={()=>setPage(p=>Math.max(1,p-1))} className="px-2 py-1 border rounded disabled:opacity-40" style={{borderColor:'var(--border)'}}>Anterior</button>
+                  <button disabled={page===totalPages} onClick={()=>setPage(p=>Math.min(totalPages,p+1))} className="px-2 py-1 border rounded disabled:opacity-40" style={{borderColor:'var(--border)'}}>Siguiente</button>
+                  <button onClick={()=>setDense(d=>!d)} className="px-2 py-1 border rounded" style={{borderColor:'var(--border)'}}>{dense ? 'Espaciado' : 'Compacto'}</button>
+                </div>
+              </div>
+            )}
       <div className="flex items-center gap-3 mb-6">
         <div 
           className="p-3 rounded-lg"
@@ -202,32 +297,146 @@ export function ProductsForm({ items, onChange }: ProductsFormProps) {
 
       {/* Resumen rápido */}
       {items.length > 0 && (
-        <div 
-          className="grid grid-cols-2 sm:grid-cols-3 gap-4 p-4 rounded-lg"
-          style={{ backgroundColor: 'var(--info-bg)', border: '1px solid var(--info-border)' }}
-        >
-          <div className="text-center">
-            <div className="text-2xl font-bold" style={{ color: 'var(--accent-primary)' }}>
-              {items.length}
-            </div>
-            <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-              Productos
+        <div className="p-5 rounded-lg shadow-sm" style={{ backgroundColor: 'var(--card-bg)', border: '1px solid var(--accent-border)' }}>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>
+              Resumen de Cotización
+            </h3>
+            <div className="px-3 py-1 rounded-full text-xs font-medium" style={{ backgroundColor: 'var(--accent-bg)', color: 'var(--accent-text)' }}>
+              {items.length} {items.length === 1 ? 'Producto' : 'Productos'}
             </div>
           </div>
-          <div className="text-center">
-            <div className="text-2xl font-bold" style={{ color: 'var(--accent-primary)' }}>
-              {totalItems.toLocaleString('es-CL')}
+          
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-4">
+            <div className="flex flex-col">
+              <span className="text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>
+                Cantidad Total
+              </span>
+              <span className="text-2xl font-bold" style={{ color: 'var(--accent-primary)' }}>
+                {totalItems.toLocaleString('es-CL')}
+              </span>
             </div>
-            <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-              Cantidad Total
+            
+            <div className="flex flex-col">
+              <span className="text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>
+                Subtotal
+              </span>
+              <span className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>
+                ${subtotalAmount.toLocaleString('es-CL')}
+              </span>
+            </div>
+            
+            <div className="flex flex-col">
+              <span className="text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>
+                Total Final
+              </span>
+              <span className="text-2xl font-bold" style={{ color: 'var(--success-text)' }}>
+                ${totalAmount.toLocaleString('es-CL')}
+              </span>
             </div>
           </div>
-          <div className="text-center col-span-2 sm:col-span-1">
-            <div className="text-2xl font-bold" style={{ color: 'var(--success-text)' }}>
-              ${totalAmount.toLocaleString('es-CL')}
-            </div>
-            <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-              Subtotal
+          
+          {/* Descuento Global */}
+          <div className="mt-4 pt-4 border-t" style={{ borderColor: 'var(--border)' }}>
+            <h4 className="text-md font-semibold mb-4" style={{ color: 'var(--text-primary)' }}>
+              Descuento Global
+            </h4>
+            
+            <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+              {/* Discount Controls */}
+              <div className="flex flex-col w-full md:w-auto gap-2">
+                <div className="flex items-center">
+                  {/* Presets */}
+                  <div className="flex gap-1 mr-3">
+                    {[0, 5, 10, 15, 20].map(value => (
+                      <button
+                        key={value}
+                        onClick={() => setGlobalDiscount(value)}
+                        className={`w-8 h-8 rounded-full text-xs font-medium flex items-center justify-center transition-all ${
+                          globalDiscount === value ? 'transform scale-110' : ''
+                        }`}
+                        style={{
+                          backgroundColor: globalDiscount === value ? 'var(--accent-primary)' : 'var(--bg-secondary)',
+                          color: globalDiscount === value ? 'white' : 'var(--text-secondary)',
+                          border: `1px solid ${globalDiscount === value ? 'var(--accent-primary)' : 'var(--border)'}`,
+                          boxShadow: globalDiscount === value ? '0 2px 4px rgba(0,0,0,0.2)' : 'none'
+                        }}
+                      >
+                        {value}%
+                      </button>
+                    ))}
+                  </div>
+                  
+                  {/* Custom input */}
+                  <div className="flex items-center shadow-sm rounded-lg overflow-hidden" style={{ border: '1px solid var(--accent-primary)' }}>
+                    <button 
+                      onClick={() => setGlobalDiscount(Math.max(0, globalDiscount - 1))} 
+                      className="px-3 py-2 transition-colors"
+                      style={{
+                        backgroundColor: 'var(--accent-bg)',
+                        color: 'var(--accent-text)'
+                      }}
+                    >
+                      <FiMinus className="w-4 h-4" />
+                    </button>
+                    <input
+                      type="number"
+                      min="0"
+                      max="100"
+                      value={globalDiscount}
+                      onChange={(e) => setGlobalDiscount(Math.min(100, Math.max(0, parseFloat(e.target.value) || 0)))}
+                      className="w-14 px-2 py-2 text-center"
+                      style={{
+                        backgroundColor: 'var(--input-bg)',
+                        color: 'var(--text-primary)',
+                        border: 'none',
+                        outline: 'none'
+                      }}
+                    />
+                    <button 
+                      onClick={() => setGlobalDiscount(Math.min(100, globalDiscount + 1))} 
+                      className="px-3 py-2 transition-colors"
+                      style={{
+                        backgroundColor: 'var(--accent-bg)',
+                        color: 'var(--accent-text)'
+                      }}
+                    >
+                      <FiPlus className="w-4 h-4" />
+                    </button>
+                    <div className="px-3 py-2 text-sm font-medium"
+                      style={{
+                        backgroundColor: 'var(--accent-primary)',
+                        color: 'white'
+                      }}
+                    >
+                      %
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Discount amount display */}
+                {globalDiscount > 0 && (
+                  <div className="text-sm font-medium flex items-center gap-1" style={{ color: 'var(--danger-text)' }}>
+                    <FiTrendingDown className="w-4 h-4" /> 
+                    Ahorro: ${globalDiscountAmount.toLocaleString('es-CL')}
+                  </div>
+                )}
+              </div>
+              
+              {/* Total after discount */}
+              <div className="bg-gradient-to-r from-green-50 to-transparent p-3 rounded-lg flex flex-col items-end" style={{ borderLeft: '3px solid var(--success-text)' }}>
+                <div className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
+                  Total con descuento
+                </div>
+                <div className="text-2xl font-bold" style={{ color: 'var(--success-text)' }}>
+                  ${totalAmount.toLocaleString('es-CL')}
+                </div>
+                {globalDiscountAmount > 0 && (
+                  <div className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+                    Original: ${subtotalAmount.toLocaleString('es-CL')}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -239,35 +448,13 @@ export function ProductsForm({ items, onChange }: ProductsFormProps) {
           {/* Categorías */}
           <div>
             <h3 className="text-lg font-semibold mb-3" style={{ color: 'var(--text-primary)' }}>
-              Categorías de Productos
+              Productos
             </h3>
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
-              {PRODUCT_CATEGORIES.map(category => (
-                <button
-                  key={category.id}
-                  onClick={() => setSelectedCategory(category.id)}
-                  className={`p-3 rounded-lg text-sm font-medium transition-all duration-200 ${
-                    selectedCategory === category.id ? 'shadow-sm' : ''
-                  }`}
-                  style={{
-                    backgroundColor: selectedCategory === category.id 
-                      ? 'var(--accent-bg)' 
-                      : 'var(--card-bg)',
-                    color: selectedCategory === category.id 
-                      ? 'var(--accent-text)' 
-                      : 'var(--text-secondary)',
-                    border: `1px solid ${selectedCategory === category.id 
-                      ? 'var(--accent-primary)' 
-                      : 'var(--border)'}`
-                  }}
-                >
-                  <div className="flex flex-col items-center gap-1">
-                    <span className="text-lg">{category.icon}</span>
-                    <span className="text-xs text-center leading-tight">{category.name}</span>
-                  </div>
-                </button>
-              ))}
-            </div>
+            <CategoryScroller 
+              categories={categories} 
+              selected={selectedCategory} 
+              onSelect={setSelectedCategory} 
+            />
           </div>
 
           {/* Búsqueda y vista */}
@@ -318,10 +505,8 @@ export function ProductsForm({ items, onChange }: ProductsFormProps) {
           <div>
             <div className="flex items-center justify-between mb-3">
               <h4 className="text-md font-medium" style={{ color: 'var(--text-primary)' }}>
-                {PRODUCT_CATEGORIES.find(c => c.id === selectedCategory)?.name} 
-                <span className="ml-2 text-sm" style={{ color: 'var(--text-secondary)' }}>
-                  ({filteredProducts.length} productos)
-                </span>
+                {(selectedCategory === 'all' ? 'Todos los productos' : categories.find(c => c.id === selectedCategory)?.nombre) || ''}
+                <span className="ml-2 text-sm" style={{ color: 'var(--text-secondary)' }}>({filteredProducts.length})</span>
               </h4>
               <button
                 onClick={() => setShowAddForm(true)}
@@ -333,68 +518,58 @@ export function ProductsForm({ items, onChange }: ProductsFormProps) {
             </div>
 
             {viewMode === 'grid' ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {filteredProducts.map((product, index) => (
-                  <div
-                    key={index}
-                    className="border rounded-lg p-4 hover:shadow-sm transition-shadow"
-                    style={{ backgroundColor: 'var(--card-bg)', borderColor: 'var(--border)' }}
-                  >
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[600px] overflow-y-auto pr-1" style={{scrollbarWidth:'thin'}}>
+                {loading && <p className="col-span-full text-sm" style={{color:'var(--text-secondary)'}}>Cargando...</p>}
+                {error && <p className="col-span-full text-sm" style={{color:'var(--danger-text)'}}>{error}</p>}
+                {!loading && paginated.map(product => (
+                  <div key={product.id} className={`border rounded-lg ${dense ? 'p-3' : 'p-4'} hover:shadow-sm transition-shadow`} style={{ backgroundColor:'var(--card-bg)', borderColor:'var(--border)' }}>
                     <div className="flex justify-between items-start mb-2">
-                      <div className="flex-1">
-                        <h5 className="font-medium text-sm" style={{ color: 'var(--text-primary)' }}>
-                          {product.descripcion}
-                        </h5>
-                        <p className="text-xs font-mono" style={{ color: 'var(--text-secondary)' }}>
-                          {product.codigo}
-                        </p>
+                      <div className="flex-1 min-w-0">
+                        <h5 className="font-medium text-xs sm:text-sm truncate" style={{ color:'var(--text-primary)' }}>{product.nombre}</h5>
+                        <p className="text-[10px] sm:text-xs font-mono" style={{ color:'var(--text-secondary)' }}>{product.sku || `ID:${product.id}`}</p>
                       </div>
-                      <button
-                        onClick={() => addProductToQuote(product)}
-                        className="btn-primary p-2 ml-2"
-                        title="Agregar a cotización"
-                      >
+                      <button onClick={()=>addProductToQuote(product)} className="btn-primary p-2 ml-2" title="Agregar a cotización">
                         <FiPlus className="w-4 h-4" />
                       </button>
                     </div>
-                    <div className="flex items-center justify-between text-sm">
-                      <span style={{ color: 'var(--text-secondary)' }}>
-                        {product.unidad}
-                      </span>
-                      <span className="font-semibold" style={{ color: 'var(--success-text)' }}>
-                        ${product.precio.toLocaleString('es-CL')}
-                      </span>
+                    <div className="flex items-center justify-between text-xs sm:text-sm">
+                      <span style={{ color:'var(--text-secondary)' }}>{product.unidad}</span>
+                      <span className="font-semibold" style={{ color:'var(--success-text)' }}>${(product.precio_venta_neto||0).toLocaleString('es-CL')}</span>
                     </div>
                   </div>
                 ))}
               </div>
             ) : (
-              <div className="border rounded-lg overflow-hidden" style={{ borderColor: 'var(--border)' }}>
-                <div className="divide-y" style={{ backgroundColor: 'var(--card-bg)' }}>
-                  {filteredProducts.map((product, index) => (
-                    <div key={index} className="p-4 flex items-center justify-between hover:bg-opacity-50 transition-colors">
-                      <div className="flex-1">
-                        <h5 className="font-medium" style={{ color: 'var(--text-primary)' }}>
-                          {product.descripcion}
-                        </h5>
-                        <p className="text-sm font-mono" style={{ color: 'var(--text-secondary)' }}>
-                          {product.codigo} - {product.unidad}
-                        </p>
+              <div className="border rounded-lg overflow-hidden max-h-[600px] overflow-y-auto" style={{ borderColor:'var(--border)' }}>
+                <div className="divide-y" style={{ backgroundColor:'var(--card-bg)' }}>
+                  {loading && <div className="p-4 text-sm" style={{color:'var(--text-secondary)'}}>Cargando...</div>}
+                  {error && <div className="p-4 text-sm" style={{color:'var(--danger-text)'}}>{error}</div>}
+                  {!loading && paginated.map(product => (
+                    <div key={product.id} className="p-4 flex items-center justify-between hover:bg-opacity-50 transition-colors">
+                      <div className="flex-1 min-w-0">
+                        <h5 className="font-medium text-sm truncate" style={{ color:'var(--text-primary)' }}>{product.nombre}</h5>
+                        <p className="text-xs font-mono" style={{ color:'var(--text-secondary)' }}>{(product.sku||`ID:${product.id}`)} - {product.unidad}</p>
                       </div>
                       <div className="flex items-center gap-4">
-                        <span className="font-semibold" style={{ color: 'var(--success-text)' }}>
-                          ${product.precio.toLocaleString('es-CL')}
-                        </span>
-                        <button
-                          onClick={() => addProductToQuote(product)}
-                          className="btn-primary flex items-center gap-2 px-3 py-2"
-                        >
+                        <span className="font-semibold" style={{ color:'var(--success-text)' }}>${(product.precio_venta_neto||0).toLocaleString('es-CL')}</span>
+                        <button onClick={()=>addProductToQuote(product)} className="btn-primary flex items-center gap-2 px-3 py-2">
                           <FiShoppingCart className="w-4 h-4" />
                           Agregar
                         </button>
                       </div>
                     </div>
                   ))}
+                </div>
+              </div>
+            )}
+
+            {!loading && filteredProducts.length > PAGE_SIZE && (
+              <div className="flex items-center justify-between mt-4 text-xs">
+                <span style={{color:'var(--text-secondary)'}}>Página {page} / {totalPages}</span>
+                <div className="flex items-center gap-2">
+                  <button disabled={page===1} onClick={()=>setPage(p=>Math.max(1,p-1))} className="px-2 py-1 border rounded disabled:opacity-40" style={{borderColor:'var(--border)'}}>Anterior</button>
+                  <button disabled={page===totalPages} onClick={()=>setPage(p=>Math.min(totalPages,p+1))} className="px-2 py-1 border rounded disabled:opacity-40" style={{borderColor:'var(--border)'}}>Siguiente</button>
+                  <button onClick={()=>setDense(d=>!d)} className="px-2 py-1 border rounded" style={{borderColor:'var(--border)'}}>{dense ? 'Espaciado' : 'Compacto'}</button>
                 </div>
               </div>
             )}
@@ -522,8 +697,8 @@ export function ProductsForm({ items, onChange }: ProductsFormProps) {
       </div>
 
       {/* Modal para agregar producto personalizado */}
-      {showAddForm && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+  {showAddForm && (
+        <div className="fixed inset-0 flex items-center justify-center z-50 p-4" style={{ backgroundColor: 'rgba(0,0,0,0.7)' }}>
           <div 
             className="max-w-md w-full rounded-lg p-6"
             style={{ backgroundColor: 'var(--card-bg)' }}
