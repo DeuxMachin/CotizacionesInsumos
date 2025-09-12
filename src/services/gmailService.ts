@@ -14,13 +14,15 @@ export async function sendGmailTest({
   subject,
   message,
   attachmentContent,
-  attachmentName
+  attachmentName,
+  isBase64 = false
 }: {
   toEmail: string;
   subject: string;
   message: string;
   attachmentContent?: string;
   attachmentName?: string;
+  isBase64?: boolean;
 }) {
   try {
     const mailOptions: any = {
@@ -44,7 +46,9 @@ export async function sendGmailTest({
       mailOptions.attachments = [
         {
           filename: attachmentName,
-          content: Buffer.from(attachmentContent, 'utf-8'),
+          content: isBase64 
+            ? Buffer.from(attachmentContent, 'base64')
+            : Buffer.from(attachmentContent, 'utf-8'),
         }
       ];
     }
