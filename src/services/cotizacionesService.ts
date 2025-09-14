@@ -14,7 +14,7 @@ export class CotizacionesService {
         *,
         cliente_principal:clientes!cliente_principal_id(id, nombre_razon_social, rut),
         obra:obras(id, nombre),
-        creador:usuarios!creada_por(id, nombre, apellido)
+  creador:usuarios!vendedor_id(id, nombre, apellido)
       `)
       .order('created_at', { ascending: false })
 
@@ -30,7 +30,7 @@ export class CotizacionesService {
         *,
         cliente_principal:clientes!cliente_principal_id(*),
         obra:obras(*),
-        creador:usuarios!creada_por(id, nombre, apellido)
+  creador:usuarios!vendedor_id(id, nombre, apellido)
       `)
       .eq('id', id)
       .single()
@@ -84,7 +84,7 @@ export class CotizacionesService {
       .select(`
         *,
         obra:obras(id, nombre),
-        creador:usuarios!creada_por(id, nombre, apellido)
+  creador:usuarios!vendedor_id(id, nombre, apellido)
       `)
       .eq('cliente_principal_id', clienteId)
       .order('created_at', { ascending: false })
@@ -101,7 +101,7 @@ export class CotizacionesService {
         *,
         cliente_principal:clientes!cliente_principal_id(id, nombre_razon_social, rut),
         obra:obras(id, nombre),
-        creador:usuarios!creada_por(id, nombre, apellido)
+  creador:usuarios!vendedor_id(id, nombre, apellido)
       `)
       .eq('estado', estado)
       .order('created_at', { ascending: false })
