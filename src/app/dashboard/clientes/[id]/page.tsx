@@ -864,7 +864,7 @@ function EditModal({ open, onClose, onSubmit, form, onChange, saving }: EditModa
           {/* Estado */}
           <div>
             <h3 className="text-sm font-medium mb-2" style={{ color: 'var(--text-primary)' }}>Estado</h3>
-            <select name="estado" value={form.estado} onChange={onChange} className="w-full p-2 rounded border bg-transparent" style={{ borderColor: 'var(--border)', color: 'var(--text-primary)' }}>
+            <select name="estado" value={form.estado} onChange={onChange} className="filter-select">
               <option value="vigente">Vigente</option>
               <option value="moroso">Moroso</option>
               <option value="inactivo">Inactivo</option>
