@@ -52,10 +52,13 @@ export const useAuth = create<AuthState>()(
       },
 
       login: async (email: string, password: string) => {
+        console.log('🔵 useAuth.login iniciado');
         set({ isLoading: true });
         
         try {
+          console.log('🔄 Llamando AuthService.signIn...');
           const result = await AuthService.signIn(email, password);
+          console.log('✅ AuthService.signIn exitoso');
           
           set({
             user: result.user,
@@ -75,10 +78,18 @@ export const useAuth = create<AuthState>()(
             console.error('Error escribiendo cookie:', cookieError);
           }
 
+          console.log('✅ useAuth.login completado exitosamente');
           return { success: true };
         } catch (error) {
-          set({ isLoading: false });
+          console.error('❌ Error en useAuth.login:', error);
+          set({ 
+            isLoading: false,
+            user: null,
+            isAuthenticated: false 
+          });
+          
           const errorMessage = error instanceof Error ? error.message : 'Error de autenticación';
+          console.log('❌ Devolviendo error:', errorMessage);
           return { 
             success: false, 
             error: errorMessage
