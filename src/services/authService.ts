@@ -13,6 +13,7 @@ export class AuthService {
   // Iniciar sesión usando nuestra API
   static async signIn(email: string, password: string) {
     try {
+      console.log('🔵 AuthService.signIn iniciado');
       const response = await fetch('/api/auth/login', {
         method: 'POST',
         headers: {
@@ -21,27 +22,45 @@ export class AuthService {
         body: JSON.stringify({ email, password }),
       })
 
+      console.log('📡 Respuesta recibida, status:', response.status);
       const result = await response.json()
+      console.log('📋 Datos de respuesta:', result);
 
       if (!result.success) {
+        console.log('❌ Login fallido desde API:', result.error);
+        // Devolver el error específico de la API
         throw new Error(result.error || 'Error de autenticación')
       }
 
       // Simular una sesión para mantener compatibilidad
-  const mockSession = {
+      const mockSession = {
         access_token: 'mock-token',
         refresh_token: 'mock-refresh',
         expires_in: 3600,
         user: { id: result.data.user.id, email: result.data.user.email }
       }
 
+      console.log('✅ Login exitoso, devolviendo datos del usuario');
       return {
         session: mockSession as unknown as Session,
         user: result.data.user as AuthUser
       }
     } catch (error) {
-      console.error('Error en signIn:', error)
-      throw error
+      console.error('❌ Error en AuthService.signIn:', error)
+      
+      // Si es un error de red o fetch, proporcionar mensaje específico
+      if (error instanceof TypeError && error.message.includes('fetch')) {
+        throw new Error('Error de conexión. Verifique su conexión a internet.')
+      }
+      
+      // Si ya es un error con mensaje específico, mantenerlo
+      if (error instanceof Error) {
+        console.log('❌ Propagando error específico:', error.message);
+        throw error
+      }
+      
+      // Error genérico para casos no manejados
+      throw new Error('Error de autenticación')
     }
   }
 

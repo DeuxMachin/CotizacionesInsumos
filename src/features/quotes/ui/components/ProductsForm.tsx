@@ -424,7 +424,10 @@ export function ProductsForm({ items, onChange }: ProductsFormProps) {
               </div>
               
               {/* Total after discount */}
-              <div className="bg-gradient-to-r from-green-50 to-transparent p-3 rounded-lg flex flex-col items-end" style={{ borderLeft: '3px solid var(--success-text)' }}>
+              <div className="p-3 rounded-lg flex flex-col items-end" style={{ 
+                background: 'var(--success-bg)', 
+                borderLeft: '3px solid var(--success-text)' 
+              }}>
                 <div className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
                   Total con descuento
                 </div>
@@ -618,14 +621,20 @@ export function ProductsForm({ items, onChange }: ProductsFormProps) {
                       <div className="flex gap-1 ml-2">
                         <button
                           onClick={() => editItem(index)}
-                          className="p-1 text-blue-500 hover:bg-blue-50 rounded"
+                          className="p-1 rounded transition-colors"
+                          style={{ color: 'var(--info)' }}
+                          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--info-bg)'}
+                          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                           title="Editar"
                         >
                           <FiEdit3 className="w-3 h-3" />
                         </button>
                         <button
                           onClick={() => removeItem(index)}
-                          className="p-1 text-red-500 hover:bg-red-50 rounded"
+                          className="p-1 rounded transition-colors"
+                          style={{ color: 'var(--danger)' }}
+                          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--danger-bg)'}
+                          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                           title="Eliminar"
                         >
                           <FiTrash2 className="w-3 h-3" />

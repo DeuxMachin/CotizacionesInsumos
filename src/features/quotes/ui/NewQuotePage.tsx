@@ -73,6 +73,8 @@ export function NewQuotePage() {
   const [showSendModal, setShowSendModal] = useState(false);
   const [sendEmail, setSendEmail] = useState('');
   const [sendEmailError, setSendEmailError] = useState('');
+  const [sendingEmail, setSendingEmail] = useState(false);
+  const [emailSent, setEmailSent] = useState(false);
 
   // Validación de pasos
   const validateStep = (step: FormStep): string[] => {
@@ -229,6 +231,10 @@ export function NewQuotePage() {
 
   const handleSave = async (status: QuoteStatus = 'borrador') => {
     if (status === 'enviada') {
+      // Pre-llenar el email del cliente si está disponible
+      if (formData.cliente.email && !sendEmail) {
+        setSendEmail(formData.cliente.email);
+      }
       setShowSendModal(true);
       return;
     }
@@ -241,8 +247,78 @@ export function NewQuotePage() {
       setSendEmailError('Email no válido');
       return;
     }
+    
+    setSendingEmail(true);
     setShowSendModal(false);
-    await persistQuote('enviada');
+    
+    try {
+      // Primero persistir la cotización como enviada
+      await persistQuote('enviada');
+      
+      // Luego enviar por email
+      await sendQuoteByEmail();
+      
+    } catch (error) {
+      console.error('Error en el proceso de envío:', error);
+      alert('Error al procesar el envío de la cotización');
+      setSendingEmail(false);
+    }
+  };
+
+  const sendQuoteByEmail = async () => {
+    try {
+      const { subtotal, descuentoTotal, iva, total } = calculateTotals();
+      
+      // Preparar los datos de la cotización para envío
+      const quoteData: Quote = {
+        id: 'temp-' + Date.now(), // ID temporal
+        numero: `COT-${Date.now()}`, // Número temporal
+        cliente: formData.cliente as ClientInfo,
+        items: formData.items,
+        despacho: Object.keys(formData.despacho).length > 0 ? formData.despacho as DeliveryInfo : undefined,
+        condicionesComerciales: formData.condicionesComerciales as CommercialTerms,
+        estado: 'enviada',
+        vendedorId: userId || 'desconocido',
+        vendedorNombre: userName || 'Usuario',
+        subtotal,
+        descuentoTotal,
+        iva,
+        total,
+        notas: formData.notas,
+        fechaCreacion: new Date().toISOString(),
+        fechaModificacion: new Date().toISOString(),
+        fechaExpiracion: formData.condicionesComerciales.validezOferta ? 
+          new Date(Date.now() + formData.condicionesComerciales.validezOferta * 24 * 60 * 60 * 1000).toISOString().split('T')[0] : 
+          undefined
+      };
+
+      const response = await fetch('/api/cotizaciones/send-email', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          quoteData,
+          recipientEmail: sendEmail,
+          recipientName: formData.cliente.nombreContacto || formData.cliente.razonSocial,
+          message: `Adjunto encontrarás la cotización solicitada. Si tienes alguna pregunta, no dudes en contactarnos.`
+        }),
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        setEmailSent(true);
+        alert(`✅ Cotización enviada exitosamente a ${sendEmail}`);
+      } else {
+        throw new Error(result.error || 'Error al enviar el email');
+      }
+    } catch (error) {
+      console.error('Error enviando email:', error);
+      alert(`❌ Error al enviar el email: ${error instanceof Error ? error.message : 'Error desconocido'}`);
+    } finally {
+      setSendingEmail(false);
+    }
   };
 
   const updateFormData = (
@@ -564,7 +640,7 @@ export function NewQuotePage() {
                   <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
                     <button
                       onClick={() => handleSave('borrador')}
-                      disabled={loading}
+                      disabled={loading || sendingEmail}
                       className="btn-secondary flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed w-full sm:w-auto"
                     >
                       {loading ? (
@@ -576,15 +652,30 @@ export function NewQuotePage() {
                     </button>
                     <button
                       onClick={() => handleSave('enviada')}
-                      disabled={loading}
+                      disabled={loading || sendingEmail}
                       className="btn-primary flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed w-full sm:w-auto"
                     >
-                      {loading ? (
-                        <div className="animate-spin rounded-full h-4 w-4 border-2 border-current border-t-transparent"></div>
+                      {sendingEmail ? (
+                        <>
+                          <div className="animate-spin rounded-full h-4 w-4 border-2 border-current border-t-transparent"></div>
+                          Enviando...
+                        </>
+                      ) : loading ? (
+                        <>
+                          <div className="animate-spin rounded-full h-4 w-4 border-2 border-current border-t-transparent"></div>
+                          Guardando...
+                        </>
+                      ) : emailSent ? (
+                        <>
+                          <FiCheck className="w-4 h-4" />
+                          Enviada ✓
+                        </>
                       ) : (
-                        <FiSend className="w-4 h-4" />
+                        <>
+                          <FiSend className="w-4 h-4" />
+                          Enviar Cotización
+                        </>
                       )}
-                      Enviar Cotización
                     </button>
                   </div>
                 ) : (
@@ -604,8 +695,10 @@ export function NewQuotePage() {
       {showSendModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <div className="w-full max-w-md rounded-lg p-6" style={{background:'var(--card-bg)', border:'1px solid var(--border)'}}>
-            <h3 className="text-lg font-semibold mb-2" style={{color:'var(--text-primary)'}}>Enviar Cotización</h3>
-            <p className="text-sm mb-4" style={{color:'var(--text-secondary)'}}>Ingresa el correo del destinatario. (Aún no se enviará, solo se registrará el intento y se guardará la cotización como enviada).</p>
+            <h3 className="text-lg font-semibold mb-2" style={{color:'var(--text-primary)'}}>Enviar Cotización por Email</h3>
+            <p className="text-sm mb-4" style={{color:'var(--text-secondary)'}}>
+              Se generará y enviará automáticamente un PDF con la cotización al destinatario junto con un mensaje de agradecimiento.
+            </p>
             <label className="block text-sm font-medium mb-1" style={{color:'var(--text-secondary)'}}>Correo destinatario</label>
             <input
               type="email"
@@ -614,11 +707,45 @@ export function NewQuotePage() {
               className="w-full mb-2 px-3 py-2 rounded border"
               style={{background:'var(--input-bg)', borderColor:'var(--border)', color:'var(--text-primary)'}}
               placeholder="destinatario@empresa.cl"
+              disabled={sendingEmail}
             />
             {sendEmailError && <p className="text-xs mb-2" style={{color:'var(--danger)'}}>{sendEmailError}</p>}
+            
+            {sendingEmail && (
+              <div className="bg-blue-50 border border-blue-200 rounded p-3 mb-4">
+                <div className="flex items-center gap-2">
+                  <div className="animate-spin rounded-full h-4 w-4 border-2 border-blue-600 border-t-transparent"></div>
+                  <span className="text-sm text-blue-800">Enviando cotización...</span>
+                </div>
+                <p className="text-xs text-blue-600 mt-1">Generando PDF y enviando por email</p>
+              </div>
+            )}
+            
             <div className="flex justify-end gap-3 mt-2">
-              <button onClick={()=>{setShowSendModal(false);}} className="btn-secondary px-4 py-2 text-sm">Cancelar</button>
-              <button onClick={handleConfirmSend} className="btn-primary px-4 py-2 text-sm">Confirmar y Guardar</button>
+              <button 
+                onClick={()=>{setShowSendModal(false);}} 
+                className="btn-secondary px-4 py-2 text-sm"
+                disabled={sendingEmail}
+              >
+                Cancelar
+              </button>
+              <button 
+                onClick={handleConfirmSend} 
+                className="btn-primary px-4 py-2 text-sm flex items-center gap-2"
+                disabled={sendingEmail || !sendEmail}
+              >
+                {sendingEmail ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-current border-t-transparent"></div>
+                    Enviando...
+                  </>
+                ) : (
+                  <>
+                    <FiSend className="w-4 h-4" />
+                    Enviar Cotización
+                  </>
+                )}
+              </button>
             </div>
           </div>
         </div>

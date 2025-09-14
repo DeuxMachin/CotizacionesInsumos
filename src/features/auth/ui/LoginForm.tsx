@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "../model/useAuth";
 import { SecurityService } from "@/services/securityService";
-import { FiMail, FiLock, FiEye, FiEyeOff, FiArrowRight, FiShield } from "react-icons/fi";
+import { FiMail, FiLock, FiEye, FiEyeOff, FiArrowRight, FiShield, FiAlertCircle, FiWifi, FiUserX } from "react-icons/fi";
 import { Logo } from "@/shared/ui/Logo";
 
 export function LoginForm() {
@@ -15,12 +15,15 @@ export function LoginForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [isFormValid, setIsFormValid] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false); // Estado local para el loading
 
   const [isLocked, setIsLocked] = useState(false);
   const [, setLockoutTime] = useState("");
 
-  const { login, isLoading } = useAuth();
+  const { login } = useAuth(); // Remover isLoading del useAuth
   const router = useRouter();
+
+  console.log('🔄 LoginForm render - error actual:', error);
 
   // Validar formulario en tiempo real
   const validateForm = () => {
@@ -32,6 +35,15 @@ export function LoginForm() {
   // Actualizar validación cuando cambian los campos
   useEffect(() => {
     validateForm();
+    
+    // Limpiar errores cuando el usuario empiece a escribir (solo si no está bloqueado y el error no es de login)
+    if (error && !isLocked && (formData.email.trim() || formData.password.trim()) && !isSubmitting) {
+      // Solo limpiar si no es un error de autenticación reciente
+      if (!error.includes('contraseña') && !error.includes('cuenta') && !error.includes('correo')) {
+        console.log('🧹 Limpiando error por cambio en campos:', error);
+        setError("");
+      }
+    }
     
     // Verificar si la cuenta está bloqueada cuando cambia el email
     if (formData.email.trim()) {
@@ -45,11 +57,24 @@ export function LoginForm() {
       setIsLocked(false);
       setLockoutTime("");
     }
-  }, [formData.email, formData.password]);
+  }, [formData.email, formData.password, error, isLocked, isSubmitting]);
+
+  // Debug del estado de error
+  useEffect(() => {
+    console.log('🔍 Estado del error cambió:', {
+      error,
+      hasError: !!error,
+      errorLength: error?.length || 0
+    });
+  }, [error]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    e.stopPropagation();
+    
+    console.log("🔵 Iniciando proceso de login...");
     setError("");
+    setIsSubmitting(true); // Usar estado local
 
     // Verificar si la cuenta está bloqueada
     const lockStatus = SecurityService.isAccountLocked(formData.email);
@@ -58,34 +83,43 @@ export function LoginForm() {
         ? SecurityService.getRemainingLockoutTime(lockStatus.remainingTime)
         : "unos minutos";
       setError(`Cuenta temporalmente bloqueada. Intente nuevamente en ${remainingTime}.`);
+      setIsSubmitting(false);
       return;
     }
 
     // Validaciones básicas
     if (!formData.email.trim()) {
       setError("El email es requerido");
+      setIsSubmitting(false);
       return;
     }
 
     if (!/\S+@\S+\.\S+/.test(formData.email)) {
       setError("Ingrese un email válido");
+      setIsSubmitting(false);
       return;
     }
 
     if (!formData.password.trim()) {
       setError("La contraseña es requerida");
+      setIsSubmitting(false);
       return;
     }
 
     if (formData.password.length < 6) {
       setError("La contraseña debe tener al menos 6 caracteres");
+      setIsSubmitting(false);
       return;
     }
 
     try {
+      console.log('🔄 Llamando a login con:', formData.email);
       const result = await login(formData.email.trim(), formData.password);
+      console.log('📋 Resultado completo del login:', result);
       
       if (!result.success) {
+        console.log('❌ Login no exitoso, error:', result.error);
+        
         // Registrar intento fallido
         SecurityService.registerFailedAttempt(formData.email);
         
@@ -95,33 +129,49 @@ export function LoginForm() {
           const remainingTime = newLockStatus.remainingTime 
             ? SecurityService.getRemainingLockoutTime(newLockStatus.remainingTime)
             : "unos minutos";
+          console.log('🔒 Cuenta bloqueada, mostrando mensaje');
           setError(`Demasiados intentos fallidos. Cuenta bloqueada por ${remainingTime}.`);
           setIsLocked(true);
           setLockoutTime(remainingTime);
         } else {
+          // Mostrar el error específico de la API
+          console.log('🔴 Estableciendo error en UI:', result.error);
           setError(result.error || "Error de autenticación");
+          
+          // Verificar que el error se estableció correctamente
+          setTimeout(() => {
+            console.log('🔍 Verificando estado del error después de 100ms');
+          }, 100);
         }
       } else {
-        // Login exitoso - resetear intentos
+        // Login exitoso - limpiar errores y resetear intentos
+        console.log("✅ Login exitoso, limpiando estado...");
+        setError("");
         SecurityService.resetAttempts(formData.email);
-        
-        // Esperar un momento para que el estado se actualice
-        await new Promise(resolve => setTimeout(resolve, 50));
-        
-        const currentUser = useAuth.getState().user;
-        
-        // Redirigir según el rol del usuario
-        if (currentUser) {
-          const redirectPath = currentUser.rol === 'admin' ? '/admin' : '/dashboard';
-          router.push(redirectPath);
-        } else {
-          router.push('/dashboard');
-        }
+        // La redirección la maneja la página de login mediante useAuth
       }
     } catch (err) {
       console.error("Error en login:", err);
       SecurityService.registerFailedAttempt(formData.email);
-      setError("Ocurrió un error inesperado. Intente nuevamente.");
+      
+      // Determinar el tipo de error y mostrar mensaje apropiado
+      if (err instanceof Error) {
+        if (err.message.includes('fetch')) {
+          setError("Error de conexión. Verifique su conexión a internet e intente nuevamente.");
+        } else if (err.message.includes('network')) {
+          setError("Error de red. Intente nuevamente en unos momentos.");
+        } else {
+          setError(err.message || "Ocurrió un error inesperado. Intente nuevamente.");
+        }
+      } else {
+        setError("Ocurrió un error inesperado. Intente nuevamente.");
+      }
+    } finally {
+      // Agregar un pequeño delay para asegurar que el error se muestre
+      setTimeout(() => {
+        setIsSubmitting(false);
+        console.log('🔓 isSubmitting establecido a false');
+      }, 100);
     }
   };
 
@@ -238,7 +288,6 @@ export function LoginForm() {
                       value={formData.email}
                       onChange={(e) => {
                         setFormData(prev => ({ ...prev, email: e.target.value }));
-                        setError(""); // Limpiar error cuando el usuario empiece a escribir
                       }}
                       className="w-full pl-10 pr-4 py-3 rounded-xl border transition-all focus:outline-none focus:ring-2"
                       style={{
@@ -274,7 +323,6 @@ export function LoginForm() {
                       value={formData.password}
                       onChange={(e) => {
                         setFormData(prev => ({ ...prev, password: e.target.value }));
-                        setError(""); // Limpiar error cuando el usuario empiece a escribir
                       }}
                       className="w-full pl-10 pr-12 py-3 rounded-xl border transition-all focus:outline-none focus:ring-2"
                       style={{
@@ -302,19 +350,35 @@ export function LoginForm() {
                 </div>
 
                 {/* Error o advertencia de bloqueo */}
-                {error && (
-                  <div 
-                    className="px-4 py-3 rounded-xl text-sm border flex items-center gap-2"
-                    style={{ 
-                      backgroundColor: isLocked ? 'var(--warning-bg)' : 'var(--danger-bg)',
-                      borderColor: isLocked ? 'var(--warning)' : 'var(--danger)',
-                      color: isLocked ? 'var(--warning-text)' : 'var(--danger-text)'
-                    }}
-                  >
-                    {isLocked && <FiShield className="w-4 h-4" />}
-                    {error}
-                  </div>
-                )}
+                {error && (() => {
+                  console.log('🎨 Renderizando error en UI:', error);
+                  return (
+                    <div 
+                      className="px-4 py-3 rounded-xl text-sm border flex items-center gap-2"
+                      style={{ 
+                        backgroundColor: isLocked ? 'var(--warning-bg)' : 'var(--danger-bg)',
+                        borderColor: isLocked ? 'var(--warning)' : 'var(--danger)',
+                        color: isLocked ? 'var(--warning-text)' : 'var(--danger-text)'
+                      }}
+                    >
+                      {/* Icono específico según el tipo de error */}
+                      {isLocked ? (
+                        <FiShield className="w-4 h-4 flex-shrink-0" />
+                      ) : error.includes('conexión') || error.includes('red') ? (
+                        <FiWifi className="w-4 h-4 flex-shrink-0" />
+                      ) : error.includes('correo') || error.includes('email') ? (
+                        <FiMail className="w-4 h-4 flex-shrink-0" />
+                      ) : error.includes('contraseña') ? (
+                        <FiLock className="w-4 h-4 flex-shrink-0" />
+                      ) : error.includes('deshabilitada') || error.includes('inactivo') ? (
+                        <FiUserX className="w-4 h-4 flex-shrink-0" />
+                      ) : (
+                        <FiAlertCircle className="w-4 h-4 flex-shrink-0" />
+                      )}
+                      <span className="flex-1">{error}</span>
+                    </div>
+                  );
+                })()}
 
                 {/* Advertencia cuando se acerque al límite */}
                 {!error && !isLocked && formData.email.trim() && (() => {
@@ -326,13 +390,13 @@ export function LoginForm() {
                 {/* Submit Button */}
                 <button
                   type="submit"
-                  disabled={isLoading || !isFormValid || isLocked}
+                  disabled={isSubmitting || !isFormValid || isLocked}
                   className="w-full py-3 px-4 rounded-xl font-medium transition-all transform hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none focus:outline-none focus:ring-2 focus:ring-offset-2 text-white"
                   style={{
-                    background: (isFormValid && !isLoading && !isLocked)
+                    background: (isFormValid && !isSubmitting && !isLocked)
                       ? 'linear-gradient(135deg, var(--accent-primary) 0%, var(--accent-secondary) 100%)'
                       : 'var(--border)',
-                    boxShadow: (isFormValid && !isLoading && !isLocked) ? 'var(--shadow)' : 'none',
+                    boxShadow: (isFormValid && !isSubmitting && !isLocked) ? 'var(--shadow)' : 'none',
                     '--tw-ring-color': 'var(--accent-primary)',
                     '--tw-ring-offset-color': 'var(--bg-primary)'
                   } as React.CSSProperties & {
@@ -340,7 +404,7 @@ export function LoginForm() {
                     '--tw-ring-offset-color': string;
                   }}
                 >
-                  {isLoading ? (
+                  {isSubmitting ? (
                     <div className="flex items-center justify-center gap-3">
                       <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin"></div>
                       Iniciando sesión...
