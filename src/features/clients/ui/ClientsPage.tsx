@@ -8,6 +8,7 @@ import { Toast } from "@/shared/ui/Toast";
 import { useAuth } from "@/features/auth/model/useAuth";
 import { useActionAuthorization } from "@/middleware/AuthorizationMiddleware";
 import { ClientFiltersPanel } from "./ClientFiltersPanel";
+import { exportClientesToExcel } from "@/lib/exportUtils";
 import { 
   FiUsers, 
   FiSearch, 
@@ -24,7 +25,8 @@ import {
   FiClock,
   FiActivity,
   FiChevronLeft,
-  FiChevronRight
+  FiChevronRight,
+  FiDownload
 } from "react-icons/fi";
 
 
@@ -234,6 +236,10 @@ export function ClientsPage() {
     router.push(`/dashboard/clientes/${client.id}`);
   };
 
+  const handleExport = async () => {
+    await exportClientesToExcel();
+  };
+
   const handleClearFilters = () => {
     setSearchTerm('');
     setSelectedStates([]);
@@ -283,6 +289,13 @@ export function ClientsPage() {
                   {filtrosActivos}
                 </span>
               )}
+            </button>
+            <button
+              onClick={handleExport}
+              className="btn-secondary flex items-center gap-2"
+            >
+              <FiDownload className="w-4 h-4" />
+              Exportar Excel
             </button>
             {canCreate('clients') && (
               <button 

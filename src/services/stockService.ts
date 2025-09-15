@@ -6,6 +6,16 @@ type ProductoStock = Database['public']['Tables']['producto_stock']['Row']
 type Bodega = Database['public']['Tables']['bodegas']['Row']
 type CategoriaProducto = Database['public']['Tables']['categorias_productos']['Row']
 
+type ProductoStockJoined = ProductoStock & { bodegas: Bodega }
+type StockItem = {
+  bodega_id: number
+  bodega_nombre: string
+  ubicacion: string | null
+  stock_actual: number
+  total_valorizado: number
+}
+type PCJoined = { categorias_productos: CategoriaProducto }
+
 export interface InventoryItem {
   id: number
   sku: string | null
@@ -54,7 +64,7 @@ export class StockService {
     if (error) throw error
 
     return data.map(producto => {
-      const stock = producto.producto_stock?.map((ps: any) => ({
+      const stock = producto.producto_stock?.map((ps: ProductoStockJoined): StockItem => ({
         bodega_id: ps.bodega_id,
         bodega_nombre: ps.bodegas?.nombre || 'Sin bodega',
         ubicacion: ps.ubicacion,
@@ -62,7 +72,7 @@ export class StockService {
         total_valorizado: ps.total_valorizado
       })) || []
 
-      const total_stock = stock.reduce((sum: number, s: any) => sum + s.stock_actual, 0)
+      const total_stock = stock.reduce((sum: number, s: StockItem) => sum + s.stock_actual, 0)
 
       return {
         id: producto.id,
@@ -76,7 +86,7 @@ export class StockService {
         estado: producto.estado,
         activo: producto.activo,
         created_at: producto.created_at,
-        categorias: producto.producto_categorias?.map((pc: any) => pc.categorias_productos) || [],
+        categorias: producto.producto_categorias?.map((pc: PCJoined) => pc.categorias_productos) || [],
         stock,
         total_stock,
         status: this.inferStatus(total_stock)
@@ -108,7 +118,7 @@ export class StockService {
     if (error) throw error
 
     return data.map(producto => {
-      const stock = producto.producto_stock?.map((ps: any) => ({
+      const stock = producto.producto_stock?.map((ps: ProductoStockJoined): StockItem => ({
         bodega_id: ps.bodega_id,
         bodega_nombre: ps.bodegas?.nombre || 'Sin bodega',
         ubicacion: ps.ubicacion,
@@ -116,7 +126,7 @@ export class StockService {
         total_valorizado: ps.total_valorizado
       })) || []
 
-      const total_stock = stock.reduce((sum: number, s: any) => sum + s.stock_actual, 0)
+      const total_stock = stock.reduce((sum: number, s: StockItem) => sum + s.stock_actual, 0)
 
       return {
         id: producto.id,
@@ -130,7 +140,7 @@ export class StockService {
         estado: producto.estado,
         activo: producto.activo,
         created_at: producto.created_at,
-        categorias: producto.producto_categorias?.map((pc: any) => pc.categorias_productos) || [],
+        categorias: producto.producto_categorias?.map((pc: PCJoined) => pc.categorias_productos) || [],
         stock,
         total_stock,
         status: this.inferStatus(total_stock)
@@ -162,7 +172,7 @@ export class StockService {
     if (error) throw error
 
     return data.map(producto => {
-      const stock = producto.producto_stock?.map((ps: any) => ({
+      const stock = producto.producto_stock?.map((ps: ProductoStockJoined): StockItem => ({
         bodega_id: ps.bodega_id,
         bodega_nombre: ps.bodegas?.nombre || 'Sin bodega',
         ubicacion: ps.ubicacion,
@@ -170,7 +180,7 @@ export class StockService {
         total_valorizado: ps.total_valorizado
       })) || []
 
-      const total_stock = stock.reduce((sum: number, s: any) => sum + s.stock_actual, 0)
+      const total_stock = stock.reduce((sum: number, s: StockItem) => sum + s.stock_actual, 0)
 
       return {
         id: producto.id,
@@ -184,7 +194,7 @@ export class StockService {
         estado: producto.estado,
         activo: producto.activo,
         created_at: producto.created_at,
-        categorias: producto.producto_categorias?.map((pc: any) => pc.categorias_productos) || [],
+        categorias: producto.producto_categorias?.map((pc: PCJoined) => pc.categorias_productos) || [],
         stock,
         total_stock,
         status: this.inferStatus(total_stock)

@@ -20,12 +20,14 @@ import {
   FiChevronLeft,
   FiChevronRight,
   FiX,
-  FiShoppingCart
+  FiShoppingCart,
+  FiDownload
 } from 'react-icons/fi';
 import { NotasVentaService } from '@/services/notasVentaService';
 import { supabase } from '@/lib/supabase';
 import { useQuotes } from '../model/useQuotes';
 import { Quote, QuoteStatus } from '@/core/domain/quote/Quote';
+import { exportCotizacionesToExcel } from '@/lib/exportUtils';
 
 // Import the filters panel component
 import { QuoteFiltersPanel } from './QuoteFiltersPanel';
@@ -80,6 +82,9 @@ export function QuotesPage() {
     getStatusColor,
     canEdit,
     canDelete,
+    userId,
+    userName,
+    isAdmin
     
   } = useQuotes();
 
@@ -146,6 +151,10 @@ export function QuotesPage() {
     if (success) {
       // Podrías mostrar un toast de éxito aquí
     }
+  };
+
+  const handleExport = async () => {
+    await exportCotizacionesToExcel(userId || undefined, isAdmin);
   };
 
   const handleChangeStatus = async (id: string, status: QuoteStatus) => {
@@ -260,6 +269,13 @@ export function QuotesPage() {
               }}
             >
               {viewMode === 'grid' ? <FiList className="w-4 h-4" /> : <FiGrid className="w-4 h-4" />}
+            </button>
+            <button
+              onClick={handleExport}
+              className="btn-secondary flex items-center gap-2"
+            >
+              <FiDownload className="w-4 h-4" />
+              Exportar Excel
             </button>
             <button
               onClick={() => router.push('/dashboard/cotizaciones/nueva')}

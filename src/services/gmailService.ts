@@ -1,4 +1,4 @@
-import nodemailer from 'nodemailer';
+import nodemailer, { type SendMailOptions } from 'nodemailer';
 
 // Configuración para Gmail
 const transporter = nodemailer.createTransport({
@@ -25,7 +25,7 @@ export async function sendGmailTest({
   isBase64?: boolean;
 }) {
   try {
-    const mailOptions: any = {
+    const mailOptions: SendMailOptions = {
       from: process.env.GMAIL_USER,
       to: toEmail,
       subject,

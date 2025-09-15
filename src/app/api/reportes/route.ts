@@ -8,7 +8,7 @@ export async function GET(request: NextRequest) {
     
     // Calculamos las fechas según el período
     const now = new Date();
-    let startDate = new Date();
+    const startDate = new Date();
     
     switch (period) {
       case 'Último mes':

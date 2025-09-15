@@ -3,6 +3,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { getAllInventory, searchInventory, getCategories, formatCLP, type InventoryItem } from "../model/inventory";
 import { Toast } from "@/shared/ui/Toast";
+import { exportStockToExcel } from "@/lib/exportUtils";
+import { FiDownload } from "react-icons/fi";
+import type { Database } from "@/lib/supabase";
+
+type Category = Database['public']['Tables']['categorias_productos']['Row'];
 
 function cx(...c: (string|false|undefined)[]) { return c.filter(Boolean).join(" "); }
 
@@ -21,7 +26,7 @@ export default function StockPage() {
   const [onlyAlerts, setOnlyAlerts] = useState(false);
   const [sortBy, setSortBy] = useState<"status"|"quantity"|"name">("status");
   const [sortDir, setSortDir] = useState<"asc"|"desc">("desc");
-  const [categories, setCategories] = useState<any[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(30);
 
@@ -114,8 +119,14 @@ export default function StockPage() {
     return { currentValue, potentialRevenue, margin };
   }, [items]);
 
-  const handleExport = () => {
-    Toast.info("Funcionalidad de exportaci�n pr�ximamente");
+  const handleExport = async () => {
+    try {
+      await exportStockToExcel();
+      Toast.success("Inventario exportado exitosamente");
+    } catch (error) {
+      console.error("Error al exportar:", error);
+      Toast.error("Error al exportar el inventario");
+    }
   };
 
   if (loading) {
@@ -138,7 +149,8 @@ export default function StockPage() {
           className="btn-secondary text-sm px-4 py-2"
           onClick={handleExport}
         >
-          Exportar
+          <FiDownload className="inline mr-2" />
+          Exportar Excel
         </button>
       </div>
 
