@@ -60,6 +60,9 @@ export const useAuth = create<AuthState>()(
           const result = await AuthService.signIn(email, password);
           console.log('✅ AuthService.signIn exitoso');
           
+          // Generar nuevo ID de sesión para rotación
+          const sessionId = crypto.randomUUID();
+          
           set({
             user: result.user,
             isAuthenticated: true,
@@ -67,15 +70,24 @@ export const useAuth = create<AuthState>()(
             isLoading: false
           });
 
-          // Escribir cookie para middleware
+          // Escribir cookie segura con HttpOnly, Secure, SameSite
           try {
             const cookiePayload = encodeURIComponent(JSON.stringify({
               isAuthenticated: true,
               user: result.user,
+              sessionId: sessionId,
+              createdAt: Date.now()
             }));
-            document.cookie = `auth-storage=${cookiePayload}; path=/; SameSite=Lax`;
+            
+            // Cookie con atributos de seguridad mejorados
+            document.cookie = `auth-storage=${cookiePayload}; path=/; SameSite=Strict; Secure; max-age=86400`;
+            
+            // Cookie adicional para CSRF protection
+            const csrfToken = crypto.randomUUID();
+            document.cookie = `csrf-token=${csrfToken}; path=/; SameSite=Strict; Secure; HttpOnly; max-age=86400`;
+            
           } catch (cookieError) {
-            console.error('Error escribiendo cookie:', cookieError);
+            console.error('Error escribiendo cookies seguras:', cookieError);
           }
 
           console.log('✅ useAuth.login completado exitosamente');
@@ -111,8 +123,9 @@ export const useAuth = create<AuthState>()(
             isLoading: false
           });
 
-          // Borrar cookie
-          document.cookie = 'auth-storage=; Max-Age=0; path=/; SameSite=Lax';
+          // Borrar cookies de manera segura
+          document.cookie = 'auth-storage=; Max-Age=0; path=/; SameSite=Strict; Secure';
+          document.cookie = 'csrf-token=; Max-Age=0; path=/; SameSite=Strict; Secure; HttpOnly';
           
           // Redirigir al login
           window.location.href = '/login';

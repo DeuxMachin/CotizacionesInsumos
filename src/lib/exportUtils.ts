@@ -8,11 +8,93 @@ type ClienteRow = Database['public']['Tables']['clientes']['Row'];
 type UsuarioRow = Database['public']['Tables']['usuarios']['Row'];
 type ProductoRow = Database['public']['Tables']['productos']['Row'];
 
-interface CotizacionExportData {
-  cotizacion: CotizacionRow;
-  items: (ItemRow & { productos?: ProductoRow | null })[];
-  cliente_principal?: ClienteRow | null;
-  vendedor?: UsuarioRow | null;
+// Tipo para los datos de cotización con relaciones desde Supabase
+interface CotizacionWithRelations {
+  id: string;
+  folio?: string;
+  fecha_emision?: string;
+  fecha_vencimiento?: string;
+  estado: string;
+  total_bruto: number;
+  total_descuento: number;
+  total_neto: number;
+  iva_monto: number;
+  total_final: number;
+  condicion_pago_texto?: string;
+  forma_pago_texto?: string;
+  plazo_entrega_texto?: string;
+  observaciones_pago?: string;
+  created_at: string;
+  updated_at: string;
+  cotizacion_items: (ItemRow & { productos?: ProductoRow })[];
+  clientes: ClienteRow;
+  usuarios: UsuarioRow;
+}
+
+// Tipo para las filas de exportación de cotizaciones
+interface CotizacionExportRow {
+  'ID Cotización': string;
+  'Fecha Emisión': string;
+  'Fecha Vencimiento': string;
+  'Estado': string;
+  'Cliente RUT': string;
+  'Cliente Razón Social': string;
+  'Cliente Nombre Fantasía': string;
+  'Cliente Giro': string;
+  'Cliente Dirección': string;
+  'Cliente Ciudad': string;
+  'Cliente Comuna': string;
+  'Cliente Teléfono': string;
+  'Cliente Email': string;
+  'Vendedor': string;
+  'Producto SKU': string;
+  'Producto Nombre': string;
+  'Producto Unidad': string;
+  'Cantidad': number;
+  'Precio Unitario': number;
+  'Descuento %': number;
+  'Descuento Monto': number;
+  'Subtotal': number;
+  'IVA Aplicado': string;
+  'Total Bruto Cotización': string | number;
+  'Total Descuento Cotización': string | number;
+  'Total Neto Cotización': string | number;
+  'IVA Cotización': string | number;
+  'Total Final Cotización': string | number;
+  'Condición Pago': string;
+  'Plazo Entrega': string;
+  'Observaciones': string;
+  'Fecha Creación': string;
+  'Fecha Actualización': string;
+}
+
+// Tipo para las filas de stock por bodega
+interface StockPorBodegaRow {
+  'ID Producto': string;
+  'SKU': string;
+  'Nombre Producto': string;
+  'Categoría': string;
+  'Bodega': string;
+  'Ubicación': string;
+  'Stock Actual': number;
+  'Valorización': number;
+  'Precio Unitario': number;
+}
+
+// Tipo para las filas de productos por categoría
+interface ProductoCategoriaRow {
+  'ID': string;
+  'SKU': string;
+  'Nombre': string;
+  'Descripción': string;
+  'Unidad': string;
+  'Stock Total': number;
+  'Precio Compra': number;
+  'Precio Venta': number;
+  'Valorización Total': number;
+  'Precio Promedio': number;
+  'Estado Stock': string;
+  'Estado Producto': string;
 }
 
 export async function exportCotizacionesToExcel(userId?: string, isAdmin: boolean = false): Promise<void> {
@@ -39,16 +121,16 @@ export async function exportCotizacionesToExcel(userId?: string, isAdmin: boolea
     }
 
     // Preparar datos para Excel
-    const exportData: any[] = [];
+    const exportData: CotizacionExportRow[] = [];
 
-    data.forEach((row: any) => {
-      const cotizacion = row as CotizacionRow;
-      const cliente = row.clientes as ClienteRow;
-      const vendedor = row.usuarios as UsuarioRow;
-      const items = (row.cotizacion_items as (ItemRow & { productos?: ProductoRow })[]) || [];
+    data.forEach((row: CotizacionWithRelations) => {
+      const cotizacion = row;
+      const cliente = row.clientes;
+      const vendedor = row.usuarios;
+      const items = row.cotizacion_items || [];
 
       // Para cada cotización, agregar una fila por cada item
-      items.forEach((item, index) => {
+      items.forEach((item: ItemRow & { productos?: ProductoRow }, index: number) => {
         const producto = item.productos;
 
         const rowData = {
@@ -202,9 +284,6 @@ export async function exportStockToExcel(): Promise<void> {
       return;
     }
 
-    // Consultar categorías
-    const categoriesData = await StockService.getCategories();
-
     // Crear workbook con múltiples hojas
     const wb = XLSX.utils.book_new();
 
@@ -237,11 +316,11 @@ export async function exportStockToExcel(): Promise<void> {
     const wsGeneral = XLSX.utils.json_to_sheet(inventarioGeneral);
 
     // === HOJA 2: STOCK POR BODEGA ===
-    const stockPorBodega: any[] = [];
+    const stockPorBodega: StockPorBodegaRow[] = [];
     inventoryData.forEach(item => {
       item.stock.forEach(stockItem => {
         stockPorBodega.push({
-          'ID Producto': item.id,
+          'ID Producto': item.id.toString(),
           'SKU': item.sku || '',
           'Nombre Producto': item.nombre,
           'Categoría': item.categorias?.[0]?.nombre || 'Sin Categoría',
@@ -257,7 +336,7 @@ export async function exportStockToExcel(): Promise<void> {
     const wsBodegas = XLSX.utils.json_to_sheet(stockPorBodega);
 
     // === HOJAS POR CATEGORÍA ===
-    const categoriasMap = new Map<string, any[]>();
+    const categoriasMap = new Map<string, ProductoCategoriaRow[]>();
 
     inventoryData.forEach(item => {
       const categoriaNombre = item.categorias?.[0]?.nombre || 'Sin Categoría';
@@ -270,7 +349,7 @@ export async function exportStockToExcel(): Promise<void> {
       const precioPromedio = item.total_stock > 0 ? totalValorizado / item.total_stock : 0;
 
       categoriasMap.get(categoriaNombre)!.push({
-        'ID': item.id,
+        'ID': item.id.toString(),
         'SKU': item.sku || '',
         'Nombre': item.nombre,
         'Descripción': item.descripcion || '',

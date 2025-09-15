@@ -4,6 +4,8 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "../model/useAuth";
 import { SecurityService } from "@/services/securityService";
+import { SecurityLogger } from "@/services/securityLogger";
+import { CSRFProtection, XSSProtection } from "@/services/csrfProtection";
 import { FiMail, FiLock, FiEye, FiEyeOff, FiArrowRight, FiShield, FiAlertCircle, FiWifi, FiUserX } from "react-icons/fi";
 import { Logo } from "@/shared/ui/Logo";
 
@@ -15,41 +17,38 @@ export function LoginForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [isFormValid, setIsFormValid] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false); // Estado local para el loading
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [isLocked, setIsLocked] = useState(false);
   const [, setLockoutTime] = useState("");
 
-  const { login } = useAuth(); // Remover isLoading del useAuth
+  const { login } = useAuth();
   const router = useRouter();
-
-  console.log('🔄 LoginForm render - error actual:', error);
 
   // Validar formulario en tiempo real
   const validateForm = () => {
     const emailValid = Boolean(formData.email.trim() && /\S+@\S+\.\S+/.test(formData.email));
-    const passwordValid = Boolean(formData.password.length >= 6);
+    // Permitir contraseñas de hasta 128 caracteres, sin reglas arbitrarias de complejidad
+    const passwordValid = Boolean(formData.password.length >= 6 && formData.password.length <= 128);
     setIsFormValid(emailValid && passwordValid);
   };
 
   // Actualizar validación cuando cambian los campos
   useEffect(() => {
     validateForm();
-    
-    // Limpiar errores cuando el usuario empiece a escribir (solo si no está bloqueado y el error no es de login)
+
+    // Limpiar errores cuando el usuario empiece a escribir
     if (error && !isLocked && (formData.email.trim() || formData.password.trim()) && !isSubmitting) {
-      // Solo limpiar si no es un error de autenticación reciente
       if (!error.includes('contraseña') && !error.includes('cuenta') && !error.includes('correo')) {
-        console.log('🧹 Limpiando error por cambio en campos:', error);
         setError("");
       }
     }
-    
+
     // Verificar si la cuenta está bloqueada cuando cambia el email
     if (formData.email.trim()) {
       const lockStatus = SecurityService.isAccountLocked(formData.email);
       setIsLocked(lockStatus.locked);
-      
+
       if (lockStatus.locked && lockStatus.remainingTime) {
         setLockoutTime(SecurityService.getRemainingLockoutTime(lockStatus.remainingTime));
       }
@@ -59,30 +58,35 @@ export function LoginForm() {
     }
   }, [formData.email, formData.password, error, isLocked, isSubmitting]);
 
-  // Debug del estado de error
-  useEffect(() => {
-    console.log('🔍 Estado del error cambió:', {
-      error,
-      hasError: !!error,
-      errorLength: error?.length || 0
-    });
-  }, [error]);
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    
-    console.log("🔵 Iniciando proceso de login...");
+
     setError("");
-    setIsSubmitting(true); // Usar estado local
+    setIsSubmitting(true);
+
+    // Validaciones de seguridad XSS
+    if (!XSSProtection.validateEmail(formData.email)) {
+      setError("Email contiene caracteres no válidos");
+      setIsSubmitting(false);
+      SecurityLogger.logSuspiciousActivity('invalid_email_format', { email: formData.email });
+      return;
+    }
+
+    if (!XSSProtection.validatePassword(formData.password)) {
+      setError("Contraseña contiene caracteres no válidos");
+      setIsSubmitting(false);
+      SecurityLogger.logSuspiciousActivity('invalid_password_format', { email: formData.email });
+      return;
+    }
 
     // Verificar si la cuenta está bloqueada
     const lockStatus = SecurityService.isAccountLocked(formData.email);
     if (lockStatus.locked) {
-      const remainingTime = lockStatus.remainingTime 
+      const remainingTime = lockStatus.remainingTime
         ? SecurityService.getRemainingLockoutTime(lockStatus.remainingTime)
         : "unos minutos";
-      setError(`Cuenta temporalmente bloqueada. Intente nuevamente en ${remainingTime}.`);
+      setError(`Demasiados intentos fallidos. Intente nuevamente en ${remainingTime}.`);
       setIsSubmitting(false);
       return;
     }
@@ -94,67 +98,48 @@ export function LoginForm() {
       return;
     }
 
-    if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      setError("Ingrese un email válido");
-      setIsSubmitting(false);
-      return;
-    }
-
     if (!formData.password.trim()) {
       setError("La contraseña es requerida");
       setIsSubmitting(false);
       return;
     }
 
-    if (formData.password.length < 6) {
-      setError("La contraseña debe tener al menos 6 caracteres");
+    if (formData.password.length > 128) {
+      setError("La contraseña no puede exceder los 128 caracteres");
       setIsSubmitting(false);
       return;
     }
 
     try {
-      console.log('🔄 Llamando a login con:', formData.email);
+      // Log del intento de login
+      SecurityLogger.logLoginAttempt(formData.email, false);
+
       const result = await login(formData.email.trim(), formData.password);
-      console.log('📋 Resultado completo del login:', result);
-      
+
       if (!result.success) {
-        console.log('❌ Login no exitoso, error:', result.error);
-        
-        // Registrar intento fallido
         SecurityService.registerFailedAttempt(formData.email);
-        
-        // Verificar si ahora está bloqueada
+
         const newLockStatus = SecurityService.isAccountLocked(formData.email);
         if (newLockStatus.locked) {
-          const remainingTime = newLockStatus.remainingTime 
+          const remainingTime = newLockStatus.remainingTime
             ? SecurityService.getRemainingLockoutTime(newLockStatus.remainingTime)
             : "unos minutos";
-          console.log('🔒 Cuenta bloqueada, mostrando mensaje');
-          setError(`Demasiados intentos fallidos. Cuenta bloqueada por ${remainingTime}.`);
+          setError(`Demasiados intentos fallidos. Intente nuevamente en ${remainingTime}.`);
           setIsLocked(true);
           setLockoutTime(remainingTime);
         } else {
-          // Mostrar el error específico de la API
-          console.log('🔴 Estableciendo error en UI:', result.error);
-          setError(result.error || "Error de autenticación");
-          
-          // Verificar que el error se estableció correctamente
-          setTimeout(() => {
-            console.log('🔍 Verificando estado del error después de 100ms');
-          }, 100);
+          // Mensaje genérico para no revelar información
+          setError("Credenciales incorrectas. Verifique su email y contraseña.");
         }
       } else {
-        // Login exitoso - limpiar errores y resetear intentos
-        console.log("✅ Login exitoso, limpiando estado...");
         setError("");
         SecurityService.resetAttempts(formData.email);
-        // La redirección la maneja la página de login mediante useAuth
+        SecurityLogger.logLoginAttempt(formData.email, true);
       }
     } catch (err) {
       console.error("Error en login:", err);
       SecurityService.registerFailedAttempt(formData.email);
-      
-      // Determinar el tipo de error y mostrar mensaje apropiado
+
       if (err instanceof Error) {
         if (err.message.includes('fetch')) {
           setError("Error de conexión. Verifique su conexión a internet e intente nuevamente.");
@@ -167,32 +152,30 @@ export function LoginForm() {
         setError("Ocurrió un error inesperado. Intente nuevamente.");
       }
     } finally {
-      // Agregar un pequeño delay para asegurar que el error se muestre
       setTimeout(() => {
         setIsSubmitting(false);
-        console.log('🔓 isSubmitting establecido a false');
       }, 100);
     }
   };
 
   return (
-    <div 
+    <div
       className="relative min-h-screen overflow-hidden"
-      style={{ 
+      style={{
         background: 'linear-gradient(135deg, var(--accent-bg) 0%, var(--bg-primary) 50%, var(--accent-bg) 100%)'
       }}
     >
       {/* Decoración de fondo */}
       <div className="pointer-events-none absolute inset-0">
-        <div 
+        <div
           className="absolute -top-10 -left-10 w-80 h-80 blur-3xl rounded-full animate-pulse opacity-30"
           style={{ backgroundColor: 'var(--accent-primary)' }}
         />
-        <div 
+        <div
           className="absolute top-40 right-10 w-96 h-96 blur-3xl rounded-full animate-pulse opacity-20"
           style={{ backgroundColor: 'var(--accent-secondary)' }}
         />
-        <div 
+        <div
           className="absolute -bottom-16 left-1/3 w-96 h-96 blur-3xl rounded-full animate-pulse opacity-25"
           style={{ backgroundColor: 'var(--accent-primary)' }}
         />
@@ -202,18 +185,18 @@ export function LoginForm() {
       <div className="relative z-10 px-4 py-10 sm:px-6 md:px-8 lg:px-10 min-h-screen grid place-items-center">
         <div className="w-full max-w-5xl">
           {/* Card con panel lateral en desktop */}
-          <div 
+          <div
             className="grid lg:grid-cols-2 rounded-3xl overflow-hidden border"
-            style={{ 
+            style={{
               backgroundColor: 'var(--card-bg)',
               borderColor: 'var(--border-subtle)',
               boxShadow: 'var(--shadow-md)'
             }}
           >
             {/* Panel lateral (solo desktop) */}
-            <div 
+            <div
               className="hidden lg:flex flex-col justify-between p-10 text-white relative"
-              style={{ 
+              style={{
                 background: 'linear-gradient(135deg, var(--accent-primary) 0%, var(--accent-secondary) 100%)'
               }}
             >
@@ -228,7 +211,7 @@ export function LoginForm() {
               <ul className="mt-10 space-y-4 text-white/80">
                 {[
                   "Nueva cotización en segundos",
-                  "Métricas claras y accionables", 
+                  "Métricas claras y accionables",
                   "Interfaz responsive y accesible"
                 ].map((feature) => (
                   <li key={feature} className="flex items-center gap-3">
@@ -248,7 +231,7 @@ export function LoginForm() {
               {/* Marca */}
               <div className="mb-8 flex items-center gap-3">
                 <Logo height={32} />
-                <div 
+                <div
                   className="hidden sm:block"
                   style={{ color: 'var(--text-secondary)' }}
                 >
@@ -256,13 +239,13 @@ export function LoginForm() {
                 </div>
               </div>
 
-              <h1 
+              <h1
                 className="text-2xl sm:text-3xl font-bold"
                 style={{ color: 'var(--text-primary)' }}
               >
                 Bienvenido
               </h1>
-              <p 
+              <p
                 className="mt-2"
                 style={{ color: 'var(--text-secondary)' }}
               >
@@ -272,14 +255,14 @@ export function LoginForm() {
               <form onSubmit={handleSubmit} className="mt-8 space-y-5">
                 {/* Email */}
                 <div>
-                  <label 
+                  <label
                     className="text-sm font-medium"
                     style={{ color: 'var(--text-primary)' }}
                   >
                     Email
                   </label>
                   <div className="relative mt-1">
-                    <FiMail 
+                    <FiMail
                       className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5"
                       style={{ color: 'var(--text-muted)' }}
                     />
@@ -307,14 +290,14 @@ export function LoginForm() {
 
                 {/* Password */}
                 <div>
-                  <label 
+                  <label
                     className="text-sm font-medium"
                     style={{ color: 'var(--text-primary)' }}
                   >
                     Contraseña
                   </label>
                   <div className="relative mt-1">
-                    <FiLock 
+                    <FiLock
                       className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5"
                       style={{ color: 'var(--text-muted)' }}
                     />
@@ -337,6 +320,7 @@ export function LoginForm() {
                       required
                       autoComplete="current-password"
                       minLength={6}
+                      maxLength={128}
                     />
                     <button
                       type="button"
@@ -351,11 +335,10 @@ export function LoginForm() {
 
                 {/* Error o advertencia de bloqueo */}
                 {error && (() => {
-                  console.log('🎨 Renderizando error en UI:', error);
                   return (
-                    <div 
+                    <div
                       className="px-4 py-3 rounded-xl text-sm border flex items-center gap-2"
-                      style={{ 
+                      style={{
                         backgroundColor: isLocked ? 'var(--warning-bg)' : 'var(--danger-bg)',
                         borderColor: isLocked ? 'var(--warning)' : 'var(--danger)',
                         color: isLocked ? 'var(--warning-text)' : 'var(--danger-text)'
@@ -379,13 +362,6 @@ export function LoginForm() {
                     </div>
                   );
                 })()}
-
-                {/* Advertencia cuando se acerque al límite */}
-                {!error && !isLocked && formData.email.trim() && (() => {
-                  // No need to store the return value in unused variable
-                  SecurityService.isAccountLocked(formData.email);
-                  return null; // Por seguridad, no mostrar número de intentos restantes
-                })()} 
 
                 {/* Submit Button */}
                 <button
@@ -423,7 +399,7 @@ export function LoginForm() {
                 </button>
 
                 {/* Footer */}
-                <p 
+                <p
                   className="text-center text-xs mt-6"
                   style={{ color: 'var(--text-muted)' }}
                 >

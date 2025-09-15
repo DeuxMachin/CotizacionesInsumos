@@ -4,24 +4,42 @@ import type { NextRequest } from 'next/server';
 function parseAuthCookie(raw?: string) {
   let isAuthenticated = false;
   let role: string | undefined;
-  if (!raw) return { isAuthenticated, role };
+  let sessionId: string | undefined;
+  let createdAt: number | undefined;
+  
+  if (!raw) return { isAuthenticated, role, sessionId, createdAt };
+  
   try {
     // Algunos navegadores codifican el valor de la cookie
     const decoded = decodeURIComponent(raw);
     const parsed = JSON.parse(decoded);
+    
     // Aceptar dos formatos: { state: { isAuthenticated, user } } o { isAuthenticated, user }
     if (parsed?.state) {
       isAuthenticated = !!parsed.state.isAuthenticated;
       role = parsed.state.user?.role;
+      sessionId = parsed.state.sessionId;
+      createdAt = parsed.state.createdAt;
     } else {
       isAuthenticated = !!parsed.isAuthenticated;
       role = parsed.user?.role;
+      sessionId = parsed.sessionId;
+      createdAt = parsed.createdAt;
     }
+    
+    // Verificar expiración de sesión (24 horas)
+    if (createdAt && Date.now() - createdAt > 24 * 60 * 60 * 1000) {
+      isAuthenticated = false;
+      role = undefined;
+      sessionId = undefined;
+    }
+    
   } catch {
     // Si no es JSON válido, tratar valores simples como '1' o 'true'
     isAuthenticated = raw === '1' || raw === 'true';
   }
-  return { isAuthenticated, role };
+  
+  return { isAuthenticated, role, sessionId, createdAt };
 }
 
 export function middleware(request: NextRequest) {

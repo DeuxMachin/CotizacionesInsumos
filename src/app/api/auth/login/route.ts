@@ -2,15 +2,21 @@ import { NextRequest, NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabase'
 import bcrypt from 'bcryptjs'
 
+// Lista de contraseñas comunes filtradas (simplificada)
+const COMMON_PASSWORDS = [
+  'password', '123456', '123456789', 'qwerty', 'abc123', 'password123',
+  'admin', 'letmein', 'welcome', 'monkey', '1234567890', 'password1',
+  'qwerty123', 'welcome123', 'admin123', 'root', 'user', 'guest'
+];
+
 /**
- * API de Login con manejo mejorado de errores
- * 
- * Tipos de errores específicos que se devuelven:
- * - "Email y contraseña son requeridos" (400)
- * - "No existe una cuenta asociada a este correo electrónico" (401)
- * - "Su cuenta se encuentra deshabilitada. Contacte al administrador" (401)
- * - "La contraseña ingresada es incorrecta" (401)
- * - "Ocurrió un error interno. Intente nuevamente en unos momentos" (500)
+ * API de Login con políticas de contraseña mejoradas según ISO 27001
+ *
+ * Políticas implementadas:
+ * - Permitir contraseñas largas (hasta 128 caracteres)
+ * - Rechazar contraseñas filtradas comunes
+ * - No imponer reglas arbitrarias de complejidad
+ * - Logging de intentos de login
  */
 export async function POST(request: NextRequest) {
   try {
@@ -23,6 +29,30 @@ export async function POST(request: NextRequest) {
       }, { status: 400 })
     }
 
+    // Validar longitud de contraseña
+    if (password.length < 6) {
+      return NextResponse.json({
+        success: false,
+        error: 'La contraseña debe tener al menos 6 caracteres'
+      }, { status: 400 })
+    }
+
+    if (password.length > 128) {
+      return NextResponse.json({
+        success: false,
+        error: 'La contraseña no puede exceder los 128 caracteres'
+      }, { status: 400 })
+    }
+
+    // Verificar si es una contraseña filtrada común
+    const lowerPassword = password.toLowerCase();
+    if (COMMON_PASSWORDS.includes(lowerPassword)) {
+      return NextResponse.json({
+        success: false,
+        error: 'Esta contraseña es muy común. Por favor elija una más segura.'
+      }, { status: 400 })
+    }
+
     // Buscar usuario en la base de datos
     const { data: user, error: userError } = await supabase
       .from('usuarios')
@@ -31,27 +61,31 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (userError || !user) {
+      // Log intento de login con email inexistente
+      console.log(`🔐 Intento de login con email inexistente: ${email}`);
       return NextResponse.json({
         success: false,
-        error: 'No existe una cuenta asociada a este correo electrónico'
+        error: 'Credenciales incorrectas. Verifique su email y contraseña.'
       }, { status: 401 })
     }
 
     // Verificar si el usuario está activo
     if (!user.activo) {
+      console.log(`🔐 Intento de login con cuenta inactiva: ${email}`);
       return NextResponse.json({
         success: false,
-        error: 'Su cuenta se encuentra deshabilitada. Contacte al administrador'
+        error: 'Credenciales incorrectas. Verifique su email y contraseña.'
       }, { status: 401 })
     }
 
     // Verificar contraseña
     const passwordMatch = await bcrypt.compare(password, user.password_hash)
-    
+
     if (!passwordMatch) {
+      console.log(`🔐 Contraseña incorrecta para: ${email}`);
       return NextResponse.json({
         success: false,
-        error: 'La contraseña ingresada es incorrecta'
+        error: 'Credenciales incorrectas. Verifique su email y contraseña.'
       }, { status: 401 })
     }
 
@@ -61,8 +95,11 @@ export async function POST(request: NextRequest) {
       .update({ last_login_at: new Date().toISOString() })
       .eq('id', user.id)
 
+    // Log login exitoso
+    console.log(`✅ Login exitoso para: ${email}`);
+
     // Remover password_hash de la respuesta
-    const {  ...userWithoutPassword } = user
+    const { password_hash, ...userWithoutPassword } = user
 
     return NextResponse.json({
       success: true,
