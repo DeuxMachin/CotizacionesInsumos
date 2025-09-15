@@ -8,7 +8,7 @@ import { Toast } from "@/shared/ui/Toast";
 import { useAuth } from "@/features/auth/model/useAuth";
 import { useActionAuthorization } from "@/middleware/AuthorizationMiddleware";
 import { ClientFiltersPanel } from "./ClientFiltersPanel";
-import { exportClientesToExcel } from "@/lib/exportUtils";
+import { downloadFileFromResponse } from "@/lib/download";
 import { 
   FiUsers, 
   FiSearch, 
@@ -237,7 +237,30 @@ export function ClientsPage() {
   };
 
   const handleExport = async () => {
-    await exportClientesToExcel();
+    try {
+      const userId = user?.id;
+      if (!userId) {
+        Toast.error('Usuario no identificado');
+        return;
+      }
+
+      const response = await fetch(`/api/downloads/clients?userId=${userId}`, {
+        method: 'GET',
+      });
+
+      if (!response.ok) {
+        throw new Error(`Error ${response.status}: ${response.statusText}`);
+      }
+
+      // Descargar el archivo
+      const filename = `clientes_${new Date().toISOString().split('T')[0]}.xlsx`;
+      await downloadFileFromResponse(response, filename);
+
+      Toast.success('Archivo Excel descargado exitosamente');
+    } catch (error) {
+      console.error('Error exportando clientes:', error);
+      Toast.error('Error al exportar los clientes. Por favor, inténtalo de nuevo.');
+    }
   };
 
   const handleClearFilters = () => {

@@ -3,9 +3,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { getAllInventory, searchInventory, getCategories, formatCLP, type InventoryItem } from "../model/inventory";
 import { Toast } from "@/shared/ui/Toast";
-import { exportStockToExcel } from "@/lib/exportUtils";
+import { downloadFileFromResponse } from "@/lib/download";
 import { FiDownload } from "react-icons/fi";
 import type { Database } from "@/lib/supabase";
+import { useAuth } from "@/features/auth/model/useAuth";
 
 type Category = Database['public']['Tables']['categorias_productos']['Row'];
 
@@ -19,6 +20,7 @@ const statusChip: Record<string, string> = {
 };
 
 export default function StockPage() {
+  const { user } = useAuth();
   const [data, setData] = useState<InventoryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [q, setQ] = useState("");
@@ -121,8 +123,25 @@ export default function StockPage() {
 
   const handleExport = async () => {
     try {
-      await exportStockToExcel();
-      Toast.success("Inventario exportado exitosamente");
+      const userId = user?.id;
+      if (!userId) {
+        Toast.error('Usuario no identificado');
+        return;
+      }
+
+      const response = await fetch(`/api/downloads/stock?userId=${userId}`, {
+        method: 'GET',
+      });
+
+      if (!response.ok) {
+        throw new Error(`Error ${response.status}: ${response.statusText}`);
+      }
+
+      // Descargar el archivo
+      const filename = `productos_${new Date().toISOString().split('T')[0]}.xlsx`;
+      await downloadFileFromResponse(response, filename);
+
+      Toast.success('Archivo Excel descargado exitosamente');
     } catch (error) {
       console.error("Error al exportar:", error);
       Toast.error("Error al exportar el inventario");

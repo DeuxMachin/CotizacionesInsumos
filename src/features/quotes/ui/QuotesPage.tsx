@@ -27,10 +27,11 @@ import { NotasVentaService } from '@/services/notasVentaService';
 import { supabase } from '@/lib/supabase';
 import { useQuotes } from '../model/useQuotes';
 import { Quote, QuoteStatus } from '@/core/domain/quote/Quote';
-import { exportCotizacionesToExcel } from '@/lib/exportUtils';
 
 // Import the filters panel component
 import { QuoteFiltersPanel } from './QuoteFiltersPanel';
+import { downloadFileFromResponse } from '@/lib/download';
+import { Toast } from '@/shared/ui/Toast';
 
 interface QuoteCardProps {
   quote: Quote;
@@ -154,7 +155,29 @@ export function QuotesPage() {
   };
 
   const handleExport = async () => {
-    await exportCotizacionesToExcel(userId || undefined, isAdmin);
+    try {
+      if (!userId) {
+        Toast.error('Usuario no identificado');
+        return;
+      }
+
+      const response = await fetch(`/api/downloads/quotes?userId=${userId}&isAdmin=${isAdmin}`, {
+        method: 'GET',
+      });
+
+      if (!response.ok) {
+        throw new Error(`Error ${response.status}: ${response.statusText}`);
+      }
+
+      // Descargar el archivo
+      const filename = `cotizaciones_${new Date().toISOString().split('T')[0]}.xlsx`;
+      await downloadFileFromResponse(response, filename);
+
+      Toast.success('Archivo Excel descargado exitosamente');
+    } catch (error) {
+      console.error('Error exportando cotizaciones:', error);
+      Toast.error('Error al exportar las cotizaciones. Por favor, inténtalo de nuevo.');
+    }
   };
 
   const handleChangeStatus = async (id: string, status: QuoteStatus) => {

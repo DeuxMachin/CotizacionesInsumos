@@ -701,12 +701,12 @@ export type Database = {
       }
       document_series: {
         Row: {
-          id: number
-            doc_tipo: string
-          anio: number
-          prefijo: string
-          ultimo_numero: number
-          largo: number
+          id: number,
+          doc_tipo: string,
+          anio: number,
+          prefijo: string,
+          ultimo_numero: number,
+          largo: number,
           activo: boolean
         }
         Insert: {

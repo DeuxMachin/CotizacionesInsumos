@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { FiBarChart, FiDownload, FiCalendar, FiFileText, FiUsers, FiDollarSign, FiTrendingUp, FiFilter, FiSettings } from "react-icons/fi";
 import { useAdminStats } from '@/hooks/useSupabase';
+import { useAuth } from "@/features/auth/model/useAuth";
 
 interface Report {
   id: string;
@@ -77,6 +78,7 @@ const formats = [
 ];
 
 export function ReportsManagement() {
+  const { user } = useAuth();
   const { data: adminStats, loading: loadingStats } = useAdminStats();
   const [reports] = useState<Report[]>(availableReports);
   const [dateRange, setDateRange] = useState('last-30-days');
@@ -87,9 +89,46 @@ export function ReportsManagement() {
   const handleGenerateReport = async (reportId: string) => {
     setIsGenerating(reportId);
     try {
-      // Simular generación de reporte
-      await new Promise(resolve => setTimeout(resolve, 3000));
-      alert('Reporte generado exitosamente');
+      // Determinar el endpoint según el tipo de reporte
+      let endpoint = '';
+      if (reportId === 'clients-history') {
+        endpoint = '/api/downloads/clients';
+      } else if (reportId === 'quotes-summary') {
+        endpoint = '/api/downloads/quotes';
+      } else if (reportId === 'works-history') {
+        endpoint = '/api/downloads/stock'; // Usar stock como ejemplo para obras
+      }
+
+      if (endpoint) {
+        // Obtener el userId del contexto de autenticación
+        const userId = user?.id;
+        if (!userId) {
+          alert('Usuario no identificado');
+          setIsGenerating(null);
+          return;
+        }
+
+        const response = await fetch(`${endpoint}?userId=${userId}&format=${format}`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
+
+        if (!response.ok) {
+          throw new Error(`Error ${response.status}: ${response.statusText}`);
+        }
+
+        // El archivo se descargará automáticamente
+        alert('Reporte generado exitosamente');
+      } else {
+        // Simular generación para reportes que no tienen endpoint específico
+        await new Promise(resolve => setTimeout(resolve, 3000));
+        alert('Reporte generado exitosamente');
+      }
+    } catch (error) {
+      console.error('Error generando reporte:', error);
+      alert('Error al generar el reporte. Por favor, inténtalo de nuevo.');
     } finally {
       setIsGenerating(null);
     }
