@@ -2,6 +2,19 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 import * as XLSX from 'xlsx';
 import { AuditService } from '@/services/auditService';
+import { Database } from '@/lib/supabase';
+
+type CotizacionRow = Database['public']['Tables']['cotizaciones']['Row'];
+type CotizacionItemRow = Database['public']['Tables']['cotizacion_items']['Row'];
+type ProductoRow = Database['public']['Tables']['productos']['Row'];
+type ClienteRow = Database['public']['Tables']['clientes']['Row'];
+type UsuarioRow = Database['public']['Tables']['usuarios']['Row'];
+
+type CotizacionWithRelations = CotizacionRow & {
+  clientes?: ClienteRow;
+  usuarios?: UsuarioRow;
+  cotizacion_items?: (CotizacionItemRow & { productos?: ProductoRow })[];
+};
 
 interface CotizacionExportRow {
   'ID Cotización': string;
@@ -84,13 +97,13 @@ export async function GET(request: NextRequest) {
     // Preparar datos para Excel
     const exportData: CotizacionExportRow[] = [];
 
-    cotizacionesData.forEach((cotizacion: any) => {
+    cotizacionesData.forEach((cotizacion: CotizacionWithRelations) => {
       const cliente = cotizacion.clientes;
       const vendedor = cotizacion.usuarios;
       const items = cotizacion.cotizacion_items || [];
 
       // Para cada cotización, agregar una fila por cada item
-      items.forEach((item: any, index: number) => {
+      items.forEach((item: CotizacionItemRow & { productos?: ProductoRow }, index: number) => {
         const producto = item.productos;
 
         exportData.push({
@@ -220,7 +233,7 @@ export async function GET(request: NextRequest) {
 
   // Registrar en document_series (serie de descargas)
   const { registerDownloadSeries } = await import('@/services/documentSeriesService');
-  const serie = await registerDownloadSeries('quotes_excel', 'QEX-');
+  await registerDownloadSeries('quotes_excel', 'QEX-');
 
     // Registrar auditoría
     await AuditService.logDownload(

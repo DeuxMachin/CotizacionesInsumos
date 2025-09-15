@@ -1,9 +1,7 @@
-import { supabase } from '@/lib/supabase';
-
 export interface AuditLogEntry {
   user_id: string;
   action: string;
-  details: Record<string, any>;
+  details: Record<string, unknown>;
   ip_address?: string;
   user_agent?: string;
 }
@@ -40,7 +38,7 @@ export class AuditService {
     details: {
       fileName?: string;
       recordCount?: number;
-      filters?: Record<string, any>;
+      filters?: Record<string, unknown>;
       format?: 'pdf' | 'excel';
     } = {},
     ipAddress?: string,
@@ -61,14 +59,14 @@ export class AuditService {
   /**
    * Obtiene los logs de auditoría con filtros opcionales
    */
-  static async getAuditLogs(options: {
+  static async getAuditLogs(_options: {
     userId?: string;
     action?: string;
     startDate?: Date;
     endDate?: Date;
     limit?: number;
     offset?: number;
-  } = {}): Promise<any[]> {
+  } = {}): Promise<unknown[]> {
     // La tabla audit_logs no existe, devolver array vacío
     console.log('getAuditLogs called but audit_logs table does not exist');
     return [];
@@ -77,14 +75,14 @@ export class AuditService {
   /**
    * Obtiene estadísticas de descargas por tipo y usuario
    */
-  static async getDownloadStats(options: {
+  static async getDownloadStats(_options: {
     startDate?: Date;
     endDate?: Date;
   } = {}): Promise<{
     totalDownloads: number;
     downloadsByType: Record<string, number>;
     downloadsByUser: Record<string, number>;
-    recentDownloads: any[];
+    recentDownloads: unknown[];
   }> {
     // La tabla audit_logs no existe, devolver estadísticas vacías
     console.log('getDownloadStats called but audit_logs table does not exist');

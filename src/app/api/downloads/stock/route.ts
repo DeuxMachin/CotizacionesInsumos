@@ -2,6 +2,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 import * as XLSX from 'xlsx';
 import { AuditService } from '@/services/auditService';
+import { Database } from '@/lib/supabase';
+
+type ProductoRow = Database['public']['Tables']['productos']['Row'];
+type ProductoStockRow = Database['public']['Tables']['producto_stock']['Row'];
+type BodegaRow = Database['public']['Tables']['bodegas']['Row'];
+type ProductoCategoriaDBRow = Database['public']['Tables']['producto_categorias']['Row'];
+type CategoriaProductoRow = Database['public']['Tables']['categorias_productos']['Row'];
 
 interface StockPorBodegaRow {
   'ID Producto': string;
@@ -88,15 +95,15 @@ export async function GET(request: NextRequest) {
     if (categoriasError) throw categoriasError;
 
     // Mapas auxiliares
-    const bodegaById = new Map<number, { id: number; nombre: string; ubicacion: string | null }>();
-    bodegasData?.forEach(b => bodegaById.set(b.id, b as any));
+    const bodegaById = new Map<number, BodegaRow>();
+    bodegasData?.forEach((b: BodegaRow) => bodegaById.set(b.id, b));
 
     const categoriaNombreById = new Map<number, string>();
-    categoriasData?.forEach(c => categoriaNombreById.set(c.id as number, (c as any).nombre));
+    categoriasData?.forEach((c: CategoriaProductoRow) => categoriaNombreById.set(c.id, c.nombre));
 
     // Mapear categorías por producto
     const categoriasPorProducto = new Map<number, string[]>();
-    prodCats?.forEach((pc: any) => {
+    prodCats?.forEach((pc: ProductoCategoriaDBRow) => {
       const nombre = categoriaNombreById.get(pc.categoria_id);
       if (!nombre) return;
       const arr = categoriasPorProducto.get(pc.producto_id) || [];
@@ -105,8 +112,8 @@ export async function GET(request: NextRequest) {
     });
 
     // Agrupar stock por producto
-    const stockPorProducto = new Map<number, Array<any>>();
-    stockData?.forEach((s: any) => {
+    const stockPorProducto = new Map<number, ProductoStockRow[]>();
+    stockData?.forEach((s: ProductoStockRow) => {
       const arr = stockPorProducto.get(s.producto_id) || [];
       arr.push(s);
       stockPorProducto.set(s.producto_id, arr);
@@ -116,7 +123,7 @@ export async function GET(request: NextRequest) {
     const wb = XLSX.utils.book_new();
 
     // === HOJA 1: INVENTARIO GENERAL ===
-    const inventarioGeneral = productosData.map((item: any) => {
+    const inventarioGeneral = productosData.map((item: ProductoRow) => {
       const categorias = categoriasPorProducto.get(item.id) || [];
       const categoriaPrincipal = categorias[0] || 'Sin Categoría';
       const stockList = stockPorProducto.get(item.id) || [];
@@ -148,11 +155,11 @@ export async function GET(request: NextRequest) {
 
     // === HOJA 2: STOCK POR BODEGA ===
     const stockPorBodega: StockPorBodegaRow[] = [];
-    productosData.forEach((item: any) => {
+    productosData.forEach((item: ProductoRow) => {
       const categorias = categoriasPorProducto.get(item.id) || [];
       const categoriaPrincipal = categorias[0] || 'Sin Categoría';
       const stockList = stockPorProducto.get(item.id) || [];
-      stockList.forEach((stockItem: any) => {
+      stockList.forEach((stockItem: ProductoStockRow) => {
         const bodega = bodegaById.get(stockItem.bodega_id);
         stockPorBodega.push({
           'ID Producto': String(item.id),
@@ -173,7 +180,7 @@ export async function GET(request: NextRequest) {
     // === HOJAS POR CATEGORÍA ===
     const categoriasMap = new Map<string, ProductoCategoriaRow[]>();
 
-    productosData.forEach((item: any) => {
+    productosData.forEach((item: ProductoRow) => {
       const categorias = categoriasPorProducto.get(item.id) || ['Sin Categoría'];
       const stockList = stockPorProducto.get(item.id) || [];
       const stockTotal = stockList.reduce((sum, s) => sum + (s.stock_actual || 0), 0);
@@ -213,14 +220,14 @@ export async function GET(request: NextRequest) {
       'Valor': productosData.filter(p => (p.stock_total || 0) === 0).length
     }, {
       'Métrica': 'Valorización Total del Inventario',
-      'Valor': productosData.reduce((sum: number, p: any) => {
+      'Valor': productosData.reduce((sum: number, p: ProductoRow) => {
         const stockList = stockPorProducto.get(p.id) || [];
         const val = stockList.reduce((s, st) => s + (st.total_valorizado || 0), 0);
         return sum + val;
       }, 0)
     }, {
       'Métrica': 'Total Unidades en Stock',
-      'Valor': productosData.reduce((sum: number, p: any) => {
+      'Valor': productosData.reduce((sum: number, p: ProductoRow) => {
         const stockList = stockPorProducto.get(p.id) || [];
         const unidades = stockList.reduce((s, st) => s + (st.stock_actual || 0), 0);
         return sum + unidades;
@@ -231,7 +238,7 @@ export async function GET(request: NextRequest) {
     }];
 
     // Agregar estadísticas por estado de stock
-    const productosPorEstado = productosData.reduce((acc: Record<string, number>, p: any) => {
+    const productosPorEstado = productosData.reduce((acc: Record<string, number>, p: ProductoRow) => {
       const estado = p.estado || 'disponible';
       acc[estado] = (acc[estado] || 0) + 1;
       return acc;

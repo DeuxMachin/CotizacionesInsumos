@@ -26,6 +26,7 @@ import { NotasVentaService, SalesNoteRecord, SalesNoteItemRow } from '@/services
 import type { QuoteItem } from '@/core/domain/quote/Quote';
 import { FiCheckCircle, FiShoppingCart } from 'react-icons/fi';
 import { ProductsForm } from '@/features/quotes/ui/components/ProductsForm';
+import { downloadFileFromResponse } from '@/lib/download';
 
 export default function QuoteDetailPage() {
   const params = useParams();
@@ -51,6 +52,7 @@ export default function QuoteDetailPage() {
   // Estados para conversión a nota de venta
   const [creatingSale, setCreatingSale] = React.useState(false);
   const [saleError, setSaleError] = React.useState<string | null>(null);
+  const [exporting, setExporting] = React.useState(false);
 
   // ===== HOOKS CALLBACK ANTES DE RETURNS CONDICIONALES =====
   const handleDeleteQuote = React.useCallback(async () => {
@@ -187,9 +189,27 @@ export default function QuoteDetailPage() {
     });
   };
 
-  const handleExport = () => {
-    // Funcionalidad de exportación será implementada después
-    alert('Funcionalidad de exportación en desarrollo');
+  const handleExport = async () => {
+    if (!quote) return;
+    try {
+      setExporting(true);
+      const response = await fetch('/api/pdf/cotizacion/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(quote)
+      });
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.error || `Error ${response.status}`);
+      }
+      const filename = `cotizacion-${quote.numero || quote.id}.pdf`;
+      await downloadFileFromResponse(response, filename);
+    } catch (e: unknown) {
+      console.error('Error descargando PDF de cotización', e);
+      alert(`No se pudo generar el PDF: ${e instanceof Error ? e.message : 'Error desconocido'}`);
+    } finally {
+      setExporting(false);
+    }
   };
 
   const handleEdit = () => {
@@ -331,10 +351,12 @@ export default function QuoteDetailPage() {
           )}
           <button
             onClick={handleExport}
+            disabled={exporting}
             className="btn-secondary flex items-center gap-1 sm:gap-2 px-2 sm:px-4 py-1 sm:py-2 text-sm"
+            style={exporting ? { opacity: .7, cursor: 'wait' } : {}}
           >
             <FiDownload className="w-3 sm:w-4 h-3 sm:h-4" />
-            <span className="hidden xs:inline">Exportar</span>
+            <span className="hidden xs:inline">{exporting ? 'Descargando...' : 'Descargar'}</span>
           </button>
           <button
             onClick={handleEdit}
