@@ -1,6 +1,8 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { ReportPeriod } from "@/app/dashboard/reportes/page";
+import { reportesService, ReportData } from "@/services/reportesService";
 
 interface ClientStatusChartProps {
   period: ReportPeriod;
@@ -44,13 +46,88 @@ const mockClientStatusData: ClientStatusData[] = [
 ];
 
 export function ClientStatusChart({ period }: ClientStatusChartProps) {
-  const totalClients = mockClientStatusData.reduce((sum, item) => sum + item.count, 0);
+  const [clientStatusData, setClientStatusData] = useState<ClientStatusData[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const loadClientStatus = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const data = await reportesService.getReportData(period);
+        
+        // Convertir datos reales a formato ClientStatusData
+        const total = Object.values(data.clientesPorEstado).reduce((sum, count) => sum + count, 0);
+        const statusData: ClientStatusData[] = Object.entries(data.clientesPorEstado).map(([status, count], index) => {
+          const colors = ["#10b981", "#06b6d4", "#6b7280", "#f59e0b", "#ef4444"];
+          const icons = ["✓", "◐", "○", "△", "✗"];
+          const descriptions = {
+            "activo": "Clientes con actividad reciente",
+            "prospecto": "Clientes potenciales en proceso", 
+            "inactivo": "Sin actividad en el período",
+            "pendiente": "En proceso de validación",
+            "suspendido": "Cuentas temporalmente suspendidas"
+          };
+          
+          return {
+            status: status.charAt(0).toUpperCase() + status.slice(1),
+            count,
+            percentage: total > 0 ? Math.round((count / total) * 100) : 0,
+            color: colors[index % colors.length],
+            description: descriptions[status as keyof typeof descriptions] || "Estado del cliente",
+            icon: icons[index % icons.length]
+          };
+        });
+        
+        setClientStatusData(statusData);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Error al cargar datos');
+        setClientStatusData(mockClientStatusData); // Fallback a datos mock
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadClientStatus();
+  }, [period]);
+
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <div className="animate-pulse">
+          <div className="h-4 bg-gray-300 rounded w-32 mb-4"></div>
+          <div className="space-y-3">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} className="flex items-center gap-3">
+                <div className="w-4 h-4 bg-gray-300 rounded"></div>
+                <div className="flex-1 h-4 bg-gray-300 rounded"></div>
+                <div className="w-12 h-4 bg-gray-300 rounded"></div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="text-center p-4">
+        <p style={{ color: 'var(--text-danger)' }}>Error: {error}</p>
+        <p style={{ color: 'var(--text-secondary)' }}>Mostrando datos de ejemplo</p>
+      </div>
+    );
+  }
+
+  const dataToShow = clientStatusData.length > 0 ? clientStatusData : mockClientStatusData;
+  const totalClients = dataToShow.reduce((sum, item) => sum + item.count, 0);
 
   return (
     <div className="space-y-6">
       {/* Estados con barras horizontales mejoradas */}
       <div className="space-y-4">
-        {mockClientStatusData.map((status, index) => (
+        {dataToShow.map((status, index) => (
           <div 
             key={status.status}
             className="group p-4 rounded-lg transition-all hover:scale-[1.01]"

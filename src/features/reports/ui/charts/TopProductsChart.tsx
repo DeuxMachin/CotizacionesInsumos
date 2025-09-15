@@ -1,6 +1,8 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { ReportPeriod } from "@/app/dashboard/reportes/page";
+import { reportesService, ReportData } from "@/services/reportesService";
 
 interface TopProductsChartProps {
   period: ReportPeriod;
@@ -60,9 +62,81 @@ const mockProductsData: ProductData[] = [
 ];
 
 export function TopProductsChart({ period }: TopProductsChartProps) {
+  const [topProducts, setTopProducts] = useState<ProductData[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const loadTopProducts = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const data = await reportesService.getReportData(period);
+        
+        // Convertir datos reales a formato ProductData
+        const products: ProductData[] = data.topProductos.map((producto, index) => ({
+          rank: index + 1,
+          name: producto.nombre,
+          sales: producto.cantidad,
+          revenue: reportesService.formatCurrency(producto.ingresos),
+          color: getProductColor(index),
+          percentage: Math.max(20, Math.min(100, (producto.ingresos / Math.max(...data.topProductos.map(p => p.ingresos))) * 100))
+        }));
+        
+        setTopProducts(products);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Error al cargar datos');
+        setTopProducts(mockProductsData); // Fallback a datos mock
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadTopProducts();
+  }, [period]);
+
+  // Función para asignar colores a los productos
+  const getProductColor = (index: number): string => {
+    const colors = ["#8b5cf6", "#06b6d4", "#10b981", "#f59e0b", "#ef4444"];
+    return colors[index % colors.length];
+  };
+
+  if (loading) {
+    return (
+      <div className="space-y-4">
+        {Array.from({ length: 5 }).map((_, i) => (
+          <div key={i} className="animate-pulse">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-3">
+                <div className="w-6 h-6 bg-gray-300 rounded-full"></div>
+                <div className="space-y-1">
+                  <div className="h-4 bg-gray-300 rounded w-32"></div>
+                  <div className="h-3 bg-gray-300 rounded w-16"></div>
+                </div>
+              </div>
+              <div className="h-4 bg-gray-300 rounded w-16"></div>
+            </div>
+            <div className="h-3 bg-gray-300 rounded"></div>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="text-center p-4">
+        <p style={{ color: 'var(--text-danger)' }}>Error: {error}</p>
+        <p style={{ color: 'var(--text-secondary)' }}>Mostrando datos de ejemplo</p>
+      </div>
+    );
+  }
+
+  const productsToShow = topProducts.length > 0 ? topProducts : mockProductsData;
+
   return (
     <div className="space-y-4">
-      {mockProductsData.map((product, index) => (
+      {productsToShow.map((product, index) => (
         <div 
           key={product.rank}
           className="group relative"

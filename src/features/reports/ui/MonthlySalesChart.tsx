@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { ReportPeriod } from '@/app/dashboard/reportes/page';
+import { reportesService, ReportData } from '@/services/reportesService';
 
 interface MonthlySalesChartProps {
   period: ReportPeriod;
@@ -48,9 +49,31 @@ const mockMonthlySalesData: MonthlySalesData[] = [
 export function MonthlySalesChart({ period }: MonthlySalesChartProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [hoveredPoint, setHoveredPoint] = useState<number | null>(null);
-  const [clickedPoint, setClickedPoint] = useState<number | null>(null); // Sin punto seleccionado inicial
+  const [clickedPoint, setClickedPoint] = useState<number | null>(null);
   const [isDark, setIsDark] = useState(false);
   const [tooltip, setTooltip] = useState<{x: number, y: number, data: MonthlySalesData} | null>(null);
+  const [salesData, setSalesData] = useState<MonthlySalesData[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Cargar datos reales
+  useEffect(() => {
+    const loadSalesData = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const data = await reportesService.getReportData(period);
+        setSalesData(data.ventasMensuales);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Error al cargar datos');
+        setSalesData(mockMonthlySalesData); // Fallback a datos mock
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadSalesData();
+  }, [period]);
 
   // Detectar tema oscuro
   useEffect(() => {
@@ -87,10 +110,10 @@ export function MonthlySalesChart({ period }: MonthlySalesChartProps) {
       let closestPoint = null;
       let minDistance = Infinity;
       
-      mockMonthlySalesData.forEach((data) => {
-        const pointX = margin.left + (data.day - 1) * (chartWidth / (mockMonthlySalesData.length - 1));
-        const maxSales = Math.max(...mockMonthlySalesData.map(d => d.sales));
-        const minSales = Math.min(...mockMonthlySalesData.map(d => d.sales));
+      salesData.forEach((data) => {
+        const pointX = margin.left + (data.day - 1) * (chartWidth / (salesData.length - 1));
+        const maxSales = Math.max(...salesData.map(d => d.sales));
+        const minSales = Math.min(...salesData.map(d => d.sales));
         const salesRange = maxSales - minSales;
         const pointY = margin.top + chartHeight - ((data.sales - minSales) / salesRange) * chartHeight;
         
@@ -135,7 +158,10 @@ export function MonthlySalesChart({ period }: MonthlySalesChartProps) {
     };
   }, [hoveredPoint]);
 
+  // Redibujar cuando cambien los datos, tema o interacciones
   useEffect(() => {
+    if (loading || salesData.length === 0) return;
+    
     const canvas = canvasRef.current;
     if (!canvas) return;
 
@@ -182,11 +208,11 @@ export function MonthlySalesChart({ period }: MonthlySalesChartProps) {
     const chartHeight = height - margin.top - margin.bottom;
 
     // Escalas
-    const maxSales = Math.max(...mockMonthlySalesData.map(d => d.sales));
-    const minSales = Math.min(...mockMonthlySalesData.map(d => d.sales));
+    const maxSales = Math.max(...salesData.map(d => d.sales));
+    const minSales = Math.min(...salesData.map(d => d.sales));
     const salesRange = maxSales - minSales;
     
-    const xScale = (day: number) => margin.left + (day - 1) * (chartWidth / (mockMonthlySalesData.length - 1));
+    const xScale = (day: number) => margin.left + (day - 1) * (chartWidth / (salesData.length - 1));
     const yScale = (sales: number) => margin.top + chartHeight - ((sales - minSales) / salesRange) * chartHeight;
 
     // Líneas de cuadrícula horizontal
@@ -229,11 +255,11 @@ export function MonthlySalesChart({ period }: MonthlySalesChartProps) {
     // Área bajo la curva
     ctx.fillStyle = gradient;
     ctx.beginPath();
-    ctx.moveTo(xScale(mockMonthlySalesData[0].day), yScale(mockMonthlySalesData[0].sales));
+    ctx.moveTo(xScale(salesData[0].day), yScale(salesData[0].sales));
     
-    for (let i = 1; i < mockMonthlySalesData.length; i++) {
-      const prev = mockMonthlySalesData[i - 1];
-      const curr = mockMonthlySalesData[i];
+    for (let i = 1; i < salesData.length; i++) {
+      const prev = salesData[i - 1];
+      const curr = salesData[i];
       
       const cp1x = xScale(prev.day) + (xScale(curr.day) - xScale(prev.day)) * 0.4;
       const cp1y = yScale(prev.sales);
@@ -243,8 +269,8 @@ export function MonthlySalesChart({ period }: MonthlySalesChartProps) {
       ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, xScale(curr.day), yScale(curr.sales));
     }
     
-    ctx.lineTo(xScale(mockMonthlySalesData[mockMonthlySalesData.length - 1].day), margin.top + chartHeight);
-    ctx.lineTo(xScale(mockMonthlySalesData[0].day), margin.top + chartHeight);
+    ctx.lineTo(xScale(salesData[salesData.length - 1].day), margin.top + chartHeight);
+    ctx.lineTo(xScale(salesData[0].day), margin.top + chartHeight);
     ctx.closePath();
     ctx.fill();
 
@@ -257,11 +283,11 @@ export function MonthlySalesChart({ period }: MonthlySalesChartProps) {
     ctx.lineJoin = 'round';
 
     ctx.beginPath();
-    ctx.moveTo(xScale(mockMonthlySalesData[0].day), yScale(mockMonthlySalesData[0].sales));
+    ctx.moveTo(xScale(salesData[0].day), yScale(salesData[0].sales));
     
-    for (let i = 1; i < mockMonthlySalesData.length; i++) {
-      const prev = mockMonthlySalesData[i - 1];
-      const curr = mockMonthlySalesData[i];
+    for (let i = 1; i < salesData.length; i++) {
+      const prev = salesData[i - 1];
+      const curr = salesData[i];
       
       const cp1x = xScale(prev.day) + (xScale(curr.day) - xScale(prev.day)) * 0.4;
       const cp1y = yScale(prev.sales);
@@ -274,7 +300,7 @@ export function MonthlySalesChart({ period }: MonthlySalesChartProps) {
     ctx.shadowBlur = 0;
 
     // Puntos de datos con interactividad
-    mockMonthlySalesData.forEach((data, index) => {
+    salesData.forEach((data, index) => {
       const x = xScale(data.day);
       const y = yScale(data.sales);
       
@@ -369,7 +395,49 @@ export function MonthlySalesChart({ period }: MonthlySalesChartProps) {
       ctx.fillText(`${selectedData.label}: ${formattedValue}`, x + 15, y + 8);
     }
 
-  }, [period, isDark, hoveredPoint, clickedPoint]);
+  }, [period, isDark, hoveredPoint, clickedPoint, salesData, loading]);
+
+  if (loading) {
+    return (
+      <div className="p-6 rounded-xl border" style={{ 
+        backgroundColor: 'var(--bg-primary)',
+        borderColor: 'var(--border-subtle)'
+      }}>
+        <div className="mb-4">
+          <h3 className="text-lg font-semibold mb-1" style={{ color: 'var(--text-primary)' }}>
+            Ventas a lo largo del mes
+          </h3>
+          <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+            Cargando datos...
+          </p>
+        </div>
+        <div className="h-64 flex items-center justify-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-2 border-gray-300 border-t-blue-600"></div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-6 rounded-xl border" style={{ 
+        backgroundColor: 'var(--bg-primary)',
+        borderColor: 'var(--border-subtle)'
+      }}>
+        <div className="mb-4">
+          <h3 className="text-lg font-semibold mb-1" style={{ color: 'var(--text-primary)' }}>
+            Ventas a lo largo del mes
+          </h3>
+          <p className="text-sm" style={{ color: 'var(--text-danger)' }}>
+            Error: {error}
+          </p>
+        </div>
+        <div className="h-64 flex items-center justify-center">
+          <p style={{ color: 'var(--text-secondary)' }}>Los datos no pudieron cargarse</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 rounded-xl border" style={{ 
@@ -458,7 +526,7 @@ export function MonthlySalesChart({ period }: MonthlySalesChartProps) {
               PROMEDIO
             </p>
             <p className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>
-              ${Math.round(mockMonthlySalesData.reduce((sum, d) => sum + d.sales, 0) / mockMonthlySalesData.length).toLocaleString('es-CL')}
+              ${Math.round(salesData.reduce((sum, d) => sum + d.sales, 0) / salesData.length).toLocaleString('es-CL')}
             </p>
           </div>
           <div>
@@ -467,7 +535,7 @@ export function MonthlySalesChart({ period }: MonthlySalesChartProps) {
             </p>
             <p className="text-sm font-bold" style={{ color: 'var(--accent-text)' }}>
               {clickedPoint ? 
-                `D${clickedPoint.toString().padStart(2, '0')}: $${mockMonthlySalesData.find(d => d.day === clickedPoint)?.sales.toLocaleString('es-CL') || '0'}`
+                `D${clickedPoint.toString().padStart(2, '0')}: $${salesData.find(d => d.day === clickedPoint)?.sales.toLocaleString('es-CL') || '0'}`
                 : 'Ninguno'
               }
             </p>
