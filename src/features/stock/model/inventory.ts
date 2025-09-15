@@ -1,72 +1,53 @@
+import { StockService, type InventoryItem as DBInventoryItem } from '@/services/stockService'
+
 export type StockStatus = "in-stock" | "low" | "out";
 
-export interface InventoryItem {
+// Re-export the InventoryItem from StockService for backward compatibility
+export type InventoryItem = DBInventoryItem
+
+// Legacy interface for backward compatibility (if needed)
+export interface LegacyInventoryItem {
   id: string;
-  code: string; // SKU o código
+  code: string;
   name: string;
   category: string;
-  unit: string; // unidad de medida (un, kg, lt)
+  unit: string;
   stock: number;
-  packSize: number; // tamaño de pack (6, 12, 24, 36, ...)
-  price: number; // precio de venta unitario
-  cost: number; // costo unitario
-  updatedAt: string; // ISO date
+  packSize: number;
+  price: number;
+  cost: number;
+  updatedAt: string;
   status?: StockStatus;
 }
 
-export const inventoryMock: InventoryItem[] = [
-  {
-    id: "P-001",
-    code: "2A-AP-148833",
-    name: "Ácido Peracético al 15%, Bidón 20 KG",
-    category: "Químicos",
-    unit: "kg",
-  stock: 12,
-  packSize: 12,
-    price: 85569,
-    cost: 63500,
-    updatedAt: "2025-08-15",
-  },
-  {
-    id: "P-002",
-    code: "IT-A3-522086",
-    name: "Adhesivo 300 Café",
-    category: "Adhesivos",
-    unit: "un",
-  stock: 2,
-  packSize: 6,
-    price: 448800,
-    cost: 350000,
-    updatedAt: "2025-08-14",
-  },
-  {
-    id: "P-003",
-    code: "RD-901588",
-    name: "Adhesivo Doble Contacto, Lata 18 LT",
-    category: "Adhesivos",
-    unit: "lt",
-  stock: 0,
-  packSize: 24,
-    price: 117283,
-    cost: 92000,
-    updatedAt: "2025-08-10",
-  },
-  {
-    id: "P-004",
-    code: "RZ-2152L",
-    name: "Adhesivo Montaje 5 KG",
-    category: "Adhesivos",
-    unit: "kg",
-    stock: 41,
-    packSize: 12,
-    price: 19080,
-    cost: 12300,
-    updatedAt: "2025-08-18",
-  },
-];
+// Functions to fetch data from DB
+export async function getAllInventory(): Promise<InventoryItem[]> {
+  return await StockService.getAllInventory()
+}
 
-export function inferStatus(i: InventoryItem): StockStatus {
-  if (i.stock <= 0) return "out";
-  if (i.stock < i.packSize) return "low"; // bajo si queda menos que un pack completo
-  return "in-stock";
+export async function searchInventory(searchTerm: string): Promise<InventoryItem[]> {
+  return await StockService.searchInventory(searchTerm)
+}
+
+export async function getInventoryByCategory(categoryId: number): Promise<InventoryItem[]> {
+  return await StockService.getInventoryByCategory(categoryId)
+}
+
+export async function getCategories() {
+  return await StockService.getCategories()
+}
+
+// Utility function to infer status (kept for compatibility)
+export function inferStatus(totalStock: number): StockStatus {
+  return StockService.inferStatus(totalStock)
+}
+
+// Format currency helper
+export function formatCLP(amount: number | null): string {
+  if (amount === null) return '$0'
+  return new Intl.NumberFormat("es-CL", {
+    style: "currency",
+    currency: "CLP",
+    maximumFractionDigits: 0
+  }).format(amount)
 }
