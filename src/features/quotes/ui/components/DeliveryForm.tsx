@@ -313,3 +313,5 @@ export function DeliveryForm({ data, onChange }: DeliveryFormProps) {
     </div>
   );
 }
+
+export default DeliveryForm;

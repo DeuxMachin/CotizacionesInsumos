@@ -1,7 +1,8 @@
 "use client";
 
 import React from 'react';
-import type { ClientInfo, QuoteItem, DeliveryInfo, CommercialTerms } from '@/core/domain/quote/Quote';
+import type { ClientInfo, QuoteItem, DeliveryInfo, CommercialTerms, Quote } from '@/core/domain/quote/Quote';
+import { PDFDownloadButton } from '@/features/reports/ui/pdf/PDFDownloadButton';
 import { 
   FiDollarSign, 
   FiUser, 
@@ -22,6 +23,7 @@ interface FormData {
   condicionesComerciales: Partial<CommercialTerms>;
   notas?: string;
   estado: string;
+  descuentoGlobalPct?: number;
 }
 
 interface QuoteSummaryProps {
@@ -31,14 +33,56 @@ interface QuoteSummaryProps {
     descuentoTotal: number;
     iva: number;
     total: number;
+    lineDiscountTotal?: number;
+    globalDiscountAmount?: number;
+    globalPct?: number;
   };
   formatMoney: (amount: number) => string;
   errors?: string[];
+  onChangeGlobalDiscountPct?: (pct: number) => void;
 }
 
-export function QuoteSummary({ formData, totals, formatMoney }: QuoteSummaryProps) {
+export function QuoteSummary({ formData, totals, formatMoney, onChangeGlobalDiscountPct }: QuoteSummaryProps) {
   const { cliente, items, despacho, condicionesComerciales, notas } = formData;
-  const { subtotal, descuentoTotal, iva, total } = totals;
+  const {
+    subtotal,
+    descuentoTotal,
+    iva,
+    total,
+    lineDiscountTotal = 0,
+    globalDiscountAmount = (descuentoTotal - lineDiscountTotal),
+    globalPct = formData.descuentoGlobalPct || totals.globalPct || 0
+  } = totals;
+
+  // Función helper para crear un objeto Quote compatible con PDF generator
+  const createQuoteFromFormData = (
+    formData: FormData,
+    totalsCalc: { subtotal: number; descuentoTotal: number; iva: number; total: number; lineDiscountTotal?: number; globalDiscountAmount?: number }
+  ): Quote => {
+    return {
+      id: 'preview',
+      numero: `PREV-${Date.now()}`,
+      fechaCreacion: new Date().toISOString(),
+      fechaModificacion: new Date().toISOString(),
+      fechaExpiracion: formData.condicionesComerciales.validezOferta ? 
+        new Date(Date.now() + formData.condicionesComerciales.validezOferta * 24 * 60 * 60 * 1000).toISOString() : 
+        undefined,
+      cliente: formData.cliente as ClientInfo,
+      items: formData.items,
+      despacho: Object.keys(formData.despacho).length > 0 ? formData.despacho as DeliveryInfo : undefined,
+      condicionesComerciales: formData.condicionesComerciales as CommercialTerms,
+      estado: formData.estado as Quote['estado'],
+      vendedorId: 'USER001', // TODO: Obtener del usuario autenticado
+      vendedorNombre: 'Usuario Actual', // TODO: Obtener del usuario autenticado
+      subtotal: totalsCalc.subtotal,
+      descuentoTotal: totalsCalc.descuentoTotal,
+      descuentoLineasMonto: totalsCalc.lineDiscountTotal ?? 0,
+      descuentoGlobalMonto: totalsCalc.globalDiscountAmount ?? (totalsCalc.descuentoTotal - (totalsCalc.lineDiscountTotal ?? 0)),
+      iva: totalsCalc.iva,
+      total: totalsCalc.total,
+      notas: formData.notas
+    };
+  };
 
   return (
     <div className="space-y-6">
@@ -342,112 +386,115 @@ export function QuoteSummary({ formData, totals, formatMoney }: QuoteSummaryProp
           )}
         </div>
 
-        {/* Columna derecha - Resumen financiero */}
-        <div className="space-y-6">
-          {/* Resumen Financiero */}
-          <div 
-            className="sticky top-4 rounded-lg p-4 sm:p-6 border"
+        
+        {/* Nueva columna derecha sustituye a la anterior */}
+        <div className="space-y-6 min-w-0">
+          <div
+            className="sticky top-4 rounded-lg border flex flex-col gap-4 p-4 sm:p-5"
             style={{ backgroundColor: 'var(--card-bg)', borderColor: 'var(--border)' }}
           >
-            <h3 className="text-lg font-semibold mb-4 flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
-              <FiDollarSign className="w-5 h-5" style={{ color: 'var(--accent-primary)' }} />
-              Resumen Financiero
-            </h3>
-            <div className="space-y-3">
-              <div className="flex justify-between items-center py-2">
-                <span style={{ color: 'var(--text-secondary)' }}>Subtotal:</span>
-                <span className="font-medium" style={{ color: 'var(--text-primary)' }}>
-                  {formatMoney(subtotal)}
-                </span>
+            <div className="flex items-center justify-between gap-3 flex-wrap">
+              <h3 className="text-lg font-semibold flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
+                <FiDollarSign className="w-5 h-5" style={{ color: 'var(--accent-primary)' }} />
+                Resumen Financiero
+              </h3>
+              <div className="flex items-center gap-2 ml-auto w-full xs:w-auto sm:w-auto">
+                <label className="text-xs font-medium whitespace-nowrap" style={{ color:'var(--text-secondary)' }} htmlFor="global-discount-input">Desc.Global (%)</label>
+                <input
+                  id="global-discount-input"
+                  aria-label="Descuento global"
+                  type="number"
+                  min={0}
+                  max={100}
+                  value={globalPct}
+                  onChange={e => onChangeGlobalDiscountPct && onChangeGlobalDiscountPct(Math.min(100, Math.max(0, parseFloat(e.target.value) || 0)))}
+                  className="px-2 py-1 rounded border text-right text-sm w-full max-w-[90px]"
+                  style={{ background:'var(--input-bg)', borderColor:'var(--border)', color:'var(--text-primary)' }}
+                />
               </div>
-              {descuentoTotal > 0 && (
-                <div className="flex justify-between items-center py-2">
-                  <span style={{ color: 'var(--text-secondary)' }}>Descuento:</span>
-                  <span className="font-medium" style={{ color: 'var(--success-text)' }}>
-                    -{formatMoney(descuentoTotal)}
-                  </span>
+            </div>
+            <div className="divide-y text-sm" style={{ borderColor: 'var(--border)' }}>
+              <div className="flex justify-between py-2">
+                <span style={{ color:'var(--text-secondary)' }}>Subtotal</span>
+                <span className="font-medium" style={{ color:'var(--text-primary)' }}>{formatMoney(subtotal)}</span>
+              </div>
+              {lineDiscountTotal > 0 && (
+                <div className="flex justify-between py-2">
+                  <span style={{ color:'var(--text-secondary)' }}>Desc. líneas</span>
+                  <span className="font-medium" style={{ color:'var(--danger-text)' }}>-{formatMoney(lineDiscountTotal)}</span>
+                </div>
+              )}
+              {globalDiscountAmount > 0 && (
+                <div className="flex justify-between py-2">
+                  <span style={{ color:'var(--text-secondary)' }}>Desc. global</span>
+                  <span className="font-medium" style={{ color:'var(--danger-text)' }}>-{formatMoney(globalDiscountAmount)}</span>
                 </div>
               )}
               {(despacho.costoDespacho ?? 0) > 0 && (
-                <div className="flex justify-between items-center py-2">
-                  <span style={{ color: 'var(--text-secondary)' }}>Despacho:</span>
-                  <span className="font-medium" style={{ color: 'var(--text-primary)' }}>
-                    {formatMoney(despacho.costoDespacho ?? 0)}
-                  </span>
+                <div className="flex justify-between py-2">
+                  <span style={{ color:'var(--text-secondary)' }}>Despacho</span>
+                  <span className="font-medium" style={{ color:'var(--text-primary)' }}>{formatMoney(despacho.costoDespacho ?? 0)}</span>
                 </div>
               )}
-              <div className="flex justify-between items-center py-2">
-                <span style={{ color: 'var(--text-secondary)' }}>IVA (19%):</span>
-                <span className="font-medium" style={{ color: 'var(--text-primary)' }}>
-                  {formatMoney(iva)}
-                </span>
+              <div className="flex justify-between py-2">
+                <span style={{ color:'var(--text-secondary)' }}>IVA (19%)</span>
+                <span className="font-medium" style={{ color:'var(--text-primary)' }}>{formatMoney(iva)}</span>
               </div>
-              <div 
-                className="border-t pt-3 flex justify-between items-center"
-                style={{ borderColor: 'var(--border)' }}
-              >
-                <span className="text-xl font-semibold" style={{ color: 'var(--text-primary)' }}>
-                  Total:
-                </span>
-                <span className="text-2xl font-bold" style={{ color: 'var(--accent-primary)' }}>
-                  {formatMoney(total)}
-                </span>
+              <div className="flex justify-between py-3 items-center">
+                <span className="text-base font-semibold" style={{ color:'var(--text-primary)' }}>Total</span>
+                <span className="text-xl font-bold tracking-tight" style={{ color:'var(--accent-primary)' }}>{formatMoney(total)}</span>
               </div>
             </div>
-          </div>
-
-          {/* Estadísticas rápidas */}
-          <div 
-            className="rounded-lg p-4 border"
-            style={{ backgroundColor: 'var(--info-bg)', borderColor: 'var(--info-border)' }}
-          >
-            <h4 className="font-semibold text-sm mb-3" style={{ color: 'var(--info-text)' }}>
-              📊 Estadísticas
-            </h4>
-            <div className="space-y-2 text-sm" style={{ color: 'var(--info-text)' }}>
-              <div className="flex justify-between">
-                <span>Productos únicos:</span>
-                <span className="font-medium">{items.length}</span>
-              </div>
-              <div className="flex justify-between">
-                <span>Cantidad total:</span>
-                <span className="font-medium">
-                  {items.reduce((sum, item) => sum + item.cantidad, 0).toLocaleString('es-CL')}
-                </span>
-              </div>
-              {descuentoTotal > 0 && (
-                <div className="flex justify-between">
-                  <span>Descuento promedio:</span>
-                  <span className="font-medium">
-                    {Math.round((descuentoTotal / subtotal) * 100)}%
-                  </span>
+            <div className="flex flex-col sm:flex-row gap-2 w-full">
+              <PDFDownloadButton
+                quote={createQuoteFromFormData(formData, {
+                  subtotal,
+                  descuentoTotal,
+                  iva,
+                  total,
+                  lineDiscountTotal,
+                  globalDiscountAmount
+                })}
+                className="w-full flex-wrap"
+                showPreview={true}
+              />
+            </div>
+            <div className="rounded-md border p-3 sm:p-4 flex flex-col gap-2" style={{ background:'var(--info-bg)', borderColor:'var(--info-border)' }}>
+              <h4 className="text-xs font-semibold uppercase tracking-wide" style={{ color:'var(--info-text)' }}>Indicadores</h4>
+              <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-[11px] sm:text-xs" style={{ color:'var(--info-text)' }}>
+                <div className="flex flex-col min-w-0">
+                  <span style={{ color:'var(--text-secondary)' }}>Prod. únicos</span>
+                  <span className="font-medium" style={{ color:'var(--info-text)' }}>{items.length}</span>
                 </div>
-              )}
+                <div className="flex flex-col min-w-0">
+                  <span style={{ color:'var(--text-secondary)' }}>Cant. total</span>
+                  <span className="font-medium" style={{ color:'var(--info-text)' }}>{items.reduce((s,i)=>s+i.cantidad,0).toLocaleString('es-CL')}</span>
+                </div>
+                {descuentoTotal > 0 && (
+                  <div className="flex flex-col min-w-0">
+                    <span style={{ color:'var(--text-secondary)' }}>Desc. promedio</span>
+                    <span className="font-medium" style={{ color:'var(--info-text)' }}>{Math.round((descuentoTotal / subtotal) * 100)}%</span>
+                  </div>
+                )}
+                {lineDiscountTotal > 0 && (
+                  <div className="flex flex-col min-w-0">
+                    <span style={{ color:'var(--text-secondary)' }}>Desc. líneas</span>
+                    <span className="font-medium" style={{ color:'var(--danger-text)' }}>-{formatMoney(lineDiscountTotal)}</span>
+                  </div>
+                )}
+                {globalDiscountAmount > 0 && (
+                  <div className="flex flex-col min-w-0">
+                    <span style={{ color:'var(--text-secondary)' }}>Desc. global</span>
+                    <span className="font-medium" style={{ color:'var(--danger-text)' }}>-{formatMoney(globalDiscountAmount)}</span>
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
-
-          {/* Recordatorios */}
-          <div 
-            className="rounded-lg p-4 border"
-            style={{ backgroundColor: 'var(--warning-bg)', borderColor: 'var(--warning-border)' }}
-          >
-            <h4 className="font-semibold text-sm mb-2 flex items-center gap-2" style={{ color: 'var(--warning-text)' }}>
-              ⚠️ Recordatorios
-            </h4>
-            <ul className="text-xs space-y-1" style={{ color: 'var(--warning-text)' }}>
-              <li>• Revise todos los datos antes de enviar</li>
-              <li>• Los precios pueden cambiar sin previo aviso</li>
-              <li>• Confirme disponibilidad de productos</li>
-              {!condicionesComerciales.validezOferta && (
-                <li>• Considere agregar validez a la oferta</li>
-              )}
-              {!condicionesComerciales.formaPago && (
-                <li>• Defina condiciones de pago</li>
-              )}
-            </ul>
           </div>
         </div>
       </div>
     </div>
   );
 }
+
+export default QuoteSummary;

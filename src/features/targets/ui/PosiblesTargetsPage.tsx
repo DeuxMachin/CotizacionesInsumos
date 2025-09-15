@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { FiPlus, FiMapPin, FiPhone, FiUser, FiClock, FiArrowLeft, FiArrowRight, FiMap, FiFilter } from "react-icons/fi";
 import { useTargets } from "../model/useTargets";
-import { UnifiedFilters, FilterSection, FilterCheckbox, FilterSelect } from "@/shared/ui/UnifiedFilters";
+import { UnifiedFilters, FilterSection, FilterCheckbox } from "@/shared/ui/UnifiedFilters";
 import dynamic from "next/dynamic";
 const CreateTargetModal = dynamic(() => import("./CreateTargetModal"), { ssr: false, loading: () => null });
 const TargetDetailsModal = dynamic(() => import("./TargetDetailsModal").then(m => m.TargetDetailsModal), { ssr: false, loading: () => null });

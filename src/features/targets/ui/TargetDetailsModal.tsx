@@ -1,7 +1,7 @@
 "use client";
 
 import { Modal } from "@/shared/ui/Modal";
-import { FiMapPin, FiPhone, FiMail, FiUser, FiCalendar, FiClock, FiMap, FiExternalLink, FiEdit3, FiMessageSquare, FiHome, FiFlag, FiChevronRight } from "react-icons/fi";
+import { FiMapPin, FiPhone, FiMail, FiUser, FiCalendar, FiClock, FiMap, FiExternalLink, FiEdit3, FiMessageSquare, FiHome, FiFlag } from "react-icons/fi";
 import type { PosibleTarget } from "../model/types";
 
 interface TargetDetailsModalProps {
@@ -362,59 +362,6 @@ export function TargetDetailsModal({ target, isOpen, onClose }: TargetDetailsMod
               </div>
             </div>
 
-            {/* Notas del Target - Más compacto */}
-            {target.notas && target.notas.length > 0 && (
-              <div 
-                className="rounded-lg p-4"
-                style={{ 
-                  backgroundColor: 'var(--card-bg)',
-                  border: '1px solid var(--border)'
-                }}
-              >
-                <h3 className="text-base font-semibold flex items-center gap-2 mb-3" style={{ color: 'var(--text-primary)' }}>
-                  <FiMessageSquare className="w-4 h-4" style={{ color: 'var(--accent-primary)' }} />
-                  Notas ({target.notas.length})
-                </h3>
-                
-                <div className="space-y-3 max-h-32 overflow-y-auto custom-scrollbar">
-                  {target.notas.slice(0, 2).map((nota) => (
-                    <div key={nota.id} className="flex gap-3">
-                      <div 
-                        className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0"
-                        style={{ backgroundColor: 'var(--bg-secondary)' }}
-                      >
-                        <FiUser className="w-3 h-3" style={{ color: 'var(--text-muted)' }} />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between mb-1">
-                          <span className="text-xs font-medium" style={{ color: 'var(--text-primary)' }}>
-                            {nota.autor}
-                          </span>
-                          <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                            {formatDate(nota.fecha)}
-                          </span>
-                        </div>
-                        <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
-                          {nota.texto}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-                  
-                  {target.notas.length > 2 && (
-                    <button 
-                      className="text-xs w-full flex items-center justify-center gap-1 py-2 transition-colors"
-                      style={{ color: 'var(--accent-primary)' }}
-                      onMouseEnter={(e) => e.currentTarget.style.color = 'var(--accent-hover)'}
-                      onMouseLeave={(e) => e.currentTarget.style.color = 'var(--accent-primary)'}
-                    >
-                      Ver todas las notas ({target.notas.length})
-                      <FiChevronRight className="w-3 h-3" />
-                    </button>
-                  )}
-                </div>
-              </div>
-            )}
           </div>
         </div>
 
@@ -431,10 +378,6 @@ export function TargetDetailsModal({ target, isOpen, onClose }: TargetDetailsMod
           </div>
           
           <div className="flex items-center gap-2 flex-wrap">
-            <button className="btn-secondary text-sm flex items-center gap-1 px-3 py-2">
-              <FiMessageSquare className="w-3 h-3" />
-              Nota
-            </button>
             <button className="btn-secondary text-sm flex items-center gap-1 px-3 py-2">
               <FiEdit3 className="w-3 h-3" />
               Editar

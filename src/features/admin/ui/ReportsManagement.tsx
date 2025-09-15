@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import { FiBarChart, FiDownload, FiCalendar, FiFileText, FiUsers, FiDollarSign, FiTrendingUp, FiFilter, FiSettings } from "react-icons/fi";
+import { useAdminStats } from '@/hooks/useSupabase';
+import { useAuth } from "@/features/auth/model/useAuth";
 
 interface Report {
   id: string;
@@ -76,8 +78,9 @@ const formats = [
 ];
 
 export function ReportsManagement() {
+  const { user } = useAuth();
+  const { data: adminStats, loading: loadingStats } = useAdminStats();
   const [reports] = useState<Report[]>(availableReports);
-  const [selectedReport, setSelectedReport] = useState<string>('');
   const [dateRange, setDateRange] = useState('last-30-days');
   const [format, setFormat] = useState('pdf');
   const [isGenerating, setIsGenerating] = useState<string | null>(null);
@@ -86,9 +89,46 @@ export function ReportsManagement() {
   const handleGenerateReport = async (reportId: string) => {
     setIsGenerating(reportId);
     try {
-      // Simular generación de reporte
-      await new Promise(resolve => setTimeout(resolve, 3000));
-      alert('Reporte generado exitosamente');
+      // Determinar el endpoint según el tipo de reporte
+      let endpoint = '';
+      if (reportId === 'clients-history') {
+        endpoint = '/api/downloads/clients';
+      } else if (reportId === 'quotes-summary') {
+        endpoint = '/api/downloads/quotes';
+      } else if (reportId === 'works-history') {
+        endpoint = '/api/downloads/stock'; // Usar stock como ejemplo para obras
+      }
+
+      if (endpoint) {
+        // Obtener el userId del contexto de autenticación
+        const userId = user?.id;
+        if (!userId) {
+          alert('Usuario no identificado');
+          setIsGenerating(null);
+          return;
+        }
+
+        const response = await fetch(`${endpoint}?userId=${userId}&format=${format}`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
+
+        if (!response.ok) {
+          throw new Error(`Error ${response.status}: ${response.statusText}`);
+        }
+
+        // El archivo se descargará automáticamente
+        alert('Reporte generado exitosamente');
+      } else {
+        // Simular generación para reportes que no tienen endpoint específico
+        await new Promise(resolve => setTimeout(resolve, 3000));
+        alert('Reporte generado exitosamente');
+      }
+    } catch (error) {
+      console.error('Error generando reporte:', error);
+      alert('Error al generar el reporte. Por favor, inténtalo de nuevo.');
     } finally {
       setIsGenerating(null);
     }
@@ -144,8 +184,16 @@ export function ReportsManagement() {
                 <FiFileText className="w-6 h-6 text-white" />
               </div>
               <div className="text-right">
-                <div className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>1,234</div>
-                <div className="text-xs font-medium" style={{ color: 'var(--success-text)' }}>+12% vs mes anterior</div>
+                <div className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>
+                  {loadingStats ? (
+                    <div className="animate-pulse bg-gray-200 rounded w-16 h-8"></div>
+                  ) : (
+                    (adminStats?.cotizaciones.total || 0).toLocaleString('es-CL')
+                  )}
+                </div>
+                <div className="text-xs font-medium" style={{ color: 'var(--success-text)' }}>
+                  {loadingStats ? '' : `+${adminStats?.cotizaciones.nuevasUltimoMes || 0} este mes`}
+                </div>
               </div>
             </div>
             <div className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>Cotizaciones Este Mes</div>
@@ -166,8 +214,16 @@ export function ReportsManagement() {
                 <FiDollarSign className="w-6 h-6 text-white" />
               </div>
               <div className="text-right">
-                <div className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>$45,678</div>
-                <div className="text-xs font-medium" style={{ color: 'var(--success-text)' }}>+8% vs mes anterior</div>
+                <div className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>
+                  {loadingStats ? (
+                    <div className="animate-pulse bg-gray-200 rounded w-20 h-8"></div>
+                  ) : (
+                    `$${((adminStats?.cotizaciones.valorTotal || 0) / 1000000).toFixed(1)}M`
+                  )}
+                </div>
+                <div className="text-xs font-medium" style={{ color: 'var(--success-text)' }}>
+                  {loadingStats ? '' : `${adminStats?.cotizaciones.aprobadas || 0} aprobadas`}
+                </div>
               </div>
             </div>
             <div className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>Ingresos Estimados</div>
@@ -188,8 +244,16 @@ export function ReportsManagement() {
                 <FiUsers className="w-6 h-6 text-white" />
               </div>
               <div className="text-right">
-                <div className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>23</div>
-                <div className="text-xs font-medium" style={{ color: 'var(--success-text)' }}>+3 nuevos</div>
+                <div className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>
+                  {loadingStats ? (
+                    <div className="animate-pulse bg-gray-200 rounded w-12 h-8"></div>
+                  ) : (
+                    adminStats?.usuarios.activos || 0
+                  )}
+                </div>
+                <div className="text-xs font-medium" style={{ color: 'var(--success-text)' }}>
+                  {loadingStats ? '' : `+${adminStats?.usuarios.activosRecientes || 0} activos recientes`}
+                </div>
               </div>
             </div>
             <div className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>Usuarios Activos</div>
@@ -210,11 +274,19 @@ export function ReportsManagement() {
                 <FiTrendingUp className="w-6 h-6 text-white" />
               </div>
               <div className="text-right">
-                <div className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>89%</div>
-                <div className="text-xs font-medium" style={{ color: 'var(--success-text)' }}>+5% vs mes anterior</div>
+                <div className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>
+                  {loadingStats ? (
+                    <div className="animate-pulse bg-gray-200 rounded w-16 h-8"></div>
+                  ) : (
+                    `${((adminStats?.cotizaciones.aprobadas || 0) / Math.max((adminStats?.cotizaciones.total || 1), 1) * 100).toFixed(1)}%`
+                  )}
+                </div>
+                <div className="text-xs font-medium" style={{ color: 'var(--success-text)' }}>
+                  {loadingStats ? '' : `${adminStats?.clientes.nuevosUltimoMes || 0} clientes nuevos`}
+                </div>
               </div>
             </div>
-            <div className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>Tasa de Conversión</div>
+            <div className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>Tasa de Aprobación</div>
           </div>
         </div>
 

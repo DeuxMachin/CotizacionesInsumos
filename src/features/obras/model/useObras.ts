@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import { useAuth } from "@/features/auth/model/useAuth";
-import { getObrasByVendedor, getAllObras, getObraById } from "./mock";
+import { getObrasService } from "../services";
 import type { EstadoObra, EtapaObra, FiltroObras, EstadisticasObras, Obra } from "../types/obras";
 
 interface PaginationConfig {
@@ -18,23 +18,39 @@ export function useObras() {
   const [filtros, setFiltros] = useState<FiltroObras>({});
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(6); // 6 obras por página
+  const [data, setData] = useState<Obra[]>([]);
+  const service = useMemo(() => getObrasService(), []);
 
   // Obtener obras según el rol del usuario
-  const todasLasObras = useMemo(() => {
-    if (!user) return [];
-    
-    // Si es admin, puede ver todas las obras
-    if (user.role === 'admin') {
-      return getAllObras();
+  const isAdmin = user?.rol === 'admin';
+
+  useEffect(() => {
+    let active = true;
+    async function load() {
+      if (!user) {
+        setData([]);
+        return;
+      }
+      setLoading(true);
+      try {
+        const obras = await service.getObras(filtros, user.id, isAdmin);
+        if (active) setData(obras);
+      } catch (e) {
+        console.error('Error cargando obras:', e);
+        if (active) setData([]);
+      } finally {
+        if (active) setLoading(false);
+      }
     }
-    
-    // Si es vendedor, solo ve sus obras
-    return getObrasByVendedor(user.id);
-  }, [user]);
+    load();
+    return () => {
+      active = false;
+    };
+  }, [service, user, filtros, isAdmin]);
 
   // Aplicar filtros a las obras
   const obrasFiltradas = useMemo(() => {
-    let obras = todasLasObras;
+    let obras = data;
 
     if (filtros.estado && filtros.estado.length > 0) {
       obras = obras.filter(obra => filtros.estado!.includes(obra.estado));
@@ -67,7 +83,7 @@ export function useObras() {
     }
 
     return obras;
-  }, [todasLasObras, filtros]);
+  }, [data, filtros]);
 
   // Configuración de paginación
   const paginationConfig = useMemo((): PaginationConfig => {
@@ -137,9 +153,15 @@ export function useObras() {
   }, []);
 
   // Funciones para gestionar obras
-  const obtenerObra = useCallback((id: string) => {
-    return getObraById(id);
-  }, []);
+  const obtenerObra = useCallback(async (id: string) => {
+    try {
+      const obra = await service.getObraById(id);
+      return obra ?? undefined;
+    } catch (e) {
+      console.error('Error obteniendo obra:', e);
+      return undefined;
+    }
+  }, [service]);
 
   const actualizarEstadoObra = useCallback(async (id: string, nuevoEstado: EstadoObra) => {
     setLoading(true);
@@ -163,49 +185,63 @@ export function useObras() {
   const eliminarObra = useCallback(async (id: string) => {
     setLoading(true);
     try {
-      // Simular API call
-      await new Promise(resolve => setTimeout(resolve, 800));
-      
-      // En producción, aquí iría la llamada a la API
-      console.log(`Eliminando obra ${id}`);
-      
-      return true;
+      const ok = await service.eliminarObra(id);
+      if (ok) {
+        // refrescar lista
+        setData(prev => prev.filter(o => o.id !== id));
+      }
+      return ok;
     } catch (error) {
       console.error('Error eliminando obra:', error);
       return false;
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [service]);
 
   const crearObra = useCallback(async (nuevaObra: Omit<Obra, 'id' | 'fechaCreacion' | 'fechaActualizacion' | 'fechaUltimoContacto'>) => {
     setLoading(true);
     try {
-      // Simular API call
-      await new Promise(resolve => setTimeout(resolve, 1200));
-      
-      // En producción, aquí iría la llamada a la API
-      console.log('Creando nueva obra:', nuevaObra);
-      
-      // Simular la creación exitosa
-      const obraConId = {
-        ...nuevaObra,
-        id: `obra-${Date.now()}`,
-        fechaCreacion: new Date(),
-        fechaActualizacion: new Date(),
-        fechaUltimoContacto: new Date()
-      };
-      
-      console.log('Obra creada exitosamente:', obraConId);
-      
-      return true;
-    } catch (error) {
-      console.error('Error creando obra:', error);
+      const ok = await service.crearObra(nuevaObra, user?.id);
+      if (ok) {
+        // recargar lista para reflejar BD
+        const obras = await service.getObras(filtros, user?.id, isAdmin);
+        setData(obras);
+      }
+      return ok;
+    } catch (error: unknown) {
+      let details: string;
+      let hint: string | undefined;
+      if (error && typeof error === 'object') {
+        const errObj = error as { details?: string; message?: string; hint?: string };
+        details = errObj.details || errObj.message || 'Error desconocido';
+        hint = errObj.hint;
+      } else {
+        details = String(error);
+      }
+      console.error('Error creando obra:', { message: details, hint });
       return false;
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [service, user?.id, filtros, isAdmin]);
+
+  const actualizarObra = useCallback(async (obra: Obra): Promise<boolean> => {
+    setLoading(true);
+    try {
+      const ok = await service.actualizarObra(obra);
+      if (ok) {
+        // Refrescar lista y/o actualizar item en memoria
+        setData(prev => prev.map(o => (o.id === obra.id ? obra : o)));
+      }
+      return ok;
+    } catch (error) {
+      console.error('Error actualizando obra:', error);
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  }, [service]);
 
   return {
     obras: obrasPaginadas,
@@ -219,13 +255,14 @@ export function useObras() {
     actualizarEstadoObra,
     eliminarObra,
     crearObra,
+  actualizarObra,
     // Funciones de paginación
     goToPage,
     goToNextPage,
     goToPrevPage,
     // Utilidades
-    isAdmin: user?.role === 'admin',
+  isAdmin,
     userId: user?.id,
-    userName: user?.name || 'Usuario'
+  userName: [user?.nombre, user?.apellido].filter(Boolean).join(' ') || (user?.email ?? 'Usuario')
   };
 }

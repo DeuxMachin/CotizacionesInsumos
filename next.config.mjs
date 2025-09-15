@@ -3,6 +3,70 @@ const nextConfig = {
   eslint: {
     ignoreDuringBuilds: false,
   },
+
+  // Configuración de seguridad HTTPS
+  async headers() {
+    return [
+      {
+        // Aplicar a todas las rutas
+        source: '/(.*)',
+        headers: [
+          // HSTS - HTTP Strict Transport Security
+          {
+            key: 'Strict-Transport-Security',
+            value: 'max-age=31536000; includeSubDomains; preload'
+          },
+          // Prevenir MIME sniffing
+          {
+            key: 'X-Content-Type-Options',
+            value: 'nosniff'
+          },
+          // Prevenir clickjacking
+          {
+            key: 'X-Frame-Options',
+            value: 'DENY'
+          },
+          // Prevenir XSS
+          {
+            key: 'X-XSS-Protection',
+            value: '1; mode=block'
+          },
+          // Referrer Policy
+          {
+            key: 'Referrer-Policy',
+            value: 'strict-origin-when-cross-origin'
+          },
+          // Content Security Policy básica
+          {
+            key: 'Content-Security-Policy',
+            value: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https:;"
+          }
+        ],
+      },
+      {
+        // Configuración específica para rutas de autenticación
+        source: '/login',
+        headers: [
+          // Cache control para login
+          {
+            key: 'Cache-Control',
+            value: 'no-cache, no-store, must-revalidate'
+          },
+          {
+            key: 'Pragma',
+            value: 'no-cache'
+          },
+          {
+            key: 'Expires',
+            value: '0'
+          }
+        ],
+      }
+    ];
+  },
+
+  // Configuración de output para deployment
+  output: 'standalone',
 };
 
 export default nextConfig;

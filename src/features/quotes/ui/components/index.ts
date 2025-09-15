@@ -1,5 +1,8 @@
-export { ClientForm } from './ClientForm';
-export { ProductsForm } from './ProductsForm';
-export { DeliveryForm } from './DeliveryForm';
-export { CommercialTermsForm } from './CommercialTermsForm';
-export { QuoteSummary } from './QuoteSummary';
+"use client";
+
+export { ClientAutocomplete } from './ClientAutocomplete';
+export { default as ClientForm } from './ClientFormNew';
+export { default as DeliveryForm } from './DeliveryForm';
+export { default as CommercialTermsForm } from './CommercialTermsForm';
+export { default as QuoteSummary } from './QuoteSummary';
+

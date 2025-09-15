@@ -3,14 +3,13 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import {
-  FiMapPin,
+
   FiPhone,
   FiMail,
   FiUser,
   FiClock,
   FiTool,
   FiDollarSign,
-  FiTrendingUp,
   FiActivity,
   FiCheckCircle,
   FiAlertCircle,
@@ -24,14 +23,10 @@ import {
   FiBox,
   FiChevronLeft,
   FiChevronRight,
-  FiHelpCircle,
-  FiCalendar,
-  FiEye,
-  FiPercent,
-  FiMoreHorizontal,
   FiArrowLeft
 } from 'react-icons/fi';
-import { Obra, EtapaObra, EstadoObra, ContactoObra } from '../model/types';
+import { Obra, EtapaObra, EstadoObra, ContactoObra } from '../types/obras';
+import { Toast } from '@/shared/ui/Toast';
 
 interface ObraDetailPageProps {
   obra: Obra;
@@ -109,6 +104,7 @@ export function ObraDetailPage({
       const success = await onUpdate(editedObra);
       
       if (success) {
+  Toast.success('Se actualizó la información');
         setSaveResult({
           success: true,
           message: "Cambios guardados correctamente"
@@ -119,12 +115,14 @@ export function ObraDetailPage({
           etapaActual: editedObra.etapaActual
         });
       } else {
+        Toast.error('No se pudieron guardar los cambios');
         setSaveResult({
           success: false,
           message: "No se pudieron guardar los cambios"
         });
       }
     } catch (error) {
+      Toast.error('Error al procesar la solicitud');
       setSaveResult({
         success: false,
         message: "Error al procesar la solicitud"
@@ -232,13 +230,26 @@ export function ObraDetailPage({
                       </button>
                     </div>
                   ) : (
-                    <button
-                      onClick={() => setIsEditing(true)}
-                      className="btn-primary text-xs px-2 py-1 flex items-center gap-1"
-                    >
-                      <FiEdit3 className="w-3 h-3" />
-                      <span className="hidden sm:inline">Editar</span>
-                    </button>
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => router.push(`/dashboard/cotizaciones/nueva-obra?obraId=${obra.id}`)}
+                        className="text-xs px-2 py-1 flex items-center gap-1 rounded transition-all duration-200 font-medium text-white"
+                        style={{ backgroundColor: 'var(--accent-primary)' }}
+                        title="Crear cotización para esta obra"
+                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--accent-hover)'}
+                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--accent-primary)'}
+                      >
+                        <FiDollarSign className="w-3 h-3" />
+                        <span className="hidden sm:inline">Cotizar</span>
+                      </button>
+                      <button
+                        onClick={() => setIsEditing(true)}
+                        className="btn-primary text-xs px-2 py-1 flex items-center gap-1"
+                      >
+                        <FiEdit3 className="w-3 h-3" />
+                        <span className="hidden sm:inline">Editar</span>
+                      </button>
+                    </div>
                   )}
                 </div>
               </div>
@@ -316,134 +327,10 @@ export function ObraDetailPage({
             {/* Tab: Resumen */}
             {activeTab === 'overview' && (
               <div className="space-y-4 sm:space-y-6">
-                {/* Progress Ring y Stats */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4">
-                  {/* Progress Ring */}
-                  <div 
-                    className="p-3 sm:p-4 rounded-lg flex flex-col items-center justify-center text-center"
-                    style={{ 
-                      backgroundColor: 'var(--card-bg)',
-                      border: '1px solid var(--border)'
-                    }}
-                  >
-                    <div className="relative inline-flex my-2">
-                      <svg className="w-20 h-20 sm:w-24 sm:h-24 md:w-28 md:h-28 transform -rotate-90" viewBox="0 0 100 100">
-                        <circle
-                          cx="50"
-                          cy="50"
-                          r="40"
-                          stroke="var(--border)"
-                          strokeWidth="8"
-                          fill="transparent"
-                        />
-                        <circle
-                          cx="50"
-                          cy="50"
-                          r="40"
-                          stroke="var(--accent-primary)"
-                          strokeWidth="8"
-                          fill="transparent"
-                          strokeDasharray={`${2 * Math.PI * 40}`}
-                          strokeDashoffset={`${2 * Math.PI * 40 * (1 - getProgressPercentage() / 100)}`}
-                          className="transition-all duration-1000"
-                          strokeLinecap="round"
-                        />
-                      </svg>
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <div className="text-center">
-                          <div className="text-xl sm:text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>
-                            {Math.round(getProgressPercentage())}%
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                    <h3 className="text-sm font-medium mt-2" style={{ color: 'var(--text-primary)' }}>
-                      Progreso General
-                    </h3>
-                    <p className="text-xs mt-1" style={{ color: 'var(--text-secondary)' }}>
-                      {obra.etapasCompletadas.length} de {etapas.length} etapas completadas
-                    </p>
-                  </div>
-
-                  {/* Stats de 2 columnas */}
-                  <div className="col-span-1 md:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                    {/* Stat 1 */}
-                    <div 
-                      className="p-3 sm:p-4 rounded-lg"
-                      style={{ 
-                        backgroundColor: 'var(--card-bg)',
-                        border: '1px solid var(--border)'
-                      }}
-                    >
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>Presupuesto Total</p>
-                          <h3 className="text-base sm:text-lg md:text-xl font-bold mt-1 break-words" style={{ color: 'var(--text-primary)' }}>
-                            {obra.presupuesto ? formatMoney(obra.presupuesto) : 'No definido'}
-                          </h3>
-                          <p className="text-xs mt-1" style={{ color: 'var(--text-success)' }}>
-                            {isEditing && (
-                              <input
-                                type="number"
-                                value={editedObra.presupuesto || 0}
-                                onChange={(e) => setEditedObra({
-                                  ...editedObra,
-                                  presupuesto: parseInt(e.target.value, 10)
-                                })}
-                                className="w-full px-2 py-1 rounded text-sm"
-                                style={{ backgroundColor: 'var(--bg-secondary)' }}
-                              />
-                            )}
-                          </p>
-                        </div>
-                        <div 
-                          className="p-2 rounded-full"
-                          style={{ backgroundColor: 'var(--badge-info-bg)' }}
-                        >
-                          <FiDollarSign size={18} className="sm:text-lg md:text-xl" style={{ color: 'var(--badge-info-text)' }} />
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Stat 2 */}
-                    <div 
-                      className="p-3 sm:p-4 rounded-lg"
-                      style={{ 
-                        backgroundColor: 'var(--card-bg)',
-                        border: '1px solid var(--border)'
-                      }}
-                    >
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>Duración Estimada</p>
-                          <h3 className="text-base sm:text-lg md:text-xl font-bold mt-1" style={{ color: 'var(--text-primary)' }}>
-                            {obra.duracionEstimada || '?'} meses
-                          </h3>
-                          <p className="text-xs mt-1" style={{ color: 'var(--text-error)' }}>
-                            {isEditing && (
-                              <input
-                                type="number"
-                                value={editedObra.duracionEstimada || 0}
-                                onChange={(e) => setEditedObra({
-                                  ...editedObra,
-                                  duracionEstimada: parseInt(e.target.value, 10)
-                                })}
-                                className="w-full px-2 py-1 rounded text-sm"
-                                style={{ backgroundColor: 'var(--bg-secondary)' }}
-                              />
-                            )}
-                          </p>
-                        </div>
-                        <div 
-                          className="p-2 rounded-full"
-                          style={{ backgroundColor: 'var(--badge-warning-bg)' }}
-                        >
-                          <FiClock size={18} className="sm:text-lg md:text-xl" style={{ color: 'var(--badge-warning-text)' }} />
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Stat 3 */}
+                {/* Stats (simplificado, sin anillo de progreso ni presupuesto/duración) */}
+                <div className="grid grid-cols-1 gap-3 sm:gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                    {/* Material Vendido */}
                     <div 
                       className="p-3 sm:p-4 rounded-lg"
                       style={{ 
@@ -481,7 +368,7 @@ export function ObraDetailPage({
                       </div>
                     </div>
 
-                    {/* Stat 4 */}
+                    {/* Cotizaciones hechas */}
                     <div 
                       className="p-3 sm:p-4 rounded-lg"
                       style={{ 
@@ -499,7 +386,7 @@ export function ObraDetailPage({
                             {isEditing && (
                               <input
                                 type="number"
-                                value={Math.round(editedObra.materialVendido / 100000)}
+                                value={Math.round((editedObra.materialVendido || 0) / 100000)}
                                 onChange={(e) => setEditedObra({
                                   ...editedObra,
                                   materialVendido: parseInt(e.target.value, 10) * 100000
@@ -551,18 +438,38 @@ export function ObraDetailPage({
                       <label className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
                         Dirección de la Obra
                       </label>
-                      <p className="mt-1 text-sm" style={{ color: 'var(--text-primary)' }}>
-                        {obra.direccionObra}
-                      </p>
+                      {isEditing ? (
+                        <input
+                          type="text"
+                          value={editedObra.direccionObra}
+                          onChange={(e) => setEditedObra({ ...editedObra, direccionObra: e.target.value })}
+                          className="mt-1 w-full px-2 py-1 rounded text-sm"
+                          style={{ backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)' }}
+                        />
+                      ) : (
+                        <p className="mt-1 text-sm" style={{ color: 'var(--text-primary)' }}>
+                          {obra.direccionObra}
+                        </p>
+                      )}
                     </div>
                     
                     <div>
                       <label className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
                         Fecha de Inicio
                       </label>
-                      <p className="mt-1 text-sm" style={{ color: 'var(--text-primary)' }}>
-                        {formatDate(obra.fechaInicio)}
-                      </p>
+                      {isEditing ? (
+                        <input
+                          type="date"
+                          value={new Date(editedObra.fechaInicio).toISOString().slice(0, 10)}
+                          onChange={(e) => setEditedObra({ ...editedObra, fechaInicio: new Date(e.target.value) })}
+                          className="mt-1 w-full px-2 py-1 rounded text-sm"
+                          style={{ backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)' }}
+                        />
+                      ) : (
+                        <p className="mt-1 text-sm" style={{ color: 'var(--text-primary)' }}>
+                          {formatDate(obra.fechaInicio)}
+                        </p>
+                      )}
                     </div>
                     
                     <div>
@@ -575,16 +482,24 @@ export function ObraDetailPage({
                     </div>
                   </div>
                   
-                  {obra.descripcion && (
-                    <div className="mt-4">
-                      <label className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
-                        Descripción
-                      </label>
+                  <div className="mt-4">
+                    <label className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
+                      Descripción
+                    </label>
+                    {isEditing ? (
+                      <textarea
+                        value={editedObra.descripcion || ''}
+                        onChange={(e) => setEditedObra({ ...editedObra, descripcion: e.target.value })}
+                        className="mt-1 w-full px-2 py-1 rounded text-sm"
+                        rows={3}
+                        style={{ backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)' }}
+                      />
+                    ) : (
                       <p className="mt-1 text-sm leading-relaxed" style={{ color: 'var(--text-primary)' }}>
-                        {obra.descripcion}
+                        {obra.descripcion || '—'}
                       </p>
-                    </div>
-                  )}
+                    )}
+                  </div>
                 </div>
               </div>
             )}
@@ -1007,18 +922,56 @@ export function ObraDetailPage({
                         <label className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
                           Nombre Completo
                         </label>
-                        <p className="mt-1 text-sm" style={{ color: 'var(--text-primary)' }}>
-                          {obra.constructora.contactoPrincipal.nombre}
-                        </p>
+                        {isEditing ? (
+                          <input
+                            type="text"
+                            value={editedObra.constructora.contactoPrincipal.nombre}
+                            onChange={(e) => setEditedObra({
+                              ...editedObra,
+                              constructora: {
+                                ...editedObra.constructora,
+                                contactoPrincipal: {
+                                  ...editedObra.constructora.contactoPrincipal,
+                                  nombre: e.target.value,
+                                },
+                              },
+                            })}
+                            className="mt-1 w-full px-2 py-1 rounded text-sm"
+                            style={{ backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)' }}
+                          />
+                        ) : (
+                          <p className="mt-1 text-sm" style={{ color: 'var(--text-primary)' }}>
+                            {obra.constructora.contactoPrincipal.nombre}
+                          </p>
+                        )}
                       </div>
                       
                       <div>
                         <label className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
                           Cargo
                         </label>
-                        <p className="mt-1 text-sm" style={{ color: 'var(--text-primary)' }}>
-                          {obra.constructora.contactoPrincipal.cargo}
-                        </p>
+                        {isEditing ? (
+                          <input
+                            type="text"
+                            value={editedObra.constructora.contactoPrincipal.cargo}
+                            onChange={(e) => setEditedObra({
+                              ...editedObra,
+                              constructora: {
+                                ...editedObra.constructora,
+                                contactoPrincipal: {
+                                  ...editedObra.constructora.contactoPrincipal,
+                                  cargo: e.target.value,
+                                },
+                              },
+                            })}
+                            className="mt-1 w-full px-2 py-1 rounded text-sm"
+                            style={{ backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)' }}
+                          />
+                        ) : (
+                          <p className="mt-1 text-sm" style={{ color: 'var(--text-primary)' }}>
+                            {obra.constructora.contactoPrincipal.cargo}
+                          </p>
+                        )}
                       </div>
                     </div>
                     
@@ -1026,47 +979,89 @@ export function ObraDetailPage({
                       <div className="flex flex-wrap items-center gap-2 sm:gap-3">
                         <div className="flex items-center gap-2 flex-1 min-w-0">
                           <FiPhone className="w-4 h-4 flex-shrink-0" style={{ color: 'var(--text-muted)' }} />
-                          <div className="min-w-0">
+                          <div className="min-w-0 w-full">
                             <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>Teléfono</p>
-                            <a 
-                              href={`tel:${obra.constructora.contactoPrincipal.telefono}`}
-                              className="text-sm font-medium transition-colors truncate block"
-                              style={{ color: 'var(--accent-primary)' }}
-                            >
-                              {obra.constructora.contactoPrincipal.telefono}
-                            </a>
+                            {isEditing ? (
+                              <input
+                                type="tel"
+                                value={editedObra.constructora.contactoPrincipal.telefono}
+                                onChange={(e) => setEditedObra({
+                                  ...editedObra,
+                                  constructora: {
+                                    ...editedObra.constructora,
+                                    contactoPrincipal: {
+                                      ...editedObra.constructora.contactoPrincipal,
+                                      telefono: e.target.value,
+                                    },
+                                  },
+                                })}
+                                className="mt-1 w-full px-2 py-1 rounded text-sm"
+                                style={{ backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)' }}
+                              />
+                            ) : (
+                              <a 
+                                href={`tel:${obra.constructora.contactoPrincipal.telefono}`}
+                                className="text-sm font-medium transition-colors truncate block"
+                                style={{ color: 'var(--accent-primary)' }}
+                              >
+                                {obra.constructora.contactoPrincipal.telefono}
+                              </a>
+                            )}
                           </div>
                         </div>
-                        <button
-                          className="btn-primary text-xs px-2 py-1 flex items-center gap-1 flex-shrink-0"
-                          onClick={() => window.open(`tel:${obra.constructora.contactoPrincipal.telefono}`)}
-                        >
-                          <FiPhone className="w-3 h-3" />
-                          <span className="hidden xs:inline">Llamar</span>
-                        </button>
+                        {!isEditing && (
+                          <button
+                            className="btn-primary text-xs px-2 py-1 flex items-center gap-1 flex-shrink-0"
+                            onClick={() => window.open(`tel:${obra.constructora.contactoPrincipal.telefono}`)}
+                          >
+                            <FiPhone className="w-3 h-3" />
+                            <span className="hidden xs:inline">Llamar</span>
+                          </button>
+                        )}
                       </div>
                       
                       <div className="flex flex-wrap items-center gap-2 sm:gap-3">
                         <div className="flex items-center gap-2 flex-1 min-w-0">
                           <FiMail className="w-4 h-4 flex-shrink-0" style={{ color: 'var(--text-muted)' }} />
-                          <div className="min-w-0">
+                          <div className="min-w-0 w-full">
                             <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>Email</p>
-                            <a 
-                              href={`mailto:${obra.constructora.contactoPrincipal.email}`}
-                              className="text-sm font-medium transition-colors truncate block"
-                              style={{ color: 'var(--accent-primary)' }}
-                            >
-                              {obra.constructora.contactoPrincipal.email}
-                            </a>
+                            {isEditing ? (
+                              <input
+                                type="email"
+                                value={editedObra.constructora.contactoPrincipal.email || ''}
+                                onChange={(e) => setEditedObra({
+                                  ...editedObra,
+                                  constructora: {
+                                    ...editedObra.constructora,
+                                    contactoPrincipal: {
+                                      ...editedObra.constructora.contactoPrincipal,
+                                      email: e.target.value,
+                                    },
+                                  },
+                                })}
+                                className="mt-1 w-full px-2 py-1 rounded text-sm"
+                                style={{ backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)' }}
+                              />
+                            ) : (
+                              <a 
+                                href={`mailto:${obra.constructora.contactoPrincipal.email}`}
+                                className="text-sm font-medium transition-colors truncate block"
+                                style={{ color: 'var(--accent-primary)' }}
+                              >
+                                {obra.constructora.contactoPrincipal.email}
+                              </a>
+                            )}
                           </div>
                         </div>
-                        <button
-                          className="btn-secondary text-xs px-2 py-1 flex items-center gap-1 flex-shrink-0"
-                          onClick={() => window.open(`mailto:${obra.constructora.contactoPrincipal.email}`)}
-                        >
-                          <FiMail className="w-3 h-3" />
-                          <span className="hidden xs:inline">Email</span>
-                        </button>
+                        {!isEditing && (
+                          <button
+                            className="btn-secondary text-xs px-2 py-1 flex items-center gap-1 flex-shrink-0"
+                            onClick={() => window.open(`mailto:${obra.constructora.contactoPrincipal.email}`)}
+                          >
+                            <FiMail className="w-3 h-3" />
+                            <span className="hidden xs:inline">Email</span>
+                          </button>
+                        )}
                       </div>
                     </div>
                   </div>

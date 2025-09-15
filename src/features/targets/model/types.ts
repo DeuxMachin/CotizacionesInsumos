@@ -1,37 +1,49 @@
+// Dominio interno para mostrar un Target (o "PosibleTarget") en la UI.
+// Se mapea desde las tablas:
+//  - targets
+//  - target_contactos (opcional 0..n -> usamos el primero)
+//  - target_notas
+//  - target_eventos (derivamos fechaContacto del primer evento tipo 'contacto')
+//  - target_tipos (para nombre del tipo)
+// NOTA: La BD NO tiene actualmente columnas para:
+//  - observaciones (UI lo usa) -> se almacenará como primera nota especial
+//  - fechaEstimadaInicio -> se registra como evento tipo 'estimado_inicio'
+//  - fechaContacto directa -> se deriva del primer evento tipo 'contacto'
+// Si deseas persistirlas directamente conviene agregar columnas:
+//  - targets.observaciones TEXT NULL
+//  - targets.fecha_estimada_inicio DATE NULL
+//  - targets.fecha_primer_contacto TIMESTAMP WITH TIME ZONE NULL
 export interface PosibleTarget {
-  id: string;
+  id: number; // bigint en BD
   titulo: string;
-  descripcion: string;
+  descripcion: string; // 'descripcion' en BD (no incluye observaciones adicionales)
   ubicacion: {
     direccion: string;
     lat: number;
     lng: number;
-    googleMapsUrl?: string;
-    ciudad?: string;
-    region?: string;
+    googleMapsUrl?: string; // derivado en cliente
+    ciudad?: string | null;
+    region?: string | null;
+    comuna?: string | null;
   };
   contacto: {
-    nombre?: string;
-    telefono?: string;
-    email?: string;
-    empresa?: string;
+    id?: number;
+    nombre?: string | null;
+    telefono?: string | null;
+    email?: string | null;
+    empresa?: string | null;
   };
   estado: 'pendiente' | 'contactado' | 'gestionando' | 'cerrado' | 'descartado';
   prioridad: 'baja' | 'media' | 'alta';
-  fechaCreacion: string;
-  fechaContacto?: string;
-  creadoPor: string; // ID del vendedor que lo creó
-  gestionadoPor?: string; // ID del vendedor que lo está gestionando
-  nombreGestionadoPor?: string; // Nombre del vendedor para mostrar
-  observaciones?: string;
-  tipoObra?: string;
-  fechaEstimadaInicio?: string;
-  notas: {
-    id: string;
-    texto: string;
-    fecha: string;
-    autor: string;
-  }[];
+  fechaCreacion: string; // created_at
+  fechaContacto?: string; // derivada
+  creadoPor: string; // creado_por (uuid)
+  gestionadoPor?: string | null; // asignado_a (uuid)
+  nombreGestionadoPor?: string | null; // join usuarios
+  observaciones?: string; // (si viene como primera nota especial)
+  tipoObra?: string | null; // nombre en target_tipos
+  fechaEstimadaInicio?: string; // derivada de evento 'estimado_inicio'
+  // notas eliminadas de la interfaz
 }
 
 export interface CreateTargetData {
@@ -42,13 +54,14 @@ export interface CreateTargetData {
   lng: number;
   ciudad?: string;
   region?: string;
+  comuna?: string;
   contactoNombre?: string;
   contactoTelefono?: string;
   contactoEmail?: string;
   contactoEmpresa?: string;
   prioridad: 'baja' | 'media' | 'alta';
-  tipoObra?: string;
-  fechaEstimadaInicio?: string;
+  tipoObra?: string; // nombre del tipo (buscaremos su id)
+  fechaEstimadaInicio?: string; // YYYY-MM-DD
   observaciones?: string;
 }
 
@@ -60,6 +73,7 @@ export interface UpdateTargetData {
   lng?: number;
   ciudad?: string;
   region?: string;
+  comuna?: string;
   contactoNombre?: string;
   contactoTelefono?: string;
   contactoEmail?: string;
@@ -71,7 +85,4 @@ export interface UpdateTargetData {
   observaciones?: string;
 }
 
-export interface AddNoteData {
-  targetId: string;
-  texto: string;
-}
+// (Notas eliminadas de la UI)

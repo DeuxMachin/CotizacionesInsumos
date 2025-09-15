@@ -8,7 +8,18 @@ export function ToastHost() {
   const [list, setList] = useState<ToastMsg[]>([]);
   useEffect(() => {
     let id = 0;
-    push = (m) => setList((prev) => [...prev, { id: ++id, ...m }]);
+    const timeouts: number[] = [];
+    push = (m) => {
+      const newId = ++id;
+      setList((prev) => [...prev, { id: newId, ...m }]);
+      const t = window.setTimeout(() => {
+        setList((prev) => prev.filter(x => x.id !== newId));
+      }, 2000);
+      timeouts.push(t);
+    };
+    return () => {
+      timeouts.forEach(t => clearTimeout(t));
+    };
   }, []);
   return (
     <div className="fixed top-5 right-5 z-[100] space-y-2">

@@ -2,11 +2,13 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from 'next/navigation';
-import { clientsExtended, type ClientExtended, type ClientStatus } from "../model/clientsExtended";
+import { type ClientExtended, type ClientStatus, mapRowToClientExtended } from "../model/clientsExtended";
+import type { ClienteRow } from '../model/clients';
 import { Toast } from "@/shared/ui/Toast";
 import { useAuth } from "@/features/auth/model/useAuth";
 import { useActionAuthorization } from "@/middleware/AuthorizationMiddleware";
 import { ClientFiltersPanel } from "./ClientFiltersPanel";
+import { downloadFileFromResponse } from "@/lib/download";
 import { 
   FiUsers, 
   FiSearch, 
@@ -23,7 +25,8 @@ import {
   FiClock,
   FiActivity,
   FiChevronLeft,
-  FiChevronRight
+  FiChevronRight,
+  FiDownload
 } from "react-icons/fi";
 
 
@@ -32,16 +35,18 @@ interface ClientCardProps {
   client: ClientExtended;
   getStatusColor: GetStatusColor;
   formatMoney: (amount: number) => string;
-  onEliminar: (clientId: string) => void;
+  onEliminar: (clientId: number) => void;
   onVerDetalle: (client: ClientExtended) => void;
+  financial?: { movimientos: number; porCobrar: number };
 }
 
 interface ClientsTableProps {
   clients: ClientExtended[];
   getStatusColor: GetStatusColor;
   formatMoney: (amount: number) => string;
-  onEliminar: (clientId: string) => void;
+  onEliminar: (clientId: number) => void;
   onVerDetalle: (client: ClientExtended) => void;
+  financialMap: Record<number, { movimientos: number; porCobrar: number }>;
 }
 
 interface GetStatusColor {
@@ -66,13 +71,71 @@ export function ClientsPage() {
   const [showFilters, setShowFilters] = useState(false);
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
   const [page, setPage] = useState(1);
+  const [loading, setLoading] = useState(false);
+  const [, setError] = useState<string | null>(null);
+  const [clients, setClients] = useState<ClientExtended[]>([]);
+  interface QuoteAgg { total: number; estadoTotals: Record<string, number>; }
+  interface QuoteRow { cliente_principal_id?: number | null; total_final?: number | null; total_neto?: number | null; estado?: string | null; }
+  const [quotesAgg, setQuotesAgg] = useState<Record<number, QuoteAgg>>({});
+  const [, setQuotesLoading] = useState(false);
+
+  // Fetch de clientes
+  useEffect(() => {
+    const controller = new AbortController();
+    async function load() {
+      try {
+        setLoading(true); setError(null);
+        const url = searchTerm.length > 1 ? `/api/clientes?search=${encodeURIComponent(searchTerm)}` : '/api/clientes';
+        const res = await fetch(url, { signal: controller.signal });
+        if (!res.ok) throw new Error('Error al cargar clientes');
+        const body = await res.json();
+  const rows = (body.data || []) as ClienteRow[];
+  setClients(rows.map(r => mapRowToClientExtended(r)));
+      } catch (e: unknown) {
+        if (e instanceof DOMException && e.name === 'AbortError') return;
+        const msg = e instanceof Error ? e.message : 'Error desconocido';
+        console.error(e); setError(msg); Toast.error('No se pudieron cargar los clientes');
+      } finally { setLoading(false); }
+    }
+    load();
+    return () => controller.abort();
+  }, [searchTerm]);
+
+  // Cargar agregados de cotizaciones (suma total_final y por estado) para todos los clientes visibles (simple: traer todas y agrupar client-side)
+  useEffect(() => {
+    let cancelled = false;
+    async function loadQuotes() {
+      try {
+        setQuotesLoading(true);
+        const res = await fetch('/api/cotizaciones');
+        if (!res.ok) throw new Error('Error al cargar cotizaciones');
+        const body = await res.json();
+        const list: QuoteRow[] = (body.data || []) as QuoteRow[];
+        const agg: Record<number, QuoteAgg> = {};
+        for (const q of list) {
+          const cid = q.cliente_principal_id ?? undefined;
+          if (!cid) continue;
+          if (!agg[cid]) agg[cid] = { total: 0, estadoTotals: {} };
+          const amount = (q.total_final ?? q.total_neto ?? 0) || 0;
+          agg[cid].total += amount;
+          const est = q.estado ?? 'borrador';
+          agg[cid].estadoTotals[est] = (agg[cid].estadoTotals[est] || 0) + amount;
+        }
+        if (!cancelled) setQuotesAgg(agg);
+      } catch (e) {
+        console.error(e);
+      } finally { if (!cancelled) setQuotesLoading(false); }
+    }
+    loadQuotes();
+    return () => { cancelled = true; };
+  }, []);
   
-  const pageSize = 12; // Más elementos por página como en ObrasPage
-  const isAdmin = user?.role?.toLowerCase() === 'admin';
+  const pageSize = 9; // 3 filas x 3 columnas
+  const isAdmin = user?.rol?.toLowerCase() === 'admin';
 
   // Filtros y datos procesados
   const data = useMemo(() => {
-    let out = [...clientsExtended];
+    let out = [...clients];
     
     // Aplicar filtro de estado
     if (selectedStates.length > 0) {
@@ -83,34 +146,43 @@ export function ClientsPage() {
     if (selectedRegions.length > 0) {
       out = out.filter((c) => selectedRegions.includes(c.region));
     }
-    
-    // Aplicar búsqueda
-    if (searchTerm) {
-      const q = searchTerm.toLowerCase();
-      out = out.filter(
-        (c) =>
-          c.razonSocial.toLowerCase().includes(q) ||
-          c.rut.toLowerCase().includes(q) ||
-          (c.fantasyName?.toLowerCase().includes(q) ?? false) ||
-          (c.contactoNombre?.toLowerCase().includes(q) ?? false) ||
-          c.direccion.toLowerCase().includes(q) ||
-          c.comuna.toLowerCase().includes(q)
-      );
-    }
     return out;
-  }, [searchTerm, selectedStates, selectedRegions]);
+  }, [clients, selectedStates, selectedRegions]);
 
   // Estadísticas
   const stats = useMemo(() => {
-    const total = clientsExtended.length;
-    const vigentes = clientsExtended.filter(c => c.status === 'vigente').length;
-    const morosos = clientsExtended.filter(c => c.status === 'moroso').length;
-    const inactivos = clientsExtended.filter(c => c.status === 'inactivo').length;
-    const totalFacturado = clientsExtended.reduce((sum, c) => sum + c.paid + c.pending + c.partial + c.overdue, 0);
-    const totalPorCobrar = clientsExtended.reduce((sum, c) => sum + c.pending + c.partial + c.overdue, 0);
-    
+    const total = clients.length;
+    const vigentes = clients.filter(c => c.status === 'vigente').length;
+    const morosos = clients.filter(c => c.status === 'moroso').length;
+    const inactivos = clients.filter(c => c.status === 'inactivo').length;
+    // Financiero: usamos agregados de cotizaciones.
+    // Asunción temporal: totalFacturado = suma de cotizaciones en estado 'aprobada'
+    // PorCobrar = suma de cotizaciones en estado 'enviada' + 'borrador' (potenciales) + 'aprobada' aún no convertidas (sin tabla de pagos todavía)
+    let totalFacturado = 0;
+    let totalPorCobrar = 0;
+    Object.values(quotesAgg).forEach(v => {
+      const aprobada = v.estadoTotals['aprobada'] || 0;
+      totalFacturado += aprobada;
+      const enviada = v.estadoTotals['enviada'] || 0;
+      const borrador = v.estadoTotals['borrador'] || 0;
+      const aprobadaPend = aprobada; // hasta tener pagos se suma también a por cobrar
+      totalPorCobrar += enviada + borrador + aprobadaPend;
+    });
     return { total, vigentes, morosos, inactivos, totalFacturado, totalPorCobrar };
-  }, []);
+  }, [clients, quotesAgg]);
+
+  // Mapa financiero por cliente para reutilizar en tarjetas y tabla
+  const financialByClient = useMemo(() => {
+    const m: Record<number, { movimientos: number; porCobrar: number }> = {};
+    for (const [cidStr, v] of Object.entries(quotesAgg)) {
+      const cid = Number(cidStr);
+      const et = v.estadoTotals;
+      const movimientos = v.total;
+      const porCobrar = (et['borrador'] || 0) + (et['enviada'] || 0) + (et['aprobada'] || 0);
+      m[cid] = { movimientos, porCobrar };
+    }
+    return m;
+  }, [quotesAgg]);
 
   // Paginación
   const totalPages = Math.max(1, Math.ceil(data.length / pageSize));
@@ -133,18 +205,18 @@ export function ClientsPage() {
 
   // Obtener regiones únicas
   const regiones = useMemo(() => {
-    const regionesSet = new Set(clientsExtended.map(client => client.region));
+    const regionesSet = new Set(clients.map(client => client.region).filter(Boolean));
     return Array.from(regionesSet).sort();
-  }, []);
+  }, [clients]);
 
   // Obtener color según estado
   const getStatusColor: GetStatusColor = (status: ClientStatus) => {
-    const colores = {
+    const colores: Record<ClientStatus, { bg: string; text: string }> = {
       vigente: { bg: 'var(--success-bg)', text: 'var(--success-text)' },
       moroso: { bg: 'var(--warning-bg)', text: 'var(--warning-text)' },
       inactivo: { bg: 'var(--neutral-bg)', text: 'var(--neutral-text)' }
     };
-    return colores[status];
+    return colores[status] ?? colores.vigente; // fallback defensivo
   };
 
   // Handlers
@@ -162,6 +234,33 @@ export function ClientsPage() {
 
   const handleVerDetalle = (client: ClientExtended) => {
     router.push(`/dashboard/clientes/${client.id}`);
+  };
+
+  const handleExport = async () => {
+    try {
+      const userId = user?.id;
+      if (!userId) {
+        Toast.error('Usuario no identificado');
+        return;
+      }
+
+      const response = await fetch(`/api/downloads/clients?userId=${userId}`, {
+        method: 'GET',
+      });
+
+      if (!response.ok) {
+        throw new Error(`Error ${response.status}: ${response.statusText}`);
+      }
+
+      // Descargar el archivo
+      const filename = `clientes_${new Date().toISOString().split('T')[0]}.xlsx`;
+      await downloadFileFromResponse(response, filename);
+
+      Toast.success('Archivo Excel descargado exitosamente');
+    } catch (error) {
+      console.error('Error exportando clientes:', error);
+      Toast.error('Error al exportar los clientes. Por favor, inténtalo de nuevo.');
+    }
   };
 
   const handleClearFilters = () => {
@@ -213,6 +312,13 @@ export function ClientsPage() {
                   {filtrosActivos}
                 </span>
               )}
+            </button>
+            <button
+              onClick={handleExport}
+              className="btn-secondary flex items-center gap-2"
+            >
+              <FiDownload className="w-4 h-4" />
+              Exportar Excel
             </button>
             {canCreate('clients') && (
               <button 
@@ -465,8 +571,11 @@ export function ClientsPage() {
       </div>
 
       {/* Lista de clientes - Vista Grid */}
-      {viewMode === 'grid' ? (
-        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+      {loading && (
+        <div className="text-center py-10" style={{ color: 'var(--text-secondary)' }}>Cargando clientes...</div>
+      )}
+      {!loading && viewMode === 'grid' ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
           {pageData.map((client) => (
             <ClientCard 
               key={client.id} 
@@ -475,21 +584,25 @@ export function ClientsPage() {
               formatMoney={formatCLP}
               onEliminar={handleEliminar}
               onVerDetalle={handleVerDetalle}
+              financial={financialByClient[client.id]}
             />
           ))}
         </div>
       ) : (
-        <ClientsTable 
-          clients={pageData}
-          getStatusColor={getStatusColor}
-          formatMoney={formatCLP}
-          onEliminar={handleEliminar}
-          onVerDetalle={handleVerDetalle}
-        />
+        !loading && (
+          <ClientsTable 
+            clients={pageData}
+            getStatusColor={getStatusColor}
+            formatMoney={formatCLP}
+            onEliminar={handleEliminar}
+            onVerDetalle={handleVerDetalle}
+            financialMap={financialByClient}
+          />
+        )
       )}
 
       {/* Mensaje cuando no hay clientes */}
-      {pageData.length === 0 && (
+  {!loading && pageData.length === 0 && (
         <div className="text-center py-12">
           <FiUsers className="mx-auto h-12 w-12 mb-4" style={{ color: 'var(--text-muted)' }} />
           <h3 className="text-lg font-medium mb-2" style={{ color: 'var(--text-primary)' }}>
@@ -507,67 +620,63 @@ export function ClientsPage() {
       {/* Paginación */}
       {totalPages > 1 && (
         <div className="mt-8 flex flex-col sm:flex-row items-center justify-between gap-4 pt-6 border-t" style={{ borderColor: 'var(--border)' }}>
-          <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-            Mostrando {((page - 1) * pageSize) + 1} a{' '}
-            {Math.min(page * pageSize, data.length)} de{' '}
-            {data.length} clientes
+          <div className="text-sm w-full sm:w-auto text-center sm:text-left" style={{ color: 'var(--text-secondary)' }}>
+            Mostrando {((page - 1) * pageSize) + 1} a {Math.min(page * pageSize, data.length)} de {data.length} clientes
           </div>
-          
-          <div className="flex items-center gap-2">
+
+          {/* Paginación comprimida */}
+          <div className="flex items-center gap-2 w-full sm:w-auto justify-center">
             <button
               onClick={goToPrevPage}
               disabled={page === 1}
-              className="flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg border transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-              style={{
-                backgroundColor: 'var(--surface)',
-                borderColor: 'var(--border)',
-                color: 'var(--text-secondary)',
-              }}
+              className="flex items-center gap-1 px-2 sm:px-3 py-2 text-sm font-medium rounded-lg border transition disabled:opacity-50 disabled:cursor-not-allowed"
+              style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border)', color: 'var(--text-secondary)' }}
+              aria-label="Página anterior"
             >
               <FiChevronLeft className="w-4 h-4" />
-              Anterior
+              <span className="hidden sm:inline">Anterior</span>
             </button>
 
-            <div className="flex items-center gap-1">
-              {Array.from({ length: totalPages }, (_, i) => {
-                const pageNum = i + 1;
-                const isCurrentPage = pageNum === page;
-                
-                return (
-                  <button
-                    key={pageNum}
-                    onClick={() => goToPage(pageNum)}
-                    className={`px-3 py-2 text-sm font-medium rounded-lg transition-all duration-200 ${
-                      isCurrentPage 
-                        ? 'text-white' 
-                        : 'border'
-                    }`}
-                    style={isCurrentPage 
-                      ? { backgroundColor: 'var(--accent-primary)' }
-                      : { 
-                          backgroundColor: 'var(--surface)',
-                          borderColor: 'var(--border)',
-                          color: 'var(--text-secondary)'
-                        }
-                    }
-                  >
-                    {pageNum}
-                  </button>
-                );
-              })}
+            {/* Números de página (ocultar en pantallas muy pequeñas) */}
+            <div className="hidden xs:flex items-center gap-1 max-w-full overflow-x-auto scrollbar-thin px-1" style={{ WebkitOverflowScrolling: 'touch' }}>
+              {(() => {
+                // Grupos de 10 páginas: 1-10, 11-20, 21-30...
+                const groupIndex = Math.floor((page - 1) / 10); // índice de grupo (0,1,2...)
+                const start = groupIndex * 10 + 1;              // primera página del grupo
+                const end = Math.min(start + 9, totalPages);     // última página del grupo (máx 10 botones)
+                const buttons: React.ReactNode[] = [];
+
+                for (let p = start; p <= end; p++) {
+                  const isCurrent = p === page;
+                  buttons.push(
+                    <button
+                      key={p}
+                      onClick={() => goToPage(p)}
+                      className={`min-w-[36px] px-2 sm:px-3 py-2 text-sm font-medium rounded-lg transition ${isCurrent ? 'text-white' : 'border'}`}
+                      style={isCurrent ? { backgroundColor: 'var(--accent-primary)' } : { backgroundColor: 'var(--surface)', borderColor: 'var(--border)', color: 'var(--text-secondary)' }}
+                      aria-current={isCurrent ? 'page' : undefined}
+                      aria-label={`Página ${p}`}
+                    >{p}</button>
+                  );
+                }
+
+                return buttons; // solo los 10 (o menos) números del grupo actual
+              })()}
+            </div>
+
+            {/* Resumen compacto para móviles */}
+            <div className="xs:hidden text-xs px-2" style={{ color: 'var(--text-secondary)' }}>
+              Pág {page}/{totalPages}
             </div>
 
             <button
               onClick={goToNextPage}
               disabled={page === totalPages}
-              className="flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg border transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-              style={{
-                backgroundColor: 'var(--surface)',
-                borderColor: 'var(--border)',
-                color: 'var(--text-secondary)',
-              }}
+              className="flex items-center gap-1 px-2 sm:px-3 py-2 text-sm font-medium rounded-lg border transition disabled:opacity-50 disabled:cursor-not-allowed"
+              style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border)', color: 'var(--text-secondary)' }}
+              aria-label="Página siguiente"
             >
-              Siguiente
+              <span className="hidden sm:inline">Siguiente</span>
               <FiChevronRight className="w-4 h-4" />
             </button>
           </div>
@@ -592,10 +701,11 @@ export function ClientsPage() {
 }
 
 // Componente para tarjeta individual de cliente
-function ClientCard({ client, getStatusColor, formatMoney, onEliminar, onVerDetalle }: ClientCardProps) {
+function ClientCard({ client, getStatusColor, formatMoney, onEliminar, onVerDetalle, financial }: ClientCardProps) {
   const { canEdit, canDelete } = useActionAuthorization();
   const statusColor = getStatusColor(client.status);
-  const totalMovimientos = client.paid + client.pending + client.partial + client.overdue;
+  const totalMovimientos = financial?.movimientos ?? (client.paid + client.pending + client.partial + client.overdue);
+  const totalPorCobrar = financial?.porCobrar ?? (client.pending + client.partial + client.overdue);
   
   return (
     <div
@@ -677,7 +787,7 @@ function ClientCard({ client, getStatusColor, formatMoney, onEliminar, onVerDeta
           <div className="min-w-0">
             <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Por Cobrar</p>
             <p className="text-sm font-semibold truncate" style={{ color: 'var(--warning-text)' }}>
-              {formatMoney(client.pending + client.partial + client.overdue)}
+              {formatMoney(totalPorCobrar)}
             </p>
           </div>
         </div>
@@ -749,7 +859,7 @@ function ClientCard({ client, getStatusColor, formatMoney, onEliminar, onVerDeta
 }
 
 // Componente para vista de tabla
-function ClientsTable({ clients, getStatusColor, formatMoney, onEliminar, onVerDetalle }: ClientsTableProps) {
+function ClientsTable({ clients, getStatusColor, formatMoney, onEliminar, onVerDetalle, financialMap }: ClientsTableProps) {
   const { canEdit, canDelete } = useActionAuthorization();
   
   return (
@@ -784,7 +894,9 @@ function ClientsTable({ clients, getStatusColor, formatMoney, onEliminar, onVerD
           <tbody className="divide-y" style={{ borderColor: 'var(--border)' }}>
             {clients.map((client) => {
               const statusColor = getStatusColor(client.status);
-              const totalMovimientos = client.paid + client.pending + client.partial + client.overdue;
+              const fin = financialMap[client.id];
+              const totalMovimientos = fin?.movimientos ?? (client.paid + client.pending + client.partial + client.overdue);
+              const totalPorCobrar = fin?.porCobrar ?? (client.pending + client.partial + client.overdue);
               
               return (
                 <tr 
@@ -836,9 +948,8 @@ function ClientsTable({ clients, getStatusColor, formatMoney, onEliminar, onVerD
                     </div>
                   </td>
                   <td className="px-6 py-4">
-                    <div className="text-sm font-medium truncate max-w-[150px]" style={{ color: 'var(--text-primary)' }}>
-                      {formatMoney(totalMovimientos)}
-                    </div>
+                    <div className="text-sm font-medium truncate max-w-[150px]" style={{ color: 'var(--text-primary)' }}>{formatMoney(totalMovimientos)}</div>
+                    <div className="text-xs" style={{ color: 'var(--warning-text)' }}>Por Cobrar: {formatMoney(totalPorCobrar)}</div>
                   </td>
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-2">

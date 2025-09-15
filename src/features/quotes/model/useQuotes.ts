@@ -7,120 +7,23 @@ import {
   QuoteFilters, 
   QuotePaginationConfig, 
   QuoteStatusValidator,
-  QuoteIdGenerator,
+  
   QuoteAmountCalculator,
 
 } from '@/core/domain/quote/Quote';
 import { useAuth } from '@/features/auth/model/useAuth';
+import { supabase } from '@/lib/supabase';
+import { mapCotizacionToDomain, type CotizacionAggregate } from './adapters';
+import type { Database } from '@/lib/supabase';
 
-// Mock data - En el futuro se reemplazará por llamadas a API
-const mockQuotes: Quote[] = [
-  {
-    id: "COT-2024-001",
-    numero: "2024-001",
-    cliente: {
-      razonSocial: "CONSTRUCTORA LARRAIN DOMINGUES SPA",
-      rut: "76.459.290-5",
-      nombreFantasia: "CONSTRUCTORA LDZ",
-      giro: "CONSTRUCCION",
-      direccion: "FLOR DE AZUSENAS 111 OF 61 LAS CONDES",
-      ciudad: "Santiago",
-      comuna: "Las Condes",
-      telefono: "942683117",
-      email: "contacto@constructoraldz.cl",
-      nombreContacto: "GONZALO PARRA",
-      telefonoContacto: "942683117"
-    },
-    fechaCreacion: "2024-08-29",
-    fechaModificacion: "2024-08-29",
-    estado: "borrador",
-    vendedorId: "MARCO001",
-    vendedorNombre: "MARCO PRADO",
-    items: [
-      {
-        id: "item-001",
-        codigo: "CEM-001",
-        descripcion: "Cemento Portland 25kg",
-        unidad: "Saco",
-        cantidad: 100,
-        precioUnitario: 8500,
-        descuento: 5,
-        subtotal: 807500
-      },
-      {
-        id: "item-002",
-        codigo: "ARE-001",
-        descripcion: "Arena Lavada m3",
-        unidad: "m3",
-        cantidad: 50,
-        precioUnitario: 15000,
-        subtotal: 750000
-      }
-    ],
-    despacho: {
-      direccion: "FRANCIA 421",
-      ciudad: "Temuco",
-      comuna: "Temuco",
-      fechaEstimada: "2024-09-15",
-      costoDespacho: 50000,
-      observaciones: "Entregar en horario de oficina"
-    },
-    condicionesComerciales: {
-      validezOferta: 30,
-      formaPago: "30 días fecha factura",
-      tiempoEntrega: "15 días hábiles",
-      garantia: "6 meses por defectos de fabricación",
-      observaciones: "Precios no incluyen IVA"
-    },
-    subtotal: 1557500,
-    descuentoTotal: 42500,
-    iva: 305505,
-    total: 1913005,
-    notas: "Cotización para obra nueva en Temuco",
-    fechaExpiracion: "2024-09-28"
-  },
-  {
-    id: "COT-2024-002",
-    numero: "2024-002",
-    cliente: {
-      razonSocial: "PLAZA PROPIEDADES LTDA",
-      rut: "77410570-0",
-      giro: "INMOBILIARIA",
-      direccion: "AV PROVIDENCIA 2592",
-      ciudad: "Santiago",
-      comuna: "Providencia",
-      telefono: "223456789",
-      email: "compras@plazapropiedades.cl"
-    },
-    fechaCreacion: "2024-08-28",
-    fechaModificacion: "2024-08-29",
-    estado: "enviada",
-    vendedorId: "CHRISTIAN001",
-    vendedorNombre: "Christian Balboa",
-    items: [
-      {
-        id: "item-003",
-        codigo: "LAD-001",
-        descripcion: "Ladrillo Princesa 18x14x29cm",
-        unidad: "Unidad",
-        cantidad: 5000,
-        precioUnitario: 450,
-        subtotal: 2250000
-      }
-    ],
-    condicionesComerciales: {
-      validezOferta: 15,
-      formaPago: "Contado contra entrega",
-      tiempoEntrega: "7 días hábiles",
-      observaciones: "Precio incluye flete"
-    },
-    subtotal: 2250000,
-    descuentoTotal: 0,
-    iva: 427500,
-    total: 2677500,
-    fechaExpiracion: "2024-09-12"
-  }
-];
+// DB row aliases to avoid repeating long generic paths
+type CotizacionRow = Database['public']['Tables']['cotizaciones']['Row'];
+type ItemRow = Database['public']['Tables']['cotizacion_items']['Row'];
+type ClienteRow = Database['public']['Tables']['clientes']['Row'];
+type UsuarioRow = Database['public']['Tables']['usuarios']['Row'];
+type DespRow = Database['public']['Tables']['cotizacion_despachos']['Row'];
+
+// Ahora las cotizaciones se cargan desde Supabase (sin mocks)
 
 interface UseQuotesReturn {
   // Estado
@@ -149,7 +52,14 @@ interface UseQuotesReturn {
   goToPrevPage: () => void;
   
   // Acciones CRUD
-  crearCotizacion: (cotizacion: Omit<Quote, 'id' | 'numero' | 'fechaCreacion' | 'fechaModificacion'>) => Promise<boolean>;
+  crearCotizacion: (
+    cotizacion: Omit<Quote, 'id' | 'numero' | 'fechaCreacion' | 'fechaModificacion'>,
+    extras?: { 
+      globalDiscountPct?: number; 
+      globalDiscountAmount?: number; 
+      lineDiscountTotal?: number; // monto de descuentos de línea (sin el global)
+    }
+  ) => Promise<boolean>;
   actualizarCotizacion: (id: string, cotizacion: Partial<Quote>) => Promise<boolean>;
   eliminarCotizacion: (id: string) => Promise<boolean>;
   duplicarCotizacion: (id: string) => Promise<boolean>;
@@ -170,9 +80,79 @@ interface UseQuotesReturn {
 
 const ITEMS_PER_PAGE = 10;
 
+// Asegura que exista una serie activa para el tipo de documento y año indicado.
+// 1. Intenta buscar la serie activa.
+// 2. Si no existe, intenta crearla con valores por defecto.
+// 3. Reintenta la búsqueda y retorna la fila o null si falla.
+async function ensureActiveDocumentSeries(docTipo: string, year: number) {
+  try {
+    const { data: existing, error: findErr } = await supabase
+      .from('document_series')
+      .select('*')
+      .eq('doc_tipo', docTipo)
+      .eq('anio', year)
+      .eq('activo', true)
+      .maybeSingle();
+    if (findErr) {
+      console.warn('document_series find error (ignorando si es no-row):', findErr.message);
+    }
+    if (existing) return existing;
+
+    // Intentar creación defensiva (puede fallar si RLS lo impide o falta permiso)
+    const defaultPayload = {
+      doc_tipo: docTipo,
+      anio: year,
+      prefijo: docTipo === 'cotizacion' ? 'COT' : docTipo.substring(0, 3).toUpperCase(),
+      ultimo_numero: 0,
+      largo: 6,
+      activo: true
+    };
+    console.debug('[ensureActiveDocumentSeries] Creando serie faltante', defaultPayload);
+    const { error: insertErr } = await supabase
+      .from('document_series')
+      .insert([defaultPayload]);
+    if (insertErr) {
+      // Si ya existe pero inactiva o conflicto de unique (si hay constraint adicional), intentar activarla
+      console.warn('[ensureActiveDocumentSeries] Insert falló, intentando activar existente', insertErr.message);
+      const { data: maybeInactive, error: inactiveErr } = await supabase
+        .from('document_series')
+        .select('*')
+        .eq('doc_tipo', docTipo)
+        .eq('anio', year)
+        .maybeSingle();
+      if (!inactiveErr && maybeInactive && !maybeInactive.activo) {
+        const { error: activateErr } = await supabase
+          .from('document_series')
+          .update({ activo: true })
+          .eq('id', maybeInactive.id);
+        if (activateErr) {
+          console.error('[ensureActiveDocumentSeries] No se pudo activar serie existente:', activateErr.message);
+        }
+      }
+    }
+    // Reintentar búsqueda final
+    const { data: finalSerie } = await supabase
+      .from('document_series')
+      .select('*')
+      .eq('doc_tipo', docTipo)
+      .eq('anio', year)
+      .eq('activo', true)
+      .maybeSingle();
+    return finalSerie || null;
+  } catch (e: unknown) {
+    console.error('[ensureActiveDocumentSeries] Error inesperado:', e);
+    return null;
+  }
+}
+
+// Normaliza un RUT eliminando puntos, guiones y forzando minúsculas en el dígito verificador.
+function normalizeRut(rut: string): string {
+  return rut.replace(/[^0-9kK]/g, '').toLowerCase();
+}
+
 export function useQuotes(): UseQuotesReturn {
   const { user } = useAuth();
-  const isAdmin = user?.role === 'admin';
+  const isAdmin = user?.rol === 'admin';
   
   // Estado local
   const [allQuotes, setAllQuotes] = useState<Quote[]>([]);
@@ -181,29 +161,56 @@ export function useQuotes(): UseQuotesReturn {
   const [filtros, setFiltros] = useState<QuoteFilters>({});
   const [currentPage, setCurrentPage] = useState(1);
 
-  // Cargar cotizaciones iniciales
+  // Cargar cotizaciones desde Supabase
   useEffect(() => {
     const loadQuotes = async () => {
+      if (!user) return;
+      setLoading(true);
+      setError(null);
       try {
-        setLoading(true);
-        // Filtrar cotizaciones según permisos de usuario
-        let quotesToLoad = mockQuotes;
-        if (!isAdmin && user?.id) {
-          quotesToLoad = mockQuotes.filter(quote => quote.vendedorId === user.id);
+        let query = supabase
+          .from('cotizaciones')
+          .select(`*,
+            cotizacion_items(*, productos(*)),
+            cotizacion_clientes(*, clientes(*)),
+            cotizacion_despachos(*),
+            clientes!cotizaciones_cliente_principal_id_fkey(*),
+            usuarios!cotizaciones_vendedor_id_fkey(*)
+          `)
+          .order('updated_at', { ascending: false });
+
+        if (!isAdmin) {
+          query = query.eq('vendedor_id', user.id);
         }
-        
-        setAllQuotes(quotesToLoad);
-        setError(null);
+
+        const { data, error: dbError } = await query;
+        if (dbError) throw dbError;
+
+        // Mapear resultados
+  type CotizacionRow = Database['public']['Tables']['cotizaciones']['Row'];
+  type ItemRow = Database['public']['Tables']['cotizacion_items']['Row'];
+  type ClienteRow = Database['public']['Tables']['clientes']['Row'];
+  type UsuarioRow = Database['public']['Tables']['usuarios']['Row'];
+  type DespRow = Database['public']['Tables']['cotizacion_despachos']['Row'];
+        const mapped: Quote[] = (data || []).map((row) => mapCotizacionToDomain({
+          cotizacion: row as CotizacionRow,
+          items: ((row as unknown as { cotizacion_items?: ItemRow[] }).cotizacion_items) || [],
+          clientes_adicionales: ((row as unknown as { cotizacion_clientes?: { cliente?: ClienteRow | null }[] }).cotizacion_clientes) || [],
+          despacho: ((row as unknown as { cotizacion_despachos?: DespRow[] }).cotizacion_despachos)?.[0] || null,
+          cliente_principal: (row as unknown as { clientes?: ClienteRow }).clientes,
+          vendedor: (row as unknown as { usuarios?: UsuarioRow }).usuarios
+        } as CotizacionAggregate));
+
+        setAllQuotes(mapped);
       } catch (err) {
-        setError('Error al cargar las cotizaciones');
         console.error('Error loading quotes:', err);
+        setError('Error al cargar las cotizaciones');
       } finally {
         setLoading(false);
       }
     };
-
     loadQuotes();
-  }, [isAdmin, user?.id]);
+  }, [isAdmin, user]);
 
   // Filtrar cotizaciones
   const filteredQuotes = useMemo(() => {
@@ -224,6 +231,10 @@ export function useQuotes(): UseQuotesReturn {
     // Filtro por estado
     if (filtros.estado && filtros.estado.length > 0) {
       filtered = filtered.filter(quote => filtros.estado!.includes(quote.estado));
+    }
+    // Si NO se aplicó filtro de estado explícito, ocultar las 'aceptada' (ya convertidas a Nota de Venta)
+    if (!filtros.estado || filtros.estado.length === 0) {
+      filtered = filtered.filter(q => q.estado !== 'aceptada');
     }
 
     // Filtro por vendedor
@@ -301,22 +312,185 @@ export function useQuotes(): UseQuotesReturn {
   }, [currentPage]);
 
   // Acciones CRUD
-  const crearCotizacion = async (nuevaCotizacion: Omit<Quote, 'id' | 'numero' | 'fechaCreacion' | 'fechaModificacion'>): Promise<boolean> => {
+  const crearCotizacion = async (
+    nuevaCotizacion: Omit<Quote, 'id' | 'numero' | 'fechaCreacion' | 'fechaModificacion'>,
+    extras?: { globalDiscountPct?: number; globalDiscountAmount?: number; lineDiscountTotal?: number }
+  ): Promise<boolean> => {
     try {
-      const now = new Date().toISOString().split('T')[0];
-      const maxNum = Math.max(...allQuotes.map(q => parseInt(q.numero.split('-')[1]) || 0), 0);
-      
-      const cotizacion: Quote = {
-        ...nuevaCotizacion,
-        id: QuoteIdGenerator.generate(maxNum + 1),
-        numero: `2024-${(maxNum + 1).toString().padStart(3, '0')}`,
-        fechaCreacion: now,
-        fechaModificacion: now
-      };
+      if (!user) throw new Error('Usuario no autenticado');
+      // Validar que el usuario existe en tabla usuarios (FK vendedor_id)
+      const { data: vendedorRow, error: vendedorErr } = await supabase
+        .from('usuarios')
+        .select('id')
+        .eq('id', user.id)
+        .maybeSingle();
+      if (vendedorErr) {
+        console.error('Error buscando vendedor:', vendedorErr);
+        throw new Error('No se pudo validar el usuario vendedor');
+      }
+      if (!vendedorRow) {
+        throw new Error('El usuario actual no existe en la tabla usuarios (FK vendedor_id)');
+      }
+      // Asegurar serie activa (auto-creación defensiva)
+      const year = new Date().getFullYear();
+      const serie = await ensureActiveDocumentSeries('cotizacion', year);
+      if (!serie) {
+        throw new Error(`No se pudo asegurar serie activa para cotizacion - ${year}. Verifica RLS/permisos o crea la fila manualmente.`);
+      }
+      // Resolver cliente_principal_id (preferir id directo si viene del selector)
+      let clientePrincipalId: number | null = null;
+      if (nuevaCotizacion.cliente) {
+        const c = nuevaCotizacion.cliente;
+        // Prefer numeric id if present via narrow cast from any external selector shape
+        const maybeId = (c as unknown as { id?: number }).id;
+        if (typeof maybeId === 'number') {
+          clientePrincipalId = maybeId;
+        } else if (c.rut) {
+          const rawRut = c.rut.trim();
+          const normRut = normalizeRut(rawRut);
+          try {
+            // Buscar por raw o normalizado (OR)
+            const { data: encontrados, error: cliErr } = await supabase
+              .from('clientes')
+              .select('id,rut')
+              .or(`rut.eq.${rawRut},rut.eq.${normRut}`);
+            if (cliErr) {
+              console.warn('Lookup clientes error (continuo):', cliErr.message);
+            } else if (encontrados && encontrados.length > 0) {
+              // Elegir el que normalice igual
+              const match = encontrados.find(e => normalizeRut(e.rut) === normRut) || encontrados[0];
+              clientePrincipalId = match.id;
+            } else {
+              // Intento de creación básica si tenemos datos mínimos
+              if (c.razonSocial || c.nombreFantasia) {
+                const nombre: string = c.nombreFantasia ?? c.razonSocial;
+                const insertPayload: Database['public']['Tables']['clientes']['Insert'] = {
+                  rut: normRut,
+                  nombre_razon_social: nombre,
+                  nombre_fantasia: c.nombreFantasia || null,
+                  direccion: c.direccion || null,
+                  ciudad: c.ciudad || null,
+                  comuna: c.comuna || null
+                };
+                console.debug('Creando cliente on-the-fly para cotizacion:', insertPayload);
+                const { data: nuevoCli, error: insCliErr } = await supabase
+                  .from('clientes')
+                  .insert([insertPayload])
+                  .select('id,rut')
+                  .maybeSingle();
+                if (insCliErr) {
+                  console.warn('No se pudo crear cliente automáticamente:', insCliErr.message);
+                } else if (nuevoCli?.id) {
+                  clientePrincipalId = nuevoCli.id;
+                }
+              }
+            }
+          } catch (cliLookupErr: unknown) {
+            console.error('Fallo inesperado buscando/creando cliente:', cliLookupErr);
+          }
+        }
+      }
 
-      setAllQuotes(prev => [cotizacion, ...prev]);
+      const validez = nuevaCotizacion.condicionesComerciales.validezOferta;
+      let fechaVencimiento: string | null = null;
+      if (validez && Number.isFinite(validez)) {
+        const d = new Date();
+        d.setDate(d.getDate() + validez);
+        fechaVencimiento = d.toISOString().split('T')[0];
+      }
+      // Insert cabecera
+      const cabeceraPayload: Database['public']['Tables']['cotizaciones']['Insert'] = {
+        estado: nuevaCotizacion.estado || 'borrador',
+        vendedor_id: user.id,
+        cliente_principal_id: clientePrincipalId || null,
+        validez_dias: nuevaCotizacion.condicionesComerciales.validezOferta || 30,
+        condicion_pago_texto: nuevaCotizacion.condicionesComerciales.formaPago || null,
+        plazo_entrega_texto: nuevaCotizacion.condicionesComerciales.tiempoEntrega || null,
+        observaciones_pago: nuevaCotizacion.condicionesComerciales.observaciones || null,
+        // total_neto representa el neto después de descuentos de línea + global (ya viene en subtotal dominio tras recálculo)
+        total_neto: nuevaCotizacion.subtotal ?? 0,
+        // total_descuento: sólo descuentos de línea (sin incluir global)
+        total_descuento: extras?.lineDiscountTotal ?? 0,
+        descuento_global_pct: typeof extras?.globalDiscountPct === 'number' ? extras?.globalDiscountPct : null,
+        descuento_global_monto: extras?.globalDiscountAmount ?? 0,
+        iva_pct: 19,
+        iva_monto: nuevaCotizacion.iva ?? 0,
+        total_final: nuevaCotizacion.total ?? 0,
+        fecha_vencimiento: fechaVencimiento
+      };
+      console.debug('Insert cotizacion payload', cabeceraPayload);
+      const { data: cabeceraArr, error: insertError } = await supabase.from('cotizaciones')
+        .insert([cabeceraPayload])
+        .select('*');
+      if (insertError) {
+        console.error('Insert cotizacion error detail:', insertError?.message, insertError);
+        throw insertError;
+      }
+      const cabecera = cabeceraArr?.[0];
+      if (insertError) throw insertError;
+      const cotizacionId = cabecera!.id;
+
+      // Insert items
+      if (nuevaCotizacion.items.length > 0) {
+        const itemsPayload = nuevaCotizacion.items.map(it => ({
+          cotizacion_id: cotizacionId,
+          producto_id: it.productId || undefined,
+          descripcion: it.descripcion,
+          unidad: it.unidad,
+          cantidad: it.cantidad,
+            precio_unitario_neto: it.precioUnitario,
+          descuento_pct: it.descuento || null,
+          descuento_monto: 0, // backend podría recalcular
+          iva_aplicable: true,
+          subtotal_neto: it.cantidad * it.precioUnitario,
+          total_neto: it.subtotal
+        }));
+  console.debug('Insert cotizacion_items payload', itemsPayload);
+  const { error: itemsError } = await supabase.from('cotizacion_items').insert(itemsPayload);
+        if (itemsError) {
+          console.error('Insert items error detail:', itemsError?.message, itemsError);
+          throw itemsError;
+        }
+      }
+
+      // Insert despacho opcional (solo si hay dirección o costo)
+      if (nuevaCotizacion.despacho && (nuevaCotizacion.despacho.direccion || nuevaCotizacion.despacho.costoDespacho)) {
+  const despachoPayload = {
+          cotizacion_id: cotizacionId,
+          direccion: nuevaCotizacion.despacho.direccion || '',
+          ciudad_texto: nuevaCotizacion.despacho.ciudad || null,
+          costo: nuevaCotizacion.despacho.costoDespacho || 0,
+          fecha_entrega: nuevaCotizacion.despacho.fechaEstimada || null,
+          observaciones: nuevaCotizacion.despacho.observaciones || null
+  };
+  console.debug('Insert cotizacion_despachos payload', despachoPayload);
+  const { error: despError } = await supabase.from('cotizacion_despachos').insert(despachoPayload);
+        if (despError) {
+          console.error('Insert despacho error detail:', despError?.message, despError);
+          throw despError;
+        }
+      }
+
+      // Refetch minimal (podría optimizarse con append)
+      const { data, error: reloadErr } = await supabase
+        .from('cotizaciones')
+        .select(`*, cotizacion_items(*, productos(*)), cotizacion_clientes(*, clientes(*)), cotizacion_despachos(*), clientes!cotizaciones_cliente_principal_id_fkey(*), usuarios!cotizaciones_vendedor_id_fkey(*)`)
+        .order('updated_at', { ascending: false });
+      if (reloadErr) {
+        console.error('Reload cotizaciones error:', reloadErr?.message, reloadErr);
+        throw reloadErr;
+      }
+      const mapped: Quote[] = (data || []).map((row) => mapCotizacionToDomain({
+        cotizacion: row as CotizacionRow,
+        items: ((row as unknown as { cotizacion_items?: ItemRow[] }).cotizacion_items) || [],
+        clientes_adicionales: ((row as unknown as { cotizacion_clientes?: { cliente?: ClienteRow | null }[] }).cotizacion_clientes) || [],
+        despacho: ((row as unknown as { cotizacion_despachos?: DespRow[] }).cotizacion_despachos)?.[0] || null,
+        cliente_principal: (row as unknown as { clientes?: ClienteRow }).clientes,
+        vendedor: (row as unknown as { usuarios?: UsuarioRow }).usuarios
+      } as CotizacionAggregate));
+      setAllQuotes(mapped);
       return true;
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Error creating quote:', error);
       return false;
     }
@@ -324,12 +498,23 @@ export function useQuotes(): UseQuotesReturn {
 
   const actualizarCotizacion = async (id: string, datosActualizados: Partial<Quote>): Promise<boolean> => {
     try {
-      const now = new Date().toISOString().split('T')[0];
-      setAllQuotes(prev => prev.map(quote => 
-        quote.id === id 
-          ? { ...quote, ...datosActualizados, fechaModificacion: now }
-          : quote
-      ));
+      // Encontrar registro por folio (id en dominio == folio)
+      const target = allQuotes.find(q => q.id === id);
+      if (!target) throw new Error('Cotización no encontrada');
+  const updates: Database['public']['Tables']['cotizaciones']['Update'] = {};
+      if (datosActualizados.estado) updates.estado = datosActualizados.estado;
+      if (datosActualizados.condicionesComerciales) {
+        updates.validez_dias = datosActualizados.condicionesComerciales.validezOferta;
+        updates.condicion_pago_texto = datosActualizados.condicionesComerciales.formaPago;
+        updates.plazo_entrega_texto = datosActualizados.condicionesComerciales.tiempoEntrega;
+        updates.observaciones_pago = datosActualizados.condicionesComerciales.observaciones;
+      }
+      if (typeof datosActualizados.subtotal === 'number') updates.total_neto = datosActualizados.subtotal;
+      if (typeof datosActualizados.descuentoTotal === 'number') updates.total_descuento = datosActualizados.descuentoTotal;
+      if (typeof datosActualizados.iva === 'number') updates.iva_monto = datosActualizados.iva;
+      if (typeof datosActualizados.total === 'number') updates.total_final = datosActualizados.total;
+      const { error: updError } = await supabase.from('cotizaciones').update(updates).eq('folio', id);
+      if (updError) throw updError;
       return true;
     } catch (error) {
       console.error('Error updating quote:', error);
@@ -339,7 +524,48 @@ export function useQuotes(): UseQuotesReturn {
 
   const eliminarCotizacion = async (id: string): Promise<boolean> => {
     try {
-      setAllQuotes(prev => prev.filter(quote => quote.id !== id));
+      // 1. Obtener id numérico real por folio
+      const { data: cot, error: findErr } = await supabase
+        .from('cotizaciones')
+        .select('id')
+        .eq('folio', id)
+        .maybeSingle();
+      if (findErr) throw findErr;
+      if (!cot) throw new Error('Cotización no encontrada');
+      const numericId = cot.id;
+
+      // 2. Eliminar nota de venta asociada (y sus ítems)
+      try {
+        const { data: nv } = await supabase
+          .from('notas_venta')
+          .select('id')
+          .eq('cotizacion_id', numericId)
+          .maybeSingle();
+        if (nv?.id) {
+          const { error: delNVItems } = await supabase
+            .from('nota_venta_items')
+            .delete()
+            .eq('nota_venta_id', nv.id);
+          if (delNVItems) throw delNVItems;
+          const { error: delNV } = await supabase
+            .from('notas_venta')
+            .delete()
+            .eq('id', nv.id);
+          if (delNV) throw delNV;
+        }
+      } catch (e) {
+  const msg = (e as unknown as { message?: string })?.message;
+  console.warn('No se pudo eliminar nota de venta asociada (continuando):', msg);
+      }
+
+      // 3. Eliminar dependientes de la cotización
+      await supabase.from('cotizacion_items').delete().eq('cotizacion_id', numericId);
+      await supabase.from('cotizacion_despachos').delete().eq('cotizacion_id', numericId);
+      await supabase.from('cotizacion_clientes').delete().eq('cotizacion_id', numericId);
+
+      // 4. Eliminar cotización
+      const { error: delError } = await supabase.from('cotizaciones').delete().eq('id', numericId);
+      if (delError) throw delError;
       return true;
     } catch (error) {
       console.error('Error deleting quote:', error);
@@ -349,23 +575,24 @@ export function useQuotes(): UseQuotesReturn {
 
   const duplicarCotizacion = async (id: string): Promise<boolean> => {
     try {
-      const cotizacionOriginal = allQuotes.find(q => q.id === id);
-      if (!cotizacionOriginal) return false;
-
-      const maxNum = Math.max(...allQuotes.map(q => parseInt(q.numero.split('-')[1]) || 0), 0);
-      const now = new Date().toISOString().split('T')[0];
-
-      const cotizacionDuplicada: Quote = {
-        ...cotizacionOriginal,
-        id: QuoteIdGenerator.generate(maxNum + 1),
-        numero: `2024-${(maxNum + 1).toString().padStart(3, '0')}`,
-        fechaCreacion: now,
-        fechaModificacion: now,
-        estado: 'borrador'
+      const original = allQuotes.find(q => q.id === id);
+      if (!original) return false;
+      const nueva = {
+        cliente: original.cliente,
+        estado: 'borrador' as QuoteStatus,
+        vendedorId: original.vendedorId,
+        vendedorNombre: original.vendedorNombre,
+        items: original.items,
+        despacho: original.despacho,
+        condicionesComerciales: original.condicionesComerciales,
+        subtotal: original.subtotal,
+        descuentoTotal: original.descuentoTotal,
+        iva: original.iva,
+        total: original.total,
+        notas: original.notas,
+        fechaExpiracion: original.fechaExpiracion
       };
-
-      setAllQuotes(prev => [cotizacionDuplicada, ...prev]);
-      return true;
+      return await crearCotizacion(nueva);
     } catch (error) {
       console.error('Error duplicating quote:', error);
       return false;
@@ -373,12 +600,7 @@ export function useQuotes(): UseQuotesReturn {
   };
 
   const cambiarEstado = async (id: string, nuevoEstado: QuoteStatus): Promise<boolean> => {
-    try {
-      return await actualizarCotizacion(id, { estado: nuevoEstado });
-    } catch (error) {
-      console.error('Error changing quote status:', error);
-      return false;
-    }
+    return actualizarCotizacion(id, { estado: nuevoEstado });
   };
 
   // Utilidades
@@ -404,8 +626,7 @@ export function useQuotes(): UseQuotesReturn {
   // Optimización: Retornar la cotización desde el array completo sin filtros adicionales
   // para evitar búsquedas o procesamiento adicional
   const getQuoteById = (id: string): Quote | null => {
-    // Buscamos directamente sin filtros adicionales para máxima rapidez
-    return mockQuotes.find(quote => quote.id === id) || null;
+    return allQuotes.find(q => q.id === id) || null;
   };
 
   return {
@@ -441,8 +662,8 @@ export function useQuotes(): UseQuotesReturn {
     canDelete,
     
     // Info del usuario
-    userId: user?.id || null,
-    userName: user?.name || null,
+  userId: user?.id || null,
+  userName: [user?.nombre, user?.apellido].filter(Boolean).join(' ') || user?.email || null,
     isAdmin
   };
 }

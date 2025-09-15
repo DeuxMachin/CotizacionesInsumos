@@ -439,3 +439,5 @@ export function CommercialTermsForm({ data, onChange, notes, onNotesChange }: Co
     </div>
   );
 }
+
+export default CommercialTermsForm;

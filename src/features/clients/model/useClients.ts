@@ -1,10 +1,23 @@
+"use client";
+
 import { useState, useCallback } from 'react';
 
-import { Client } from './clients';
+// Eliminados helpers de mocks; ahora la data proviene de la API/Supabase
 import { Toast } from '@/shared/ui/Toast';
 
-// Tipo para el nuevo cliente (sin campos calculados)
-export interface NewClientData extends Omit<Client, 'id'> {
+// Tipo para el nuevo cliente (sin campos calculados) - ya no dependemos del tipo Client mock
+export interface NewClientData {
+  rut: string;
+  razonSocial?: string;
+  giro?: string | null;
+  direccion?: string | null;
+  region?: string;
+  ciudad?: string | null;
+  comuna?: string | null;
+  tipoEmpresa?: string;
+  contactoNombre?: string;
+  contactoEmail?: string;
+  contactoTelefono?: string;
   fantasyName?: string;
   business?: string;
   paymentResponsible?: string;
@@ -79,11 +92,35 @@ export function useClients() {
         return false;
       }
 
-      // Simular llamada a la API
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      // Llamada real a la API
+      const res = await fetch('/api/clientes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          rut: clientData.rut,
+            // Campos mínimos; otros opcionales. Ajustar según necesidades reales.
+          nombre_razon_social: clientData.razonSocial || clientData.fantasyName || clientData.rut,
+          tipo: 'empresa',
+          giro: clientData.business || clientData.giro || null,
+          direccion: clientData.direccion || null,
+          ciudad: clientData.ciudad || null,
+          comuna: clientData.comuna || null,
+          telefono: clientData.phone || null,
+          celular: clientData.mobile || null,
+          forma_pago: clientData.transferInfo || null,
+          contacto_pago: clientData.paymentResponsible || clientData.contactName || null,
+          email_pago: clientData.paymentEmail || clientData.email || null,
+          telefono_pago: clientData.paymentPhone || clientData.contactPhone || null,
+          linea_credito: clientData.creditLine || 0,
+          descuento_cliente_pct: clientData.discount || 0,
+          estado: 'vigente'
+        })
+      });
 
-      // Aquí iría la lógica real para crear el cliente
-      console.log('Creando cliente:', clientData);
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error || 'Error al crear el cliente');
+      }
       
       Toast.success('Cliente creado exitosamente');
       setLoading(false);
@@ -174,6 +211,7 @@ export function useClients() {
     validatePhone,
     formatPhone,
     getRegiones,
-    getTiposEmpresa
+    getTiposEmpresa,
+  // Ya no exponemos funciones locales de búsqueda; el consumo debe hacerse vía API
   };
 }

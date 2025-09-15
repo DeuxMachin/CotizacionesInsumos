@@ -671,3 +671,165 @@ p, .text-body {
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
   background-color: var(--text-muted);
 }
+
+/* Estilos para checkboxes de filtros - Compatibilidad con temas */
+.filter-checkbox {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  width: 1rem;
+  height: 1rem;
+  border: 2px solid var(--border);
+  border-radius: 0.25rem;
+  background-color: var(--card-bg);
+  position: relative;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.filter-checkbox:hover {
+  border-color: var(--accent-primary);
+  background-color: var(--bg-secondary);
+}
+
+.filter-checkbox:checked {
+  background-color: var(--accent-primary);
+  border-color: var(--accent-primary);
+}
+
+.filter-checkbox:checked::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 0.5rem;
+  height: 0.25rem;
+  border-left: 2px solid white;
+  border-bottom: 2px solid white;
+  transform: translate(-50%, -60%) rotate(-45deg);
+}
+
+.filter-checkbox:focus {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 2px;
+}
+
+/* Tema oscuro - ajustes específicos */
+.dark .filter-checkbox {
+  border-color: var(--border);
+  background-color: var(--bg-secondary);
+}
+
+.dark .filter-checkbox:hover {
+  border-color: var(--accent-primary);
+  background-color: var(--card-bg);
+}
+
+.dark .filter-checkbox:checked {
+  background-color: var(--accent-primary);
+  border-color: var(--accent-primary);
+}
+
+/* Estilos para selects de filtros */
+.filter-select {
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+  border-radius: 0.5rem;
+  border: 1px solid var(--border);
+  background-color: var(--bg-secondary);
+  color: var(--text-primary);
+  transition: all 0.2s ease;
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+  background-position: right 0.5rem center;
+  background-repeat: no-repeat;
+  background-size: 1.5em 1.5em;
+  padding-right: 2.5rem;
+}
+
+.filter-select:hover {
+  border-color: var(--accent-primary);
+  background-color: var(--card-bg);
+}
+
+.filter-select:focus {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 2px;
+  border-color: var(--accent-primary);
+}
+
+.filter-select option {
+  background-color: var(--card-bg);
+  color: var(--text-primary);
+  padding: 0.5rem;
+}
+
+/* Tema oscuro - ajustes específicos para select */
+.dark .filter-select {
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%9ca3af' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+  background-color: var(--bg-secondary);
+  border-color: var(--border);
+  color: var(--text-primary);
+}
+
+.dark .filter-select:hover {
+  background-color: var(--card-bg);
+  border-color: var(--accent-primary);
+}
+
+.dark .filter-select option {
+  background-color: var(--card-bg);
+  color: var(--text-primary);
+}
+
+/* Estilos para selects de filtros - Compatibilidad con temas */
+.filter-select {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+  background-position: right 0.5rem center;
+  background-repeat: no-repeat;
+  background-size: 1.5em 1.5em;
+  padding-right: 2.5rem;
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+  border-radius: 0.5rem;
+  border: 1px solid var(--border);
+  background-color: var(--bg-secondary);
+  color: var(--text-primary);
+  transition: all 0.2s ease;
+}
+
+.filter-select:hover {
+  border-color: var(--accent-primary);
+}
+
+.filter-select:focus {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 2px;
+  border-color: var(--accent-primary);
+}
+
+.filter-select option {
+  background-color: var(--card-bg);
+  color: var(--text-primary);
+}
+
+/* Tema oscuro - ajustes para selects */
+.dark .filter-select {
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%23d1d5db' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+  background-color: var(--bg-secondary);
+  border-color: var(--border);
+  color: var(--text-primary);
+}
+
+.dark .filter-select option {
+  background-color: var(--card-bg);
+  color: var(--text-primary);
+}

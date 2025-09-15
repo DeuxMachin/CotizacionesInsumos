@@ -1,45 +1,40 @@
-export type Client = {
-  id: string;
-  rut: string;
-  razonSocial: string;
-  giro: string;
-  direccion: string;
-  region: string;
-  ciudad: string;
-  comuna: string;
-  tipoEmpresa: "Ltda." | "S.A." | "SpA" | "E.I.R.L." | "Otra";
-  contactoNombre: string;
-  contactoEmail: string;
-  contactoTelefono: string;
-};
+// Tipos relacionados con clientes ahora basados en la BD (ver Database en lib/supabase)
+import type { Database } from '@/lib/supabase'
 
-export const clients: Client[] = [
-  {
-    id: "C-001",
-    rut: "76.123.456-7",
-    razonSocial: "Empresa ABC Ltda.",
-    giro: "Comercializadora de insumos",
-    direccion: "Av. Providencia 1234",
-    region: "Metropolitana",
-    ciudad: "Santiago",
-    comuna: "Providencia",
-    tipoEmpresa: "Ltda.",
-    contactoNombre: "Juan Pérez",
-    contactoEmail: "juan.perez@abc.cl",
-    contactoTelefono: "+56 9 1234 5678",
-  },
-  {
-    id: "C-002",
-    rut: "96.987.654-3",
-    razonSocial: "Comercial XYZ S.A.",
-    giro: "Servicios de tecnología",
-    direccion: "Av. Apoquindo 4321",
-    region: "Metropolitana",
-    ciudad: "Las Condes",
-    comuna: "Las Condes",
-    tipoEmpresa: "S.A.",
-    contactoNombre: "María López",
-    contactoEmail: "maria.lopez@xyz.cl",
-    contactoTelefono: "+56 2 2777 8899",
-  },
-];
+export type ClienteRow = Database['public']['Tables']['clientes']['Row']
+
+// Tipo simplificado usado previamente en el front. Lo mantenemos para evitar romper componentes.
+export interface Client {
+  id: number
+  rut: string
+  razonSocial: string
+  giro: string | null
+  direccion: string | null
+  region: string // No existe en tabla: se infiere (usamos ciudad como fallback)
+  ciudad: string | null
+  comuna: string | null
+  tipoEmpresa: string
+  contactoNombre: string
+  contactoEmail: string
+  contactoTelefono: string
+}
+
+// Utilidad para mapear una fila de BD al tipo Client (básico)
+export function mapClienteRowToClient(row: ClienteRow): Client {
+  return {
+    id: row.id,
+    rut: row.rut,
+    razonSocial: row.nombre_razon_social,
+    giro: row.giro,
+    direccion: row.direccion,
+    region: row.ciudad || '', // Asunción: no tenemos región en la tabla
+    ciudad: row.ciudad,
+    comuna: row.comuna,
+    tipoEmpresa: row.tipo === 'persona' ? 'Persona' : 'Empresa',
+    contactoNombre: row.contacto_pago || '',
+    contactoEmail: row.email_pago || '',
+    contactoTelefono: row.telefono_pago || ''
+  }
+}
+
+// Nota: Las funciones de búsqueda y colecciones mock se eliminaron porque ahora los datos provienen de Supabase.

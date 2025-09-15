@@ -12,7 +12,7 @@ import { usePathname, useRouter } from "next/navigation";
 export function Sidebar() {
   const { sidebarOpen, setSidebarOpen } = useSection();
   const { user } = useAuth();
-  const { navigationItems } = useNavigationItems(user?.role || '');
+  const { navigationItems } = useNavigationItems(user?.rol || '');
   const pathname = usePathname();
   const router = useRouter();
 
@@ -66,7 +66,7 @@ export function Sidebar() {
             <Logo height={22} className="shrink-0 sm:h-7" />
             <div className="flex flex-col min-w-0">
               <span className="font-bold text-theme-primary text-sm truncate">
-                {user?.role?.toLowerCase() === 'admin' ? 'Panel Admin' : 'Sistema'}
+                {user?.rol?.toLowerCase() === 'admin' ? 'Panel Admin' : 'Sistema'}
               </span>
               <span className="text-xs text-theme-secondary truncate">v1.0</span>
             </div>
@@ -167,10 +167,12 @@ export function Sidebar() {
               {user?.email?.[0].toUpperCase() || "U"}
             </div>
             <div className="flex flex-col min-w-0">
-              <span className="font-medium text-theme-primary text-sm truncate">{user?.name || "Usuario"}</span>
+              <span className="font-medium text-theme-primary text-sm truncate">
+                {user?.nombre || user?.email?.split('@')[0] || "Usuario"}
+              </span>
               <div className="flex items-center gap-2">
                 <span className="text-xs text-theme-secondary truncate">{user?.email || "usuario@mail.com"}</span>
-                {user?.role?.toLowerCase() === 'admin' && (
+                {user?.rol?.toLowerCase() === 'admin' && (
                   <span className="px-1.5 py-0.5 text-xs rounded bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300">
                     Admin
                   </span>

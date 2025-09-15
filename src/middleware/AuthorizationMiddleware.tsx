@@ -4,7 +4,7 @@ import { useAuth } from "@/features/auth/model/useAuth";
 import { usePermissions, type Resource, type Action } from "@/features/auth/model/permissions";
 import { useNavigationItems } from "@/features/navigation/model/navigationItems";
 import { useSection } from "@/features/navigation/model/useSection";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 
 /**
  * Middleware de autorización que se ejecuta en cada renderizado
@@ -13,21 +13,31 @@ import { useEffect } from "react";
 export function AuthorizationMiddleware({ children }: { children: React.ReactNode }) {
   const { user, isAuthenticated } = useAuth();
   const { section, setSection } = useSection();
-  const { canAccessSection } = useNavigationItems(user?.role || '');
+  const { canAccessSection } = useNavigationItems(user?.rol || '');
+  const hasRedirectedRef = useRef(false);
 
   useEffect(() => {
     if (!isAuthenticated || !user) {
+      hasRedirectedRef.current = false;
       return;
     }
 
     // Verificar si el usuario puede acceder a la sección actual
-    if (!canAccessSection(section)) {
-      console.warn(`User ${user.role} attempted to access unauthorized section: ${section}`);
+    if (!canAccessSection(section) && !hasRedirectedRef.current) {
+      console.warn(`User ${user.rol} attempted to access unauthorized section: ${section}`);
+      
+      // Marcar que ya se ha redirigido para evitar bucles
+      hasRedirectedRef.current = true;
       
       // Redirigir al dashboard si no tiene permisos
       setSection('dashboard');
+      
+      // Resetear la bandera después de un tiempo
+      setTimeout(() => {
+        hasRedirectedRef.current = false;
+      }, 100);
     }
-  }, [section, user, isAuthenticated, canAccessSection, setSection]);
+  }, [section, user?.rol, user?.id, isAuthenticated, canAccessSection, setSection]);
 
   return <>{children}</>;
 }
@@ -37,7 +47,7 @@ export function AuthorizationMiddleware({ children }: { children: React.ReactNod
  */
 export function useActionAuthorization() {
   const { user } = useAuth();
-  const { hasPermission } = usePermissions(user?.role || '');
+  const { hasPermission } = usePermissions(user?.rol || '');
 
   const canCreate = (resource: Resource): boolean => {
     return hasPermission(resource, 'create');
@@ -60,11 +70,11 @@ export function useActionAuthorization() {
   };
 
   const isOwnerOrAdmin = (ownerId?: string): boolean => {
-    return user?.role?.toLowerCase() === 'admin' || user?.id === ownerId;
+    return user?.rol?.toLowerCase() === 'admin' || user?.id === ownerId;
   };
 
   const logUnauthorizedAction = (resource: Resource, action: Action) => {
-    console.warn(`Unauthorized action attempted: ${user?.role} tried to ${action} ${resource}`);
+    console.warn(`Unauthorized action attempted: ${user?.rol} tried to ${action} ${resource}`);
   };
 
   return {
@@ -78,7 +88,7 @@ export function useActionAuthorization() {
     user,
     // La propiedad roleInfo ya no existe, pero proporcionamos isAdmin para compatibilidad
     roleInfo: {
-      isAdmin: user?.role?.toLowerCase() === 'admin'
+      isAdmin: user?.rol?.toLowerCase() === 'admin'
     },
   };
 }

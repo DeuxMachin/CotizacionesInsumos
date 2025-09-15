@@ -170,12 +170,7 @@ export function FilterCheckbox({ checked, onChange, label, count, color }: Filte
         type="checkbox"
         checked={checked}
         onChange={(e) => onChange(e.target.checked)}
-        className="w-4 h-4 rounded transition-colors"
-        style={{
-          accentColor: 'var(--accent-primary)',
-          backgroundColor: 'var(--bg-secondary)',
-          borderColor: 'var(--border)'
-        }}
+        className="filter-checkbox"
       />
       <div className="flex items-center justify-between flex-1 min-w-0">
         <span className="text-sm font-medium truncate" style={{ color: 'var(--text-primary)' }}>
@@ -281,12 +276,7 @@ export function FilterSelect({
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full px-3 py-2 text-sm rounded-lg border transition-colors"
-        style={{
-          backgroundColor: 'var(--bg-secondary)',
-          borderColor: 'var(--border)',
-          color: 'var(--text-primary)',
-        }}
+        className="filter-select"
       >
         <option value="">{placeholder}</option>
         {options.map((option) => (

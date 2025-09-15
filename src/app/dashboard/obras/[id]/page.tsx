@@ -4,12 +4,12 @@ import { useRouter, useParams } from 'next/navigation';
 import { useObras } from '@/features/obras/model/useObras';
 import { ObraDetailPage } from '@/features/obras/ui/ObraDetailPage';
 import { useState, useEffect } from 'react';
-import type { Obra, EstadoObra, EtapaObra } from '@/features/obras/model/types';
+import type { Obra, EstadoObra, EtapaObra } from '@/features/obras/types/obras';
 
 export default function ObraDetailPageRoute() {
   const router = useRouter();
   const params = useParams();
-  const { obtenerObra, actualizarEstadoObra } = useObras();
+  const { obtenerObra, actualizarObra } = useObras();
   const [obra, setObra] = useState<Obra | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -42,10 +42,8 @@ export default function ObraDetailPageRoute() {
 
   const handleUpdate = async (updatedObra: Obra): Promise<boolean> => {
     try {
-      const success = await actualizarEstadoObra(updatedObra.id, updatedObra.estado);
-      if (success) {
-        setObra(updatedObra);
-      }
+      const success = await actualizarObra(updatedObra);
+      if (success) setObra(updatedObra);
       return success;
     } catch (error) {
       console.error('Error al actualizar la obra:', error);

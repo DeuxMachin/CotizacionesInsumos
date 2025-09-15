@@ -2,26 +2,18 @@
 
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
-import { Quote, QuoteStatus } from '@/core/domain/quote/Quote';
+import { Quote } from '@/core/domain/quote/Quote';
 import { z } from 'zod';
 
-// Esquema de validación para la cotización
-const QuoteSchema = z.object({
-  id: z.string().optional(),
-  client: z.string(),
-  date: z.string(),
-  status: z.enum(['pending', 'approved', 'rejected']).default('pending'),
-  amount: z.number().positive(),
-});
 
 
-// Mock de base de datos (en producción, esto sería una conexión real a la BD)
+
 const quotesDB: Quote[] = [];
 
 /**
  * Server Action para crear una nueva cotización
  */
-export async function createQuote(formData: FormData) {
+export async function createQuote() {
   
 
 
@@ -93,7 +85,7 @@ export async function updateQuote(quoteId: string) {
 /**
  * Server Action para cambiar el estado de una cotización
  */
-export async function changeQuoteStatus(quoteId: string, newStatus: QuoteStatus) {
+export async function changeQuoteStatus(quoteId: string) {
   try {
     // Buscar la cotización existente
     const quoteIndex = quotesDB.findIndex(q => q.id === quoteId);

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { FiDatabase, FiHardDrive, FiActivity, FiRefreshCw, FiDownload, FiUpload, FiTrash2, FiAlertTriangle } from "react-icons/fi";
+import { useAdminStats } from '@/hooks/useSupabase';
 
 interface DatabaseStats {
   size: string;
@@ -11,16 +12,23 @@ interface DatabaseStats {
   performance: 'excellent' | 'good' | 'fair' | 'poor';
 }
 
-const mockStats: DatabaseStats = {
-  size: "2.3 GB",
-  tables: 25,
-  records: 127450,
-  lastBackup: new Date(Date.now() - 1000 * 60 * 60 * 2), // 2 horas atrás
-  performance: 'good'
-};
-
 export function DatabaseManagement() {
-  const [stats, setStats] = useState<DatabaseStats>(mockStats);
+  const { data: adminStats, loading: loadingStats } = useAdminStats();
+  
+  // Calcular estadísticas de la base de datos basadas en datos reales
+  const dbStats: DatabaseStats = {
+    size: adminStats?.sistema.baseDatosSize || "Calculando...",
+    tables: 5, // usuarios, clientes, cotizaciones, productos, obras
+    records: (adminStats?.usuarios.total || 0) + 
+             (adminStats?.clientes.total || 0) + 
+             (adminStats?.cotizaciones.total || 0) + 
+             (adminStats?.productos.total || 0) + 
+             (adminStats?.obras.total || 0),
+    lastBackup: new Date(Date.now() - 1000 * 60 * 60 * 2), // 2 horas atrás (simulated)
+    performance: (adminStats?.usuarios.activos || 0) > 10 ? 'excellent' : 'good'
+  };
+  
+  const [stats, setStats] = useState<DatabaseStats>(dbStats);
   const [isOptimizing, setIsOptimizing] = useState(false);
   const [isBackingUp, setIsBackingUp] = useState(false);
   const [lastOperation, setLastOperation] = useState<string>('');
@@ -105,7 +113,11 @@ export function DatabaseManagement() {
             <FiHardDrive className="w-6 h-6" />
           </div>
           <div className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>
-            {stats.size}
+            {loadingStats ? (
+              <div className="animate-pulse bg-gray-200 rounded w-16 h-8 mx-auto"></div>
+            ) : (
+              dbStats.size
+            )}
           </div>
           <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>
             Tamaño Total
@@ -120,7 +132,11 @@ export function DatabaseManagement() {
             <FiDatabase className="w-6 h-6" />
           </div>
           <div className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>
-            {stats.tables}
+            {loadingStats ? (
+              <div className="animate-pulse bg-gray-200 rounded w-8 h-8 mx-auto"></div>
+            ) : (
+              dbStats.tables
+            )}
           </div>
           <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>
             Tablas
@@ -135,7 +151,11 @@ export function DatabaseManagement() {
             <FiActivity className="w-6 h-6" />
           </div>
           <div className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>
-            {stats.records.toLocaleString()}
+            {loadingStats ? (
+              <div className="animate-pulse bg-gray-200 rounded w-20 h-8 mx-auto"></div>
+            ) : (
+              dbStats.records.toLocaleString('es-CL')
+            )}
           </div>
           <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>
             Registros
@@ -149,8 +169,12 @@ export function DatabaseManagement() {
           <div className="p-3 bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 rounded-lg inline-block mb-3">
             <FiActivity className="w-6 h-6" />
           </div>
-          <div className={`text-2xl font-bold ${getPerformanceColor(stats.performance)}`}>
-            {getPerformanceText(stats.performance)}
+          <div className={`text-2xl font-bold ${getPerformanceColor(dbStats.performance)}`}>
+            {loadingStats ? (
+              <div className="animate-pulse bg-gray-200 rounded w-16 h-8 mx-auto"></div>
+            ) : (
+              getPerformanceText(dbStats.performance)
+            )}
           </div>
           <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>
             Rendimiento
@@ -346,6 +370,142 @@ export function DatabaseManagement() {
             </div>
           </div>
         </div>
+      </div>
+
+      {/* Database Table Breakdown */}
+      <div 
+        className="p-6 rounded-xl"
+        style={{ backgroundColor: 'var(--bg-primary)', border: '1px solid var(--border-subtle)' }}
+      >
+        <h2 className="text-xl font-semibold mb-6" style={{ color: 'var(--text-primary)' }}>
+          Desglose por Tabla
+        </h2>
+        
+        {loadingStats ? (
+          <div className="space-y-4">
+            {[1, 2, 3, 4, 5].map(i => (
+              <div key={i} className="animate-pulse flex justify-between items-center p-4 rounded-lg">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 bg-gray-200 rounded"></div>
+                  <div className="w-24 h-4 bg-gray-200 rounded"></div>
+                </div>
+                <div className="w-16 h-4 bg-gray-200 rounded"></div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="space-y-4">
+            <div className="p-4 rounded-lg border transition-all hover:shadow-md"
+                 style={{ backgroundColor: 'var(--bg-secondary)', borderColor: 'var(--border-subtle)' }}>
+              <div className="flex justify-between items-start">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded">
+                    <FiActivity className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <div className="font-medium" style={{ color: 'var(--text-primary)' }}>Usuarios</div>
+                    <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+                      {adminStats?.usuarios.activos || 0} activos, {adminStats?.usuarios.porRol.admin || 0} admin
+                    </div>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className="font-bold text-lg" style={{ color: 'var(--text-primary)' }}>
+                    {(adminStats?.usuarios.total || 0).toLocaleString('es-CL')}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-4 rounded-lg border transition-all hover:shadow-md"
+                 style={{ backgroundColor: 'var(--bg-secondary)', borderColor: 'var(--border-subtle)' }}>
+              <div className="flex justify-between items-start">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 rounded">
+                    <FiActivity className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <div className="font-medium" style={{ color: 'var(--text-primary)' }}>Clientes</div>
+                    <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+                      {adminStats?.clientes.activos || 0} activos, {adminStats?.clientes.nuevosUltimoMes || 0} nuevos
+                    </div>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className="font-bold text-lg" style={{ color: 'var(--text-primary)' }}>
+                    {(adminStats?.clientes.total || 0).toLocaleString('es-CL')}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-4 rounded-lg border transition-all hover:shadow-md"
+                 style={{ backgroundColor: 'var(--bg-secondary)', borderColor: 'var(--border-subtle)' }}>
+              <div className="flex justify-between items-start">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 rounded">
+                    <FiDatabase className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <div className="font-medium" style={{ color: 'var(--text-primary)' }}>Cotizaciones</div>
+                    <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+                      {adminStats?.cotizaciones.aprobadas || 0} aprobadas, {adminStats?.cotizaciones.enviadas || 0} enviadas
+                    </div>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className="font-bold text-lg" style={{ color: 'var(--text-primary)' }}>
+                    {(adminStats?.cotizaciones.total || 0).toLocaleString('es-CL')}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-4 rounded-lg border transition-all hover:shadow-md"
+                 style={{ backgroundColor: 'var(--bg-secondary)', borderColor: 'var(--border-subtle)' }}>
+              <div className="flex justify-between items-start">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 rounded">
+                    <FiHardDrive className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <div className="font-medium" style={{ color: 'var(--text-primary)' }}>Productos</div>
+                    <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+                      {adminStats?.productos.activos || 0} activos de {adminStats?.productos.total || 0} total
+                    </div>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className="font-bold text-lg" style={{ color: 'var(--text-primary)' }}>
+                    {(adminStats?.productos.total || 0).toLocaleString('es-CL')}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-4 rounded-lg border transition-all hover:shadow-md"
+                 style={{ backgroundColor: 'var(--bg-secondary)', borderColor: 'var(--border-subtle)' }}>
+              <div className="flex justify-between items-start">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-teal-100 dark:bg-teal-900/30 text-teal-600 dark:text-teal-400 rounded">
+                    <FiRefreshCw className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <div className="font-medium" style={{ color: 'var(--text-primary)' }}>Obras</div>
+                    <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+                      Proyectos registrados en el sistema
+                    </div>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className="font-bold text-lg" style={{ color: 'var(--text-primary)' }}>
+                    {(adminStats?.obras.total || 0).toLocaleString('es-CL')}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
