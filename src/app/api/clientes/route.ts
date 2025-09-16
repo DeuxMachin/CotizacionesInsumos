@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { ClientesService } from '@/services/clientesService'
+import { getCurrentUser, getUserInfoForAudit } from '@/lib/auth-helpers'
 
 // GET /api/clientes - Obtener todos los clientes
 export async function GET(request: NextRequest) {
@@ -32,6 +33,10 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
 
+    // Obtener información del usuario autenticado
+    const user = await getCurrentUser(request)
+    const userInfo = getUserInfoForAudit(user)
+
     // Validar que el RUT no exista
     const rutExists = await ClientesService.checkRutExists(body.rut)
     if (rutExists) {
@@ -41,7 +46,7 @@ export async function POST(request: NextRequest) {
       }, { status: 400 })
     }
 
-    const cliente = await ClientesService.create(body)
+    const cliente = await ClientesService.create(body, userInfo)
 
     return NextResponse.json({
       success: true,

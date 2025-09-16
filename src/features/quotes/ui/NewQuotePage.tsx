@@ -16,6 +16,8 @@ import {
 } from 'react-icons/fi';
 import { useQuotes } from '../model/useQuotes';
 import { Quote, QuoteStatus, ClientInfo, QuoteItem, DeliveryInfo, CommercialTerms } from '@/core/domain/quote/Quote';
+import { useAuthHeaders } from '@/hooks/useAuthHeaders';
+import { useAuth } from '@/features/auth/model/useAuth';
 
 import dynamic from 'next/dynamic';
 
@@ -55,7 +57,9 @@ const STEPS: StepConfig[] = [
 
 export function NewQuotePage() {
   const router = useRouter();
-  const { crearCotizacion, formatMoney, userId, userName } = useQuotes();
+  const { crearCotizacion, formatMoney } = useQuotes();
+  const { createHeaders } = useAuthHeaders();
+  const { user } = useAuth();
   
   const [currentStep, setCurrentStep] = useState<FormStep>('client');
   const [formData, setFormData] = useState<FormData>({
@@ -198,9 +202,8 @@ export function NewQuotePage() {
         items: formData.items,
         despacho: Object.keys(formData.despacho).length > 0 ? formData.despacho as DeliveryInfo : undefined,
         condicionesComerciales: formData.condicionesComerciales as CommercialTerms,
-        estado: status,
-  vendedorId: userId || 'desconocido',
-  vendedorNombre: userName || 'Usuario',
+        estado: status,        vendedorId: user?.id || 'desconocido',
+        vendedorNombre: user?.nombre || 'Usuario',
         subtotal,
         descuentoTotal,
         iva,
@@ -278,8 +281,8 @@ export function NewQuotePage() {
         despacho: Object.keys(formData.despacho).length > 0 ? formData.despacho as DeliveryInfo : undefined,
         condicionesComerciales: formData.condicionesComerciales as CommercialTerms,
         estado: 'enviada',
-        vendedorId: userId || 'desconocido',
-        vendedorNombre: userName || 'Usuario',
+        vendedorId: user?.id || 'desconocido',
+        vendedorNombre: user?.nombre || 'Usuario',
         subtotal,
         descuentoTotal,
         iva,
@@ -292,11 +295,12 @@ export function NewQuotePage() {
           undefined
       };
 
+      // Crear headers con información de usuario
+      const headers = createHeaders();
+
       const response = await fetch('/api/cotizaciones/send-email', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers,
         body: JSON.stringify({
           quoteData,
           recipientEmail: sendEmail,

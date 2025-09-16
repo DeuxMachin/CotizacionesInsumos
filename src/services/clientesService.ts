@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabase'
 import type { Database } from '../lib/supabase'
+import { AuditLogger } from './auditLogger'
 
 
 type ClienteInsert = Database['public']['Tables']['clientes']['Insert']
@@ -42,7 +43,7 @@ export class ClientesService {
   }
 
   // Crear nuevo cliente
-  static async create(cliente: ClienteInsert) {
+  static async create(cliente: ClienteInsert, userInfo?: { id: string; email: string; name?: string }) {
     const { data, error } = await supabase
       .from('clientes')
       .insert(cliente)
@@ -50,6 +51,18 @@ export class ClientesService {
       .single()
 
     if (error) throw error
+
+    // Registrar en audit log si se proporciona información del usuario
+    if (userInfo && data) {
+      await AuditLogger.logClienteCreated(
+        userInfo.id,
+        userInfo.email,
+        data.id,
+        data.nombre_razon_social,
+        data.rut
+      )
+    }
+
     return data
   }
 
