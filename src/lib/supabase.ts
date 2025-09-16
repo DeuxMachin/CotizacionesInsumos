@@ -929,6 +929,45 @@ export type Database = {
         Insert: { id?: number; nombre: string; descripcion?: string | null }
         Update: { id?: number; nombre?: string; descripcion?: string | null }
       }
+      ,
+      audit_log: {
+        Row: {
+          id: number
+          usuario_id: string | null
+          evento: string
+          descripcion: string
+          detalles: Record<string, any> | null
+          tabla_afectada: string | null
+          registro_id: string | null
+          ip_address: string | null
+          user_agent: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: number
+          usuario_id?: string | null
+          evento: string
+          descripcion: string
+          detalles?: Record<string, any> | null
+          tabla_afectada?: string | null
+          registro_id?: string | null
+          ip_address?: string | null
+          user_agent?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: number
+          usuario_id?: string | null
+          evento?: string
+          descripcion?: string
+          detalles?: Record<string, any> | null
+          tabla_afectada?: string | null
+          registro_id?: string | null
+          ip_address?: string | null
+          user_agent?: string | null
+          created_at?: string
+        }
+      }
     }
     Views: {
       [_ in never]: never

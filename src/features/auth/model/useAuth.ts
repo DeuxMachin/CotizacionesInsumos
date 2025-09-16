@@ -34,8 +34,25 @@ export const useAuth = create<AuthState>()(
       initializeAuth: async () => {
         set({ isLoading: true });
         try {
-          // Para nuestra implementación actual, no mantenemos sesión persistente
-          // Simplemente marcamos como no autenticado para forzar login
+          // Verificar si hay datos de autenticación en localStorage (persistidos por Zustand)
+          const storedState = localStorage.getItem('auth-storage');
+          if (storedState) {
+            try {
+              const parsed = JSON.parse(storedState);
+              if (parsed?.state?.user && parsed?.state?.isAuthenticated) {
+                set({
+                  user: parsed.state.user,
+                  isAuthenticated: true,
+                  lastActivity: parsed.state.lastActivity || Date.now()
+                });
+                return;
+              }
+            } catch (e) {
+              // Error parseando estado persistido - continuar sin sesión
+            }
+          }
+          
+          // Si no hay estado persistido válido, marcar como no autenticado
           set({
             user: null,
             isAuthenticated: false

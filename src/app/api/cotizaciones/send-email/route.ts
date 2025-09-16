@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { sendGmailTest } from '@/services/gmailService';
 import { generatePDF } from '@/shared/lib/pdf/generator';
+import { getCurrentUserSimple } from '@/lib/auth-simple';
+import { AuditLogger } from '@/services/auditLogger';
 import type { Quote } from '@/core/domain/quote/Quote';
 
 interface SendQuoteEmailRequest {
@@ -15,6 +17,11 @@ export async function POST(request: NextRequest) {
   try {
     const body: SendQuoteEmailRequest = await request.json();
     const { quoteId, quoteData, recipientEmail, recipientName, message } = body;
+
+    // Obtener información del usuario autenticado
+    const user = await getCurrentUserSimple(request);
+
+    console.log('🔍 Sending quote email with user info:', { user, recipientEmail });
 
     // Validaciones básicas
     if (!recipientEmail) {
@@ -98,34 +105,27 @@ export async function POST(request: NextRequest) {
           
           <div style="background: #fef3ec; border: 1px solid #fed7aa; border-radius: 6px; padding: 15px; margin: 20px 0;">
             <h3 style="color: #ea580c; margin: 0 0 10px 0; font-size: 16px;">Detalles de la cotización:</h3>
-            <ul style="color: #92400e; margin: 0; padding-left: 20px;">
-              <li><strong>Número:</strong> ${quoteNumber}</li>
-              <li><strong>Cliente:</strong> ${quote.cliente.razonSocial}</li>
-              <li><strong>Total:</strong> $${quote.total.toLocaleString('es-CL')}</li>
-              ${quote.fechaExpiracion ? `<li><strong>Válida hasta:</strong> ${new Date(quote.fechaExpiracion).toLocaleDateString('es-CL')}</li>` : ''}
+            <ul style="color: #374151; margin: 10px 0; padding-left: 20px;">
+              <li><strong>Número:</strong> #${quoteNumber}</li>
+              <li><strong>Fecha:</strong> ${new Date().toLocaleDateString('es-ES')}</li>
+              <li><strong>Cliente:</strong> ${clientName}</li>
             </ul>
           </div>
           
-          <p style="color: #374151; margin-bottom: 20px;">
-            Si tienes alguna pregunta o necesitas modificaciones, no dudes en contactarnos. Estamos aquí para ayudarte.
+          <p style="color: #374151; margin-bottom: 25px;">
+            Si tienes alguna pregunta sobre esta cotización, no dudes en contactarnos. Estamos aquí para ayudarte.
           </p>
           
-          <div style="border-top: 1px solid #e5e7eb; padding-top: 20px; margin-top: 30px;">
+          <div style="text-align: center; margin: 30px 0;">
             <p style="color: #6b7280; font-size: 14px; margin: 0;">
-              <strong>Equipo de Ventas</strong><br>
-              📧 ${process.env.GMAIL_USER}<br>
-              🌐 Sistema de Cotizaciones
+              ¡Gracias por confiar en nosotros!
             </p>
           </div>
-        </div>
-        
-        <div style="text-align: center; padding: 20px; color: #9ca3af; font-size: 12px;">
-          Este email fue generado automáticamente desde nuestro sistema de cotizaciones.
         </div>
       </div>
     `;
 
-    // Enviar email con PDF adjunto
+    // Enviar email con la cotización
     const result = await sendGmailTest({
       toEmail: recipientEmail,
       subject: `Cotización #${quoteNumber} - Gracias por cotizar con nosotros`,
@@ -134,6 +134,32 @@ export async function POST(request: NextRequest) {
       attachmentName: `cotizacion-${quoteNumber}.pdf`,
       isBase64: true
     });
+
+    // Registrar en audit log que se envió la cotización
+    if (user) {
+      await AuditLogger.logEvent({
+        usuario_id: user.id,
+        evento: 'cotizacion_enviada',
+        descripcion: `Envió cotización #${quoteNumber} por email a ${recipientEmail}`,
+        detalles: {
+          folio: quoteNumber,
+          destinatario: recipientEmail,
+          destinatario_nombre: recipientName,
+          mensaje_personalizado: message || null,
+          email_id: result.data?.messageId,
+          user_email: user.email,
+          cliente: {
+            nombre: clientName,
+            razon_social: quote.cliente.razonSocial
+          }
+        },
+        tabla_afectada: 'cotizaciones',
+        registro_id: quoteId || 'unknown'
+      });
+      console.log('✅ Audit log: Cotización enviada registrada');
+    } else {
+      console.warn('⚠️ No se pudo registrar en audit log: usuario no autenticado');
+    }
 
     return NextResponse.json({
       success: true,

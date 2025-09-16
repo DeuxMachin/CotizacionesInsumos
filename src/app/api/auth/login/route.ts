@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabase'
 import bcrypt from 'bcryptjs'
+import { AuditLogger } from '@/services/auditLogger'
 
 // Lista de contraseñas comunes filtradas (simplificada)
 const COMMON_PASSWORDS = [
@@ -97,6 +98,13 @@ export async function POST(request: NextRequest) {
 
     // Log login exitoso
     console.log(`✅ Login exitoso para: ${email}`);
+
+    // Registrar en audit log
+    await AuditLogger.logUserLogin(
+      user.id, 
+      user.email, 
+      user.nombre && user.apellido ? `${user.nombre} ${user.apellido}` : user.nombre || undefined
+    )
 
     // Remover password_hash de la respuesta
     const { password_hash, ...userWithoutPassword } = user
