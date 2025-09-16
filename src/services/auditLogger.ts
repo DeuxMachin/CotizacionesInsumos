@@ -5,7 +5,7 @@ export interface AuditLogEntry {
   usuario_id: string
   evento: string
   descripcion: string | null
-  detalles?: Record<string, any> | null
+  detalles?: Record<string, unknown> | null
   tabla_afectada?: string | null
   registro_id?: string | null
   ip_address?: string | null

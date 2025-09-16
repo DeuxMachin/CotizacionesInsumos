@@ -936,7 +936,7 @@ export type Database = {
           usuario_id: string | null
           evento: string
           descripcion: string
-          detalles: Record<string, any> | null
+          detalles: Record<string, unknown> | null
           tabla_afectada: string | null
           registro_id: string | null
           ip_address: string | null
@@ -948,7 +948,7 @@ export type Database = {
           usuario_id?: string | null
           evento: string
           descripcion: string
-          detalles?: Record<string, any> | null
+          detalles?: Record<string, unknown> | null
           tabla_afectada?: string | null
           registro_id?: string | null
           ip_address?: string | null
@@ -960,7 +960,7 @@ export type Database = {
           usuario_id?: string | null
           evento?: string
           descripcion?: string
-          detalles?: Record<string, any> | null
+          detalles?: Record<string, unknown> | null
           tabla_afectada?: string | null
           registro_id?: string | null
           ip_address?: string | null

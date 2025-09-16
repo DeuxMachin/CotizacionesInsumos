@@ -218,13 +218,14 @@ export function RecentActivity() {
             // Mapear campos de la base de datos a los esperados por el componente
             const eventType = activity.evento;
             const description = activity.descripcion;
-            const userEmail = activity.detalles?.user_email;
-            const userName = activity.detalles?.user_name || userEmail?.split('@')[0] || 'Usuario';
+            const userEmail = typeof activity.detalles?.user_email === 'string' ? activity.detalles.user_email : undefined;
+            const userName = (typeof activity.detalles?.user_name === 'string' ? activity.detalles.user_name : undefined) || 
+                           (userEmail ? userEmail.split('@')[0] : undefined) || 'Usuario';
             const metadata = activity.detalles;
 
             console.log('🔍 Activity data:', { eventType, description, userName, metadata, activity });
 
-            const statusChange = activity.detalles?.estado_anterior && activity.detalles?.estado_nuevo ? {
+            const statusChange = (typeof activity.detalles?.estado_anterior === 'string' && typeof activity.detalles?.estado_nuevo === 'string') ? {
               old: activity.detalles.estado_anterior,
               new: activity.detalles.estado_nuevo
             } : undefined;
@@ -250,7 +251,7 @@ export function RecentActivity() {
                         <span>{userName}</span>
                       </>
                     )}
-                    {metadata?.folio && (
+                    {typeof metadata?.folio === 'string' && (
                       <>
                         <span>•</span>
                         <span className="font-mono">{metadata.folio}</span>

@@ -1,4 +1,5 @@
 import { useAuth } from '@/features/auth/model/useAuth'
+import type { AuthUser } from '@/services/authService'
 
 /**
  * Hook para crear headers de autenticación para requests de API
@@ -33,7 +34,7 @@ export function useAuthHeaders() {
 /**
  * Función utilitaria para crear headers sin hook (para uso en funciones)
  */
-export function createAuthHeadersFromUser(user: any): Record<string, string> {
+export function createAuthHeadersFromUser(user: AuthUser | null): Record<string, string> {
   const headers: Record<string, string> = {
     'Content-Type': 'application/json'
   }

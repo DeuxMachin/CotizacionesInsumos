@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { AuditLogger } from '@/services/auditLogger'
-import { getUserContext, getUserIdForAuditFilter } from '@/lib/auth-context'
+import { getUserContext } from '@/lib/auth-context'
 
 export async function GET(request: NextRequest) {
   try {
@@ -27,7 +27,7 @@ export async function GET(request: NextRequest) {
       if (userId) {
         activities = await AuditLogger.getActivityByUser(userId, limit)
       } else if (eventType) {
-        activities = await AuditLogger.getActivityByType(eventType as any, limit)
+        activities = await AuditLogger.getActivityByType(eventType, limit)
       } else {
         activities = await AuditLogger.getRecentActivity(limit)
       }
@@ -35,7 +35,7 @@ export async function GET(request: NextRequest) {
       // Los usuarios normales solo ven sus propios logs
       if (eventType) {
         // Filtrar por tipo de evento pero solo del usuario actual
-        activities = await AuditLogger.getActivityByUserAndType(userContext.id, eventType as any, limit)
+        activities = await AuditLogger.getActivityByUserAndType(userContext.id, eventType, limit)
       } else {
         // Solo logs del usuario actual
         activities = await AuditLogger.getActivityByUser(userContext.id, limit)
