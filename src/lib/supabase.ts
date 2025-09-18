@@ -333,12 +333,18 @@ export type Database = {
           nombre: string
           descripcion: string | null
           unidad: string
-          codigo_barra: string | null
-          precio_compra: number | null
-          precio_venta_neto: number | null
+  
           estado: string
           activo: boolean
           created_at: string
+          tipo_id: number | null
+          afecto_iva: boolean
+          moneda: string | null
+          costo_unitario: number | null
+          precio_neto: number | null
+          precio_venta: number | null
+          control_stock: boolean
+          ficha_tecnica: string | null
         }
         Insert: {
           id?: number
@@ -346,12 +352,18 @@ export type Database = {
           nombre: string
           descripcion?: string | null
           unidad?: string
-          codigo_barra?: string | null
-          precio_compra?: number | null
-          precio_venta_neto?: number | null
+
           estado?: string
           activo?: boolean
           created_at?: string
+          tipo_id?: number | null
+          afecto_iva?: boolean
+          moneda?: string | null
+          costo_unitario?: number | null
+          precio_neto?: number | null
+          precio_venta?: number | null
+          control_stock?: boolean
+          ficha_tecnica?: string | null
         }
         Update: {
           id?: number
@@ -359,45 +371,35 @@ export type Database = {
           nombre?: string
           descripcion?: string | null
           unidad?: string
-          codigo_barra?: string | null
-          precio_compra?: number | null
-          precio_venta_neto?: number | null
+
           estado?: string
           activo?: boolean
           created_at?: string
+          tipo_id?: number | null
+          afecto_iva?: boolean
+          moneda?: string | null
+          costo_unitario?: number | null
+          precio_neto?: number | null
+          precio_venta?: number | null
+          control_stock?: boolean
+          ficha_tecnica?: string | null
         }
       }
-      categorias_productos: {
+      producto_tipos: {
         Row: {
           id: number
           nombre: string
-          descripcion: string | null
         }
         Insert: {
           id?: number
           nombre: string
-          descripcion?: string | null
         }
         Update: {
           id?: number
           nombre?: string
-          descripcion?: string | null
         }
       }
-      producto_categorias: {
-        Row: {
-          producto_id: number
-          categoria_id: number
-        }
-        Insert: {
-          producto_id: number
-          categoria_id: number
-        }
-        Update: {
-          producto_id?: number
-          categoria_id?: number
-        }
-      }
+
       obras: {
         Row: {
           id: number
@@ -886,18 +888,6 @@ export type Database = {
           total_neto?: number
           created_at?: string
         }
-      }
-      ,
-      bodegas: {
-        Row: { id: number; nombre: string; ubicacion: string | null }
-        Insert: { id?: number; nombre: string; ubicacion?: string | null }
-        Update: { id?: number; nombre?: string; ubicacion?: string | null }
-      }
-      ,
-      producto_stock: {
-        Row: { bodega_id: number; producto_id: number; ubicacion: string | null; stock_actual: number; total_valorizado: number }
-        Insert: { bodega_id: number; producto_id: number; ubicacion?: string | null; stock_actual?: number; total_valorizado?: number }
-        Update: { bodega_id?: number; producto_id?: number; ubicacion?: string | null; stock_actual?: number; total_valorizado?: number }
       }
       ,
       condiciones_pago: {

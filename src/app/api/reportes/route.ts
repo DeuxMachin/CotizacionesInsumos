@@ -51,7 +51,7 @@ export async function GET(request: NextRequest) {
       // Productos para mostrar en top productos (mock por ahora)
       supabase
         .from('productos')
-        .select('id, nombre, precio_venta_neto')
+        .select('id, nombre, precio_venta')
         .eq('activo', true)
         .limit(5)
     ]);
@@ -123,7 +123,7 @@ export async function GET(request: NextRequest) {
       id: producto.id,
       nombre: producto.nombre,
       cantidad: Math.floor(Math.random() * 100) + 20, // Mock data
-      ingresos: (producto.precio_venta_neto || 0) * (Math.floor(Math.random() * 100) + 20)
+      ingresos: (producto.precio_venta || 0) * (Math.floor(Math.random() * 100) + 20)
     }));
 
     // Estado de clientes

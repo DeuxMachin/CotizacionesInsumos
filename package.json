@@ -13,6 +13,7 @@
     "@sparticuz/chromium": "^138.0.2",
     "@supabase/auth-helpers-nextjs": "^0.10.0",
     "@supabase/supabase-js": "^2.57.2",
+    "@tailwindcss/line-clamp": "^0.4.4",
     "@types/bcryptjs": "^2.4.6",
     "@types/nodemailer": "^7.0.1",
     "@vercel/speed-insights": "^1.2.0",
@@ -30,6 +31,7 @@
     "resend": "^6.0.3",
     "sharp": "^0.34.3",
     "xlsx": "^0.18.5",
+    "zod": "^4.1.9",
     "zustand": "^5.0.7"
   },
   "devDependencies": {

@@ -2,39 +2,45 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 import * as XLSX from 'xlsx';
 import { AuditService } from '@/services/auditService';
-import { Database } from '@/lib/supabase';
 
-type ProductoRow = Database['public']['Tables']['productos']['Row'];
-type ProductoStockRow = Database['public']['Tables']['producto_stock']['Row'];
-type BodegaRow = Database['public']['Tables']['bodegas']['Row'];
-type ProductoCategoriaDBRow = Database['public']['Tables']['producto_categorias']['Row'];
-type CategoriaProductoRow = Database['public']['Tables']['categorias_productos']['Row'];
-
-interface StockPorBodegaRow {
-  'ID Producto': string;
-  'SKU': string;
-  'Nombre Producto': string;
-  'Categoría': string;
-  'Bodega': string;
-  'Ubicación': string;
-  'Stock Actual': number;
-  'Valorización': number;
-  'Precio Unitario': number;
+interface ProductoExportRow {
+  '🔢 ID': number;
+  '🏷️ SKU': string;
+  '📦 Nombre': string;
+  '📝 Descripción': string;
+  '⚖️ Unidad': string;
+  '💰 Costo Unitario': number;
+  '💵 Precio Neto': number;
+  '💲 Precio Venta': number;
+  '💱 Moneda': string;
+  '🏢 Categoría': string;
+  '✅ Afecto IVA': string;
+  '📊 Control Stock': string;
+  '📄 Ficha Técnica': string;
+  '📊 Estado': string;
+  '🔄 Activo': string;
+  '📅 Fecha Creación': string;
 }
 
-interface ProductoCategoriaRow {
-  'ID': string;
-  'SKU': string;
-  'Nombre': string;
-  'Descripción': string;
-  'Unidad': string;
-  'Stock Total': number;
-  'Precio Compra': number;
-  'Precio Venta': number;
-  'Valorización Total': number;
-  'Precio Promedio': number;
-  'Estado Stock': string;
-  'Estado Producto': string;
+interface ProductoData {
+  id: number;
+  sku: string | null;
+  nombre: string;
+  descripcion: string | null;
+  unidad: string;
+  costo_unitario: number | null;
+  precio_neto: number | null;
+  precio_venta: number | null;
+  moneda: string | null;
+  afecto_iva: boolean;
+  control_stock: boolean;
+  ficha_tecnica: string | null;
+  estado: string;
+  activo: boolean;
+  created_at: string;
+  producto_tipos?: {
+    nombre: string;
+  } | null;
 }
 
 export async function GET(request: NextRequest) {
@@ -58,249 +64,147 @@ export async function GET(request: NextRequest) {
     // Obtener User Agent
     const userAgent = request.headers.get('user-agent') || 'unknown';
 
-    // Consultas a tablas reales según esquema (ver supabase.ts)
-    // 1) Productos base
+    // Consultar productos con sus tipos
     const { data: productosData, error: productosError } = await supabase
       .from('productos')
-      .select('*')
-      .order('created_at', { ascending: false });
+      .select(`
+        *,
+        producto_tipos (
+          nombre
+        )
+      `)
+      .eq('activo', true)
+      .order('nombre');
 
     if (productosError) throw productosError;
     if (!productosData || productosData.length === 0) {
       throw new Error('No hay productos para exportar');
     }
 
-    // 2) Stock por bodega de todos los productos
-    const { data: stockData, error: stockError } = await supabase
-      .from('producto_stock')
-      .select('*');
-    if (stockError) throw stockError;
+    // Crear datos para exportación con headers destacados
+    const productosExport: ProductoExportRow[] = productosData.map((item: ProductoData) => ({
+      '🔢 ID': item.id,
+      '🏷️ SKU': item.sku || '',
+      '📦 Nombre': item.nombre,
+      '📝 Descripción': item.descripcion || '',
+      '⚖️ Unidad': item.unidad,
+      '💰 Costo Unitario': item.costo_unitario || 0,
+      '💵 Precio Neto': item.precio_neto || 0,
+      '💲 Precio Venta': item.precio_venta || 0,
+      '💱 Moneda': item.moneda || 'CLP',
+      '🏢 Categoría': item.producto_tipos?.nombre || 'Sin Categoría',
+      '✅ Afecto IVA': item.afecto_iva ? 'Sí' : 'No',
+      '📊 Control Stock': item.control_stock ? 'Sí' : 'No',
+      '📄 Ficha Técnica': item.ficha_tecnica || '',
+      '📊 Estado': item.estado || 'disponible',
+      '🔄 Activo': item.activo ? 'Sí' : 'No',
+      '📅 Fecha Creación': new Date(item.created_at).toLocaleDateString('es-CL')
+    }));
 
-    // 3) Bodegas para enriquecer nombres
-    const { data: bodegasData, error: bodegasError } = await supabase
-      .from('bodegas')
-      .select('*');
-    if (bodegasError) throw bodegasError;
-
-    // 4) Links producto-categoría
-    const { data: prodCats, error: prodCatsError } = await supabase
-      .from('producto_categorias')
-      .select('*');
-    if (prodCatsError) throw prodCatsError;
-
-    // 5) Tabla de categorías
-    const { data: categoriasData, error: categoriasError } = await supabase
-      .from('categorias_productos')
-      .select('*');
-    if (categoriasError) throw categoriasError;
-
-    // Mapas auxiliares
-    const bodegaById = new Map<number, BodegaRow>();
-    bodegasData?.forEach((b: BodegaRow) => bodegaById.set(b.id, b));
-
-    const categoriaNombreById = new Map<number, string>();
-    categoriasData?.forEach((c: CategoriaProductoRow) => categoriaNombreById.set(c.id, c.nombre));
-
-    // Mapear categorías por producto
-    const categoriasPorProducto = new Map<number, string[]>();
-    prodCats?.forEach((pc: ProductoCategoriaDBRow) => {
-      const nombre = categoriaNombreById.get(pc.categoria_id);
-      if (!nombre) return;
-      const arr = categoriasPorProducto.get(pc.producto_id) || [];
-      arr.push(nombre);
-      categoriasPorProducto.set(pc.producto_id, arr);
-    });
-
-    // Agrupar stock por producto
-    const stockPorProducto = new Map<number, ProductoStockRow[]>();
-    stockData?.forEach((s: ProductoStockRow) => {
-      const arr = stockPorProducto.get(s.producto_id) || [];
-      arr.push(s);
-      stockPorProducto.set(s.producto_id, arr);
-    });
+    // Crear estadísticas
+    const estadisticas = [{
+      '📊 Métrica': 'Total de Productos',
+      '📈 Valor': productosData.length
+    }, {
+      '📊 Métrica': 'Productos Afectos a IVA',
+      '📈 Valor': productosData.filter(p => p.afecto_iva).length
+    }, {
+      '📊 Métrica': 'Productos con Control de Stock',
+      '📈 Valor': productosData.filter(p => p.control_stock).length
+    }, {
+      '📊 Métrica': 'Valor Total Costo',
+      '📈 Valor': productosData.reduce((sum: number, p: ProductoData) => sum + (p.costo_unitario || 0), 0)
+    }, {
+      '📊 Métrica': 'Valor Total Venta',
+      '📈 Valor': productosData.reduce((sum: number, p: ProductoData) => sum + (p.precio_venta || 0), 0)
+    }];
 
     // Crear workbook con múltiples hojas
     const wb = XLSX.utils.book_new();
 
-    // === HOJA 1: INVENTARIO GENERAL ===
-    const inventarioGeneral = productosData.map((item: ProductoRow) => {
-      const categorias = categoriasPorProducto.get(item.id) || [];
-      const categoriaPrincipal = categorias[0] || 'Sin Categoría';
-      const stockList = stockPorProducto.get(item.id) || [];
-      const stockTotal = stockList.reduce((sum, s) => sum + (s.stock_actual || 0), 0);
-      const totalValorizado = stockList.reduce((sum, s) => sum + (s.total_valorizado || 0), 0);
-      const precioPromedio = stockTotal > 0 ? totalValorizado / stockTotal : 0;
+    // Hoja principal de productos
+    const wsProductos = XLSX.utils.json_to_sheet(productosExport);
+    XLSX.utils.book_append_sheet(wb, wsProductos, 'Productos');
 
-      return {
-        'ID': item.id,
-        'SKU': item.sku || '',
-        'Nombre': item.nombre,
-        'Descripción': item.descripcion || '',
-        'Categoría': categoriaPrincipal,
-        'Unidad': item.unidad,
-        'Código Barra': item.codigo_barra || '',
-        'Stock Total': stockTotal,
-        'Precio Compra': item.precio_compra || 0,
-        'Precio Venta': item.precio_venta_neto || 0,
-        'Valorización Total': totalValorizado,
-        'Precio Promedio': precioPromedio,
-        'Estado': item.estado || 'disponible',
-        'Estado Producto': item.estado || 'vigente',
-        'Activo': item.activo ? 'Sí' : 'No',
-        'Fecha Creación': new Date(item.created_at).toLocaleDateString('es-CL')
-      };
-    });
+    // Aplicar formato a los headers (primera fila) - Headers muy destacados
+    const headersRange = XLSX.utils.decode_range(wsProductos['!ref'] || 'A1');
+    for (let col = headersRange.s.c; col <= headersRange.e.c; col++) {
+      const cellAddress = XLSX.utils.encode_cell({ r: 0, c: col });
+      if (wsProductos[cellAddress]) {
+        // Aplicar formato usando colores Excel estándar que definitivamente funcionan
+        wsProductos[cellAddress].s = {
+          font: {
+            bold: true,
+            sz: 12,
+            color: { rgb: "FFFFFF" } // Blanco
+          },
+          fill: {
+            patternType: "solid",
+            fgColor: { rgb: "FF4F81BD" }, // Azul Excel estándar
+            bgColor: { rgb: "FF4F81BD" }
+          },
+          border: {
+            top: { style: "thick", color: { rgb: "FF000000" } },
+            bottom: { style: "thick", color: { rgb: "FF000000" } },
+            left: { style: "thick", color: { rgb: "FF000000" } },
+            right: { style: "thick", color: { rgb: "FF000000" } }
+          },
+          alignment: { horizontal: "center", vertical: "center" }
+        };
+      }
+    }
 
-    const wsGeneral = XLSX.utils.json_to_sheet(inventarioGeneral);
-
-    // === HOJA 2: STOCK POR BODEGA ===
-    const stockPorBodega: StockPorBodegaRow[] = [];
-    productosData.forEach((item: ProductoRow) => {
-      const categorias = categoriasPorProducto.get(item.id) || [];
-      const categoriaPrincipal = categorias[0] || 'Sin Categoría';
-      const stockList = stockPorProducto.get(item.id) || [];
-      stockList.forEach((stockItem: ProductoStockRow) => {
-        const bodega = bodegaById.get(stockItem.bodega_id);
-        stockPorBodega.push({
-          'ID Producto': String(item.id),
-          'SKU': item.sku || '',
-          'Nombre Producto': item.nombre,
-          'Categoría': categoriaPrincipal,
-          'Bodega': bodega?.nombre || 'Sin Bodega',
-          'Ubicación': stockItem.ubicacion || '',
-          'Stock Actual': stockItem.stock_actual || 0,
-          'Valorización': stockItem.total_valorizado || 0,
-          'Precio Unitario': stockItem.stock_actual > 0 ? (stockItem.total_valorizado || 0) / stockItem.stock_actual : 0
-        });
-      });
-    });
-
-    const wsBodegas = XLSX.utils.json_to_sheet(stockPorBodega);
-
-    // === HOJAS POR CATEGORÍA ===
-    const categoriasMap = new Map<string, ProductoCategoriaRow[]>();
-
-    productosData.forEach((item: ProductoRow) => {
-      const categorias = categoriasPorProducto.get(item.id) || ['Sin Categoría'];
-      const stockList = stockPorProducto.get(item.id) || [];
-      const stockTotal = stockList.reduce((sum, s) => sum + (s.stock_actual || 0), 0);
-      const totalValorizado = stockList.reduce((sum, s) => sum + (s.total_valorizado || 0), 0);
-      const precioPromedio = stockTotal > 0 ? totalValorizado / stockTotal : 0;
-
-      categorias.forEach((categoriaNombre) => {
-        if (!categoriasMap.has(categoriaNombre)) {
-          categoriasMap.set(categoriaNombre, []);
-        }
-        categoriasMap.get(categoriaNombre)!.push({
-          'ID': String(item.id),
-          'SKU': item.sku || '',
-          'Nombre': item.nombre,
-          'Descripción': item.descripcion || '',
-          'Unidad': item.unidad,
-          'Stock Total': stockTotal,
-          'Precio Compra': item.precio_compra || 0,
-          'Precio Venta': item.precio_venta_neto || 0,
-          'Valorización Total': totalValorizado,
-          'Precio Promedio': precioPromedio,
-          'Estado Stock': stockTotal > 0 ? 'con stock' : 'sin stock',
-          'Estado Producto': item.estado || 'vigente'
-        });
-      });
-    });
-
-    // === HOJA DE ESTADÍSTICAS ===
-    const estadisticas = [{
-      'Métrica': 'Total de Productos',
-      'Valor': productosData.length
-    }, {
-      'Métrica': 'Productos con Stock',
-      'Valor': productosData.filter(p => (p.stock_total || 0) > 0).length
-    }, {
-      'Métrica': 'Productos sin Stock',
-      'Valor': productosData.filter(p => (p.stock_total || 0) === 0).length
-    }, {
-      'Métrica': 'Valorización Total del Inventario',
-      'Valor': productosData.reduce((sum: number, p: ProductoRow) => {
-        const stockList = stockPorProducto.get(p.id) || [];
-        const val = stockList.reduce((s, st) => s + (st.total_valorizado || 0), 0);
-        return sum + val;
-      }, 0)
-    }, {
-      'Métrica': 'Total Unidades en Stock',
-      'Valor': productosData.reduce((sum: number, p: ProductoRow) => {
-        const stockList = stockPorProducto.get(p.id) || [];
-        const unidades = stockList.reduce((s, st) => s + (st.stock_actual || 0), 0);
-        return sum + unidades;
-      }, 0)
-    }, {
-      'Métrica': 'Categorías',
-      'Valor': categoriasMap.size
-    }];
-
-    // Agregar estadísticas por estado de stock
-    const productosPorEstado = productosData.reduce((acc: Record<string, number>, p: ProductoRow) => {
-      const estado = p.estado || 'disponible';
-      acc[estado] = (acc[estado] || 0) + 1;
-      return acc;
-    }, {} as Record<string, number>);
-
-    Object.entries(productosPorEstado).forEach(([estado, cantidad]) => {
-      estadisticas.push({
-        'Métrica': `Productos ${estado.charAt(0).toUpperCase() + estado.slice(1)}`,
-        'Valor': cantidad
-      });
-    });
-
+    // Hoja de estadísticas
     const wsEstadisticas = XLSX.utils.json_to_sheet(estadisticas);
+    XLSX.utils.book_append_sheet(wb, wsEstadisticas, 'Estadísticas');
+
+    // Aplicar formato a los headers de estadísticas - Headers muy destacados
+    const statsHeadersRange = XLSX.utils.decode_range(wsEstadisticas['!ref'] || 'A1');
+    for (let col = statsHeadersRange.s.c; col <= statsHeadersRange.e.c; col++) {
+      const cellAddress = XLSX.utils.encode_cell({ r: 0, c: col });
+      if (wsEstadisticas[cellAddress]) {
+        wsEstadisticas[cellAddress].s = {
+          font: {
+            bold: true,
+            sz: 12,
+            color: { rgb: "FFFFFF" } // Blanco
+          },
+          fill: {
+            patternType: "solid",
+            fgColor: { rgb: "FF4F81BD" }, // Azul Excel estándar
+            bgColor: { rgb: "FF4F81BD" }
+          },
+          border: {
+            top: { style: "thick", color: { rgb: "FF000000" } },
+            bottom: { style: "thick", color: { rgb: "FF000000" } },
+            left: { style: "thick", color: { rgb: "FF000000" } },
+            right: { style: "thick", color: { rgb: "FF000000" } }
+          },
+          alignment: { horizontal: "center", vertical: "center" }
+        };
+      }
+    }
 
     // Configurar anchos de columna
-    const colWidthsGeneral = [
+    const colWidthsProductos = [
       { wch: 8 }, // ID
       { wch: 15 }, // SKU
       { wch: 30 }, // Nombre
       { wch: 40 }, // Descripción
-      { wch: 20 }, // Categoría
       { wch: 10 }, // Unidad
-      { wch: 15 }, // Código Barra
-      { wch: 12 }, // Stock Total
-      { wch: 15 }, // Precio Compra
+      { wch: 15 }, // Costo Unitario
+      { wch: 15 }, // Precio Neto
       { wch: 15 }, // Precio Venta
-      { wch: 15 }, // Valorización Total
-      { wch: 15 }, // Precio Promedio
-      { wch: 10 }, // Estado
-      { wch: 12 }, // Estado Producto
+      { wch: 8 }, // Moneda
+      { wch: 20 }, // Categoría
+      { wch: 10 }, // Afecto IVA
+      { wch: 12 }, // Control Stock
+      { wch: 30 }, // Ficha Técnica
+      { wch: 12 }, // Estado
       { wch: 8 }, // Activo
       { wch: 12 }  // Fecha Creación
     ];
-    wsGeneral['!cols'] = colWidthsGeneral;
-
-    const colWidthsBodegas = [
-      { wch: 8 }, // ID Producto
-      { wch: 15 }, // SKU
-      { wch: 30 }, // Nombre Producto
-      { wch: 20 }, // Categoría
-      { wch: 20 }, // Bodega
-      { wch: 15 }, // Ubicación
-      { wch: 12 }, // Stock Actual
-      { wch: 15 }, // Valorización
-      { wch: 15 }  // Precio Unitario
-    ];
-    wsBodegas['!cols'] = colWidthsBodegas;
-
-    const colWidthsCategoria = [
-      { wch: 8 }, // ID
-      { wch: 15 }, // SKU
-      { wch: 30 }, // Nombre
-      { wch: 40 }, // Descripción
-      { wch: 10 }, // Unidad
-      { wch: 12 }, // Stock Total
-      { wch: 15 }, // Precio Compra
-      { wch: 15 }, // Precio Venta
-      { wch: 15 }, // Valorización Total
-      { wch: 15 }, // Precio Promedio
-      { wch: 10 }, // Estado Stock
-      { wch: 12 }  // Estado Producto
-    ];
+    wsProductos['!cols'] = colWidthsProductos;
 
     const colWidthsEstadisticas = [
       { wch: 35 }, // Métrica
@@ -308,33 +212,23 @@ export async function GET(request: NextRequest) {
     ];
     wsEstadisticas['!cols'] = colWidthsEstadisticas;
 
-    // Agregar hojas al workbook
-    XLSX.utils.book_append_sheet(wb, wsGeneral, 'Inventario General');
-    XLSX.utils.book_append_sheet(wb, wsBodegas, 'Stock por Bodega');
-
-    // Agregar hojas por categoría
-    categoriasMap.forEach((productos, categoriaNombre) => {
-      const wsCategoria = XLSX.utils.json_to_sheet(productos);
-      wsCategoria['!cols'] = colWidthsCategoria;
-
-      // Sanitizar nombre de hoja (Excel tiene límites en nombres de hojas)
-      const nombreHoja = categoriaNombre.length > 31 ?
-        categoriaNombre.substring(0, 28) + '...' :
-        categoriaNombre;
-
-      XLSX.utils.book_append_sheet(wb, wsCategoria, nombreHoja);
+    // Generar el buffer del archivo con preservación de estilos
+    const buffer = XLSX.write(wb, {
+      type: 'buffer',
+      bookType: 'xlsx',
+      cellStyles: true,
+      Props: {
+        Title: 'Catálogo de Productos',
+        Subject: 'Exportación de productos',
+        Author: 'Sistema de Cotizaciones'
+      }
     });
 
-    XLSX.utils.book_append_sheet(wb, wsEstadisticas, 'Estadísticas');
+    // Registrar en document_series (serie de descargas)
+    const { registerDownloadSeries } = await import('@/services/documentSeriesService');
+    await registerDownloadSeries('stock_excel', 'SEX-');
 
-    // Generar el buffer del archivo
-    const buffer = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
-
-  // Registrar en document_series (serie de descargas)
-  const { registerDownloadSeries } = await import('@/services/documentSeriesService');
-  await registerDownloadSeries('stock_excel', 'SEX-');
-
-  // Registrar auditoría
+    // Registrar auditoría
     await AuditService.logDownload(
       userId,
       'stock_excel',
@@ -356,7 +250,7 @@ export async function GET(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error('Error en descarga de stock:', error);
+    console.error('Error en descarga de productos:', error);
     return NextResponse.json(
       { error: 'Error interno del servidor' },
       { status: 500 }

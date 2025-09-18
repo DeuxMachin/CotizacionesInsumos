@@ -53,7 +53,7 @@ export function useProducts(): UseProductsReturn {
         nombre: p.nombre,
         descripcion: p.descripcion,
         unidad: p.unidad,
-        precio_venta_neto: p.precio_venta_neto,
+        precio_venta_neto: p.precio_neto,
         activo: p.activo,
         categorias: (p.producto_categorias || []).map((pc) => ({ id: pc.categoria_id, nombre: pc.categorias_productos?.nombre || '' }))
       }));

@@ -15,11 +15,21 @@ export interface AuthUser {
  */
 export async function getCurrentUser(request?: NextRequest): Promise<AuthUser | null> {
   try {
-    // Obtener el token de autenticación de las cookies
-    const cookiesStore = await cookies()
-    const accessToken = cookiesStore.get('supabase-auth-token')?.value ||
-                       cookiesStore.get('sb-auth-token')?.value ||
-                       cookiesStore.get('sb-access-token')?.value
+    // Obtener el token de autenticación de las cookies del request
+    let accessToken: string | undefined;
+
+    if (request) {
+      // En API routes, obtener cookies del request
+      accessToken = request.cookies.get('supabase-auth-token')?.value ||
+                   request.cookies.get('sb-auth-token')?.value ||
+                   request.cookies.get('sb-access-token')?.value;
+    } else {
+      // En otros contextos, usar cookies() de Next.js
+      const cookiesStore = await cookies()
+      accessToken = cookiesStore.get('supabase-auth-token')?.value ||
+                   cookiesStore.get('sb-auth-token')?.value ||
+                   cookiesStore.get('sb-access-token')?.value;
+    }
 
     if (!accessToken && request) {
       // Intentar obtener desde headers de autorización
@@ -28,10 +38,41 @@ export async function getCurrentUser(request?: NextRequest): Promise<AuthUser | 
         const token = authHeader.substring(7)
         return await getUserFromToken(token)
       }
+
+      // Intentar obtener desde headers personalizados
+      const userId = request.headers.get('x-user-id')
+      const userEmail = request.headers.get('x-user-email')
+      const userName = request.headers.get('x-user-name')
+
+      if (userId && userEmail) {
+        // Verificar que el usuario existe en la base de datos
+        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+        const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+
+        const supabase = createClient(supabaseUrl, supabaseAnonKey)
+
+        const { data: userData, error } = await supabase
+          .from('usuarios')
+          .select('id, email, nombre, apellido, rol')
+          .eq('id', userId)
+          .eq('email', userEmail)
+          .eq('activo', true)
+          .single()
+
+        if (!error && userData) {
+          return {
+            id: userData.id,
+            email: userData.email,
+            nombre: userData.nombre || undefined,
+            apellido: userData.apellido || undefined,
+            rol: userData.rol
+          }
+        }
+      }
     }
 
     if (!accessToken) {
-      console.log('No access token found in cookies')
+      console.log('No access token found in cookies or headers')
       return null
     }
 

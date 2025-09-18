@@ -2,11 +2,8 @@ import { supabase } from '../lib/supabase'
 import type { Database } from '../lib/supabase'
 
 type Producto = Database['public']['Tables']['productos']['Row']
-type ProductoStock = Database['public']['Tables']['producto_stock']['Row']
-type Bodega = Database['public']['Tables']['bodegas']['Row']
-type CategoriaProducto = Database['public']['Tables']['categorias_productos']['Row']
+type ProductoTipo = Database['public']['Tables']['producto_tipos']['Row']
 
-type ProductoStockJoined = ProductoStock & { bodegas: Bodega }
 type StockItem = {
   bodega_id: number
   bodega_nombre: string
@@ -14,7 +11,6 @@ type StockItem = {
   stock_actual: number
   total_valorizado: number
 }
-type PCJoined = { categorias_productos: CategoriaProducto }
 
 export interface InventoryItem {
   id: number
@@ -22,201 +18,148 @@ export interface InventoryItem {
   nombre: string
   descripcion: string | null
   unidad: string
-  codigo_barra: string | null
-  precio_compra: number | null
-  precio_venta_neto: number | null
-  estado: string
-  activo: boolean
-  created_at: string
-  categorias: CategoriaProducto[]
-  stock: {
-    bodega_id: number
-    bodega_nombre: string
-    ubicacion: string | null
-    stock_actual: number
-    total_valorizado: number
-  }[]
-  total_stock: number
-  status: 'in-stock' | 'low' | 'out'
+  costo_unitario: number | null
+  precio_neto: number | null
+  precio_venta: number | null
+  moneda: string | null
+  tipo_id: number | null
+  afecto_iva: boolean | null
+  control_stock: boolean | null
+  ficha_tecnica: string | null
+  estado: string | null
+  activo: boolean | null
+  created_at: string | null
+  tipo: ProductoTipo | null
 }
 
 export class StockService {
-  // Obtener todos los productos con stock
+  // Obtener todos los productos con stock (sin joins frágiles)
   static async getAllInventory(): Promise<InventoryItem[]> {
-    const { data, error } = await supabase
+    const { data: productos, error: productosError } = await supabase
       .from('productos')
-      .select(`
-        *,
-        producto_categorias(
-          categorias_productos(*)
-        ),
-        producto_stock(
-          bodega_id,
-          ubicacion,
-          stock_actual,
-          total_valorizado,
-          bodegas(*)
-        )
-      `)
+      .select('*')
       .eq('activo', true)
       .order('nombre')
 
-    if (error) throw error
+    if (productosError) {
+      console.error('Supabase getAllInventory error:', productosError)
+      throw new Error(productosError.message || 'Error cargando inventario')
+    }
 
-    return data.map(producto => {
-      const stock = producto.producto_stock?.map((ps: ProductoStockJoined): StockItem => ({
-        bodega_id: ps.bodega_id,
-        bodega_nombre: ps.bodegas?.nombre || 'Sin bodega',
-        ubicacion: ps.ubicacion,
-        stock_actual: ps.stock_actual,
-        total_valorizado: ps.total_valorizado
-      })) || []
+    if (!productos || productos.length === 0) return []
 
-      const total_stock = stock.reduce((sum: number, s: StockItem) => sum + s.stock_actual, 0)
+    // Cargar tipos de producto
+    const { data: tipos, error: tiposError } = await supabase
+      .from('producto_tipos')
+      .select('*')
 
-      return {
-        id: producto.id,
-        sku: producto.sku,
-        nombre: producto.nombre,
-        descripcion: producto.descripcion,
-        unidad: producto.unidad,
-        codigo_barra: producto.codigo_barra,
-        precio_compra: producto.precio_compra,
-        precio_venta_neto: producto.precio_venta_neto,
-        estado: producto.estado,
-        activo: producto.activo,
-        created_at: producto.created_at,
-        categorias: producto.producto_categorias?.map((pc: PCJoined) => pc.categorias_productos) || [],
-        stock,
-        total_stock,
-        status: this.inferStatus(total_stock)
-      }
-    })
+    if (tiposError) {
+      console.error('Supabase producto_tipos error:', tiposError)
+      throw new Error(tiposError.message || 'Error cargando tipos de producto')
+    }
+
+    const tiposMap = new Map<number, ProductoTipo>((tipos || []).map(t => [t.id, t]))
+
+    return productos.map(producto => this.mapToInventoryItem(producto, tiposMap))
   }
 
   // Buscar productos con stock
   static async searchInventory(searchTerm: string): Promise<InventoryItem[]> {
-    const { data, error } = await supabase
+    const { data: productos, error: productosError } = await supabase
       .from('productos')
-      .select(`
-        *,
-        producto_categorias(
-          categorias_productos(*)
-        ),
-        producto_stock(
-          bodega_id,
-          ubicacion,
-          stock_actual,
-          total_valorizado,
-          bodegas(*)
-        )
-      `)
+      .select('*')
       .eq('activo', true)
       .or(`nombre.ilike.%${searchTerm}%,descripcion.ilike.%${searchTerm}%,sku.ilike.%${searchTerm}%`)
       .order('nombre')
 
-    if (error) throw error
+    if (productosError) {
+      console.error('Supabase searchInventory error:', productosError)
+      throw new Error(productosError.message || 'Error buscando inventario')
+    }
 
-    return data.map(producto => {
-      const stock = producto.producto_stock?.map((ps: ProductoStockJoined): StockItem => ({
-        bodega_id: ps.bodega_id,
-        bodega_nombre: ps.bodegas?.nombre || 'Sin bodega',
-        ubicacion: ps.ubicacion,
-        stock_actual: ps.stock_actual,
-        total_valorizado: ps.total_valorizado
-      })) || []
+    if (!productos || productos.length === 0) return []
 
-      const total_stock = stock.reduce((sum: number, s: StockItem) => sum + s.stock_actual, 0)
+    const { data: tipos, error: tiposError } = await supabase
+      .from('producto_tipos')
+      .select('*')
 
-      return {
-        id: producto.id,
-        sku: producto.sku,
-        nombre: producto.nombre,
-        descripcion: producto.descripcion,
-        unidad: producto.unidad,
-        codigo_barra: producto.codigo_barra,
-        precio_compra: producto.precio_compra,
-        precio_venta_neto: producto.precio_venta_neto,
-        estado: producto.estado,
-        activo: producto.activo,
-        created_at: producto.created_at,
-        categorias: producto.producto_categorias?.map((pc: PCJoined) => pc.categorias_productos) || [],
-        stock,
-        total_stock,
-        status: this.inferStatus(total_stock)
-      }
-    })
+    if (tiposError) {
+      console.error('Supabase producto_tipos error:', tiposError)
+      throw new Error(tiposError.message || 'Error cargando tipos de producto')
+    }
+
+    const tiposMap = new Map<number, ProductoTipo>((tipos || []).map(t => [t.id, t]))
+
+    return productos.map(producto => this.mapToInventoryItem(producto, tiposMap))
   }
 
   // Obtener productos por categoría
   static async getInventoryByCategory(categoryId: number): Promise<InventoryItem[]> {
-    const { data, error } = await supabase
+    const { data: productos, error: productosError } = await supabase
       .from('productos')
-      .select(`
-        *,
-        producto_categorias!inner(
-          categorias_productos(*)
-        ),
-        producto_stock(
-          bodega_id,
-          ubicacion,
-          stock_actual,
-          total_valorizado,
-          bodegas(*)
-        )
-      `)
+      .select('*')
       .eq('activo', true)
-      .eq('producto_categorias.categoria_id', categoryId)
+      .eq('tipo_id', categoryId)
       .order('nombre')
 
-    if (error) throw error
+    if (productosError) {
+      console.error('Supabase getInventoryByCategory error:', productosError)
+      throw new Error(productosError.message || 'Error cargando inventario por categoría')
+    }
 
-    return data.map(producto => {
-      const stock = producto.producto_stock?.map((ps: ProductoStockJoined): StockItem => ({
-        bodega_id: ps.bodega_id,
-        bodega_nombre: ps.bodegas?.nombre || 'Sin bodega',
-        ubicacion: ps.ubicacion,
-        stock_actual: ps.stock_actual,
-        total_valorizado: ps.total_valorizado
-      })) || []
+    if (!productos || productos.length === 0) return []
 
-      const total_stock = stock.reduce((sum: number, s: StockItem) => sum + s.stock_actual, 0)
+    const { data: tipos, error: tiposError } = await supabase
+      .from('producto_tipos')
+      .select('*')
 
-      return {
-        id: producto.id,
-        sku: producto.sku,
-        nombre: producto.nombre,
-        descripcion: producto.descripcion,
-        unidad: producto.unidad,
-        codigo_barra: producto.codigo_barra,
-        precio_compra: producto.precio_compra,
-        precio_venta_neto: producto.precio_venta_neto,
-        estado: producto.estado,
-        activo: producto.activo,
-        created_at: producto.created_at,
-        categorias: producto.producto_categorias?.map((pc: PCJoined) => pc.categorias_productos) || [],
-        stock,
-        total_stock,
-        status: this.inferStatus(total_stock)
-      }
-    })
+    if (tiposError) {
+      console.error('Supabase producto_tipos error:', tiposError)
+      throw new Error(tiposError.message || 'Error cargando tipos de producto')
+    }
+
+    const tiposMap = new Map<number, ProductoTipo>((tipos || []).map(t => [t.id, t]))
+
+    return productos.map(producto => this.mapToInventoryItem(producto, tiposMap))
   }
 
   // Obtener todas las categorías
-  static async getCategories(): Promise<CategoriaProducto[]> {
+  static async getCategories(): Promise<ProductoTipo[]> {
     const { data, error } = await supabase
-      .from('categorias_productos')
+      .from('producto_tipos')
       .select('*')
       .order('nombre')
 
-    if (error) throw error
-    return data
+    if (error) {
+      console.error('Supabase getCategories error:', error)
+      throw new Error(error.message || 'Error cargando tipos de producto')
+    }
+    return data || []
   }
 
-  // Inferir status basado en stock total
-  static inferStatus(totalStock: number): 'in-stock' | 'low' | 'out' {
-    if (totalStock === 0) return 'out'
-    if (totalStock < 10) return 'low' // Puedes ajustar este umbral
-    return 'in-stock'
+  // Map helpers
+  private static mapToInventoryItem(
+    producto: Producto,
+    tiposMap: Map<number, ProductoTipo>
+  ): InventoryItem {
+    return {
+      id: producto.id,
+      sku: producto.sku,
+      nombre: producto.nombre,
+      descripcion: producto.descripcion,
+      unidad: producto.unidad,
+      costo_unitario: producto.costo_unitario,
+      precio_neto: producto.precio_neto,
+      precio_venta: producto.precio_venta,
+      moneda: producto.moneda,
+      tipo_id: producto.tipo_id,
+      afecto_iva: producto.afecto_iva,
+      control_stock: producto.control_stock,
+      ficha_tecnica: producto.ficha_tecnica,
+      tipo: producto.tipo_id ? tiposMap.get(producto.tipo_id) || null : null,
+      estado: producto.estado,
+      activo: producto.activo,
+      created_at: producto.created_at
+    }
   }
 }

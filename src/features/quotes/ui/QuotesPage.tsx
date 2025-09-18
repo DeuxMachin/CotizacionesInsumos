@@ -258,7 +258,7 @@ export function QuotesPage() {
       <div className="flex flex-col gap-4">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold flex items-center gap-3" style={{ color: 'var(--text-primary)' }}>
+            <h1 className="text-2xl sm:text-3xl font-bold flex items-center gap-3" style={{ color: 'var(--text-primary)' }}>
               <FiFileText className="w-8 h-8" style={{ color: 'var(--accent-primary)' }} />
               Cotizaciones
             </h1>
