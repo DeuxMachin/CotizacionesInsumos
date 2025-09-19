@@ -122,7 +122,7 @@ const CategoryChip: React.FC<CategoryChipProps> = ({ label, icon, active, onClic
 );
 
 export function ProductsForm({ items, onChange }: ProductsFormProps) {
-  const { products, categories, loading, error } = useProducts();
+  const { products, types, loading, error } = useProducts();
   const [selectedCategory, setSelectedCategory] = useState<number | 'all'>('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
@@ -146,7 +146,7 @@ export function ProductsForm({ items, onChange }: ProductsFormProps) {
 
   const filteredProducts = useMemo(() => {
     const base = products.filter(p => {
-      const matchesCategory = selectedCategory === 'all' || p.categorias.some(c => c.id === selectedCategory);
+      const matchesCategory = selectedCategory === 'all' || p.tipo_id === selectedCategory;
       const term = searchTerm.toLowerCase();
       const matchesTerm = !term || p.nombre.toLowerCase().includes(term) || (p.sku || '').toLowerCase().includes(term);
       return matchesCategory && matchesTerm;
@@ -454,7 +454,7 @@ export function ProductsForm({ items, onChange }: ProductsFormProps) {
               Productos
             </h3>
             <CategoryScroller 
-              categories={categories} 
+              categories={types} 
               selected={selectedCategory} 
               onSelect={setSelectedCategory} 
             />
@@ -508,7 +508,7 @@ export function ProductsForm({ items, onChange }: ProductsFormProps) {
           <div>
             <div className="flex items-center justify-between mb-3">
               <h4 className="text-md font-medium" style={{ color: 'var(--text-primary)' }}>
-                {(selectedCategory === 'all' ? 'Todos los productos' : categories.find(c => c.id === selectedCategory)?.nombre) || ''}
+                {(selectedCategory === 'all' ? 'Todos los productos' : types.find(c => c.id === selectedCategory)?.nombre) || ''}
                 <span className="ml-2 text-sm" style={{ color: 'var(--text-secondary)' }}>({filteredProducts.length})</span>
               </h4>
               <button
@@ -536,7 +536,7 @@ export function ProductsForm({ items, onChange }: ProductsFormProps) {
                       </button>
                     </div>
                     <div className="flex items-center justify-between text-xs sm:text-sm">
-                      <span style={{ color:'var(--text-secondary)' }}>{product.unidad}</span>
+                      <span style={{ color:'var(--text-secondary)' }}>{product.unidad}{product.afecto_iva === false ? ' · EXENTO' : ''}</span>
                       <span className="font-semibold" style={{ color:'var(--success-text)' }}>${(product.precio_venta_neto||0).toLocaleString('es-CL')}</span>
                     </div>
                   </div>
@@ -551,7 +551,7 @@ export function ProductsForm({ items, onChange }: ProductsFormProps) {
                     <div key={product.id} className="p-4 flex items-center justify-between hover:bg-opacity-50 transition-colors">
                       <div className="flex-1 min-w-0">
                         <h5 className="font-medium text-sm truncate" style={{ color:'var(--text-primary)' }}>{product.nombre}</h5>
-                        <p className="text-xs font-mono" style={{ color:'var(--text-secondary)' }}>{(product.sku||`ID:${product.id}`)} - {product.unidad}</p>
+                        <p className="text-xs font-mono" style={{ color:'var(--text-secondary)' }}>{(product.sku||`ID:${product.id}`)} - {product.unidad}{product.afecto_iva === false ? ' · EXENTO' : ''}</p>
                       </div>
                       <div className="flex items-center gap-4">
                         <span className="font-semibold" style={{ color:'var(--success-text)' }}>${(product.precio_venta_neto||0).toLocaleString('es-CL')}</span>

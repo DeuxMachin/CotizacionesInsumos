@@ -3,6 +3,15 @@ import type { Database } from '@/lib/supabase'
 
 export type ClienteRow = Database['public']['Tables']['clientes']['Row']
 
+// Tipo extendido para incluir la relación con cliente_tipos
+export type ClienteRowWithType = ClienteRow & {
+  cliente_tipos?: {
+    id: number
+    nombre: string
+    descripcion?: string | null
+  } | null
+}
+
 // Tipo simplificado usado previamente en el front. Lo mantenemos para evitar romper componentes.
 export interface Client {
   id: number

@@ -11,7 +11,13 @@ export class ClientesService {
   static async getAll() {
     const { data, error } = await supabase
       .from('clientes')
-      .select('*')
+      .select(`
+        *,
+        cliente_tipos:cliente_tipo_id (
+          id,
+          nombre
+        )
+      `)
       .order('nombre_razon_social')
 
     if (error) throw error
@@ -22,7 +28,13 @@ export class ClientesService {
   static async getById(id: number) {
     const { data, error } = await supabase
       .from('clientes')
-      .select('*')
+      .select(`
+        *,
+        cliente_tipos:cliente_tipo_id (
+          id,
+          nombre
+        )
+      `)
       .eq('id', id)
       .single()
 
@@ -34,7 +46,13 @@ export class ClientesService {
   static async search(searchTerm: string) {
     const { data, error } = await supabase
       .from('clientes')
-      .select('*')
+      .select(`
+        *,
+        cliente_tipos:cliente_tipo_id (
+          id,
+          nombre
+        )
+      `)
       .or(`nombre_razon_social.ilike.%${searchTerm}%,nombre_fantasia.ilike.%${searchTerm}%,rut.ilike.%${searchTerm}%`)
       .order('nombre_razon_social')
 
@@ -72,7 +90,13 @@ export class ClientesService {
       .from('clientes')
       .update(cliente)
       .eq('id', id)
-      .select()
+      .select(`
+        *,
+        cliente_tipos:cliente_tipo_id (
+          id,
+          nombre
+        )
+      `)
       .single()
 
     if (error) throw error
@@ -107,5 +131,16 @@ export class ClientesService {
 
     if (error) throw error
     return data.length > 0
+  }
+
+  // Obtener todos los tipos de cliente
+  static async getClientTypes() {
+    const { data, error } = await supabase
+      .from('cliente_tipos')
+      .select('*')
+      .order('nombre')
+
+    if (error) throw error
+    return data
   }
 }

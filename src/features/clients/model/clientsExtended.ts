@@ -1,4 +1,4 @@
-import type { ClienteRow } from './clients'
+import type { ClienteRowWithType } from './clients'
 
 export type ClientStatus = 'vigente' | 'moroso' | 'inactivo'
 
@@ -37,10 +37,12 @@ export interface ClientExtended {
   pending: number
   partial: number
   overdue: number
+  clientType?: string | null
+  clientTypeId?: number | null
 }
 
 // Adaptador: fila BD -> ClientExtended (proporciona defaults)
-export function mapRowToClientExtended(row: ClienteRow): ClientExtended {
+export function mapRowToClientExtended(row: ClienteRowWithType): ClientExtended {
   // Normalización de estado desde la BD (puede venir en mayúsculas, mixto o null)
   const rawStatus = (row.estado || 'vigente').toString().trim().toLowerCase();
   const allowed: ClientStatus[] = ['vigente','moroso','inactivo'];
@@ -78,7 +80,9 @@ export function mapRowToClientExtended(row: ClienteRow): ClientExtended {
     paid: 0,
     pending: 0,
     partial: 0,
-    overdue: 0
+    overdue: 0,
+    clientType: row.cliente_tipos?.nombre || null,
+    clientTypeId: row.cliente_tipos?.id || null
   }
 }
 

@@ -238,6 +238,7 @@ interface ClientEditForm {
   linea_credito: number;
   descuento_cliente_pct: number;
   forma_pago: string;
+  cliente_tipo_id: number | null;
 }
 
 function ClientDetailPage() {
@@ -251,6 +252,8 @@ function ClientDetailPage() {
   const [error, setError] = React.useState<string | null>(null);
   const [editing, setEditing] = React.useState(false);
   const [saving, setSaving] = React.useState(false);
+  const [clientTypes, setClientTypes] = React.useState<Array<{id: number, nombre: string, descripcion?: string | null}>>([]);
+  const [formErrors, setFormErrors] = React.useState<Partial<Record<keyof ClientEditForm, string>>>({});
 
   // Form state (se inicializa cuando se abre edición)
   const [form, setForm] = React.useState<ClientEditForm>({
@@ -268,11 +271,26 @@ function ClientDetailPage() {
     celular: '',
     linea_credito: 0,
     descuento_cliente_pct: 0,
-    forma_pago: ''
+    forma_pago: '',
+    cliente_tipo_id: null
   });
 
-  const openEdit = () => {
+  const openEdit = async () => {
     if (!client) return;
+    
+    // Cargar tipos de cliente si no están cargados
+    if (clientTypes.length === 0) {
+      try {
+        const res = await fetch('/api/clientes/tipos');
+        if (res.ok) {
+          const body = await res.json();
+          setClientTypes(body.data || []);
+        }
+      } catch (error) {
+        console.error('Error cargando tipos de cliente:', error);
+      }
+    }
+    
     setForm({
       estado: client.status,
       nombre_razon_social: client.razonSocial,
@@ -288,7 +306,8 @@ function ClientDetailPage() {
       celular: client.mobile || '',
       linea_credito: client.creditLine || 0,
       descuento_cliente_pct: client.discount || 0,
-      forma_pago: client.transferInfo || ''
+      forma_pago: client.transferInfo || '',
+      cliente_tipo_id: client.clientTypeId || null
     });
     setEditing(true);
   };
@@ -298,9 +317,38 @@ function ClientDetailPage() {
     setForm(f => ({ ...f, [name]: name === 'linea_credito' || name === 'descuento_cliente_pct' ? Number(value) : value }));
   };
 
+  const validateForm = (): boolean => {
+    const errors: Partial<Record<keyof ClientEditForm, string>> = {};
+
+    if (!form.nombre_razon_social.trim()) {
+      errors.nombre_razon_social = 'La razón social es requerida';
+    }
+
+    if (form.email_pago && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email_pago)) {
+      errors.email_pago = 'El email no tiene un formato válido';
+    }
+
+    if (form.linea_credito < 0) {
+      errors.linea_credito = 'La línea de crédito no puede ser negativa';
+    }
+
+    if (form.descuento_cliente_pct < 0 || form.descuento_cliente_pct > 100) {
+      errors.descuento_cliente_pct = 'El descuento debe estar entre 0 y 100';
+    }
+
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!client) return;
+
+    if (!validateForm()) {
+      Toast.error('Por favor corrige los errores en el formulario');
+      return;
+    }
+
     try {
       setSaving(true);
       const res = await fetch(`/api/clientes/${client.id}`, {
@@ -313,6 +361,7 @@ function ClientDetailPage() {
       // Actualizar estado local del cliente
       setClient(mapRowToClientExtended(body.data));
       setEditing(false);
+      setFormErrors({});
       Toast.success('Actualizado');
     } catch (err: unknown) {
       if (err instanceof Error) {
@@ -585,6 +634,7 @@ function ClientDetailPage() {
                   <InfoRow label="Ciudad" value={client.ciudad || '-'} />
                   <InfoRow label="Comuna" value={client.comuna || '-'} />
                   <InfoRow label="Dirección" value={client.direccion || '-'} />
+                  <InfoRow label="Tipo de Cliente" value={client.clientType || 'No especificado'} />
                 </div>
               </div>
             </InfoCard>
@@ -835,7 +885,10 @@ function ClientDetailPage() {
         onSubmit={handleSubmit} 
         form={form} 
         onChange={handleChange} 
-        saving={saving} 
+        saving={saving}
+        errors={formErrors}
+        clientTypes={clientTypes}
+        onClientTypeChange={(value) => setForm(f => ({ ...f, cliente_tipo_id: value }))}
       />
     </>
   );
@@ -849,70 +902,141 @@ interface EditModalProps {
   form: ClientEditForm;
   onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => void;
   saving: boolean;
+  errors: Partial<Record<keyof ClientEditForm, string>>;
+  clientTypes: Array<{id: number, nombre: string, descripcion?: string | null}>;
+  onClientTypeChange: (value: number | null) => void;
 }
 
-function EditModal({ open, onClose, onSubmit, form, onChange, saving }: EditModalProps) {
+function EditModal({ open, onClose, onSubmit, form, onChange, saving, errors, clientTypes, onClientTypeChange }: EditModalProps) {
   if (!open) return null;
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40">
-      <div className="w-full max-w-3xl max-h-[90vh] overflow-y-auto rounded-lg border shadow-lg" style={{ backgroundColor: 'var(--card-bg)', borderColor: 'var(--border)' }}>
-        <div className="flex items-center justify-between px-4 py-3 border-b" style={{ borderColor: 'var(--border)' }}>
-          <h2 className="font-semibold" style={{ color: 'var(--text-primary)' }}>Editar Cliente</h2>
-          <button onClick={onClose} className="text-sm opacity-70 hover:opacity-100" style={{ color: 'var(--text-secondary)' }}>Cerrar</button>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/50 backdrop-blur-sm">
+      <div className="w-full max-w-4xl max-h-[95vh] sm:max-h-[90vh] overflow-y-auto rounded-xl border shadow-2xl" 
+           style={{ backgroundColor: 'var(--card-bg)', borderColor: 'var(--border)' }}>
+        
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b" 
+             style={{ borderColor: 'var(--border)', backgroundColor: 'var(--bg-secondary)' }}>
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-lg" style={{ backgroundColor: 'var(--accent-bg)' }}>
+              <FiEdit3 className="w-5 h-5" style={{ color: 'var(--accent-text)' }} />
+            </div>
+            <h2 className="text-xl font-semibold" style={{ color: 'var(--text-primary)' }}>
+              Editar Cliente
+            </h2>
+          </div>
+          <button 
+            onClick={onClose} 
+            className="p-2 rounded-lg hover:bg-black/10 transition-colors"
+            style={{ color: 'var(--text-secondary)' }}
+          >
+            <FiX className="w-5 h-5" />
+          </button>
         </div>
-        <form onSubmit={onSubmit} className="p-4 space-y-6">
+
+  <form onSubmit={onSubmit} className="p-4 sm:p-6 space-y-6 sm:space-y-8">
           {/* Estado */}
-          <div>
-            <h3 className="text-sm font-medium mb-2" style={{ color: 'var(--text-primary)' }}>Estado</h3>
-            <select name="estado" value={form.estado} onChange={onChange} className="filter-select">
-              <option value="vigente">Vigente</option>
-              <option value="moroso">Moroso</option>
-              <option value="inactivo">Inactivo</option>
-            </select>
+          <div className="space-y-4">
+            <div className="flex items-center gap-3 pb-2 border-b" style={{ borderColor: 'var(--border)' }}>
+              <FiBriefcase className="w-5 h-5" style={{ color: 'var(--accent-text)' }} />
+              <h3 className="text-lg font-medium" style={{ color: 'var(--text-primary)' }}>Estado del Cliente</h3>
+            </div>
+            <div className="pl-8">
+              <select name="estado" value={form.estado} onChange={onChange} className="filter-select">
+                <option value="vigente">Vigente</option>
+                <option value="moroso">Moroso</option>
+                <option value="inactivo">Inactivo</option>
+              </select>
+            </div>
           </div>
           {/* Información Básica */}
-          <div>
-            <h3 className="text-sm font-medium mb-2" style={{ color: 'var(--text-primary)' }}>Información Básica</h3>
-            <div className="grid md:grid-cols-2 gap-4">
-              <div className="space-y-3">
-                <Field label="Razón Social" name="nombre_razon_social" value={form.nombre_razon_social} onChange={onChange} />
-                <Field label="Nombre Fantasía" name="nombre_fantasia" value={form.nombre_fantasia} onChange={onChange} />
-                <Field label="Giro" name="giro" value={form.giro} onChange={onChange} />
-                <Field label="Dirección" name="direccion" value={form.direccion} onChange={onChange} />
-              </div>
-              <div className="space-y-3">
-                <Field label="Ciudad" name="ciudad" value={form.ciudad} onChange={onChange} />
-                <Field label="Comuna" name="comuna" value={form.comuna} onChange={onChange} />
-                <Field label="Forma de Pago" name="forma_pago" value={form.forma_pago} onChange={onChange} />
+          <div className="space-y-4">
+            <div className="flex items-center gap-3 pb-2 border-b" style={{ borderColor: 'var(--border)' }}>
+              <FiUser className="w-5 h-5" style={{ color: 'var(--accent-text)' }} />
+              <h3 className="text-lg font-medium" style={{ color: 'var(--text-primary)' }}>Información Básica</h3>
+            </div>
+            <div className="pl-8">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
+                <div className="space-y-4">
+                  <Field label="Razón Social" name="nombre_razon_social" value={form.nombre_razon_social} onChange={onChange} required error={errors.nombre_razon_social} />
+                  <Field label="Nombre Fantasía" name="nombre_fantasia" value={form.nombre_fantasia} onChange={onChange} />
+                  <Field label="Giro" name="giro" value={form.giro} onChange={onChange} />
+                  <Field label="Dirección" name="direccion" value={form.direccion} onChange={onChange} />
+                </div>
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>
+                      Tipo de Cliente
+                    </label>
+                    <select 
+                      name="cliente_tipo_id" 
+                      value={form.cliente_tipo_id || ''} 
+                      onChange={(e) => onClientTypeChange(e.target.value ? Number(e.target.value) : null)}
+                      className="w-full p-3 rounded-lg border bg-transparent transition-colors focus:ring-2 focus:ring-blue-500/20"
+                      style={{ borderColor: 'var(--border)', color: 'var(--text-primary)' }}
+                    >
+                      <option value="">Seleccionar tipo...</option>
+                      {clientTypes.map((type) => (
+                        <option key={type.id} value={type.id}>
+                          {type.nombre}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <Field label="Ciudad" name="ciudad" value={form.ciudad} onChange={onChange} />
+                  <Field label="Comuna" name="comuna" value={form.comuna} onChange={onChange} />
+                  <Field label="Forma de Pago" name="forma_pago" value={form.forma_pago} onChange={onChange} />
+                </div>
               </div>
             </div>
           </div>
-          {/* Contacto */}
-            <div>
-              <h3 className="text-sm font-medium mb-2" style={{ color: 'var(--text-primary)' }}>Contacto & Pagos</h3>
-              <div className="grid md:grid-cols-2 gap-4">
-                <div className="space-y-3">
+          {/* Contacto & Pagos */}
+          <div className="space-y-4">
+            <div className="flex items-center gap-3 pb-2 border-b" style={{ borderColor: 'var(--border)' }}>
+              <FiPhone className="w-5 h-5" style={{ color: 'var(--accent-text)' }} />
+              <h3 className="text-lg font-medium" style={{ color: 'var(--text-primary)' }}>Contacto & Pagos</h3>
+            </div>
+            <div className="pl-8">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
+                <div className="space-y-4">
                   <Field label="Contacto Pago" name="contacto_pago" value={form.contacto_pago} onChange={onChange} />
-                  <Field label="Email Pago" name="email_pago" value={form.email_pago} onChange={onChange} />
+                  <Field label="Email Pago" name="email_pago" value={form.email_pago} onChange={onChange} type="email" error={errors.email_pago} />
                   <Field label="Teléfono Pago" name="telefono_pago" value={form.telefono_pago} onChange={onChange} />
                 </div>
-                <div className="space-y-3">
+                <div className="space-y-4">
                   <Field label="Teléfono" name="telefono" value={form.telefono} onChange={onChange} />
                   <Field label="Celular" name="celular" value={form.celular} onChange={onChange} />
                 </div>
               </div>
             </div>
+          </div>
           {/* Crédito */}
-          <div>
-            <h3 className="text-sm font-medium mb-2" style={{ color: 'var(--text-primary)' }}>Crédito</h3>
-            <div className="grid md:grid-cols-2 gap-4">
-              <Field type="number" label="Línea de Crédito" name="linea_credito" value={form.linea_credito} onChange={onChange} />
-              <Field type="number" label="Descuento (%)" name="descuento_cliente_pct" value={form.descuento_cliente_pct} onChange={onChange} />
+          <div className="space-y-4">
+            <div className="flex items-center gap-3 pb-2 border-b" style={{ borderColor: 'var(--border)' }}>
+              <FiCreditCard className="w-5 h-5" style={{ color: 'var(--accent-text)' }} />
+              <h3 className="text-lg font-medium" style={{ color: 'var(--text-primary)' }}>Crédito & Descuentos</h3>
+            </div>
+            <div className="pl-8">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
+                <Field type="number" label="Línea de Crédito" name="linea_credito" value={form.linea_credito} onChange={onChange} error={errors.linea_credito} />
+                <Field type="number" label="Descuento (%)" name="descuento_cliente_pct" value={form.descuento_cliente_pct} onChange={onChange} error={errors.descuento_cliente_pct} />
+              </div>
             </div>
           </div>
-          <div className="flex justify-end gap-3 pt-2">
-            <button type="button" onClick={onClose} className="btn-secondary">Cancelar</button>
-            <button disabled={saving} type="submit" className="btn-primary flex items-center gap-2 disabled:opacity-60">
+          <div className="flex flex-col sm:flex-row justify-end gap-3 sm:gap-4 pt-4 sm:pt-6 border-t" style={{ borderColor: 'var(--border)' }}>
+            <button 
+              type="button" 
+              onClick={onClose} 
+              className="w-full sm:w-auto px-4 sm:px-6 py-2.5 rounded-lg border transition-colors hover:bg-gray-50 dark:hover:bg-gray-800 order-2 sm:order-1"
+              style={{ borderColor: 'var(--border)', color: 'var(--text-secondary)' }}
+            >
+              Cancelar
+            </button>
+            <button 
+              disabled={saving} 
+              type="submit" 
+              className="w-full sm:w-auto px-4 sm:px-6 py-2.5 rounded-lg bg-blue-600 text-white transition-colors hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2 order-1 sm:order-2"
+            >
               {saving && <span className="animate-spin h-4 w-4 border-2 border-white/40 border-t-white rounded-full"></span>}
               Guardar Cambios
             </button>
@@ -929,21 +1053,32 @@ interface FieldProps {
   value: string | number;
   onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => void;
   type?: string;
+  required?: boolean;
+  error?: string;
 }
 
-function Field({ label, name, value, onChange, type = 'text' }: FieldProps) {
+function Field({ label, name, value, onChange, type = 'text', required = false, error }: FieldProps) {
   return (
-    <label className="block text-sm">
-      <span className="block mb-1" style={{ color: 'var(--text-secondary)' }}>{label}</span>
+    <div>
+      <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>
+        {label}
+        {required && <span className="text-red-500 ml-1">*</span>}
+      </label>
       <input
         name={name}
         value={value}
         onChange={onChange}
         type={type}
-        className="w-full p-2 rounded border bg-transparent"
-        style={{ borderColor: 'var(--border)', color: 'var(--text-primary)' }}
+        required={required}
+        className={`w-full p-3 rounded-lg border bg-transparent transition-colors focus:ring-2 focus:ring-blue-500/20 ${
+          error ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20' : 'focus:border-blue-500'
+        }`}
+        style={{ borderColor: error ? '#ef4444' : 'var(--border)', color: 'var(--text-primary)' }}
       />
-    </label>
+      {error && (
+        <p className="mt-1 text-sm text-red-500">{error}</p>
+      )}
+    </div>
   );
 }
 

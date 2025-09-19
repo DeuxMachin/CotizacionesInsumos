@@ -24,10 +24,17 @@ export async function GET(request: NextRequest) {
     // Obtener User Agent
     const userAgent = request.headers.get('user-agent') || 'unknown';
 
-    // Consultar clientes
+    // Consultar clientes con información de tipos
     const { data: clientesData, error: clientesError } = await supabase
       .from('clientes')
-      .select('*')
+      .select(`
+        *,
+        cliente_tipos:cliente_tipo_id (
+          id,
+          nombre,
+          descripcion
+        )
+      `)
       .order('created_at', { ascending: false });
 
     if (clientesError) throw clientesError;
@@ -72,20 +79,23 @@ export async function GET(request: NextRequest) {
         'ID': cliente.id,
         'RUT': cliente.rut,
         'Tipo': cliente.tipo === 'empresa' ? 'Empresa' : 'Persona',
+        'Código Interno': cliente.codigo_interno || '',
         'Razón Social': cliente.nombre_razon_social,
         'Nombre Fantasía': cliente.nombre_fantasia || '',
+        'Tipo de Cliente': cliente.cliente_tipos?.nombre || 'No especificado',
         'Giro': cliente.giro || '',
         'Dirección': cliente.direccion || '',
         'Ciudad': cliente.ciudad || '',
         'Comuna': cliente.comuna || '',
         'Teléfono': cliente.telefono || '',
         'Celular': cliente.celular || '',
+        'Email': cliente.email || '',
         'Email Pago': cliente.email_pago || '',
         'Contacto Pago': cliente.contacto_pago || '',
         'Teléfono Pago': cliente.telefono_pago || '',
         'Forma Pago': cliente.forma_pago || '',
         'Línea Crédito': cliente.linea_credito || 0,
-        'Descuento %': cliente.descuento_porcentaje || 0,
+        'Descuento %': cliente.descuento_cliente_pct || 0,
         'Estado': cliente.estado || 'vigente',
         'Total Cotizaciones': totalCotizaciones,
         'Monto Total Cotizado': totalMonto,
@@ -108,8 +118,13 @@ export async function GET(request: NextRequest) {
         return {
           'ID Cliente': cliente.id,
           'RUT': cliente.rut,
+          'Código Interno': cliente.codigo_interno || '',
           'Razón Social': cliente.nombre_razon_social,
           'Nombre Fantasía': cliente.nombre_fantasia || '',
+          'Tipo de Cliente': cliente.cliente_tipos?.nombre || 'No especificado',
+          'Giro': cliente.giro || '',
+          'Ciudad': cliente.ciudad || '',
+          'Comuna': cliente.comuna || '',
           'Total Cotizaciones': 0,
           'Monto Total Cotizado': 0,
           'Promedio por Cotización': 0,
@@ -155,8 +170,13 @@ export async function GET(request: NextRequest) {
       return {
         'ID Cliente': cliente.id,
         'RUT': cliente.rut,
+        'Código Interno': cliente.codigo_interno || '',
         'Razón Social': cliente.nombre_razon_social,
         'Nombre Fantasía': cliente.nombre_fantasia || '',
+        'Tipo de Cliente': cliente.cliente_tipos?.nombre || 'No especificado',
+        'Giro': cliente.giro || '',
+        'Ciudad': cliente.ciudad || '',
+        'Comuna': cliente.comuna || '',
         'Total Cotizaciones': cotizacionesCliente.length,
         'Monto Total Cotizado': totalMonto,
         'Promedio por Cotización': promedioPorCotizacion,
@@ -213,14 +233,19 @@ export async function GET(request: NextRequest) {
       { wch: 8 }, // ID
       { wch: 12 }, // RUT
       { wch: 8 }, // Tipo
+      { wch: 15 }, // Código Interno
       { wch: 25 }, // Razón Social
       { wch: 20 }, // Nombre Fantasía
+      { wch: 10 }, // Tipo de Cliente ID
+      { wch: 20 }, // Tipo de Cliente
+      { wch: 25 }, // Descripción Tipo Cliente
       { wch: 20 }, // Giro
       { wch: 25 }, // Dirección
       { wch: 15 }, // Ciudad
       { wch: 15 }, // Comuna
       { wch: 15 }, // Teléfono
       { wch: 15 }, // Celular
+      { wch: 25 }, // Email
       { wch: 25 }, // Email Pago
       { wch: 20 }, // Contacto Pago
       { wch: 15 }, // Teléfono Pago
@@ -242,8 +267,13 @@ export async function GET(request: NextRequest) {
     const colWidthsCotizaciones = [
       { wch: 8 }, // ID Cliente
       { wch: 12 }, // RUT
+      { wch: 15 }, // Código Interno
       { wch: 25 }, // Razón Social
       { wch: 20 }, // Nombre Fantasía
+      { wch: 20 }, // Tipo de Cliente
+      { wch: 20 }, // Giro
+      { wch: 15 }, // Ciudad
+      { wch: 15 }, // Comuna
       { wch: 12 }, // Total Cotizaciones
       { wch: 15 }, // Monto Total Cotizado
       { wch: 15 }, // Promedio por Cotización

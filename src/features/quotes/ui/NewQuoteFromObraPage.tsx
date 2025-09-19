@@ -26,10 +26,9 @@ import dynamic from 'next/dynamic';
 const ClientForm = dynamic(() => import('@/features/quotes/ui/components/ClientFormNew').then(m => m.ClientForm), { ssr: false });
 const ProductsForm = dynamic(() => import('@/features/quotes/ui/components/ProductsForm').then(m => m.ProductsForm), { ssr: false });
 const DeliveryForm = dynamic(() => import('@/features/quotes/ui/components/DeliveryForm').then(m => m.DeliveryForm), { ssr: false });
-const CommercialTermsForm = dynamic(() => import('@/features/quotes/ui/components/CommercialTermsForm').then(m => m.CommercialTermsForm), { ssr: false });
 const QuoteSummary = dynamic(() => import('@/features/quotes/ui/components/QuoteSummary').then(m => m.QuoteSummary), { ssr: false });
 
-type FormStep = 'client' | 'products' | 'delivery' | 'terms' | 'summary';
+type FormStep = 'client' | 'products' | 'delivery' | 'summary';
 
 interface FormData {
   cliente: Partial<ClientInfo>;
@@ -41,11 +40,10 @@ interface FormData {
 }
 
 const STEPS = [
-  { id: 'client', label: 'Cliente', icon: FiUser, required: true },
-  { id: 'products', label: 'Productos', icon: FiPackage, required: true },
-  { id: 'delivery', label: 'Despacho', icon: FiTruck, required: false },
-  { id: 'terms', label: 'Condiciones', icon: FiInfo, required: false },
-  { id: 'summary', label: 'Resumen', icon: FiDollarSign, required: true }
+  { id: 'client', label: 'Cliente', description: 'Selecciona o ingresa los datos del cliente', icon: FiUser, required: true },
+  { id: 'products', label: 'Productos', description: 'Agrega los productos y servicios a cotizar', icon: FiPackage, required: true },
+  { id: 'delivery', label: 'Despacho', description: 'Configura la dirección y costo de envío (opcional)', icon: FiTruck, required: false },
+  { id: 'summary', label: 'Resumen', description: 'Revisa y confirma la cotización completa', icon: FiDollarSign, required: true }
 ];
 
 export function NewQuoteFromObraPage() {
@@ -63,7 +61,12 @@ export function NewQuoteFromObraPage() {
     cliente: {},
     items: [],
     despacho: {},
-    condicionesComerciales: {},
+    condicionesComerciales: {
+      validezOferta: 30, // 30 días por defecto
+      formaPago: 'Transferencia bancaria',
+      tiempoEntrega: '7 días hábiles',
+      garantia: '1 año'
+    },
     estado: 'borrador'
   });
   
@@ -166,8 +169,6 @@ export function NewQuoteFromObraPage() {
       case 'products':
         return formData.items.length > 0;
       case 'delivery':
-        return true;
-      case 'terms':
         return true;
       case 'summary':
         return isStepValid('client') && isStepValid('products');
@@ -313,16 +314,6 @@ export function NewQuoteFromObraPage() {
             errors={errors.delivery}
           />
         );
-      case 'terms':
-        return (
-          <CommercialTermsForm
-            data={formData.condicionesComerciales}
-            onChange={(data: Partial<CommercialTerms>) => updateFormData('condicionesComerciales', data)}
-            errors={errors.terms}
-            onNotesChange={(notas: string) => updateFormData('notas', notas)}
-            notes={formData.notas}
-          />
-        );
       case 'summary':
         return (
           <QuoteSummary
@@ -330,6 +321,8 @@ export function NewQuoteFromObraPage() {
             totals={calculateTotals()}
             formatMoney={formatMoney}
             errors={errors.summary}
+            onChangeGlobalDiscountPct={(pct:number)=> setFormData(prev=>({...prev, descuentoGlobalPct:pct}))}
+            onChangeCommercialTerms={(terms: Partial<CommercialTerms>) => updateFormData('condicionesComerciales', terms)}
           />
         );
       default:
@@ -465,6 +458,9 @@ export function NewQuoteFromObraPage() {
                               </span>
                             )}
                           </div>
+                          <p className="text-xs mt-1" style={{ color: 'var(--text-secondary)' }}>
+                            {step.description}
+                          </p>
                           {hasErrors && (
                             <p className="text-xs mt-1" style={{ color: 'var(--danger)' }}>
                               {errors[step.id]?.length} error(es)

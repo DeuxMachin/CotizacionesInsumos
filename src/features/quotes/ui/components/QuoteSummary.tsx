@@ -40,9 +40,10 @@ interface QuoteSummaryProps {
   formatMoney: (amount: number) => string;
   errors?: string[];
   onChangeGlobalDiscountPct?: (pct: number) => void;
+  onChangeCommercialTerms?: (terms: Partial<CommercialTerms>) => void;
 }
 
-export function QuoteSummary({ formData, totals, formatMoney, onChangeGlobalDiscountPct }: QuoteSummaryProps) {
+export function QuoteSummary({ formData, totals, formatMoney, onChangeGlobalDiscountPct, onChangeCommercialTerms }: QuoteSummaryProps) {
   const { cliente, items, despacho, condicionesComerciales, notas } = formData;
   const {
     subtotal,
@@ -306,69 +307,75 @@ export function QuoteSummary({ formData, totals, formatMoney, onChangeGlobalDisc
           )}
 
           {/* Condiciones Comerciales */}
-          {(condicionesComerciales.validezOferta || condicionesComerciales.formaPago || condicionesComerciales.tiempoEntrega || condicionesComerciales.garantia) && (
-            <div 
-              className="rounded-lg p-4 sm:p-6 border"
-              style={{ backgroundColor: 'var(--card-bg)', borderColor: 'var(--border)' }}
-            >
-              <h3 className="text-lg font-semibold mb-4 flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
-                <FiInfo className="w-5 h-5" style={{ color: 'var(--accent-primary)' }} />
-                Condiciones Comerciales
-              </h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {condicionesComerciales.validezOferta && (
-                  <div>
-                    <label className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
-                      Validez de la Oferta
-                    </label>
-                    <p className="mt-1" style={{ color: 'var(--text-primary)' }}>
-                      {condicionesComerciales.validezOferta} días
-                    </p>
-                  </div>
-                )}
-                {condicionesComerciales.formaPago && (
-                  <div>
-                    <label className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
-                      Forma de Pago
-                    </label>
-                    <p className="mt-1" style={{ color: 'var(--text-primary)' }}>
-                      {condicionesComerciales.formaPago}
-                    </p>
-                  </div>
-                )}
-                {condicionesComerciales.tiempoEntrega && (
-                  <div>
-                    <label className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
-                      Tiempo de Entrega
-                    </label>
-                    <p className="mt-1" style={{ color: 'var(--text-primary)' }}>
-                      {condicionesComerciales.tiempoEntrega}
-                    </p>
-                  </div>
-                )}
-                {condicionesComerciales.garantia && (
-                  <div>
-                    <label className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
-                      Garantía
-                    </label>
-                    <p className="mt-1" style={{ color: 'var(--text-primary)' }}>
-                      {condicionesComerciales.garantia}
-                    </p>
-                  </div>
-                )}
+          <div 
+            className="rounded-lg p-4 sm:p-6 border"
+            style={{ backgroundColor: 'var(--card-bg)', borderColor: 'var(--border)' }}
+          >
+            <h3 className="text-lg font-semibold mb-4 flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
+              <FiInfo className="w-5 h-5" style={{ color: 'var(--accent-primary)' }} />
+              Condiciones Comerciales
+            </h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>
+                  Validez de la Oferta
+                </label>
+                <select
+                  value={formData.condicionesComerciales.validezOferta || 30}
+                  onChange={(e) => onChangeCommercialTerms?.({ ...formData.condicionesComerciales, validezOferta: parseInt(e.target.value) })}
+                  className="w-full px-3 py-2 rounded-lg border transition-colors focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  style={{ 
+                    borderColor: 'var(--border-subtle)', 
+                    backgroundColor: 'var(--card-bg)', 
+                    color: 'var(--text-primary)' 
+                  }}
+                >
+                  <option value={15}>15 días</option>
+                  <option value={30}>30 días</option>
+                  <option value={45}>45 días</option>
+                  <option value={60}>60 días</option>
+                  <option value={90}>90 días</option>
+                </select>
               </div>
-              {condicionesComerciales.observaciones && (
-                <div className="mt-4">
-                  <label className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
-                    Observaciones Adicionales
-                  </label>
-                  <p className="mt-1" style={{ color: 'var(--text-primary)' }}>
-                    {condicionesComerciales.observaciones}
-                  </p>
-                </div>
-              )}
+              <div>
+                <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>
+                  Forma de Pago
+                </label>
+                <select
+                  value={formData.condicionesComerciales.formaPago || 'Transferencia bancaria'}
+                  onChange={(e) => onChangeCommercialTerms?.({ ...formData.condicionesComerciales, formaPago: e.target.value })}
+                  className="w-full px-3 py-2 rounded-lg border transition-colors focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  style={{ 
+                    borderColor: 'var(--border-subtle)', 
+                    backgroundColor: 'var(--card-bg)', 
+                    color: 'var(--text-primary)' 
+                  }}
+                >
+                  <option value="Transferencia bancaria">Transferencia bancaria</option>
+                  <option value="Efectivo">Efectivo</option>
+                  <option value="Crédito">Crédito</option>
+                  <option value="Cheque">Cheque</option>
+                </select>
+              </div>
+              <div className="sm:col-span-2">
+                <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>
+                  Información de Despacho
+                </label>
+                <textarea
+                  value={formData.condicionesComerciales.tiempoEntrega || ''}
+                  onChange={(e) => onChangeCommercialTerms?.({ ...formData.condicionesComerciales, tiempoEntrega: e.target.value })}
+                  placeholder="Ej: Despacho inmediato, sujeto a confirmación de stock..."
+                  rows={3}
+                  className="w-full px-3 py-2 rounded-lg border transition-colors focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
+                  style={{ 
+                    borderColor: 'var(--border-subtle)', 
+                    backgroundColor: 'var(--card-bg)', 
+                    color: 'var(--text-primary)' 
+                  }}
+                />
+              </div>
             </div>
-          )}
+          </div>
 
           {/* Notas */}
           {notas && (

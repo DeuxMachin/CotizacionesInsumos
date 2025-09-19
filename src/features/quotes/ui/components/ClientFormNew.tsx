@@ -91,62 +91,77 @@ export function ClientForm({ data, onChange }: ClientFormProps) {
   {/* Autocompletado de clientes existentes */}
   {!isExistingClient && !showManualForm && !data.razonSocial && !data.rut && (
         <div 
-          className="p-4 rounded-lg border"
+          className="p-6 rounded-xl border-2 border-dashed transition-all duration-200 hover:border-solid"
           style={{ 
-            backgroundColor: 'var(--info-bg)', 
-            borderColor: 'var(--border)',
-            borderStyle: 'dashed'
+            backgroundColor: 'var(--bg-secondary)', 
+            borderColor: 'var(--accent-primary)',
+            boxShadow: 'var(--shadow-sm)'
           }}
         >
-          <div className="flex items-center gap-2 mb-3">
-            <FiInfo className="w-5 h-5" style={{ color: 'var(--info-text)' }} />
-            <h3 className="font-medium" style={{ color: 'var(--info-text)' }}>
-              ¿Es un cliente existente?
-            </h3>
+          <div className="flex items-center gap-3 mb-4">
+            <div 
+              className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
+              style={{ backgroundColor: 'var(--accent-bg)' }}
+            >
+              <FiUser className="w-5 h-5" style={{ color: 'var(--accent-text)' }} />
+            </div>
+            <div>
+              <h3 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>
+                ¿Es un cliente existente?
+              </h3>
+              <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+                Busca por RUT o razón social para autocompletar automáticamente
+              </p>
+            </div>
           </div>
-          <p className="text-sm mb-4" style={{ color: 'var(--text-secondary)' }}>
-            Busque por RUT o razón social para autocompletar los datos del cliente
-          </p>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>
-                Buscar por RUT
+            <div className="space-y-2">
+              <label className="block text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
+                🔍 Buscar por RUT
               </label>
-              <ClientAutocomplete
-                value={rutSearch}
-                field="rut"
-                placeholder="Ej: 12.345.678-9"
-                onClientSelect={handleClientSelect}
-                onValueChange={setRutSearch}
-              />
+              <div className="relative">
+                <ClientAutocomplete
+                  value={rutSearch}
+                  field="rut"
+                  placeholder="Ej: 12.345.678-9"
+                  onClientSelect={handleClientSelect}
+                  onValueChange={setRutSearch}
+                />
+              </div>
             </div>
-            <div>
-              <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>
-                Buscar por Razón Social
+            <div className="space-y-2">
+              <label className="block text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
+                🔍 Buscar por Razón Social
               </label>
-              <ClientAutocomplete
-                value={razonSocialSearch}
-                field="razonSocial"
-                placeholder="Ej: Constructora ABC Ltda"
-                onClientSelect={handleClientSelect}
-                onValueChange={setRazonSocialSearch}
-              />
+              <div className="relative">
+                <ClientAutocomplete
+                  value={razonSocialSearch}
+                  field="razonSocial"
+                  placeholder="Ej: Constructora ABC Ltda"
+                  onClientSelect={handleClientSelect}
+                  onValueChange={setRazonSocialSearch}
+                />
+              </div>
             </div>
           </div>
           
-          <div className="mt-4 pt-4 border-t flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3" style={{ borderColor: 'var(--border)' }}>
-            <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-              ¿No encuentras al cliente?
-            </span>
+          <div className="mt-6 pt-4 border-t flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3" style={{ borderColor: 'var(--border-subtle)' }}>
+            <div className="flex items-center gap-2">
+              <FiInfo className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />
+              <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+                ¿No encuentras al cliente en la base de datos?
+              </span>
+            </div>
             <button
               type="button"
               onClick={handleManualInput}
-              className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border text-sm"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border transition-all duration-200 hover:shadow-md"
               style={{ 
-                backgroundColor: 'var(--bg-secondary)', 
+                backgroundColor: 'var(--card-bg)', 
                 color: 'var(--text-primary)',
-                borderColor: 'var(--border)'
+                borderColor: 'var(--border)',
+                boxShadow: 'var(--shadow-sm)'
               }}
             >
               <FiEdit3 className="w-4 h-4" />
@@ -159,55 +174,74 @@ export function ClientForm({ data, onChange }: ClientFormProps) {
       {/* Mostrar datos del cliente seleccionado */}
   {isExistingClient && data.razonSocial && (
         <div 
-          className="p-4 rounded-lg border"
+          className="p-4 rounded-lg border-2"
           style={{ 
             backgroundColor: 'var(--success-bg)', 
-            borderColor: 'var(--border)'
+            borderColor: 'var(--success)',
+            boxShadow: 'var(--shadow-sm)'
           }}
         >
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <FiUser className="w-5 h-5" style={{ color: 'var(--success-text)' }} />
-              <h3 className="font-medium" style={{ color: 'var(--success-text)' }}>
-                Cliente seleccionado: {data.razonSocial}
-              </h3>
+            <div className="flex items-center gap-3">
+              <div 
+                className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
+                style={{ backgroundColor: 'var(--success)' }}
+              >
+                <FiUser className="w-4 h-4 text-white" />
+              </div>
+              <div>
+                <h3 className="font-semibold" style={{ color: 'var(--success-text)' }}>
+                  ✓ Cliente seleccionado: {data.razonSocial}
+                </h3>
+                <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+                  Los datos han sido autocompletados automáticamente
+                </p>
+              </div>
             </div>
             <button
               type="button"
       onClick={handleChangeClient}
-      className="text-sm underline"
-      style={{ color: 'var(--success-text)' }}
+      className="text-sm underline hover:no-underline transition-all duration-200 px-3 py-1 rounded"
+      style={{ color: 'var(--success-text)', backgroundColor: 'transparent' }}
             >
               Cambiar cliente
             </button>
           </div>
-          <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>
-            Los datos han sido autocompletados. Puede modificarlos si es necesario.
-          </p>
         </div>
       )}
 
       {/* Formulario principal */}
   {(isExistingClient || showManualForm || data.razonSocial || data.rut) && (
        <div>
-         {/* Botón para volver a la búsqueda automática cuando se está en modo manual */}
+         {/* Indicador de modo manual */}
          {showManualForm && !isExistingClient && (
-           <div className="mb-4 p-4 rounded-lg border" style={{ borderColor: 'var(--border)', backgroundColor: 'var(--bg-secondary)' }}>
-             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-               <div className="flex items-center gap-2">
-                 <FiUser className="w-5 h-5" style={{ color: 'var(--text-primary)' }} />
-                 <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
-                   Ingresando datos manualmente
-                 </span>
+           <div className="mb-6 p-4 rounded-lg border-2" style={{ borderColor: 'var(--warning)', backgroundColor: 'var(--warning-bg)', boxShadow: 'var(--shadow-sm)' }}>
+             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+               <div className="flex items-center gap-3">
+                 <div 
+                   className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
+                   style={{ backgroundColor: 'var(--warning)' }}
+                 >
+                   <FiEdit3 className="w-4 h-4 text-white" />
+                 </div>
+                 <div>
+                   <span className="text-sm font-semibold" style={{ color: 'var(--warning-text)' }}>
+                     ✏️ Ingresando datos manualmente
+                   </span>
+                   <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+                     Completa todos los campos requeridos
+                   </p>
+                 </div>
                </div>
                <button
                  type="button"
                  onClick={handleChangeClient}
-                 className="inline-flex items-center justify-center gap-2 px-3 py-2 rounded-lg border text-sm"
+                 className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg border text-sm transition-all duration-200 hover:shadow-md"
                  style={{
-                   backgroundColor: 'var(--accent-bg)',
-                   color: 'var(--accent-text)',
-                   borderColor: 'var(--accent-primary)'
+                   backgroundColor: 'var(--card-bg)',
+                   color: 'var(--text-primary)',
+                   borderColor: 'var(--border)',
+                   boxShadow: 'var(--shadow-sm)'
                  }}
                >
                  <FiUser className="w-4 h-4" />

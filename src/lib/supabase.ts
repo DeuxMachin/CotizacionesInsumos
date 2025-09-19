@@ -47,6 +47,40 @@ export type Database = {
           password_updated_at?: string | null
         }
       }
+      bodegas: {
+        Row: {
+          id: number
+          nombre: string
+          ubicacion: string | null
+        }
+        Insert: {
+          id?: number
+          nombre: string
+          ubicacion?: string | null
+        }
+        Update: {
+          id?: number
+          nombre?: string
+          ubicacion?: string | null
+        }
+      }
+      categorias_productos: {
+        Row: {
+          id: number
+          nombre: string
+          descripcion: string | null
+        }
+        Insert: {
+          id?: number
+          nombre: string
+          descripcion?: string | null
+        }
+        Update: {
+          id?: number
+          nombre?: string
+          descripcion?: string | null
+        }
+      }
       clientes: {
         Row: {
           id: number
@@ -69,6 +103,7 @@ export type Database = {
           descuento_cliente_pct: number
           estado: string
           created_at: string
+          cliente_tipo_id: number | null
         }
         Insert: {
           id?: number
@@ -91,6 +126,7 @@ export type Database = {
           descuento_cliente_pct?: number
           estado?: string
           created_at?: string
+          cliente_tipo_id?: number | null
         }
         Update: {
           id?: number
@@ -113,6 +149,7 @@ export type Database = {
           descuento_cliente_pct?: number
           estado?: string
           created_at?: string
+          cliente_tipo_id?: number | null
         }
       }
       cotizaciones: {
@@ -411,8 +448,8 @@ export type Database = {
           vendedor_id: string | null
           tipo_obra_id: number | null
           tamano_obra_id: number | null
-          estado?: string | null
-          etapa_actual?: string | null
+          estado: string
+          etapa_actual: string | null
           descripcion?: string | null
           fecha_inicio?: string | null
           fecha_estimada_fin?: string | null
@@ -434,7 +471,7 @@ export type Database = {
           vendedor_id?: string | null
           tipo_obra_id?: number | null
           tamano_obra_id?: number | null
-          estado?: string | null
+          estado?: string
           etapa_actual?: string | null
           descripcion?: string | null
           fecha_inicio?: string | null
@@ -457,7 +494,7 @@ export type Database = {
           vendedor_id?: string | null
           tipo_obra_id?: number | null
           tamano_obra_id?: number | null
-          estado?: string | null
+          estado?: string
           etapa_actual?: string | null
           descripcion?: string | null
           fecha_inicio?: string | null

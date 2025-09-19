@@ -65,8 +65,8 @@ const nextConfig = {
     ];
   },
 
-  // Configuración de output para deployment
-  output: 'standalone',
+  // Configuración de output para deployment - solo en producción para evitar problemas de symlinks en Windows
+  ...(process.env.NODE_ENV === 'production' && process.env.DOCKER_BUILD === 'true' ? { output: 'standalone' } : {}),
 };
 
 export default nextConfig;
