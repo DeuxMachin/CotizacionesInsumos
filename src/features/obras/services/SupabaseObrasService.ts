@@ -268,6 +268,64 @@ export class SupabaseObrasService implements IObrasService {
     return true;
   }
 
+  async crearObraDesdeTarget(
+    obra: Omit<Obra, "id" | "fechaCreacion" | "fechaActualizacion" | "fechaUltimoContacto">,
+    userId: string | undefined,
+    targetId: number
+  ): Promise<number> {
+    const insert: Database["public"]["Tables"]["obras"]["Insert"] = {
+      nombre: obra.nombreEmpresa,
+      direccion: obra.direccionObra,
+      comuna: obra.comuna ?? null,
+      ciudad: obra.ciudad ?? null,
+      cliente_id: obra.clienteId ?? null,
+      vendedor_id: userId ?? null,
+      tipo_obra_id: obra.tipoObraId ?? null,
+      tamano_obra_id: obra.tamanoObraId ?? null,
+      estado: obra.estado,
+      etapa_actual: obra.etapaActual,
+      descripcion: obra.descripcion ?? null,
+      fecha_inicio: obra.fechaInicio?.toISOString().slice(0, 10) ?? null,
+      fecha_estimada_fin: obra.fechaEstimadaFin ? obra.fechaEstimadaFin.toISOString().slice(0, 10) : null,
+      valor_estimado: obra.valorEstimado ?? null,
+      material_vendido: obra.materialVendido ?? 0,
+      proximo_seguimiento: obra.proximoSeguimiento ? obra.proximoSeguimiento.toISOString().slice(0, 10) : null,
+      notas: obra.notas ?? null,
+    };
+
+    let insertResult = await supabase.from("obras").insert(insert).select('id');
+    if (insertResult.error) {
+      const msg = insertResult.error.message || '';
+      if (msg.includes('obras_vendedor_id_fkey') || (msg.toLowerCase().includes('foreign key') && msg.toLowerCase().includes('vendedor'))) {
+        const { vendedor_id: _omit, ...rest } = insert;
+        insertResult = await supabase.from("obras").insert({ ...rest, vendedor_id: null }).select('id');
+      }
+    }
+    if (insertResult.error) throw insertResult.error;
+    const newId = Array.isArray(insertResult.data) ? insertResult.data[0]?.id : (insertResult.data as { id?: number } | null)?.id;
+    if (!newId) throw new Error('No se pudo obtener el ID de la nueva obra');
+
+  // Set vínculo con target en la obra (si el tipo generado no conoce target_id, hacemos cast)
+  await supabase.from('obras').update({ target_id: targetId } as any).eq('id', newId);
+
+  // contacto principal si viene
+    if (obra.constructora?.contactoPrincipal?.nombre) {
+      const cp = obra.constructora.contactoPrincipal;
+      const contacto: Database['public']['Tables']['obra_contactos']['Insert'] = {
+        obra_id: newId,
+        nombre: cp.nombre,
+        cargo: cp.cargo,
+        telefono: cp.telefono || null,
+        email: cp.email || null,
+        es_principal: true,
+      };
+      const { error: cErr } = await supabase.from('obra_contactos').insert(contacto);
+      if (cErr) throw cErr;
+    }
+
+    return newId;
+  }
+
   async actualizarObra(obra: Obra): Promise<boolean> {
   const update: Database["public"]["Tables"]["obras"]["Update"] = {
       nombre: obra.nombreEmpresa,

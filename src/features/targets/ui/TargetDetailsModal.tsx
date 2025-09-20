@@ -1,6 +1,8 @@
 "use client";
 
 import { Modal } from "@/shared/ui/Modal";
+import { useState } from "react";
+import { ConvertToObraPanel } from "./ConvertToObraPanel";
 import { FiMapPin, FiPhone, FiMail, FiUser, FiCalendar, FiClock, FiMap, FiExternalLink, FiEdit3, FiMessageSquare, FiHome, FiFlag } from "react-icons/fi";
 import type { PosibleTarget } from "../model/types";
 
@@ -11,6 +13,7 @@ interface TargetDetailsModalProps {
 }
 
 export function TargetDetailsModal({ target, isOpen, onClose }: TargetDetailsModalProps) {
+  const [showConvertPanel, setShowConvertPanel] = useState(false);
   const getEstadoClass = (estado: string) => {
     switch (estado) {
       case 'pendiente': return 'badge-base badge-pendiente';
@@ -386,8 +389,30 @@ export function TargetDetailsModal({ target, isOpen, onClose }: TargetDetailsMod
               <FiPhone className="w-3 h-3" />
               Contactar
             </button>
+            {target.estado !== 'cerrado' && (
+              <button
+                className="btn-primary text-sm flex items-center gap-1 px-3 py-2"
+                onClick={() => setShowConvertPanel(true)}
+                title="Confirmar relación y convertir en Obra"
+              >
+                <FiHome className="w-3 h-3" />
+                Convertir a Obra
+              </button>
+            )}
           </div>
         </div>
+
+        {/* Placeholder del panel de conversión (se implementará en siguiente paso) */}
+        {showConvertPanel && (
+          <div className="p-4 sm:p-6" style={{ borderTop: '1px solid var(--border)', backgroundColor: 'var(--bg-secondary)' }}>
+            <ConvertToObraPanel
+              targetId={target.id}
+              defaultDireccion={{ direccion: target.ubicacion.direccion, comuna: target.ubicacion.comuna ?? undefined, ciudad: target.ubicacion.ciudad ?? undefined }}
+              onClose={() => setShowConvertPanel(false)}
+              onConverted={() => setShowConvertPanel(false)}
+            />
+          </div>
+        )}
       </div>
     </Modal>
   );

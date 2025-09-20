@@ -74,6 +74,7 @@ export interface UpdateTargetData {
   ciudad?: string;
   region?: string;
   comuna?: string;
+  clienteId?: number;
   contactoNombre?: string;
   contactoTelefono?: string;
   contactoEmail?: string;

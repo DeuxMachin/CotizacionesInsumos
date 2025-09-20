@@ -278,8 +278,9 @@ export const useTargets = create<TargetsStore>((set, get) => ({
       if (data.ciudad !== undefined) payload.ciudad = data.ciudad;
       if (data.region !== undefined) payload.region = data.region;
       if (data.comuna !== undefined) payload.comuna = data.comuna;
-      if (data.prioridad) payload.prioridad = data.prioridad;
+  if (data.prioridad) payload.prioridad = data.prioridad;
       if (data.estado) payload.estado = data.estado;
+  if (data.clienteId !== undefined) (payload as any).cliente_id = data.clienteId; // align with DB column
 
       if (Object.keys(payload).length) {
         const { error: upError } = await supabase

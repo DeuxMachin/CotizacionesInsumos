@@ -34,6 +34,15 @@ export interface IObrasService {
   crearObra(obra: Omit<Obra, 'id' | 'fechaCreacion' | 'fechaActualizacion' | 'fechaUltimoContacto'>, userId?: string): Promise<boolean>;
 
   /**
+   * Crea una obra vinculada a un target y retorna el ID de la nueva obra
+   */
+  crearObraDesdeTarget(
+    obra: Omit<Obra, 'id' | 'fechaCreacion' | 'fechaActualizacion' | 'fechaUltimoContacto'>,
+    userId: string | undefined,
+    targetId: number
+  ): Promise<number>;
+
+  /**
    * Actualiza una obra existente
    */
   actualizarObra(obra: Obra): Promise<boolean>;
