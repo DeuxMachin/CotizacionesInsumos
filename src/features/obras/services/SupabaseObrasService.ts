@@ -306,7 +306,8 @@ export class SupabaseObrasService implements IObrasService {
     if (!newId) throw new Error('No se pudo obtener el ID de la nueva obra');
 
   // Set vínculo con target en la obra (si el tipo generado no conoce target_id, hacemos cast)
-  await supabase.from('obras').update({ target_id: targetId } as any).eq('id', newId);
+  const updatePayload: Database['public']['Tables']['obras']['Update'] = { target_id: targetId } as Database['public']['Tables']['obras']['Update'];
+  await supabase.from('obras').update(updatePayload).eq('id', newId);
 
   // contacto principal si viene
     if (obra.constructora?.contactoPrincipal?.nombre) {

@@ -111,16 +111,19 @@ export default function CreateTargetModal({ isOpen, onClose }: CreateTargetModal
       const res = await fetch(`/api/geocoding?action=search&q=${encodeURIComponent(query)}`, { signal: controller.signal });
       if (!res.ok) throw new Error('Fallo en búsqueda');
       const data = await res.json();
-      const suggestions: LocationSuggestion[] = (data.results || []).map((r: any) => ({
-        place_id: r.place_id,
-        description: r.description,
-        structured_formatting: r.structured_formatting,
+      type RawGeoResult = { place_id?: string; description?: string; structured_formatting?: { main_text?: string; secondary_text?: string } };
+      const suggestions: LocationSuggestion[] = (data.results || []).map((r: RawGeoResult) => ({
+        place_id: r.place_id || '',
+        description: r.description || '',
+        structured_formatting: r.structured_formatting as { main_text: string; secondary_text: string } || { main_text: r.description || '', secondary_text: '' },
       }));
   setLocationSuggestions(suggestions);
   setShowSuggestions(true);
-    } catch (e) {
-      if ((e as any)?.name !== 'AbortError') {
-        console.error('searchLocation error', e);
+    } catch (e: unknown) {
+      if (e instanceof Error) {
+        if (e.name !== 'AbortError') console.error('searchLocation error', e);
+      } else {
+        console.error('searchLocation error (unknown):', e);
       }
       setLocationSuggestions([]);
     } finally {
@@ -159,8 +162,9 @@ export default function CreateTargetModal({ isOpen, onClose }: CreateTargetModal
     try {
       const res = await fetch(`/api/geocoding?action=search&q=${encodeURIComponent(suggestion.description)}`);
       if (!res.ok) throw new Error('Fallo al obtener detalles');
-      const data = await res.json();
-      const match = (data.results || []).find((r: any) => r.description === suggestion.description) || (data.results || [])[0];
+  const data = await res.json();
+  type RawGeoResult = { lat?: string | number; lon?: string | number; lng?: string | number; description?: string; address?: Record<string, unknown>; place_id?: string };
+  const match = (data.results || []).find((r: RawGeoResult) => r.description === suggestion.description) || (data.results || [])[0] as RawGeoResult;
       if (!match) throw new Error('Sin resultados');
 
       const details: LocationDetails = {
@@ -170,9 +174,9 @@ export default function CreateTargetModal({ isOpen, onClose }: CreateTargetModal
         address_components: (match.address && Object.keys(match.address).length)
           ? [
               // We'll normalize at reverse step; here we at least derive locality/region if present
-              ...(match.address.road ? [{ long_name: match.address.road, short_name: match.address.road, types: ['route'] as string[] }] : []),
-              ...(match.address.city ? [{ long_name: match.address.city, short_name: match.address.city, types: ['locality'] as string[] }] : []),
-              ...(match.address.state ? [{ long_name: match.address.state, short_name: match.address.state, types: ['administrative_area_level_1'] as string[] }] : []),
+              ...(typeof match.address['road'] === 'string' ? [{ long_name: match.address['road'] as string, short_name: match.address['road'] as string, types: ['route'] as string[] }] : []),
+              ...(typeof match.address['city'] === 'string' ? [{ long_name: match.address['city'] as string, short_name: match.address['city'] as string, types: ['locality'] as string[] }] : []),
+              ...(typeof match.address['state'] === 'string' ? [{ long_name: match.address['state'] as string, short_name: match.address['state'] as string, types: ['administrative_area_level_1'] as string[] }] : []),
             ]
           : [],
       };
@@ -222,8 +226,8 @@ export default function CreateTargetModal({ isOpen, onClose }: CreateTargetModal
             direccion: locationDetails.formatted_address,
             lat: latitude,
             lng: longitude,
-            ciudad: data.ciudad || locationDetails.address_components.find((c:any) => c.types.includes('locality'))?.long_name || '',
-            region: data.region || locationDetails.address_components.find((c:any) => c.types.includes('administrative_area_level_1'))?.long_name || '',
+            ciudad: data.ciudad || locationDetails.address_components.find((c) => c.types.includes('locality'))?.long_name || '',
+            region: data.region || locationDetails.address_components.find((c) => c.types.includes('administrative_area_level_1'))?.long_name || '',
             comuna: data.comuna || ''
           }));
         } catch (e) {

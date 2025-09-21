@@ -280,7 +280,10 @@ export const useTargets = create<TargetsStore>((set, get) => ({
       if (data.comuna !== undefined) payload.comuna = data.comuna;
   if (data.prioridad) payload.prioridad = data.prioridad;
       if (data.estado) payload.estado = data.estado;
-  if (data.clienteId !== undefined) (payload as any).cliente_id = data.clienteId; // align with DB column
+  if (data.clienteId !== undefined) {
+    // Database update type uses snake_case for some columns; assign via a narrowed cast to avoid `any`
+    (payload as unknown as { cliente_id?: number }).cliente_id = data.clienteId; // align with DB column
+  }
 
       if (Object.keys(payload).length) {
         const { error: upError } = await supabase

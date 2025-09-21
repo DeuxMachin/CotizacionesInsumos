@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { 
   FiTool, 
   FiHome, 
@@ -20,7 +21,8 @@ import {
   FiTrendingUp,
   FiChevronLeft,
   FiChevronRight,
-  FiX
+  FiX,
+  FiInfo
 } from "react-icons/fi";
 import { useObras } from "../model/useObras";
 import type { 
@@ -66,6 +68,7 @@ export function ObrasPage() {
   const [showFilters, setShowFilters] = useState(false);
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [showHelp, setShowHelp] = useState(false);
 
   // Aplicar filtros
   useMemo(() => {
@@ -222,6 +225,15 @@ export function ObrasPage() {
           </div>
           <div className="flex items-center gap-3">
             <button
+              onClick={() => setShowHelp(v => !v)}
+              className="btn-secondary flex items-center gap-2"
+              aria-expanded={showHelp}
+              aria-controls="obras-help-panel"
+            >
+              <FiInfo className="w-4 h-4" />
+              {showHelp ? 'Ocultar guía' : 'Ver guía'}
+            </button>
+            <button
               onClick={() => setShowFilters(!showFilters)}
               className="btn-secondary flex items-center gap-2 relative"
             >
@@ -246,6 +258,33 @@ export function ObrasPage() {
           </div>
         </div>
 
+        {/* Panel de ayuda para usuarios poco familiarizados */}
+        {showHelp && (
+          <div id="obras-help-panel" className="p-4 rounded-lg" style={{ backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border)' }}>
+            <p className="mb-2" style={{ color: 'var(--text-primary)' }}><strong>¿Qué puedo hacer aquí?</strong></p>
+            <ul className="list-disc pl-5 space-y-1 text-sm" style={{ color: 'var(--text-secondary)' }}>
+              <li>Buscar obras por nombre, constructora o dirección usando la barra de búsqueda.</li>
+              <li>Usar <em>Filtros</em> para ver solo obras en cierto estado o etapa.</li>
+              <li>Crear una nueva obra con el botón <em>Nueva Obra</em>.</li>
+              <li>Haz clic en una obra para ver sus detalles.</li>
+            </ul>
+            <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div className="p-3 rounded" style={{ backgroundColor: 'var(--card-bg)', border: '1px solid var(--border)' }}>
+                <p className="text-sm font-semibold mb-1" style={{ color: 'var(--text-primary)' }}>Estados</p>
+                <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+                  Planificación, Activa, Pausada, Finalizada, Cancelada, Sin contacto.
+                </p>
+              </div>
+              <div className="p-3 rounded" style={{ backgroundColor: 'var(--card-bg)', border: '1px solid var(--border)' }}>
+                <p className="text-sm font-semibold mb-1" style={{ color: 'var(--text-primary)' }}>Etapas</p>
+                <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+                  Fundación, Estructura, Albañilería, Instalaciones, Terminaciones, Entrega.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Búsqueda */}
         <div className="flex flex-col sm:flex-row gap-4">
           <div className="flex-1 relative">
@@ -265,11 +304,14 @@ export function ObrasPage() {
                 color: 'var(--text-primary)'
               }}
             />
+            <div className="mt-1 text-xs" style={{ color: 'var(--text-muted)' }}>
+              Consejo: escribe al menos 3 letras para mejores resultados.
+            </div>
           </div>
           <div className="flex items-center gap-2">
             <button
               onClick={() => setViewMode('grid')}
-              className={`p-2 rounded-md transition-colors ${viewMode === 'grid' ? 'bg-orange-500 text-white' : ''}`}
+              className={`px-3 py-2 rounded-md transition-colors flex items-center gap-2 ${viewMode === 'grid' ? 'bg-orange-500 text-white' : ''}`}
               style={viewMode !== 'grid' ? { color: 'var(--text-secondary)' } : {}}
             >
               <div className="w-4 h-4 grid grid-cols-2 gap-0.5">
@@ -278,10 +320,11 @@ export function ObrasPage() {
                 <div className="bg-current rounded-sm"></div>
                 <div className="bg-current rounded-sm"></div>
               </div>
+              <span className="text-sm">Tarjetas</span>
             </button>
             <button
               onClick={() => setViewMode('table')}
-              className={`p-2 rounded-md transition-colors ${viewMode === 'table' ? 'bg-orange-500 text-white' : ''}`}
+              className={`px-3 py-2 rounded-md transition-colors flex items-center gap-2 ${viewMode === 'table' ? 'bg-orange-500 text-white' : ''}`}
               style={viewMode !== 'table' ? { color: 'var(--text-secondary)' } : {}}
             >
               <div className="w-4 h-4 flex flex-col gap-0.5">
@@ -289,6 +332,7 @@ export function ObrasPage() {
                 <div className="bg-current h-1 rounded-sm"></div>
                 <div className="bg-current h-1 rounded-sm"></div>
               </div>
+              <span className="text-sm">Tabla</span>
             </button>
           </div>
         </div>
@@ -615,15 +659,24 @@ export function ObrasPage() {
 // Componente para tarjeta individual de obra
 function ObraCard({ obra, getEstadoColor, getEtapaColor, formatMoney, onEliminar, onVerDetalle }: ObraCardProps) {
   const estadoColor = getEstadoColor(obra.estado);
-  
+  const router = useRouter();
+
+  const goToDetalle = () => router.push(`/dashboard/obras/${obra.id}`);
+  const onKey = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      goToDetalle();
+    }
+  };
+
   return (
     <div
-      onClick={() => onVerDetalle(obra)}
-      className="rounded-xl shadow-sm hover:shadow-md transition-all cursor-pointer"
-      style={{ 
-        backgroundColor: 'var(--card-bg)',
-        border: '1px solid var(--border)'
-      }}
+      role="link"
+      tabIndex={0}
+      onClick={goToDetalle}
+      onKeyDown={onKey}
+      className="block rounded-xl shadow-sm hover:shadow-md transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 cursor-pointer"
+      style={{ backgroundColor: 'var(--card-bg)', border: '1px solid var(--border)' }}
     >
       <div className="p-6">
         {/* Header con título y estado */}
@@ -720,41 +773,43 @@ function ObraCard({ obra, getEstadoColor, getEtapaColor, formatMoney, onEliminar
           </div>
         </div>
 
-        {/* Acciones */}
+        {/* Acciones (card - compacto y elegante) */}
         <div className="flex items-center justify-between mt-4 pt-4 border-t" style={{ borderColor: 'var(--border)' }}>
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-2">
             <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onVerDetalle(obra);
-              }}
-              className="p-1 rounded transition-colors"
+              type="button"
+              onClick={(e) => { e.stopPropagation(); goToDetalle(); }}
+              className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm transition-colors"
               style={{ color: 'var(--text-secondary)' }}
-              onMouseEnter={(e) => e.currentTarget.style.color = 'var(--accent-primary)'}
-              onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-secondary)'}
               title="Ver detalles"
             >
               <FiEye className="w-4 h-4" />
+              <span className="hidden sm:inline">Ver</span>
             </button>
+
             <button
-              onClick={(e) => e.stopPropagation()}
-              className="p-1 rounded transition-colors"
-              style={{ color: 'var(--text-secondary)' }}
-              onMouseEnter={(e) => e.currentTarget.style.color = 'var(--accent-primary)'}
-              onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-secondary)'}
+              onClick={(e) => { e.stopPropagation(); router.push(`/dashboard/obras/${obra.id}?edit=1`); }}
+              className="inline-flex items-center gap-2 px-2 py-1.5 rounded-full text-sm border"
+              style={{ backgroundColor: 'transparent', borderColor: 'var(--border)', color: 'var(--text-primary)' }}
               title="Editar"
             >
               <FiEdit3 className="w-4 h-4" />
+              <span className="hidden sm:inline">Editar</span>
             </button>
+
             <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onEliminar(obra.id);
-              }}
-              className="p-1 rounded transition-colors"
-              style={{ color: 'var(--text-secondary)' }}
-              onMouseEnter={(e) => e.currentTarget.style.color = 'var(--danger)'}
-              onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-secondary)'}
+              onClick={(e) => { e.stopPropagation(); router.push(`/dashboard/cotizaciones/nueva-obra?obraId=${obra.id}`); }}
+              className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-semibold text-white"
+              style={{ backgroundColor: 'var(--accent-primary)' }}
+              title="Crear cotización para esta obra"
+            >
+              <FiDollarSign className="w-4 h-4" />
+              <span className="hidden sm:inline">Cotizar</span>
+            </button>
+
+            <button
+              onClick={(e) => { e.stopPropagation(); onEliminar(obra.id); }}
+              className="inline-flex items-center gap-2 px-2 py-1.5 rounded-full text-sm text-[var(--text-secondary)] hover:text-[var(--danger)]"
               title="Eliminar"
             >
               <FiTrash2 className="w-4 h-4" />
@@ -777,7 +832,7 @@ function ObrasTable({ obras, getEstadoColor, formatMoney, onEliminar, onVerDetal
       style={{ backgroundColor: 'var(--card-bg)', border: '1px solid var(--border)' }}
     >
       <div className="overflow-x-auto w-full" style={{ WebkitOverflowScrolling: 'touch' }}>
-        <table className="w-full min-w-[900px]">
+        <table className="w-full min-w-[900px]" aria-label="Tabla de obras con opciones de ver, editar y eliminar">
           <thead style={{ backgroundColor: 'var(--bg-secondary)' }}>
             <tr>
               <th className="px-4 py-3 text-left text-sm font-medium w-1/5" style={{ color: 'var(--text-secondary)' }}>
@@ -815,14 +870,14 @@ function ObrasTable({ obras, getEstadoColor, formatMoney, onEliminar, onVerDetal
                   onMouseLeave={(e) => e.currentTarget.style.backgroundColor = ''}
                 >
                   <td className="px-4 py-4">
-                    <div>
+                    <Link href={`/dashboard/obras/${obra.id}`} prefetch className="block">
                       <div className="font-medium" style={{ color: 'var(--text-primary)' }}>
                         {obra.nombreEmpresa}
                       </div>
                       <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>
                         {obra.constructora.nombre}
                       </div>
-                    </div>
+                    </Link>
                   </td>
                   <td className="px-4 py-4">
                     <span 
@@ -854,28 +909,29 @@ function ObrasTable({ obras, getEstadoColor, formatMoney, onEliminar, onVerDetal
                   </td>
                   <td className="px-4 py-4">
                     <div className="flex items-center justify-center gap-1">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onVerDetalle(obra);
-                        }}
-                        className="p-1 rounded transition-colors"
-                        style={{ color: 'var(--text-secondary)' }}
-                        onMouseEnter={(e) => e.currentTarget.style.color = 'var(--accent-primary)'}
-                        onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-secondary)'}
-                        title="Ver detalles"
-                      >
+                      <Link href={`/dashboard/obras/${obra.id}`} prefetch className="px-2 py-1 rounded transition-colors flex items-center gap-1" style={{ color: 'var(--text-secondary)' }} title="Ver detalles">
                         <FiEye className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={(e) => e.stopPropagation()}
-                        className="p-1 rounded transition-colors"
-                        style={{ color: 'var(--text-secondary)' }}
-                        onMouseEnter={(e) => e.currentTarget.style.color = 'var(--accent-primary)'}
-                        onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-secondary)'}
+                        <span className="text-xs">Ver</span>
+                      </Link>
+                      <Link
+                        href={`/dashboard/obras/${obra.id}?edit=1`}
+                        prefetch
+                        className="px-2 py-1 min-h-[36px] rounded-md transition-colors flex items-center gap-1 text-xs"
+                        style={{ backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)', border: '1px solid var(--border)' }}
                         title="Editar"
+                        onClick={(e) => e.stopPropagation()}
                       >
                         <FiEdit3 className="w-4 h-4" />
+                        <span>Editar</span>
+                      </Link>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); window.location.href = `/dashboard/cotizaciones/nueva-obra?obraId=${obra.id}`; }}
+                        className="px-2 py-1 min-h-[36px] rounded-md transition-all duration-200 flex items-center gap-1 text-xs text-white"
+                        style={{ backgroundColor: 'var(--accent-primary)' }}
+                        title="Cotizar"
+                      >
+                        <FiDollarSign className="w-4 h-4" />
+                        <span>Cotizar</span>
                       </button>
                       <button
                         onClick={(e) => {

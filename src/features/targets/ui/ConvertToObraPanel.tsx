@@ -72,7 +72,8 @@ export function ConvertToObraPanel({ targetId, defaultDireccion, onClose, onConv
       }
       try {
         const all = await ClientesService.search(clienteQuery);
-        const flat = (all || []).map((c: any) => ({ id: c.id, nombre_razon_social: c.nombre_razon_social, rut: c.rut }));
+        type RawClient = { id: number; nombre_razon_social?: string; rut?: string };
+        const flat = (all || []).map((c: RawClient) => ({ id: c.id, nombre_razon_social: c.nombre_razon_social || '', rut: c.rut || '' }));
         setClientesSugeridos(flat.slice(0, 8));
       } catch (e) {
         // ignore

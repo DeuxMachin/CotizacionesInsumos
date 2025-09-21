@@ -107,7 +107,7 @@ export async function GET(request: NextRequest) {
 
       // Para cada cotización, agregar una fila por cada item
       items.forEach((item: CotizacionItemRow & { productos?: ProductoRow }, index: number) => {
-        const producto = item.productos;
+        const producto = item.productos as ProductoRow | undefined;
 
         exportData.push({
           'ID Cotización': cotizacion.folio || `COT-${cotizacion.id}`,
@@ -127,9 +127,9 @@ export async function GET(request: NextRequest) {
           'Producto SKU': producto?.sku || '',
           'Producto Nombre': producto?.nombre || item.descripcion || '',
           'Producto Unidad': item.unidad || producto?.unidad || '',
-          'Producto Tipo': (producto as any)?.tipo_id ? String((producto as any).tipo_id) : '',
-          'Producto Moneda': (producto as any)?.moneda || '',
-          'Producto Afecto IVA': (producto as any)?.afecto_iva ? 'Sí' : 'No',
+          'Producto Tipo': producto?.tipo_id ? String(producto.tipo_id) : '',
+          'Producto Moneda': producto?.moneda || '',
+          'Producto Afecto IVA': producto?.afecto_iva ? 'Sí' : 'No',
           'Cantidad': item.cantidad,
           'Precio Unitario': item.precio_unitario_neto,
           'Descuento %': item.descuento_pct || 0,

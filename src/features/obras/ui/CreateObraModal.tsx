@@ -55,6 +55,7 @@ export function CreateObraModal({
   const [loading, setSaving] = useState(false);
   const [errors, setErrors] = useState<FormErrors>({});
   const [showSuccess, setShowSuccess] = useState(false);
+  const [currentStep, setCurrentStep] = useState<1 | 2 | 3>(1);
 
   // Datos de la obra
   const [nombreEmpresa, setNombreEmpresa] = useState('');
@@ -278,6 +279,7 @@ export function CreateObraModal({
   // sin whatsapp separado
     setErrors({});
     setShowSuccess(false);
+    setCurrentStep(1);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -410,14 +412,30 @@ export function CreateObraModal({
 
         {/* Contenido Principal */}
         <div className="p-3 sm:p-4 md:p-6">
+          {/* Stepper */}
+          <div className="flex items-center justify-center gap-3 mb-4">
+            {[1,2,3].map((s) => (
+              <button
+                key={s}
+                type="button"
+                onClick={() => setCurrentStep(s as 1|2|3)}
+                className={`w-8 h-8 rounded-full text-sm font-semibold flex items-center justify-center ${currentStep===s ? 'text-white' : ''}`}
+                style={{ backgroundColor: currentStep===s ? 'var(--accent-primary)' : 'var(--bg-secondary)', color: currentStep===s ? 'white' : 'var(--text-secondary)', border: '1px solid var(--border)' }}
+                aria-current={currentStep===s}
+              >
+                {s}
+              </button>
+            ))}
+          </div>
           <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Información General de la Obra */}
+            {/* Paso 1: Información General de la Obra */}
             <div 
               className="p-4 rounded-lg"
               style={{ 
                 backgroundColor: 'var(--card-bg)',
                 border: '1px solid var(--border)'
               }}
+              hidden={currentStep !== 1}
             >
               <h3 className="text-base font-semibold flex items-center gap-2 mb-4" style={{ color: 'var(--text-primary)' }}>
                 <FiHome className="w-4 h-4" style={{ color: 'var(--accent-primary)' }} />
@@ -559,13 +577,14 @@ export function CreateObraModal({
 
             
 
-            {/* Información de la Constructora y Cliente */}
+            {/* Paso 2: Información de la Constructora y Cliente */}
             <div 
               className="p-4 rounded-lg"
               style={{ 
                 backgroundColor: 'var(--card-bg)',
                 border: '1px solid var(--border)'
               }}
+              hidden={currentStep !== 2}
             >
               <h3 className="text-base font-semibold flex items-center gap-2 mb-4" style={{ color: 'var(--text-primary)' }}>
                 <FiBriefcase className="w-4 h-4" style={{ color: 'var(--accent-primary)' }} />
@@ -730,13 +749,14 @@ export function CreateObraModal({
               </div>
             </div>
 
-            {/* Clasificación de Obra */}
+            {/* Paso 3: Clasificación, Fechas y Estado */}
             <div 
               className="p-4 rounded-lg"
               style={{ 
                 backgroundColor: 'var(--card-bg)',
                 border: '1px solid var(--border)'
               }}
+              hidden={currentStep !== 3}
             >
               <h3 className="text-base font-semibold flex items-center gap-2 mb-4" style={{ color: 'var(--text-primary)' }}>
                 <FiTool className="w-4 h-4" style={{ color: 'var(--accent-primary)' }} />
@@ -779,13 +799,14 @@ export function CreateObraModal({
               </div>
             </div>
 
-            {/* Fechas y Estado */}
+            {/* Fechas y Estado (Paso 3) */}
             <div 
               className="p-4 rounded-lg"
               style={{ 
                 backgroundColor: 'var(--card-bg)',
                 border: '1px solid var(--border)'
               }}
+              hidden={currentStep !== 3}
             >
               <h3 className="text-base font-semibold flex items-center gap-2 mb-4" style={{ color: 'var(--text-primary)' }}>
                 <FiCalendar className="w-4 h-4" style={{ color: 'var(--accent-primary)' }} />
@@ -898,13 +919,14 @@ export function CreateObraModal({
               </div>
             </div>
 
-            {/* Contacto Principal */}
+            {/* Contacto Principal (Paso 2) */}
             <div 
               className="p-4 rounded-lg"
               style={{ 
                 backgroundColor: 'var(--card-bg)',
                 border: '1px solid var(--border)'
               }}
+              hidden={currentStep !== 2}
             >
               <h3 className="text-base font-semibold flex items-center gap-2 mb-4" style={{ color: 'var(--text-primary)' }}>
                 <FiUser className="w-4 h-4" style={{ color: 'var(--accent-primary)' }} />
@@ -1012,13 +1034,14 @@ export function CreateObraModal({
               </div>
             </div>
 
-            {/* Notas adicionales */}
+            {/* Notas adicionales (Paso 3) */}
             <div 
               className="p-4 rounded-lg"
               style={{ 
                 backgroundColor: 'var(--card-bg)',
                 border: '1px solid var(--border)'
               }}
+              hidden={currentStep !== 3}
             >
               <h3 className="text-base font-semibold flex items-center gap-2 mb-4" style={{ color: 'var(--text-primary)' }}>
                 <FiFileText className="w-4 h-4" style={{ color: 'var(--accent-primary)' }} />
@@ -1066,29 +1089,52 @@ export function CreateObraModal({
             >
               Cancelar
             </button>
-            <button
-              type="submit"
-              onClick={handleSubmit}
-              disabled={loading}
-              className="px-4 py-2 rounded-lg transition-colors flex items-center gap-2"
-              style={{ 
-                backgroundColor: loading ? 'var(--accent-disabled)' : 'var(--accent-primary)',
-                color: 'white',
-                cursor: loading ? 'not-allowed' : 'pointer'
-              }}
-            >
-              {loading ? (
-                <>
-                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  Guardando...
-                </>
-              ) : (
-                <>
-                  <FiSave className="w-4 h-4" />
-                  Crear Obra
-                </>
-              )}
-            </button>
+
+            {currentStep > 1 && (
+              <button
+                type="button"
+                onClick={() => setCurrentStep((s) => (Math.max(1, (s as number) - 1) as 1|2|3))}
+                className="px-4 py-2 rounded-lg border"
+                style={{ borderColor: 'var(--border)', color: 'var(--text-secondary)' }}
+              >
+                Atrás
+              </button>
+            )}
+
+            {currentStep < 3 ? (
+              <button
+                type="button"
+                onClick={() => setCurrentStep((s) => (Math.min(3, (s as number) + 1) as 1|2|3))}
+                className="px-4 py-2 rounded-lg"
+                style={{ backgroundColor: 'var(--accent-primary)', color: 'white' }}
+              >
+                Siguiente
+              </button>
+            ) : (
+              <button
+                type="submit"
+                onClick={handleSubmit}
+                disabled={loading}
+                className="px-4 py-2 rounded-lg transition-colors flex items-center gap-2"
+                style={{ 
+                  backgroundColor: loading ? 'var(--accent-disabled)' : 'var(--accent-primary)',
+                  color: 'white',
+                  cursor: loading ? 'not-allowed' : 'pointer'
+                }}
+              >
+                {loading ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    Guardando...
+                  </>
+                ) : (
+                  <>
+                    <FiSave className="w-4 h-4" />
+                    Crear Obra
+                  </>
+                )}
+              </button>
+            )}
           </div>
         </div>
       </div>
