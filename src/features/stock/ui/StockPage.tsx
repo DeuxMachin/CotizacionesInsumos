@@ -1,7 +1,7 @@
 ﻿"use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { getAllInventory, searchInventory, getCategories, formatCLP, type InventoryItem } from "../model/inventory";
+import { getAllInventory, searchInventory, getCategories, createCategory, updateCategory, deleteCategory, formatCLP, type InventoryItem } from "../model/inventory";
 import { Toast } from "@/shared/ui/Toast";
 import { downloadFileFromResponse } from "@/lib/download";
 import { FiEdit3 } from "react-icons/fi";
@@ -9,6 +9,7 @@ import type { Database } from "@/lib/supabase";
 import { useAuth } from "@/features/auth/model/useAuth";
 import { useAuthHeaders } from "@/hooks/useAuthHeaders";
 import Link from "next/link";
+import { ProductosService } from "@/services/productosService";
 
 type Category = Database['public']['Tables']['producto_tipos']['Row'];
 
@@ -33,6 +34,28 @@ export default function StockPage() {
   // Estado para modal de edición
   const [editingProduct, setEditingProduct] = useState<InventoryItem | null>(null);
   const [showEditModal, setShowEditModal] = useState(false);
+
+  // Gestión de categorías (modales)
+  const [showCategoryMenu, setShowCategoryMenu] = useState(false);
+  const [showCreateCategoryModal, setShowCreateCategoryModal] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState("");
+  const [creatingCategory, setCreatingCategory] = useState(false);
+
+  const [showEditCategoryModal, setShowEditCategoryModal] = useState(false);
+  const [editingCategoryId, setEditingCategoryId] = useState<number | null>(null);
+  const [editCategoryName, setEditCategoryName] = useState("");
+  const [updatingCategory, setUpdatingCategory] = useState(false);
+
+  const [showDeleteCategoryModal, setShowDeleteCategoryModal] = useState(false);
+  const [deletingCategoryId, setDeletingCategoryId] = useState<number | null>(null);
+  const [deleteConfirmText, setDeleteConfirmText] = useState("");
+  const [deletingCategory, setDeletingCategory] = useState(false);
+
+  // Eliminar producto
+  const [confirmDeleteProductId, setConfirmDeleteProductId] = useState<number | null>(null);
+  const [deletingProduct, setDeletingProduct] = useState(false);
+  const [deleteProductConfirmText, setDeleteProductConfirmText] = useState('');
+  const [openRowMenuId, setOpenRowMenuId] = useState<number | null>(null);
 
   // Cargar datos iniciales
   useEffect(() => {
@@ -181,6 +204,100 @@ export default function StockPage() {
     }
   };
 
+  // Handlers Categorías
+  const openCreateCategory = () => {
+    if (user?.rol !== 'admin') { Toast.error('Solo administradores'); return; }
+    setShowCreateCategoryModal(true);
+    setShowCategoryMenu(false);
+  };
+
+  const openEditCategory = () => {
+    if (user?.rol !== 'admin') { Toast.error('Solo administradores'); return; }
+    // Preseleccionar la categoría actualmente filtrada si es válida
+    const currentId = selectedCategory !== 'todas' ? Number(selectedCategory) : null;
+    setEditingCategoryId(currentId);
+    const current = currentId ? categories.find(c => c.id === currentId) : undefined;
+    setEditCategoryName(current?.nombre ?? "");
+    setShowEditCategoryModal(true);
+    setShowCategoryMenu(false);
+  };
+
+  const openDeleteCategory = () => {
+    if (user?.rol !== 'admin') { Toast.error('Solo administradores'); return; }
+    const currentId = selectedCategory !== 'todas' ? Number(selectedCategory) : null;
+    setDeletingCategoryId(currentId);
+    setDeleteConfirmText("");
+    setShowDeleteCategoryModal(true);
+    setShowCategoryMenu(false);
+  };
+
+  const handleCreateCategory = async () => {
+    if (user?.rol !== 'admin') { Toast.error('Solo administradores'); return; }
+    const name = newCategoryName.trim();
+    if (!name) { Toast.error('El nombre no puede estar vacío'); return; }
+    setCreatingCategory(true);
+    try {
+      await createCategory(name);
+      Toast.success('Categoría creada');
+      const cats = await getCategories();
+      setCategories(cats);
+      setNewCategoryName("");
+      setShowCreateCategoryModal(false);
+    } catch (e) {
+      console.error(e);
+      Toast.error(e instanceof Error ? e.message : 'Error creando categoría');
+    } finally {
+      setCreatingCategory(false);
+    }
+  };
+
+  const handleUpdateCategory = async () => {
+    if (user?.rol !== 'admin') { Toast.error('Solo administradores'); return; }
+    if (!editingCategoryId) { Toast.error('Selecciona una categoría'); return; }
+    const name = editCategoryName.trim();
+    if (!name) { Toast.error('El nombre no puede estar vacío'); return; }
+    setUpdatingCategory(true);
+    try {
+      await updateCategory(editingCategoryId, name);
+      Toast.success('Categoría actualizada');
+      const [cats, inv] = await Promise.all([getCategories(), getAllInventory()]);
+      setCategories(cats);
+      setData(inv);
+      setShowEditCategoryModal(false);
+    } catch (e) {
+      console.error(e);
+      Toast.error(e instanceof Error ? e.message : 'Error actualizando categoría');
+    } finally {
+      setUpdatingCategory(false);
+    }
+  };
+
+  const handleDeleteCategory = async () => {
+    if (user?.rol !== 'admin') { Toast.error('Solo administradores'); return; }
+    if (!deletingCategoryId) { Toast.error('Selecciona una categoría'); return; }
+    const sel = categories.find(c => c.id === deletingCategoryId);
+    if (!sel) { Toast.error('Categoría inválida'); return; }
+    if (deleteConfirmText.trim().toLowerCase() !== 'borrar') { Toast.error('Escribe "Borrar" para confirmar'); return; }
+    setDeletingCategory(true);
+    try {
+      await deleteCategory(deletingCategoryId);
+      Toast.success('Categoría eliminada');
+      const cats = await getCategories();
+      setCategories(cats);
+      if (String(deletingCategoryId) === selectedCategory) {
+        setSelectedCategory('todas');
+        const inv = await getAllInventory();
+        setData(inv);
+      }
+      setShowDeleteCategoryModal(false);
+    } catch (e) {
+      console.error(e);
+      Toast.error(e instanceof Error ? e.message : 'Error eliminando categoría');
+    } finally {
+      setDeletingCategory(false);
+    }
+  };
+
   // Funciones para editar productos
   const handleSaveProduct = async (updatedProduct: Partial<InventoryItem>) => {
     if (!editingProduct) return;
@@ -276,7 +393,7 @@ export default function StockPage() {
           borderColor: 'var(--border)' 
         }}
       >
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 sm:gap-6">
+        <div className="max-w-7xl mx-auto flex flex-col lg:flex-row lg:items-center justify-between gap-4 sm:gap-6">
           <div className="text-center lg:text-left">
             <h1 
               className="text-2xl sm:text-3xl font-bold mb-2"
@@ -330,13 +447,35 @@ export default function StockPage() {
                 <span className="hidden xs:inline">Exportar</span>
                 <span className="xs:hidden">Export</span>
               </button>
+
+              {user?.rol === 'admin' && (
+                <div className="relative">
+                  <button
+                    onClick={() => setShowCategoryMenu(v => !v)}
+                    className="px-4 sm:px-6 py-3 rounded-lg transition-colors duration-200 font-semibold flex items-center justify-center gap-2 shadow-md hover:shadow-lg text-sm sm:text-base border"
+                    style={{ backgroundColor: 'var(--button-secondary-bg)', color: 'var(--text-primary)', borderColor: 'var(--border)' }}
+                    aria-haspopup="menu"
+                    aria-expanded={showCategoryMenu}
+                  >
+                    📁 Categorías
+                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"/></svg>
+                  </button>
+                  {showCategoryMenu && (
+                    <div className="absolute left-0 mt-2 w-56 rounded-lg border shadow-lg z-30 overflow-hidden" style={{ backgroundColor: 'var(--card-bg)', borderColor: 'var(--border)' }}>
+                      <button onClick={openCreateCategory} className="block w-full text-left px-4 py-2 text-sm" style={{ color: 'var(--text-primary)' }}>➕ Crear nueva</button>
+                      <button onClick={openEditCategory} className="block w-full text-left px-4 py-2 text-sm" style={{ color: 'var(--text-primary)' }}>✏️ Editar</button>
+                      <button onClick={openDeleteCategory} className="block w-full text-left px-4 py-2 text-sm" style={{ color: 'var(--error-text)' }}>🗑️ Eliminar</button>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         </div>
       </div>
 
       {/* Estadísticas simplificadas - responsive */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6 mb-6 sm:mb-8 px-4 sm:px-0">
+  <div className="max-w-7xl mx-auto grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6 mb-6 sm:mb-8 px-4 sm:px-0">
         <div 
           className="rounded-xl border-2 p-4 sm:p-6 text-center"
           style={{ 
@@ -403,7 +542,7 @@ export default function StockPage() {
 
       {/* Filtros simplificados - responsive */}
       <div 
-        className="rounded-xl border-2 p-4 sm:p-6 mb-6 mx-4 sm:mx-0"
+        className="max-w-7xl mx-auto rounded-xl border-2 p-4 sm:p-6 mb-6 mx-4 sm:mx-0"
         style={{ 
           backgroundColor: 'var(--card-bg)', 
           borderColor: 'var(--border)' 
@@ -488,7 +627,7 @@ export default function StockPage() {
       </div>
 
       {/* Información de resultados simplificada - responsive */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 sm:mb-6 px-4 sm:px-0">
+  <div className="max-w-7xl mx-auto flex flex-col sm:flex-row sm:items-center justify-between mb-4 sm:mb-6 px-4 sm:px-0">
         <div className="text-lg sm:text-xl font-medium mb-2 sm:mb-0" style={{ color: 'var(--text-primary)' }}>
           {searchQuery ? (
             <>Mostrando resultados para: <span className="font-bold" style={{ color: 'var(--accent-primary)' }}> &quot;{searchQuery}&quot;</span></>
@@ -502,7 +641,7 @@ export default function StockPage() {
       </div>
 
       {/* Vista de productos - solo grid para simplicidad */}
-      <ProductGrid products={paginatedItems} onEdit={handleEditProduct} user={user} />
+  <ProductGrid products={paginatedItems} onEdit={handleEditProduct} onAskDelete={(id) => setConfirmDeleteProductId(id)} user={user} openRowMenuId={openRowMenuId} setOpenRowMenuId={setOpenRowMenuId} />
 
       {/* Paginación */}
       {totalPages > 1 && (
@@ -529,26 +668,117 @@ export default function StockPage() {
           onClose={handleCloseEditModal}
         />
       )}
+      {/* Crear categoría */}
+      {showCreateCategoryModal && (
+        <CreateCategoryModal
+          isOpen={showCreateCategoryModal}
+          onClose={() => setShowCreateCategoryModal(false)}
+          onCreate={handleCreateCategory}
+          categoryName={newCategoryName}
+          setCategoryName={setNewCategoryName}
+          creating={creatingCategory}
+        />
+      )}
+
+      {/* Editar categoría */}
+      {showEditCategoryModal && (
+        <EditCategoryModal
+          isOpen={showEditCategoryModal}
+          onClose={() => setShowEditCategoryModal(false)}
+          categories={categories}
+          categoryId={editingCategoryId}
+          setCategoryId={setEditingCategoryId}
+          name={editCategoryName}
+          setName={setEditCategoryName}
+          onConfirm={handleUpdateCategory}
+          loading={updatingCategory}
+        />
+      )}
+
+      {/* Eliminar categoría */}
+      {showDeleteCategoryModal && (
+        <DeleteCategoryModal
+          isOpen={showDeleteCategoryModal}
+          onClose={() => setShowDeleteCategoryModal(false)}
+          categories={categories}
+          categoryId={deletingCategoryId}
+          setCategoryId={setDeletingCategoryId}
+          confirmText={deleteConfirmText}
+          setConfirmText={setDeleteConfirmText}
+          onConfirm={handleDeleteCategory}
+          loading={deletingCategory}
+        />
+      )}
+
+      {/* Confirmar eliminación de producto */}
+          {confirmDeleteProductId !== null && (
+            <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+              <div className="bg-white rounded-xl w-full max-w-md" style={{ backgroundColor: 'var(--card-bg)' }}>
+                <div className="p-6 border-b" style={{ borderColor: 'var(--border)' }}>
+                  <h3 className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>Eliminar producto</h3>
+                </div>
+                <div className="p-6 space-y-4">
+                  <p style={{ color: 'var(--text-primary)' }}>Esta acción marcará el producto como inactivo. Escribe <strong>"Borrar"</strong> para confirmar.</p>
+                  <input
+                    value={deleteProductConfirmText}
+                    onChange={(e) => setDeleteProductConfirmText(e.target.value)}
+                    placeholder="Escribe Borrar para confirmar"
+                    className="w-full px-4 py-2 border-2 rounded-lg"
+                    style={{ borderColor: 'var(--border)', backgroundColor: 'var(--input-bg)', color: 'var(--text-primary)' }}
+                  />
+                </div>
+                <div className="p-6 border-t flex justify-end gap-2" style={{ borderColor: 'var(--border)' }}>
+                  <button onClick={() => { setConfirmDeleteProductId(null); setDeleteProductConfirmText(''); }} className="px-4 py-2 rounded-lg" style={{ backgroundColor: 'var(--button-secondary-bg)', color: 'var(--text-primary)' }} disabled={deletingProduct}>Cancelar</button>
+                  <button
+                    onClick={async () => {
+                      if (user?.rol !== 'admin') { Toast.error('Solo administradores'); return; }
+                      if (confirmDeleteProductId === null) return;
+                      if (deleteProductConfirmText.trim().toLowerCase() !== 'borrar') { Toast.error('Escribe Borrar para confirmar'); return; }
+                      try {
+                        setDeletingProduct(true);
+                        await ProductosService.delete(confirmDeleteProductId);
+                        setData(prev => prev.filter(p => p.id !== confirmDeleteProductId));
+                        Toast.success('Producto eliminado');
+                        setConfirmDeleteProductId(null);
+                        setDeleteProductConfirmText('');
+                      } catch (e) {
+                        console.error(e);
+                        Toast.error(e instanceof Error ? e.message : 'Error eliminando producto');
+                      } finally {
+                        setDeletingProduct(false);
+                      }
+                    }}
+                    className="px-4 py-2 rounded-lg text-white"
+                    style={{ backgroundColor: 'var(--error-bg)' }}
+                    disabled={deletingProduct}
+                  >
+                    {deletingProduct ? 'Eliminando...' : 'Eliminar'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
     </div>
   );
 }
 
 // Componente para vista de grilla - responsive
-function ProductGrid({ products, onEdit, user }: { products: InventoryItem[]; onEdit: (product: InventoryItem) => void; user: User | null }) {
+function ProductGrid({ products, onEdit, onAskDelete, user, openRowMenuId, setOpenRowMenuId }: { products: InventoryItem[]; onEdit: (product: InventoryItem) => void; onAskDelete: (id: number) => void; user: User | null; openRowMenuId: number | null; setOpenRowMenuId: (id: number | null) => void }) {
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6 px-4 sm:px-0">
+    <div className="max-w-7xl mx-auto grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6 px-4 sm:px-0 items-stretch">
       {products.map(product => (
-        <ProductCard key={product.id} product={product} onEdit={onEdit} user={user} />
+        <ProductCard key={product.id} product={product} onEdit={onEdit} onAskDelete={onAskDelete} user={user} openRowMenuId={openRowMenuId} setOpenRowMenuId={setOpenRowMenuId} />
       ))}
     </div>
   );
 }
 
 // Componente para tarjeta de producto mejorada para usuarios no técnicos
-function ProductCard({ product, onEdit, user }: { product: InventoryItem; onEdit: (product: InventoryItem) => void; user: User | null }) {
+function ProductCard({ product, onEdit, onAskDelete, user, openRowMenuId, setOpenRowMenuId }: { product: InventoryItem; onEdit: (product: InventoryItem) => void; onAskDelete: (id: number) => void; user: User | null; openRowMenuId: number | null; setOpenRowMenuId: (id: number | null) => void }) {
+  const menuOpen = openRowMenuId === product.id;
   return (
     <div 
-      className="rounded-xl border-2 overflow-hidden hover:shadow-lg transition-all duration-300 min-h-[350px] sm:min-h-[400px] flex flex-col group"
+      className="rounded-xl border-2 overflow-hidden hover:shadow-lg transition-all duration-300 min-h-[350px] sm:min-h-[400px] h-full flex flex-col group"
       style={{ 
         backgroundColor: 'var(--card-bg)', 
         borderColor: 'var(--border)' 
@@ -565,7 +795,7 @@ function ProductCard({ product, onEdit, user }: { product: InventoryItem; onEdit
         }}
       >
         <div className="flex items-start justify-between gap-4">
-          <div className="flex-1 min-w-0">
+          <div className="flex-1 min-w-0 min-h-[120px]">
             {/* Nombre del producto - responsive */}
             <h3 className="text-lg sm:text-2xl font-bold mb-2 sm:mb-3 leading-tight" style={{ color: 'var(--text-primary)' }}>
               {product.nombre}
@@ -585,55 +815,70 @@ function ProductCard({ product, onEdit, user }: { product: InventoryItem; onEdit
               </span>
             )}
 
-            {/* SKU si existe - responsive */}
-            {product.sku && (
-              <p 
-                className="text-xs sm:text-sm mt-2 sm:mt-3 font-mono px-2 sm:px-3 py-1 rounded inline-block"
-                style={{ 
-                  color: 'var(--text-secondary)', 
-                  backgroundColor: 'var(--input-bg)' 
-                }}
-              >
-                Código: {product.sku}
-              </p>
-            )}
+            {/* Código (SKU) siempre visible con placeholder) */}
+            <p 
+              className="text-xs sm:text-sm mt-2 sm:mt-3 font-mono px-2 sm:px-3 py-1 rounded inline-block"
+              style={{ 
+                color: 'var(--text-secondary)', 
+                backgroundColor: 'var(--input-bg)' 
+              }}
+            >
+              {`Código: ${product.sku && product.sku.toString().trim() ? product.sku : '—'}`}
+            </p>
           </div>
 
           {/* Botón de editar - responsive */}
           {user?.rol === 'admin' && (
-            <button
-              onClick={() => onEdit(product)}
-              className="p-2 sm:p-3 rounded-lg transition-colors duration-200 shadow-md hover:shadow-lg transform hover:scale-105 flex-shrink-0"
-              style={{ 
-                backgroundColor: 'var(--accent-primary)', 
-                color: 'white' 
-              }}
-              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--accent-hover)'}
-              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--accent-primary)'}
-              title="Editar producto"
-            >
-              <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-              </svg>
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => onEdit(product)}
+                className="p-2 sm:p-3 rounded-lg transition-colors duration-200 shadow-md hover:shadow-lg transform hover:scale-105 flex-shrink-0"
+                style={{ backgroundColor: 'var(--accent-primary)', color: 'white' }}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--accent-hover)'}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--accent-primary)'}
+                title="Editar producto"
+              >
+                <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                </svg>
+              </button>
+              <div className="relative">
+                <button
+                  onClick={() => setOpenRowMenuId(menuOpen ? null : product.id)}
+                  className="p-2 sm:p-3 rounded-lg border flex-shrink-0"
+                  style={{ backgroundColor: 'var(--button-secondary-bg)', color: 'var(--text-primary)', borderColor: 'var(--border)' }}
+                  aria-haspopup="menu"
+                  aria-expanded={menuOpen}
+                  title="Más acciones"
+                >
+                  ⋯
+                </button>
+                {menuOpen && (
+                  <div className="absolute right-0 mt-2 w-44 rounded-lg border shadow-lg z-30 overflow-hidden" style={{ backgroundColor: 'var(--card-bg)', borderColor: 'var(--border)' }}>
+                    <button onClick={() => { setOpenRowMenuId(null); onAskDelete(product.id); }} className="block w-full text-left px-4 py-2 text-sm" style={{ color: 'var(--error-text)' }}>🗑️ Eliminar</button>
+                  </div>
+                )}
+              </div>
+            </div>
           )}
         </div>
       </div>
 
       {/* Contenido principal - responsive */}
       <div className="p-4 sm:p-6 flex-1 flex flex-col">
-        {/* Descripción - más legible */}
-        {product.descripcion && (
-          <div className="mb-6">
-            <p className="leading-relaxed text-base" style={{ color: 'var(--text-primary)' }}>
-              {product.descripcion}
-            </p>
-          </div>
-        )}
+        {/* Descripción: siempre reservamos el espacio para alinear */}
+        <div className="mb-6">
+          <p 
+            className="leading-relaxed text-base h-[64px] overflow-hidden"
+            style={{ color: 'var(--text-primary)' }}
+          >
+            {product.descripcion && product.descripcion.trim().length > 0 ? product.descripcion : '\u00A0'}
+          </p>
+        </div>
 
         {/* Precios - sección destacada y clara */}
         <div 
-          className="border rounded-xl p-5 mb-6"
+          className="border rounded-xl p-5 mb-6 h-[200px] flex flex-col"
           style={{ 
             backgroundColor: 'var(--success-bg)', 
             borderColor: 'var(--success-border)' 
@@ -646,18 +891,18 @@ function ProductCard({ product, onEdit, user }: { product: InventoryItem; onEdit
             Precios
           </h4>
 
-          <div className="space-y-3">
+          <div className="space-y-3 flex-1 flex flex-col justify-between">
             {/* Precio de venta - más destacado */}
             {product.precio_venta && (
               <div 
-                className="flex items-center justify-between p-3 rounded-lg border"
+                className="flex items-center justify-between p-3 rounded-lg border mb-auto"
                 style={{ 
                   backgroundColor: 'var(--card-bg)', 
                   borderColor: 'var(--success-border)' 
                 }}
               >
                 <span className="text-lg font-bold" style={{ color: 'var(--success-text)' }}>Precio de Venta</span>
-                <span className="text-2xl font-bold" style={{ color: 'var(--success-text)' }}>
+                <span className="text-2xl font-bold text-right w-[120px]" style={{ color: 'var(--success-text)' }}>
                   {formatCLP(product.precio_venta)}
                 </span>
               </div>
@@ -666,11 +911,11 @@ function ProductCard({ product, onEdit, user }: { product: InventoryItem; onEdit
             {/* Precio neto */}
             {product.precio_neto && (
               <div 
-                className="flex items-center justify-between p-2 rounded"
+                className="flex items-center justify-between p-2 rounded mt-auto"
                 style={{ backgroundColor: 'var(--input-bg)' }}
               >
                 <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>Precio Neto</span>
-                <span className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>
+                <span className="text-lg font-semibold text-right w-[120px]" style={{ color: 'var(--text-primary)' }}>
                   {formatCLP(product.precio_neto)}
                 </span>
               </div>
@@ -679,11 +924,11 @@ function ProductCard({ product, onEdit, user }: { product: InventoryItem; onEdit
             {/* Costo */}
             {product.costo_unitario && (
               <div 
-                className="flex items-center justify-between p-2 rounded"
+                className="flex items-center justify-between p-2 rounded mt-1"
                 style={{ backgroundColor: 'var(--input-bg)' }}
               >
                 <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>Costo</span>
-                <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+                <span className="text-sm text-right w-[120px]" style={{ color: 'var(--text-secondary)' }}>
                   {formatCLP(product.costo_unitario)}
                 </span>
               </div>
@@ -724,6 +969,230 @@ function ProductCard({ product, onEdit, user }: { product: InventoryItem; onEdit
           >
             {product.activo ? '✓ Disponible' : '✗ No disponible'}
           </span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Modal crear categoría
+function CreateCategoryModal({
+  isOpen,
+  onClose,
+  onCreate,
+  categoryName,
+  setCategoryName,
+  creating
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  onCreate: () => void;
+  categoryName: string;
+  setCategoryName: (v: string) => void;
+  creating: boolean;
+}) {
+  if (!isOpen) return null;
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-xl w-full max-w-md" style={{ backgroundColor: 'var(--card-bg)' }}>
+        <div className="p-6 border-b" style={{ borderColor: 'var(--border)' }}>
+          <h3 className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>Crear nueva categoría</h3>
+        </div>
+        <div className="p-6 space-y-4">
+          <div>
+            <label className="block text-sm mb-2" style={{ color: 'var(--text-primary)' }}>Nombre</label>
+            <input
+              value={categoryName}
+              onChange={(e) => setCategoryName(e.target.value)}
+              placeholder="Ej: Materiales"
+              className="w-full px-4 py-2 border-2 rounded-lg"
+              style={{ borderColor: 'var(--border)', backgroundColor: 'var(--input-bg)', color: 'var(--text-primary)' }}
+              maxLength={100}
+            />
+          </div>
+        </div>
+        <div className="p-6 border-t flex justify-end gap-2" style={{ borderColor: 'var(--border)' }}>
+          <button onClick={onClose} className="px-4 py-2 rounded-lg" style={{ backgroundColor: 'var(--button-secondary-bg)', color: 'var(--text-primary)' }} disabled={creating}>Cancelar</button>
+          <button onClick={onCreate} className="px-4 py-2 rounded-lg text-white" style={{ backgroundColor: 'var(--accent-primary)' }} disabled={creating || !categoryName.trim()}>
+            {creating ? 'Creando...' : 'Crear'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Modal editar categoría (con selección)
+function EditCategoryModal({
+  isOpen,
+  onClose,
+  categories,
+  categoryId,
+  setCategoryId,
+  name,
+  setName,
+  onConfirm,
+  loading
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  categories: Category[];
+  categoryId: number | null;
+  setCategoryId: (id: number | null) => void;
+  name: string;
+  setName: (v: string) => void;
+  onConfirm: () => void;
+  loading: boolean;
+}) {
+  if (!isOpen) return null;
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-xl w-full max-w-md" style={{ backgroundColor: 'var(--card-bg)' }}>
+        <div className="p-6 border-b" style={{ borderColor: 'var(--border)' }}>
+          <h3 className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>Editar categoría</h3>
+        </div>
+        <div className="p-6 space-y-4">
+          <div>
+            <label className="block text-sm mb-2" style={{ color: 'var(--text-primary)' }}>Selecciona categoría</label>
+            <select
+              value={categoryId ?? ''}
+              onChange={(e) => {
+                const id = e.target.value ? Number(e.target.value) : null;
+                setCategoryId(id);
+                const sel = categories.find(c => c.id === id);
+                setName(sel?.nombre ?? '');
+              }}
+              className="w-full px-4 py-2 border-2 rounded-lg"
+              style={{ borderColor: 'var(--border)', backgroundColor: 'var(--input-bg)', color: 'var(--text-primary)' }}
+            >
+              <option value="">Selecciona...</option>
+              {categories.map(c => (
+                <option key={c.id} value={c.id}>{c.nombre}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm mb-2" style={{ color: 'var(--text-primary)' }}>Nombre</label>
+            <input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !loading && !!categoryId && !!name.trim()) {
+                  onConfirm();
+                }
+              }}
+              className="w-full px-4 py-2 border-2 rounded-lg"
+              style={{ borderColor: 'var(--border)', backgroundColor: 'var(--input-bg)', color: 'var(--text-primary)' }}
+              maxLength={100}
+              autoFocus
+            />
+          </div>
+        </div>
+        <div className="p-6 border-t flex justify-end gap-2" style={{ borderColor: 'var(--border)' }}>
+          <button 
+            onClick={onClose} 
+            className="px-4 py-2 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
+            style={{ backgroundColor: 'var(--button-secondary-bg)', color: 'var(--text-primary)' }} 
+            disabled={loading}
+          >
+            Cancelar
+          </button>
+          <button 
+            onClick={onConfirm} 
+            className="px-4 py-2 rounded-lg text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            style={{ backgroundColor: 'var(--accent-primary)' }} 
+            disabled={loading || !categoryId || !name.trim()}
+          >
+            {loading ? 'Guardando...' : 'Guardar cambios'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Modal eliminar categoría (con selección)
+function DeleteCategoryModal({
+  isOpen,
+  onClose,
+  categories,
+  categoryId,
+  setCategoryId,
+  confirmText,
+  setConfirmText,
+  onConfirm,
+  loading
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  categories: Category[];
+  categoryId: number | null;
+  setCategoryId: (id: number | null) => void;
+  confirmText: string;
+  setConfirmText: (v: string) => void;
+  onConfirm: () => void;
+  loading: boolean;
+}) {
+  if (!isOpen) return null;
+  const selected = categories.find(c => c.id === (categoryId ?? -1));
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-xl w-full max-w-md" style={{ backgroundColor: 'var(--card-bg)' }}>
+        <div className="p-6 border-b" style={{ borderColor: 'var(--border)' }}>
+          <h3 className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>Eliminar categoría</h3>
+        </div>
+        <div className="p-6 space-y-4">
+          <div>
+            <label className="block text-sm mb-2" style={{ color: 'var(--text-primary)' }}>Selecciona categoría</label>
+            <select
+              value={categoryId ?? ''}
+              onChange={(e) => {
+                const id = e.target.value ? Number(e.target.value) : null;
+                setCategoryId(id);
+                setConfirmText('');
+              }}
+              className="w-full px-4 py-2 border-2 rounded-lg"
+              style={{ borderColor: 'var(--border)', backgroundColor: 'var(--input-bg)', color: 'var(--text-primary)' }}
+            >
+              <option value="">Selecciona...</option>
+              {categories.map(c => (
+                <option key={c.id} value={c.id}>{c.nombre}</option>
+              ))}
+            </select>
+          </div>
+          <p style={{ color: 'var(--text-primary)' }}>Escribe <strong>"Borrar"</strong> para habilitar la acción de eliminación.</p>
+          <input
+            value={confirmText}
+            onChange={(e) => setConfirmText(e.target.value)}
+            onKeyDown={(e) => {
+              const canDelete = !loading && !!categoryId && !!selected && confirmText.trim().toLowerCase() === 'borrar';
+              if (e.key === 'Enter' && canDelete) {
+                onConfirm();
+              }
+            }}
+            placeholder="Escribe Borrar para confirmar"
+            className="w-full px-4 py-2 border-2 rounded-lg"
+            style={{ borderColor: 'var(--border)', backgroundColor: 'var(--input-bg)', color: 'var(--text-primary)' }}
+            autoFocus
+          />
+        </div>
+        <div className="p-6 border-t flex justify-end gap-2" style={{ borderColor: 'var(--border)' }}>
+          <button 
+            onClick={onClose} 
+            className="px-4 py-2 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
+            style={{ backgroundColor: 'var(--button-secondary-bg)', color: 'var(--text-primary)' }} 
+            disabled={loading}
+          >
+            Cancelar
+          </button>
+          <button 
+            onClick={onConfirm} 
+            className="px-4 py-2 rounded-lg text-white bg-red-600 hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            style={{ backgroundColor: 'var(--error-bg, #dc2626)' }} 
+            disabled={loading || !categoryId || !selected || confirmText.trim().toLowerCase() !== 'borrar'}
+          >
+            {loading ? 'Eliminando...' : 'Eliminar'}
+          </button>
         </div>
       </div>
     </div>

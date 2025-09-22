@@ -137,6 +137,114 @@ export class StockService {
     return data || []
   }
 
+  // Crear nueva categoría
+  static async createCategory(nombre: string): Promise<ProductoTipo> {
+    // Validar entrada
+    if (!nombre || nombre.trim().length === 0) {
+      throw new Error('El nombre de la categoría no puede estar vacío')
+    }
+
+    const trimmedNombre = nombre.trim()
+
+    // Verificar duplicados
+    const { data: existing, error: checkError } = await supabase
+      .from('producto_tipos')
+      .select('id')
+      .eq('nombre', trimmedNombre)
+      .maybeSingle()
+
+    if (checkError) {
+      console.error('Error verificando duplicados:', checkError)
+      throw new Error('Error verificando si la categoría ya existe')
+    }
+
+    if (existing) {
+      throw new Error('Ya existe una categoría con ese nombre')
+    }
+
+    // Insertar nueva categoría
+    const { data, error } = await supabase
+      .from('producto_tipos')
+      .insert({ nombre: trimmedNombre })
+      .select()
+      .single()
+
+    if (error) {
+      console.error('Error creando categoría:', error)
+      throw new Error(error.message || 'Error creando la categoría')
+    }
+
+    return data
+  }
+
+  // Actualizar nombre de categoría
+  static async updateCategory(id: number, nombre: string): Promise<ProductoTipo> {
+    if (!id) throw new Error('Categoría inválida')
+    if (!nombre || nombre.trim().length === 0) {
+      throw new Error('El nombre de la categoría no puede estar vacío')
+    }
+
+    const trimmedNombre = nombre.trim()
+
+    // Verificar duplicado excluyendo el mismo id
+    const { data: dup, error: dupErr } = await supabase
+      .from('producto_tipos')
+      .select('id')
+      .eq('nombre', trimmedNombre)
+      .neq('id', id)
+      .maybeSingle()
+
+    if (dupErr) {
+      console.error('Error verificando duplicados:', dupErr)
+      throw new Error('Error verificando duplicados')
+    }
+    if (dup) throw new Error('Ya existe una categoría con ese nombre')
+
+    const { data, error } = await supabase
+      .from('producto_tipos')
+      .update({ nombre: trimmedNombre })
+      .eq('id', id)
+      .select()
+      .single()
+
+    if (error) {
+      console.error('Error actualizando categoría:', error)
+      throw new Error(error.message || 'Error actualizando la categoría')
+    }
+
+    return data
+  }
+
+  // Eliminar categoría (solo si no está en uso)
+  static async deleteCategory(id: number): Promise<void> {
+    if (!id) throw new Error('Categoría inválida')
+
+    // Verificar uso en productos
+    const { count, error: countErr } = await supabase
+      .from('productos')
+      .select('id', { count: 'exact', head: true })
+      .eq('tipo_id', id)
+
+    if (countErr) {
+      console.error('Error verificando uso de categoría:', countErr)
+      throw new Error('Error verificando uso de la categoría')
+    }
+
+    if ((count || 0) > 0) {
+      throw new Error('No se puede eliminar: la categoría está asociada a productos')
+    }
+
+    const { error } = await supabase
+      .from('producto_tipos')
+      .delete()
+      .eq('id', id)
+
+    if (error) {
+      console.error('Error eliminando categoría:', error)
+      throw new Error(error.message || 'Error eliminando la categoría')
+    }
+  }
+
   // Map helpers
   private static mapToInventoryItem(
     producto: Producto,

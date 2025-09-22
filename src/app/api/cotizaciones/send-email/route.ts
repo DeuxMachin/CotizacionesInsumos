@@ -187,7 +187,7 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// Función mock para obtener cotización - reemplaza con tu lógica real
+
 async function getQuoteById(id: string): Promise<Quote | null> {
   // IMPORTANTE: Reemplaza esto con tu lógica real de base de datos
   // Por ahora retornamos null para indicar que no está implementado

@@ -20,6 +20,18 @@ export async function getCategories() {
   return await StockService.getCategories()
 }
 
+export async function createCategory(nombre: string) {
+  return await StockService.createCategory(nombre)
+}
+
+export async function updateCategory(id: number, nombre: string) {
+  return await StockService.updateCategory(id, nombre)
+}
+
+export async function deleteCategory(id: number) {
+  return await StockService.deleteCategory(id)
+}
+
 // Format currency helper
 export function formatCLP(amount: number | null): string {
   if (amount === null) return '$0'
