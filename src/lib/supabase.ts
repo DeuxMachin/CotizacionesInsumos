@@ -957,6 +957,24 @@ export type Database = {
         Update: { id?: number; nombre?: string; descripcion?: string | null }
       }
       ,
+      cxc_aplicaciones: {
+        Row: { pago_id: number; documento_id: number; monto_aplicado: number; created_at: string }
+        Insert: { pago_id: number; documento_id: number; monto_aplicado: number; created_at?: string }
+        Update: { pago_id?: number; documento_id?: number; monto_aplicado?: number; created_at?: string }
+      }
+      ,
+      cxc_documentos: {
+        Row: { id: number; cliente_id: number; nota_venta_id: number | null; doc_tipo: string; moneda: string | null; monto_total: number; saldo_pendiente: number; fecha_emision: string; fecha_vencimiento: string | null; estado: string; observacion: string | null; created_at: string; updated_at: string }
+        Insert: { id?: number; cliente_id: number; nota_venta_id?: number | null; doc_tipo: string; moneda?: string | null; monto_total: number; saldo_pendiente: number; fecha_emision?: string; fecha_vencimiento?: string | null; estado?: string; observacion?: string | null; created_at?: string; updated_at?: string }
+        Update: { id?: number; cliente_id?: number; nota_venta_id?: number | null; doc_tipo?: string; moneda?: string | null; monto_total?: number; saldo_pendiente?: number; fecha_emision?: string; fecha_vencimiento?: string | null; estado?: string; observacion?: string | null; created_at?: string; updated_at?: string }
+      }
+      ,
+      cxc_pagos: {
+        Row: { id: number; cliente_id: number; fecha_pago: string; monto_total: number; moneda: string | null; metodo_pago: string | null; referencia: string | null; observacion: string | null; created_by: string | null; created_at: string }
+        Insert: { id?: number; cliente_id: number; fecha_pago?: string; monto_total: number; moneda?: string | null; metodo_pago?: string | null; referencia?: string | null; observacion?: string | null; created_by?: string | null; created_at?: string }
+        Update: { id?: number; cliente_id?: number; fecha_pago?: string; monto_total?: number; moneda?: string | null; metodo_pago?: string | null; referencia?: string | null; observacion?: string | null; created_by?: string | null; created_at?: string }
+      }
+      ,
       audit_log: {
         Row: {
           id: number

@@ -3,6 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { FiArrowLeft, FiPackage, FiUser, FiMapPin,  FiPlus, FiSave, FiCheck, FiPercent, FiTrash2 } from 'react-icons/fi';
 import { NotasVentaService, SalesNoteRecord, SalesNoteItemRow } from '@/services/notasVentaService';
+import { supabase } from '@/lib/supabase';
 
 interface SalesNoteDetailProps {
   id: number;
@@ -20,6 +21,7 @@ export const SalesNoteDetail: React.FC<SalesNoteDetailProps> = ({ id }) => {
   const router = useRouter();
   const [nota, setNota] = useState<SalesNoteRecord | null>(null);
   const [items, setItems] = useState<SalesNoteItemRow[]>([]);
+  const [cxcDocumentos, setCxcDocumentos] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -35,6 +37,16 @@ export const SalesNoteDetail: React.FC<SalesNoteDetailProps> = ({ id }) => {
         const data = await NotasVentaService.getById(id);
         const its = await NotasVentaService.getItems(id);
         setNota(data); setItems(its);
+
+        // Fetch CxC documents for this sales note
+        const { data: cxcData, error: cxcError } = await supabase
+          .from('cxc_documentos')
+          .select('*')
+          .eq('nota_venta_id', id);
+
+        if (!cxcError) {
+          setCxcDocumentos(cxcData || []);
+        }
       } catch (e: unknown) { setError(e instanceof Error ? e.message : 'Error cargando nota de venta'); }
       finally { setLoading(false); }
     })();
@@ -131,6 +143,17 @@ export const SalesNoteDetail: React.FC<SalesNoteDetailProps> = ({ id }) => {
             <h1 className="text-xl sm:text-2xl md:text-3xl font-bold" style={{color:'var(--text-primary)'}}>Nota de Venta {nota.folio || `#${nota.id}`}</h1>
             <div className="flex items-center gap-2 mt-1 flex-wrap">
               <span className="px-3 py-1 text-xs sm:text-sm rounded-full font-medium" style={{background:'var(--accent-soft)', color:'var(--accent-text)'}}>{nota.estado}</span>
+              {cxcDocumentos.length > 0 && (
+                <span className={`px-3 py-1 text-xs sm:text-sm rounded-full font-medium ${
+                  cxcDocumentos[0].estado === 'pagado' ? 'bg-green-100 text-green-800' :
+                  cxcDocumentos[0].estado === 'parcial' ? 'bg-yellow-100 text-yellow-800' :
+                  'bg-red-100 text-red-800'
+                }`}>
+                  {cxcDocumentos[0].estado === 'pagado' ? 'Pagado' :
+                   cxcDocumentos[0].estado === 'parcial' ? 'Pago Parcial' :
+                   'Pendiente'}
+                </span>
+              )}
               {nota.cotizacion_id && <span className="text-xs sm:text-sm" style={{color:'var(--text-secondary)'}}>Origen Cotización ID {nota.cotizacion_id}</span>}
             </div>
           </div>

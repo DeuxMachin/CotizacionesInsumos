@@ -115,6 +115,15 @@ export class CotizacionesService {
 
   // Actualizar cotización
   static async update(id: number, cotizacion: CotizacionUpdate, userInfo?: { id: string; email: string; name?: string }) {
+    // Obtener la cotización actual antes de actualizar para calcular cambios en saldos
+    const { data: oldQuote, error: oldError } = await supabase
+      .from('cotizaciones')
+      .select('cliente_principal_id, total_final, total_neto, estado')
+      .eq('id', id)
+      .single();
+
+    if (oldError) throw oldError;
+
     const { data, error } = await supabase
       .from('cotizaciones')
       .update(cotizacion)
@@ -126,6 +135,42 @@ export class CotizacionesService {
       .single()
 
     if (error) throw error
+
+    // Ajustar dinero_cotizado si cambió el total y la cotización no está aceptada
+    if (data && oldQuote && oldQuote.estado !== 'aceptada' && data.estado !== 'aceptada') {
+      const oldTotal = oldQuote.total_final ?? oldQuote.total_neto ?? 0;
+      const newTotal = data.total_final ?? data.total_neto ?? 0;
+      const difference = newTotal - oldTotal;
+
+      if (difference !== 0 && data.cliente_principal_id) {
+        const { data: saldoActual } = await supabase
+          .from('cliente_saldos')
+          .select('id, dinero_cotizado')
+          .eq('cliente_id', data.cliente_principal_id)
+          .order('snapshot_date', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (saldoActual) {
+          const nuevoDineroCotizado = (saldoActual.dinero_cotizado || 0) + difference;
+          await supabase
+            .from('cliente_saldos')
+            .update({ dinero_cotizado: Math.max(0, nuevoDineroCotizado) })
+            .eq('id', saldoActual.id);
+        } else if (newTotal > 0) {
+          await supabase
+            .from('cliente_saldos')
+            .insert({
+              cliente_id: data.cliente_principal_id,
+              snapshot_date: new Date().toISOString().split('T')[0],
+              pagado: 0,
+              pendiente: 0,
+              vencido: 0,
+              dinero_cotizado: newTotal
+            });
+        }
+      }
+    }
 
     // Registrar en audit log si se proporciona información del usuario
     if (userInfo && data) {
