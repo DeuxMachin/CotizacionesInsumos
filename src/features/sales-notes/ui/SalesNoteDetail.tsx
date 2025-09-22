@@ -5,6 +5,11 @@ import { FiArrowLeft, FiPackage, FiUser, FiMapPin,  FiPlus, FiSave, FiCheck, FiP
 import { NotasVentaService, SalesNoteRecord, SalesNoteItemRow } from '@/services/notasVentaService';
 import { supabase } from '@/lib/supabase';
 
+interface CxcDocumento {
+  estado: 'pagado' | 'parcial' | 'pendiente';
+  // Add other properties as needed
+}
+
 interface SalesNoteDetailProps {
   id: number;
 }
@@ -21,7 +26,7 @@ export const SalesNoteDetail: React.FC<SalesNoteDetailProps> = ({ id }) => {
   const router = useRouter();
   const [nota, setNota] = useState<SalesNoteRecord | null>(null);
   const [items, setItems] = useState<SalesNoteItemRow[]>([]);
-  const [cxcDocumentos, setCxcDocumentos] = useState<any[]>([]);
+  const [cxcDocumentos, setCxcDocumentos] = useState<CxcDocumento[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);

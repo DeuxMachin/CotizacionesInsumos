@@ -2,18 +2,23 @@
 
 import { Modal } from "@/shared/ui/Modal";
 import { useState } from "react";
-import { ConvertToObraPanel } from "./ConvertToObraPanel";
-import { FiMapPin, FiPhone, FiMail, FiUser, FiCalendar, FiClock, FiMap, FiExternalLink, FiEdit3, FiMessageSquare, FiHome, FiFlag } from "react-icons/fi";
+import { ConvertToObraModal } from "./ConvertToObraModal";
+import EditTargetModal from "./EditTargetModal";
+import { StatusChangeModal } from "./StatusChangeModal";
+import { FiMapPin, FiPhone, FiMail, FiUser, FiCalendar, FiClock, FiMap, FiExternalLink, FiEdit3, FiMessageSquare, FiHome, FiFlag, FiSettings } from "react-icons/fi";
 import type { PosibleTarget } from "../model/types";
 
 interface TargetDetailsModalProps {
   target: PosibleTarget;
   isOpen: boolean;
   onClose: () => void;
+  onTargetUpdated?: () => void;
 }
 
-export function TargetDetailsModal({ target, isOpen, onClose }: TargetDetailsModalProps) {
-  const [showConvertPanel, setShowConvertPanel] = useState(false);
+export function TargetDetailsModal({ target, isOpen, onClose, onTargetUpdated }: TargetDetailsModalProps) {
+  const [showConvertModal, setShowConvertModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [showStatusModal, setShowStatusModal] = useState(false);
   const getEstadoClass = (estado: string) => {
     switch (estado) {
       case 'pendiente': return 'badge-base badge-pendiente';
@@ -50,15 +55,15 @@ export function TargetDetailsModal({ target, isOpen, onClose }: TargetDetailsMod
 
   return (
     <Modal open={isOpen} onClose={onClose}>
-      <div className="w-full max-h-[90vh] overflow-y-auto custom-scrollbar">
+      <div className="w-full max-w-4xl mx-auto max-h-[85vh] overflow-y-auto custom-scrollbar">
         {/* Header Principal */}
-        <div className="p-4 sm:p-6" style={{ borderBottom: '1px solid var(--border)' }}>
-          <div className="flex flex-col gap-4">
+        <div className="p-3 sm:p-4" style={{ borderBottom: '1px solid var(--border)' }}>
+          <div className="flex flex-col gap-2">
             <div className="flex-1">
               <h1 className="text-xl sm:text-2xl font-bold mb-2" style={{ color: 'var(--text-primary)' }}>
                 {target.titulo}
               </h1>
-              <p className="text-sm sm:text-base mb-3" style={{ color: 'var(--text-secondary)' }}>
+              <p className="text-sm sm:text-base mb-2" style={{ color: 'var(--text-secondary)' }}>
                 {target.descripcion}
               </p>
               <div className="flex flex-wrap items-center gap-2">
@@ -86,13 +91,13 @@ export function TargetDetailsModal({ target, isOpen, onClose }: TargetDetailsMod
             
             {/* Información de Gestión - Más compacta */}
             <div 
-              className="p-3 rounded-lg"
+              className="p-2 rounded-lg"
               style={{ 
                 backgroundColor: 'var(--bg-secondary)',
                 border: '1px solid var(--border)'
               }}
             >
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs sm:text-sm">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs sm:text-sm">
                 <div>
                   <span style={{ color: 'var(--text-secondary)' }}>Creado:</span>
                   <p style={{ color: 'var(--text-primary)' }} className="font-medium">
@@ -121,7 +126,7 @@ export function TargetDetailsModal({ target, isOpen, onClose }: TargetDetailsMod
         </div>
 
         {/* Contenido Principal - Grid Responsivo */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 p-4 sm:p-6">
+  <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4 p-3 sm:p-4">
           
           {/* Columna Izquierda - Ubicación */}
           <div className="space-y-4">
@@ -164,7 +169,7 @@ export function TargetDetailsModal({ target, isOpen, onClose }: TargetDetailsMod
                 
                 {/* Mini mapa más pequeño */}
                 <div 
-                  className="h-32 sm:h-40 rounded-lg flex items-center justify-center relative overflow-hidden cursor-pointer"
+                  className="h-24 sm:h-32 rounded-lg flex items-center justify-center relative overflow-hidden cursor-pointer"
                   style={{ backgroundColor: 'var(--bg-secondary)' }}
                   onClick={openInMaps}
                 >
@@ -200,7 +205,7 @@ export function TargetDetailsModal({ target, isOpen, onClose }: TargetDetailsMod
             {/* Observaciones si existen */}
             {target.observaciones && (
               <div 
-                className="rounded-lg p-4"
+                className="rounded-lg p-3"
                 style={{ 
                   backgroundColor: 'var(--card-bg)',
                   border: '1px solid var(--border)'
@@ -222,7 +227,7 @@ export function TargetDetailsModal({ target, isOpen, onClose }: TargetDetailsMod
             
             {/* Información de Contacto */}
             <div 
-              className="rounded-lg p-4"
+              className="rounded-lg p-3"
               style={{ 
                 backgroundColor: 'var(--card-bg)',
                 border: '1px solid var(--border)'
@@ -370,7 +375,7 @@ export function TargetDetailsModal({ target, isOpen, onClose }: TargetDetailsMod
 
         {/* Footer con Acciones - Más compacto */}
         <div 
-          className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 sm:p-6"
+          className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 p-3 sm:p-4"
           style={{ borderTop: '1px solid var(--border)' }}
         >
           <div className="flex items-center gap-2">
@@ -380,38 +385,81 @@ export function TargetDetailsModal({ target, isOpen, onClose }: TargetDetailsMod
             </span>
           </div>
           
-          <div className="flex items-center gap-2 flex-wrap">
-            <button className="btn-secondary text-sm flex items-center gap-1 px-3 py-2">
+            <div className="flex items-center gap-2 flex-wrap">
+            <button 
+              className="btn-secondary text-sm flex items-center gap-1 px-2 py-1"
+              onClick={() => setShowStatusModal(true)}
+            >
+              <FiSettings className="w-3 h-3" />
+              Cambiar Estado
+            </button>
+            <button 
+              className="btn-secondary text-sm flex items-center gap-1 px-2 py-1"
+              onClick={() => setShowEditModal(true)}
+            >
               <FiEdit3 className="w-3 h-3" />
               Editar
             </button>
-            <button className="btn-primary text-sm flex items-center gap-1 px-3 py-2">
+            <button 
+              className="btn-primary text-sm flex items-center gap-1 px-2 py-1"
+              onClick={() => {
+                if (target.contacto.email) {
+                  window.location.href = `mailto:${target.contacto.email}`;
+                }
+              }}
+              disabled={!target.contacto.email}
+            >
               <FiPhone className="w-3 h-3" />
               Contactar
             </button>
             {target.estado !== 'cerrado' && (
               <button
-                className="btn-primary text-sm flex items-center gap-1 px-3 py-2"
-                onClick={() => setShowConvertPanel(true)}
-                title="Confirmar relación y convertir en Obra"
+                className="btn-primary text-sm flex items-center gap-1 px-2 py-1"
+                onClick={() => setShowConvertModal(true)}
+                title="Crear una nueva obra a partir de este target potencial"
               >
                 <FiHome className="w-3 h-3" />
-                Convertir a Obra
+                Crear Obra
               </button>
             )}
           </div>
         </div>
 
         {/* Placeholder del panel de conversión (se implementará en siguiente paso) */}
-        {showConvertPanel && (
-          <div className="p-4 sm:p-6" style={{ borderTop: '1px solid var(--border)', backgroundColor: 'var(--bg-secondary)' }}>
-            <ConvertToObraPanel
-              targetId={target.id}
-              defaultDireccion={{ direccion: target.ubicacion.direccion, comuna: target.ubicacion.comuna ?? undefined, ciudad: target.ubicacion.ciudad ?? undefined }}
-              onClose={() => setShowConvertPanel(false)}
-              onConverted={() => setShowConvertPanel(false)}
-            />
-          </div>
+        {showConvertModal && (
+          <ConvertToObraModal
+            isOpen={showConvertModal}
+            onClose={() => setShowConvertModal(false)}
+            targetId={target.id}
+            defaultDireccion={{ direccion: target.ubicacion.direccion, comuna: target.ubicacion.comuna ?? undefined, ciudad: target.ubicacion.ciudad ?? undefined }}
+            onConverted={() => setShowConvertModal(false)}
+          />
+        )}
+
+        {/* Edit Modal */}
+        {showEditModal && (
+          <EditTargetModal
+            isOpen={showEditModal}
+            onClose={() => setShowEditModal(false)}
+            target={target}
+            onUpdated={() => {
+              setShowEditModal(false);
+              onTargetUpdated?.();
+            }}
+          />
+        )}
+
+        {/* Status Change Modal */}
+        {showStatusModal && (
+          <StatusChangeModal
+            isOpen={showStatusModal}
+            onClose={() => setShowStatusModal(false)}
+            target={target}
+            onStatusUpdated={() => {
+              setShowStatusModal(false);
+              onTargetUpdated?.();
+            }}
+          />
         )}
       </div>
     </Modal>

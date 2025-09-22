@@ -4,7 +4,6 @@ import { useEffect, useMemo, useState } from "react";
 import { getAllInventory, searchInventory, getCategories, createCategory, updateCategory, deleteCategory, formatCLP, type InventoryItem } from "../model/inventory";
 import { Toast } from "@/shared/ui/Toast";
 import { downloadFileFromResponse } from "@/lib/download";
-import { FiEdit3 } from "react-icons/fi";
 import type { Database } from "@/lib/supabase";
 import { useAuth } from "@/features/auth/model/useAuth";
 import { useAuthHeaders } from "@/hooks/useAuthHeaders";
@@ -718,7 +717,7 @@ export default function StockPage() {
                   <h3 className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>Eliminar producto</h3>
                 </div>
                 <div className="p-6 space-y-4">
-                  <p style={{ color: 'var(--text-primary)' }}>Esta acción marcará el producto como inactivo. Escribe <strong>"Borrar"</strong> para confirmar.</p>
+                  <p style={{ color: 'var(--text-primary)' }}>Esta acción marcará el producto como inactivo. Escribe <strong>&quot;Borrar&quot;</strong> para confirmar.</p>
                   <input
                     value={deleteProductConfirmText}
                     onChange={(e) => setDeleteProductConfirmText(e.target.value)}
@@ -1160,7 +1159,7 @@ function DeleteCategoryModal({
               ))}
             </select>
           </div>
-          <p style={{ color: 'var(--text-primary)' }}>Escribe <strong>"Borrar"</strong> para habilitar la acción de eliminación.</p>
+          <p style={{ color: 'var(--text-primary)' }}>Escribe <strong>&quot;Borrar&quot;</strong> para habilitar la acción de eliminación.</p>
           <input
             value={confirmText}
             onChange={(e) => setConfirmText(e.target.value)}

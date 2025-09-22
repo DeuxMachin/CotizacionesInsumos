@@ -142,27 +142,52 @@ export function ConvertToObraPanel({ targetId, defaultDireccion, onClose, onConv
   }
 
   return (
-    <div className="rounded-lg p-4" style={{ backgroundColor: 'var(--card-bg)', border: '1px solid var(--border)' }}>
-      <div className="flex items-center justify-between mb-3">
-        <h3 className="text-base font-semibold flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
-          <FiHome className="w-4 h-4" style={{ color: 'var(--accent-primary)' }} />
-          Convertir a Obra
-        </h3>
-        <button className="btn-secondary text-xs" onClick={onClose}><FiX className="w-3 h-3" /> Cerrar</button>
+    <div className="space-y-6">
+      {/* Instrucciones */}
+      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+        <div className="flex items-start gap-3">
+          <FiHome className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
+          <div>
+            <h4 className="text-sm font-semibold text-blue-900 mb-1">
+              Creando una Nueva Obra
+            </h4>
+            <p className="text-sm text-blue-800">
+              Completa la información necesaria para formalizar este target como una obra. 
+              Los campos marcados con * son obligatorios. Podrás editar estos detalles más tarde.
+            </p>
+          </div>
+        </div>
       </div>
 
       {error && (
-        <div className="mb-3 text-sm" style={{ color: 'var(--danger-text)' }}>{error}</div>
+        <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+          <p className="text-sm text-red-800">{error}</p>
+        </div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
-          <label className="form-label">Nombre de la Obra</label>
-          <input className="form-input mt-1" value={nombreObra} onChange={(e) => setNombreObra(e.target.value)} placeholder="Ej. Edificio Los Alerces" />
+          <label className="form-label">
+            Nombre de la Obra <span className="text-red-500">*</span>
+          </label>
+          <input 
+            className="form-input mt-1" 
+            value={nombreObra} 
+            onChange={(e) => setNombreObra(e.target.value)} 
+            placeholder="Ej. Edificio Los Alerces" 
+            required
+          />
         </div>
         <div>
-          <label className="form-label">Vendedor a cargo</label>
-          <select className="form-input mt-1" value={vendedorId} onChange={(e) => setVendedorId(e.target.value)}>
+          <label className="form-label">
+            Vendedor a cargo <span className="text-red-500">*</span>
+          </label>
+          <select 
+            className="form-input mt-1" 
+            value={vendedorId} 
+            onChange={(e) => setVendedorId(e.target.value)}
+            required
+          >
             <option value="">Selecciona vendedor</option>
             {vendedores.map(v => (
               <option key={v.id} value={v.id}>{[v.nombre, v.apellido].filter(Boolean).join(' ') || v.email}</option>
@@ -237,11 +262,22 @@ export function ConvertToObraPanel({ targetId, defaultDireccion, onClose, onConv
         </div>
       </div>
 
-      <div className="mt-4 flex items-center justify-end gap-2">
-        <button className="btn-secondary" onClick={onClose} disabled={loading}>Cancelar</button>
-        <button className="btn-primary" onClick={onSubmit} disabled={loading}>
-          {loading ? 'Convirtiendo…' : 'Confirmar y Convertir'}
-        </button>
+      <div className="mt-6 flex items-center justify-between gap-4">
+        <div className="text-sm text-gray-600">
+          <p>Al crear la obra, este target se marcará como cerrado automáticamente.</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <button className="btn-secondary" onClick={onClose} disabled={loading}>
+            Cancelar
+          </button>
+          <button 
+            className="btn-primary" 
+            onClick={onSubmit} 
+            disabled={loading || !nombreObra.trim() || !vendedorId}
+          >
+            {loading ? 'Creando Obra…' : 'Crear Obra'}
+          </button>
+        </div>
       </div>
     </div>
   );
