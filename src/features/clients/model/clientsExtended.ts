@@ -39,6 +39,14 @@ export interface ClientExtended {
   overdue: number
   clientType?: string | null
   clientTypeId?: number | null
+  cliente_saldos?: Array<{
+    id: number
+    snapshot_date: string
+    pagado: number
+    pendiente: number
+    vencido: number
+    dinero_cotizado?: number
+  }>
 }
 
 // Adaptador: fila BD -> ClientExtended (proporciona defaults)
@@ -47,6 +55,15 @@ export function mapRowToClientExtended(row: ClienteRowWithType): ClientExtended 
   const rawStatus = (row.estado || 'vigente').toString().trim().toLowerCase();
   const allowed: ClientStatus[] = ['vigente','moroso','inactivo'];
   const statusNormalized: ClientStatus = (allowed as string[]).includes(rawStatus) ? rawStatus as ClientStatus : 'vigente';
+  // Tomar el último snapshot de cliente_saldos si existe
+  const saldos = Array.isArray(row.cliente_saldos) ? row.cliente_saldos : [];
+  const latestSaldo = saldos
+    .slice()
+    .sort((a, b) => new Date(b.snapshot_date).getTime() - new Date(a.snapshot_date).getTime())[0];
+  const paid = latestSaldo?.pagado ?? 0;
+  const pending = latestSaldo?.pendiente ?? 0;
+  const overdue = latestSaldo?.vencido ?? 0;
+  const partial = latestSaldo?.dinero_cotizado ?? 0;
   return {
     id: row.id,
     rut: row.rut,
@@ -77,12 +94,13 @@ export function mapRowToClientExtended(row: ClienteRowWithType): ClientExtended 
     contactPhone: row.telefono_pago,
     paymentEmail: row.email_pago,
     transferInfo: row.forma_pago,
-    paid: 0,
-    pending: 0,
-    partial: 0,
-    overdue: 0,
+    paid,
+    pending,
+    partial,
+    overdue,
     clientType: row.cliente_tipos?.nombre || null,
-    clientTypeId: row.cliente_tipos?.id || null
+    clientTypeId: row.cliente_tipos?.id || null,
+    cliente_saldos: row.cliente_saldos
   }
 }
 

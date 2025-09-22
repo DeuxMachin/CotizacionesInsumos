@@ -181,6 +181,42 @@ export class NotasVentaService {
         throw new Error(errMsg);
       }
     }
+    // Actualizar saldos del cliente al crear nota de venta (mueve de cotizado a pagado/pendiente)
+    try {
+      const clienteId = (notaInsert as unknown as SalesNoteRow).cliente_principal_id as number | null;
+      const total = (notaInsert as unknown as SalesNoteRow).total as number;
+      if (clienteId && total && total > 0) {
+        const { data: saldoActual } = await supabase
+          .from('cliente_saldos')
+          .select('id, pagado, pendiente, dinero_cotizado')
+          .eq('cliente_id', clienteId)
+          .order('snapshot_date', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (saldoActual) {
+          const nuevoPagado = (saldoActual.pagado || 0) + total;
+          const nuevoCotizado = Math.max(0, (saldoActual.dinero_cotizado || 0) - total);
+          await supabase
+            .from('cliente_saldos')
+            .update({ pagado: nuevoPagado, dinero_cotizado: nuevoCotizado })
+            .eq('id', saldoActual.id);
+        } else {
+          await supabase
+            .from('cliente_saldos')
+            .insert({
+              cliente_id: clienteId,
+              snapshot_date: new Date().toISOString().split('T')[0],
+              pagado: total,
+              pendiente: 0,
+              vencido: 0,
+              dinero_cotizado: 0
+            });
+        }
+      }
+    } catch (e) {
+      console.warn('[NotasVentaService.create] No se pudo actualizar cliente_saldos', e);
+    }
     return notaInsert as unknown as SalesNoteRecord;
   }
 

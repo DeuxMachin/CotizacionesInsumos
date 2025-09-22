@@ -3,7 +3,7 @@
 import React, { useState, useMemo } from 'react';
 import type { QuoteStatus } from '@/core/domain/quote/Quote';
 
-import { useRouter, useParams } from 'next/navigation';
+import { useRouter, useParams, useSearchParams } from 'next/navigation';
 import { 
   FiArrowLeft, 
   FiEdit3, 
@@ -18,17 +18,22 @@ import {
   FiCheck,
   FiX,
   FiAlertCircle,
+  FiDownload,
+  FiCalendar,
 
   FiChevronDown,
   FiCopy,
   FiMapPin
 } from 'react-icons/fi';
 import { type ClientExtended, mapRowToClientExtended } from '@/features/clients/model/clientsExtended';
+import type { Obra } from '@/features/obras/types/obras';
 // Eliminado quotesData mock: ahora se obtienen cotizaciones reales desde la API
 import { Badge } from '@/shared/ui/Badge';
 import { Toast } from '@/shared/ui/Toast';
+import { downloadFileFromResponse } from '@/lib/download';
 import { useActionAuthorization } from '@/middleware/AuthorizationMiddleware';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
+import { useQuotes } from '@/features/quotes/model/useQuotes';
 
 function formatCLP(amount: number): string {
   return new Intl.NumberFormat('es-CL', { 
@@ -241,10 +246,22 @@ interface ClientEditForm {
   cliente_tipo_id: number | null;
 }
 
+interface PaymentForm {
+  amount: number;
+  date: string;
+  description: string;
+  paymentType: 'parcial' | 'total' | 'adelanto';
+  paymentMethod: 'efectivo' | 'transferencia' | 'cheque' | 'tarjeta' | 'otro';
+  reference: string;
+  notes: string;
+}
+
 function ClientDetailPage() {
   const router = useRouter();
   const params = useParams();
+  const searchParams = useSearchParams();
   const { canEdit, canDelete } = useActionAuthorization();
+  const { getQuoteById, formatMoney, getStatusColor } = useQuotes();
   
   // Obtener cliente por ID
   const [client, setClient] = React.useState<ClientExtended | null>(null);
@@ -254,6 +271,21 @@ function ClientDetailPage() {
   const [saving, setSaving] = React.useState(false);
   const [clientTypes, setClientTypes] = React.useState<Array<{id: number, nombre: string, descripcion?: string | null}>>([]);
   const [formErrors, setFormErrors] = React.useState<Partial<Record<keyof ClientEditForm, string>>>({});
+  const [autoEditHandled, setAutoEditHandled] = React.useState(false);
+
+  // Payment modal state
+  const [showPaymentModal, setShowPaymentModal] = React.useState(false);
+  const [savingPayment, setSavingPayment] = React.useState(false);
+  const [paymentErrors, setPaymentErrors] = React.useState<Partial<Record<string, string>>>({});
+  const [paymentForm, setPaymentForm] = React.useState<PaymentForm>({
+    amount: 0,
+    date: new Date().toISOString().split('T')[0], // Today's date in YYYY-MM-DD format
+    description: '',
+    paymentType: 'parcial',
+    paymentMethod: 'transferencia',
+    reference: '',
+    notes: ''
+  });
 
   // Form state (se inicializa cuando se abre edición)
   const [form, setForm] = React.useState<ClientEditForm>({
@@ -315,6 +347,111 @@ function ClientDetailPage() {
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setForm(f => ({ ...f, [name]: name === 'linea_credito' || name === 'descuento_cliente_pct' ? Number(value) : value }));
+  };
+
+  const handlePaymentChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    setPaymentForm(f => ({ ...f, [name]: name === 'amount' ? Number(value) : value }));
+  };
+
+  const handlePaymentSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!client) return;
+
+    setSavingPayment(true);
+    setPaymentErrors({});
+
+    try {
+      // Validar el formulario
+      const errors: Partial<Record<string, string>> = {};
+      if (paymentForm.amount <= 0) {
+        errors.amount = 'El monto debe ser mayor a 0';
+      }
+      if (!paymentForm.date) {
+        errors.date = 'La fecha es requerida';
+      }
+      if (!paymentForm.paymentType) {
+        errors.paymentType = 'El tipo de pago es requerido';
+      }
+      if (!paymentForm.paymentMethod) {
+        errors.paymentMethod = 'El método de pago es requerido';
+      }
+
+      if (Object.keys(errors).length > 0) {
+        setPaymentErrors(errors);
+        return;
+      }
+
+      // Llamar a la API para registrar el pago
+      const response = await fetch('/api/pagos', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          cliente_id: client.id,
+          monto: paymentForm.amount,
+          fecha_pago: paymentForm.date,
+          tipo_pago: paymentForm.paymentType,
+          metodo_pago: paymentForm.paymentMethod,
+          referencia: paymentForm.reference || null,
+          descripcion: paymentForm.description || null,
+          notas: paymentForm.notes || null
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Error al registrar el pago');
+      }
+
+      const result = await response.json();
+
+      // Recargar datos del cliente para actualizar financialTotals
+      // Recargar cliente
+      const clientRes = await fetch(`/api/clientes/${client.id}`);
+      if (clientRes.ok) {
+        const clientBody = await clientRes.json();
+        setClient(clientBody.data ? mapRowToClientExtended(clientBody.data) : null);
+      }
+
+      // Recargar cotizaciones
+      const quotesRes = await fetch(`/api/cotizaciones?cliente_id=${client.id}`);
+      if (quotesRes.ok) {
+        const quotesBody = await quotesRes.json();
+        setQuotes((quotesBody.data || []) as QuoteRow[]);
+      }
+
+      // Recargar obras
+      const obrasRes = await fetch(`/api/obras?cliente_id=${client.id}`);
+      if (obrasRes.ok) {
+        const obrasBody = await obrasRes.json();
+        setObras((obrasBody.data || []) as Obra[]);
+      }
+
+      // Mostrar mensaje de éxito
+      Toast.success('Pago registrado exitosamente');
+
+      // Resetear formulario y cerrar modal
+      setPaymentForm({
+        amount: 0,
+        date: new Date().toISOString().split('T')[0],
+        description: '',
+        paymentType: 'parcial',
+        paymentMethod: 'transferencia',
+        reference: '',
+        notes: ''
+      });
+      setShowPaymentModal(false);
+
+      // Mostrar mensaje de éxito (podríamos agregar un toast aquí)
+
+    } catch (error) {
+      console.error('Error registrando pago:', error);
+      setPaymentErrors({ general: 'Error al registrar el pago. Intente nuevamente.' });
+    } finally {
+      setSavingPayment(false);
+    }
   };
 
   const validateForm = (): boolean => {
@@ -392,11 +529,24 @@ function ClientDetailPage() {
     load();
     return () => { cancelled = true; };
   }, [params.id]);
+
+  // Activar edición automáticamente si viene con ?edit=true
+  React.useEffect(() => {
+    if (client && !editing && !autoEditHandled && searchParams.get('edit') === 'true' && canEdit('clients')) {
+      openEdit();
+      setAutoEditHandled(true);
+    }
+  }, [client, editing, searchParams, canEdit, autoEditHandled]);
   
   // Estado para cotizaciones reales del cliente
   const [quotes, setQuotes] = React.useState<QuoteRow[]>([]);
   const [quotesLoading, setQuotesLoading] = React.useState(false);
   const [quotesError, setQuotesError] = React.useState<string | null>(null);
+
+  // Estado para obras del cliente
+  const [obras, setObras] = React.useState<Obra[]>([]);
+  const [obrasLoading, setObrasLoading] = React.useState(false);
+  const [obrasError, setObrasError] = React.useState<string | null>(null);
 
   // Cargar cotizaciones del cliente por ID (cliente_principal_id)
   React.useEffect(() => {
@@ -422,6 +572,32 @@ function ClientDetailPage() {
     return () => { cancelled = true; };
   }, [client]);
 
+  // Cargar obras del cliente
+  React.useEffect(() => {
+    if (!client?.id) return;
+    let cancelled = false;
+    async function loadObras() {
+    async function loadObras() {
+      if (!client) return;
+      try {
+        setObrasLoading(true); setObrasError(null);
+        const clientId = client.id;
+        const res = await fetch(`/api/obras?cliente_id=${clientId}`);
+        if (!res.ok) throw new Error('Error al cargar obras');
+        const body = await res.json();
+        if (!cancelled) setObras((body.data || []) as Obra[]);
+      } catch (e) {
+        if (!cancelled) {
+          const msg = e instanceof Error ? e.message : 'Error desconocido';
+          setObrasError(msg);
+        }
+      } finally { if (!cancelled) setObrasLoading(false); }
+    }
+    }
+    loadObras();
+    return () => { cancelled = true; };
+  }, [client?.id]);
+
   // Adaptador mínimo para campos usados en la UI (folio/numero, fecha, estado, total)
   const clientQuotes: ClientQuote[] = useMemo(() => {
     const allowed: QuoteStatus[] = ['borrador','enviada','aceptada','rechazada','expirada'];
@@ -429,8 +605,8 @@ function ClientDetailPage() {
       const raw = (q.estado ?? 'borrador') as string;
       const estado: QuoteStatus = (allowed.includes(raw as QuoteStatus) ? raw : 'borrador') as QuoteStatus;
       return {
-        id: q.id,
-        numero: q.folio ?? `COT-${q.id}`,
+        id: String(q.id),
+        numero: q.folio ?? `COT-${String(q.id)}`,
         fechaCreacion: q.created_at ?? q.fecha_emision ?? new Date().toISOString(),
         estado,
         total: (q.total_final ?? q.total_neto ?? 0) || 0
@@ -438,19 +614,50 @@ function ClientDetailPage() {
     });
   }, [quotes]);
 
-  // Totales financieros derivados de las cotizaciones reales
+  // Totales financieros derivados de cliente_saldos
   const financialTotals = useMemo(() => {
-    const totalPagado = 0; // TODO: cuando exista relación de pagos reales
-    const totalCotizado = clientQuotes.reduce((sum, q) => sum + (q.total || 0), 0);
-    // Suponemos que todo lo cotizado aún está "por cobrar" salvo lógica futura de facturación/pagos
+    if (!client) return { paid: 0, pending: 0, partial: 0, overdue: 0, movimientos: 0 };
+    // Usar los valores mapeados desde cliente_saldos (último snapshot)
     return {
-      paid: totalPagado,
-      pending: totalCotizado - totalPagado,
-      partial: 0,
-      overdue: 0,
-      movimientos: totalCotizado
+      paid: client.paid || 0,
+      pending: client.pending || 0,
+      partial: client.partial || 0, // dinero_cotizado
+      overdue: client.overdue || 0,
+      movimientos: (client.paid || 0) + (client.pending || 0) + (client.partial || 0) + (client.overdue || 0)
     };
-  }, [clientQuotes]);
+  }, [client]);
+
+  // Función para descargar PDF de cotización
+  const handleDownloadQuotePDF = async (quoteNumero: string) => {
+    try {
+      // Obtener los datos completos de la cotización usando el hook
+      const fullQuote = getQuoteById ? getQuoteById(quoteNumero) : null;
+
+      if (!fullQuote) {
+        throw new Error('Cotización no encontrada');
+      }
+
+      // Generar el PDF
+      const pdfResponse = await fetch('/api/pdf/cotizacion/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(fullQuote)
+      });
+
+      if (!pdfResponse.ok) {
+        throw new Error('Error al generar el PDF');
+      }
+
+      // Descargar el archivo
+      const filename = `cotizacion_${quoteNumero}.pdf`;
+      await downloadFileFromResponse(pdfResponse, filename);
+      Toast.success('PDF descargado exitosamente');
+
+    } catch (error) {
+      console.error('Error descargando PDF:', error);
+      Toast.error(error instanceof Error ? error.message : 'Error al descargar el PDF');
+    }
+  };
 
   if (loading) {
     return (
@@ -544,6 +751,10 @@ function ClientDetailPage() {
                     Editar
                   </button>
                 )}
+                <button onClick={() => setShowPaymentModal(true)} className="btn-primary flex items-center gap-2">
+                  <FiCreditCard className="w-4 h-4" />
+                  Registrar Pago
+                </button>
                 {canDelete('clients') && (
                   <button className="btn-secondary text-red-600 flex items-center gap-2">
                     <FiTrash2 className="w-4 h-4" />
@@ -564,6 +775,14 @@ function ClientDetailPage() {
                     <FiEdit3 className="w-4 h-4" />
                   </button>
                 )}
+                <button 
+                  onClick={() => setShowPaymentModal(true)}
+                  className="p-2 rounded-lg transition-colors"
+                  style={{ backgroundColor: 'var(--accent-bg)', color: 'var(--accent-text)' }}
+                  title="Registrar pago"
+                >
+                  <FiCreditCard className="w-4 h-4" />
+                </button>
                 {canDelete('clients') && (
                   <button 
                     className="p-2 rounded-lg transition-colors text-red-600"
@@ -598,7 +817,7 @@ function ClientDetailPage() {
             bgColor="var(--warning-bg)"
           />
           <StatCardSimple 
-            label="Pagos Parciales"
+            label="Dinero Cotizado"
             value={formatCLP(financialTotals.partial)}
             icon={<FiDollarSign className="w-4 h-4" />}
             color="var(--neutral-text)"
@@ -727,12 +946,21 @@ function ClientDetailPage() {
                               {formatCLP(quote.total)}
                             </td>
                             <td className="py-3 px-2 text-center">
-                              <button 
-                                onClick={() => router.push(`/dashboard/cotizaciones/${quote.id}`)}
-                                className="btn-secondary text-xs px-3 py-1"
-                              >
-                                Ver
-                              </button>
+                              <div className="flex items-center gap-1 justify-center">
+                                <button 
+                                  onClick={() => router.push(`/dashboard/cotizaciones/${quote.numero}?from=client&client_id=${client.id}`)}
+                                  className="btn-secondary text-xs px-2 py-1"
+                                >
+                                  Ver
+                                </button>
+                                <button 
+                                  onClick={() => handleDownloadQuotePDF(quote.numero)}
+                                  className="btn-secondary text-xs px-2 py-1 flex items-center gap-1"
+                                >
+                                  <FiDownload className="w-3 h-3" />
+                                  PDF
+                                </button>
+                              </div>
                             </td>
                           </tr>
                         ))}
@@ -771,12 +999,21 @@ function ClientDetailPage() {
                           </span>
                         </div>
                         
-                        <button 
-                          onClick={() => router.push(`/dashboard/cotizaciones/${quote.id}`)}
-                          className="btn-secondary text-xs px-3 py-2 w-full"
-                        >
-                          Ver Detalle
-                        </button>
+                        <div className="flex items-center gap-2 w-full">
+                          <button 
+                            onClick={() => router.push(`/dashboard/cotizaciones/${quote.numero}?from=client&client_id=${client.id}`)}
+                            className="btn-secondary text-xs px-3 py-2 flex-1"
+                          >
+                            Ver
+                          </button>
+                          <button 
+                            onClick={() => handleDownloadQuotePDF(quote.numero)}
+                            className="btn-secondary text-xs px-3 py-2 flex-1 flex items-center justify-center gap-1"
+                          >
+                            <FiDownload className="w-3 h-3" />
+                            PDF
+                          </button>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -793,6 +1030,155 @@ function ClientDetailPage() {
                 </div>
               )}
             </InfoCard>
+
+            {/* Obras Vinculadas */}
+            <InfoCard 
+              title={`Obras Vinculadas (${obrasLoading ? '...' : obras.length})`}
+              icon={<FiBriefcase className="w-4 h-4 sm:w-5 sm:h-5" />}
+            >
+              {obrasError && (
+                <div className="text-center py-4 text-sm" style={{ color: 'var(--danger-text)' }}>
+                  {obrasError}
+                </div>
+              )}
+              {!obrasError && obrasLoading && (
+                <div className="text-center py-4 text-sm" style={{ color: 'var(--text-secondary)' }}>
+                  Cargando obras...
+                </div>
+              )}
+              {!obrasLoading && !obrasError && obras.length > 0 ? (
+                <div className="w-full">
+                  {/* Vista de tabla para desktop */}
+                  <div className="hidden md:block w-full overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b" style={{ borderColor: 'var(--border)' }}>
+                          <th className="text-left pb-3 px-2" style={{ color: 'var(--text-secondary)' }}>Nombre</th>
+                          <th className="text-left pb-3 px-2" style={{ color: 'var(--text-secondary)' }}>Estado</th>
+                          <th className="text-left pb-3 px-2" style={{ color: 'var(--text-secondary)' }}>Etapa</th>
+                          <th className="text-left pb-3 px-2" style={{ color: 'var(--text-secondary)' }}>Fecha Inicio</th>
+                          <th className="text-center pb-3 px-2" style={{ color: 'var(--text-secondary)' }}>Acciones</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {obras.map((obra, index) => (
+                          <tr 
+                            key={obra.id}
+                            className="border-b last:border-b-0 hover:bg-opacity-50 transition-colors cursor-pointer"
+                            style={{ 
+                              borderColor: 'var(--border)',
+                              backgroundColor: index % 2 === 0 ? 'transparent' : 'var(--bg-secondary)'
+                            }}
+                            onClick={() => router.push(`/dashboard/obras/${obra.id}`)}
+                          >
+                            <td className="py-3 px-2">
+                              <div className="font-medium" style={{ color: 'var(--accent-primary)' }}>
+                                {obra.nombreEmpresa}
+                              </div>
+                              <div className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                                {obra.direccionObra}
+                              </div>
+                            </td>
+                            <td className="py-3 px-2">
+                              <span className="px-2 py-1 text-xs font-medium rounded-full" 
+                                    style={{ 
+                                      backgroundColor: obra.estado === 'activa' ? 'var(--success-bg)' : 
+                                                     obra.estado === 'pausada' ? 'var(--warning-bg)' : 'var(--neutral-bg)',
+                                      color: obra.estado === 'activa' ? 'var(--success-text)' : 
+                                             obra.estado === 'pausada' ? 'var(--warning-text)' : 'var(--neutral-text)'
+                                    }}>
+                                {obra.estado.charAt(0).toUpperCase() + obra.estado.slice(1)}
+                              </span>
+                            </td>
+                            <td className="py-3 px-2" style={{ color: 'var(--text-primary)' }}>
+                              {obra.etapaActual.charAt(0).toUpperCase() + obra.etapaActual.slice(1)}
+                            </td>
+                            <td className="py-3 px-2" style={{ color: 'var(--text-primary)' }}>
+                              {obra.fechaInicio.toLocaleDateString('es-CL')}
+                            </td>
+                            <td className="py-3 px-2 text-center">
+                              <button 
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  router.push(`/dashboard/obras/${obra.id}`);
+                                }}
+                                className="btn-secondary text-xs px-3 py-1"
+                              >
+                                Ver
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Vista de tarjetas para móvil */}
+                  <div className="md:hidden grid grid-cols-1 gap-2.5 w-full">
+                    {obras.map((obra) => (
+                      <div 
+                        key={obra.id}
+                        className="p-3 rounded-lg border cursor-pointer"
+                        style={{ backgroundColor: 'var(--bg-secondary)', borderColor: 'var(--border)' }}
+                        onClick={() => router.push(`/dashboard/obras/${obra.id}`)}
+                      >
+                        <div className="flex items-start justify-between mb-3 w-full">
+                          <div className="min-w-0 flex-grow mr-2">
+                            <div className="font-medium text-sm truncate" style={{ color: 'var(--accent-primary)' }}>
+                              {obra.nombreEmpresa}
+                            </div>
+                            <div className="text-xs truncate" style={{ color: 'var(--text-muted)' }}>
+                              {obra.direccionObra}
+                            </div>
+                          </div>
+                          <div className="flex-shrink-0">
+                            <span className="px-2 py-1 text-xs font-medium rounded-full" 
+                                  style={{ 
+                                    backgroundColor: obra.estado === 'activa' ? 'var(--success-bg)' : 
+                                                   obra.estado === 'pausada' ? 'var(--warning-bg)' : 'var(--neutral-bg)',
+                                    color: obra.estado === 'activa' ? 'var(--success-text)' : 
+                                           obra.estado === 'pausada' ? 'var(--warning-text)' : 'var(--neutral-text)'
+                                  }}>
+                              {obra.estado.charAt(0).toUpperCase() + obra.estado.slice(1)}
+                            </span>
+                          </div>
+                        </div>
+                        
+                        <div className="flex items-center justify-between mb-3 w-full">
+                          <span className="text-xs truncate" style={{ color: 'var(--text-secondary)' }}>
+                            Etapa: {obra.etapaActual.charAt(0).toUpperCase() + obra.etapaActual.slice(1)}
+                          </span>
+                          <span className="text-xs truncate ml-2" style={{ color: 'var(--text-secondary)' }}>
+                            Inicio: {obra.fechaInicio.toLocaleDateString('es-CL')}
+                          </span>
+                        </div>
+                        
+                        <button 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            router.push(`/dashboard/obras/${obra.id}`);
+                          }}
+                          className="btn-secondary text-xs px-3 py-2 w-full"
+                        >
+                          Ver Detalle
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center py-6 w-full">
+                  <FiBriefcase className="w-10 h-10 mx-auto mb-3" style={{ color: 'var(--text-muted)' }} />
+                  <h4 className="font-medium mb-2" style={{ color: 'var(--text-primary)' }}>
+                    Sin obras vinculadas
+                  </h4>
+                  <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+                    Este cliente no tiene obras registradas
+                  </p>
+                </div>
+              )}
+            </InfoCard>
+
           </div>
 
           {/* Columna lateral */}
@@ -889,6 +1275,16 @@ function ClientDetailPage() {
         errors={formErrors}
         clientTypes={clientTypes}
         onClientTypeChange={(value) => setForm(f => ({ ...f, cliente_tipo_id: value }))}
+      />
+      <PaymentModal
+        open={showPaymentModal}
+        onClose={() => setShowPaymentModal(false)}
+        onSubmit={handlePaymentSubmit}
+        form={paymentForm}
+        onChange={handlePaymentChange}
+        saving={savingPayment}
+        errors={paymentErrors}
+        financialTotals={financialTotals}
       />
     </>
   );
@@ -1040,6 +1436,405 @@ function EditModal({ open, onClose, onSubmit, form, onChange, saving, errors, cl
               {saving && <span className="animate-spin h-4 w-4 border-2 border-white/40 border-t-white rounded-full"></span>}
               Guardar Cambios
             </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+// Modal para registrar pagos
+interface PaymentModalProps {
+  open: boolean;
+  onClose: () => void;
+  onSubmit: (e: React.FormEvent) => void;
+  form: PaymentForm;
+  onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => void;
+  saving: boolean;
+  errors: Partial<Record<string, string>>;
+  financialTotals: {
+    paid: number;
+    pending: number;
+    partial: number;
+    overdue: number;
+  };
+}
+
+function PaymentModal({ open, onClose, onSubmit, form, onChange, saving, errors, financialTotals }: PaymentModalProps) {
+  if (!open) return null;
+
+  const formatAmount = (amount: number) => {
+    return new Intl.NumberFormat('es-CL', {
+      style: 'currency',
+      currency: 'CLP',
+      maximumFractionDigits: 0
+    }).format(amount);
+  };
+
+  // Calcular el pendiente después del pago
+  const calculatePendingAfterPayment = () => {
+    return Math.max(0, financialTotals.pending - form.amount);
+  };
+
+  // Helper para estilos de input
+  const getInputStyles = (hasError: boolean) => ({
+    borderColor: hasError ? 'var(--danger-text)' : 'var(--border)',
+    color: 'var(--text-primary)',
+    '--tw-ring-color': hasError ? 'var(--danger)' : 'var(--accent-primary)',
+    '--tw-ring-opacity': '0.3'
+  } as React.CSSProperties);
+
+  // Helper para colores del modal
+  const getModalBackdropColor = () => 'rgba(0, 0, 0, 0.5)'; // Más sutil que bg-black/60
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 animate-in fade-in duration-300"
+         style={{
+           backgroundColor: getModalBackdropColor(),
+           backdropFilter: 'blur(8px)'
+         }}>
+      <div className="w-full max-w-2xl max-h-[95vh] sm:max-h-[90vh] overflow-hidden rounded-2xl border shadow-2xl animate-in zoom-in-95 duration-300"
+           style={{
+             backgroundColor: 'var(--card-bg)',
+             borderColor: 'var(--border)',
+             boxShadow: 'var(--shadow-lg, 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1))'
+           }}>
+
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-5 border-b"
+             style={{
+               borderColor: 'var(--border)',
+               backgroundColor: 'var(--success-bg)',
+               background: 'linear-gradient(135deg, var(--success-bg) 0%, var(--success-bg-secondary, var(--card-bg)) 100%)'
+             }}>
+          <div className="flex items-center gap-4">
+            <div className="p-3 rounded-xl shadow-sm"
+                 style={{
+                   backgroundColor: 'var(--success)',
+                   border: '2px solid var(--success-border, var(--success))',
+                   boxShadow: 'var(--shadow-lg)'
+                 }}>
+              <FiCreditCard className="w-6 h-6" style={{ color: 'var(--success-text)' }} />
+            </div>
+            <div>
+              <h2 className="text-2xl font-bold" style={{ color: 'var(--success-text)' }}>
+                Registrar Pago
+              </h2>
+              <p className="text-sm" style={{ color: 'var(--success-text-secondary, var(--text-secondary))' }}>
+                Registra un nuevo pago para este cliente
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-2 rounded-lg transition-all duration-200 hover:scale-105"
+            style={{
+              color: 'var(--success-text)',
+              backgroundColor: 'var(--success-bg-hover, rgba(255,255,255,0.1))',
+              border: '1px solid var(--success-border)',
+              boxShadow: 'var(--shadow-sm)'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = 'var(--success-hover)';
+              e.currentTarget.style.transform = 'scale(1.05)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = 'var(--success-bg-hover, rgba(255,255,255,0.1))';
+              e.currentTarget.style.transform = 'scale(1)';
+            }}
+          >
+            <FiX className="w-6 h-6" />
+          </button>
+        </div>
+
+        <form onSubmit={onSubmit} className="flex flex-col h-full max-h-[calc(95vh-140px)]">
+          {/* Content */}
+          <div className="flex-1 overflow-y-auto p-6 space-y-8">
+
+            {/* Monto Principal */}
+            <div className="space-y-4">
+              <div className="flex items-center gap-3 pb-2 border-b" style={{ borderColor: 'var(--success)' }}>
+                <div className="p-2 rounded-lg" style={{ backgroundColor: 'var(--success)', border: '2px solid var(--success-border)' }}>
+                  <FiDollarSign className="w-5 h-5" style={{ color: 'var(--success-text)' }} />
+                </div>
+                <h3 className="text-lg font-semibold" style={{ color: 'var(--success-text)' }}>Monto del Pago</h3>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
+                    Monto a Pagar *
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
+                      $
+                    </span>
+                    <input
+                      name="amount"
+                      type="number"
+                      value={form.amount || ''}
+                      onChange={onChange}
+                      required
+                      min="0"
+                      step="0.01"
+                      className={`w-full pl-8 pr-4 py-4 text-lg rounded-xl border-2 bg-transparent transition-all duration-200 focus:ring-2 hover:border-opacity-80 font-semibold ${
+                        errors.amount ? 'ring-2' : ''
+                      }`}
+                      style={{
+                        borderColor: form.amount > 0 ? 'var(--primary)' : 'var(--border)',
+                        backgroundColor: form.amount > 0 ? 'var(--primary-bg)' : 'var(--input-bg)',
+                        color: form.amount > 0 ? 'var(--primary-text)' : 'var(--text-primary)',
+                        ...getInputStyles(!!errors.amount)
+                      }}
+                      placeholder="0"
+                    />
+                  </div>
+                  {errors.amount && (
+                    <p className="text-sm flex items-center gap-1" style={{ color: 'var(--danger-text)' }}>
+                      <FiAlertCircle className="w-4 h-4" />
+                      {errors.amount}
+                    </p>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
+                    Pendiente Después del Pago
+                  </label>
+                  <div className="w-full px-4 py-4 text-lg rounded-xl border-2 font-semibold"
+                       style={{
+                         borderColor: 'var(--success)',
+                         backgroundColor: 'var(--success-bg)',
+                         color: 'var(--success-text)'
+                       }}>
+                    {form.amount > 0 ? formatAmount(calculatePendingAfterPayment()) : 'Sin calcular'}
+                  </div>
+                  {form.amount > 0 && (
+                    <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+                      Monto del pago: {formatAmount(form.amount)}
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Detalles del Pago */}
+            <div className="space-y-4">
+              <div className="flex items-center gap-3 pb-2 border-b" style={{ borderColor: 'var(--info)' }}>
+                <div className="p-2 rounded-lg" style={{ backgroundColor: 'var(--info)', border: '2px solid var(--info-border)' }}>
+                  <FiCalendar className="w-5 h-5" style={{ color: 'var(--info-text)' }} />
+                </div>
+                <h3 className="text-lg font-semibold" style={{ color: 'var(--info-text)' }}>Detalles del Pago</h3>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
+                    Fecha del Pago *
+                  </label>
+                  <input
+                    name="date"
+                    type="date"
+                    value={form.date}
+                    onChange={onChange}
+                    required
+                    className={`w-full px-4 py-3 rounded-xl border-2 bg-transparent transition-all duration-200 focus:ring-2 hover:border-opacity-80 font-medium ${
+                      errors.date ? 'ring-2' : ''
+                    }`}
+                    style={{
+                      borderColor: form.date ? 'var(--info)' : 'var(--border)',
+                      backgroundColor: form.date ? 'var(--info-bg)' : 'var(--input-bg)',
+                      color: form.date ? 'var(--info-text)' : 'var(--text-primary)',
+                      ...getInputStyles(!!errors.date)
+                    }}
+                  />
+                  {errors.date && (
+                    <p className="text-sm flex items-center gap-1" style={{ color: 'var(--danger-text)' }}>
+                      <FiAlertCircle className="w-4 h-4" />
+                      {errors.date}
+                    </p>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
+                    Tipo de Pago *
+                  </label>
+                  <select
+                    name="paymentType"
+                    value={form.paymentType}
+                    onChange={onChange}
+                    className="w-full px-4 py-3 rounded-xl border-2 bg-transparent transition-all duration-200 focus:ring-2 hover:border-opacity-80 focus:border-opacity-100 font-medium"
+                    style={{
+                      borderColor: form.paymentType ? 'var(--warning)' : 'var(--border)',
+                      backgroundColor: form.paymentType ? 'var(--warning-bg)' : 'var(--input-bg)',
+                      color: form.paymentType ? 'var(--warning-text)' : 'var(--text-primary)',
+                      ...getInputStyles(false)
+                    }}
+                  >
+                    <option value="parcial">Pago Parcial</option>
+                    <option value="total">Pago Total</option>
+                    <option value="adelanto">Adelanto</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
+                    Método de Pago *
+                  </label>
+                  <select
+                    name="paymentMethod"
+                    value={form.paymentMethod}
+                    onChange={onChange}
+                    className="w-full px-4 py-3 rounded-xl border-2 bg-transparent transition-all duration-200 focus:ring-2 hover:border-opacity-80 focus:border-opacity-100 font-medium"
+                    style={{
+                      borderColor: form.paymentMethod ? 'var(--secondary)' : 'var(--border)',
+                      backgroundColor: form.paymentMethod ? 'var(--secondary-bg)' : 'var(--input-bg)',
+                      color: form.paymentMethod ? 'var(--secondary-text)' : 'var(--text-primary)',
+                      ...getInputStyles(false)
+                    }}
+                  >
+                    <option value="transferencia">Transferencia Bancaria</option>
+                    <option value="efectivo">Efectivo</option>
+                    <option value="cheque">Cheque</option>
+                    <option value="tarjeta">Tarjeta de Crédito/Débito</option>
+                    <option value="otro">Otro</option>
+                  </select>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
+                    Número de Referencia
+                  </label>
+                  <input
+                    name="reference"
+                    type="text"
+                    value={form.reference}
+                    onChange={onChange}
+                    className="w-full px-4 py-3 rounded-xl border-2 bg-transparent transition-all duration-200 focus:ring-2 hover:border-opacity-80 focus:border-opacity-100 font-medium"
+                    style={{
+                      borderColor: form.reference ? 'var(--neutral)' : 'var(--border)',
+                      backgroundColor: form.reference ? 'var(--neutral-bg)' : 'var(--input-bg)',
+                      color: form.reference ? 'var(--neutral-text)' : 'var(--text-primary)',
+                      ...getInputStyles(false)
+                    }}
+                    placeholder="N° de comprobante, operación, etc."
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Información Adicional */}
+            <div className="space-y-4">
+              <div className="flex items-center gap-3 pb-2 border-b" style={{ borderColor: 'var(--warning)' }}>
+                <div className="p-2 rounded-lg" style={{ backgroundColor: 'var(--warning)', border: '2px solid var(--warning-border)' }}>
+                  <FiFileText className="w-5 h-5" style={{ color: 'var(--warning-text)' }} />
+                </div>
+                <h3 className="text-lg font-semibold" style={{ color: 'var(--warning-text)' }}>Información Adicional</h3>
+              </div>
+
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
+                    Descripción del Pago
+                  </label>
+                  <textarea
+                    name="description"
+                    value={form.description}
+                    onChange={onChange}
+                    rows={3}
+                    className="w-full px-4 py-3 rounded-xl border-2 bg-transparent transition-all duration-200 focus:ring-2 hover:border-opacity-80 focus:border-opacity-100 resize-none font-medium"
+                    style={{
+                      borderColor: form.description ? 'var(--info)' : 'var(--border)',
+                      backgroundColor: form.description ? 'var(--info-bg)' : 'var(--input-bg)',
+                      color: form.description ? 'var(--info-text)' : 'var(--text-primary)',
+                      ...getInputStyles(false)
+                    }}
+                    placeholder="Describe el motivo o detalles del pago..."
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
+                    Notas Internas
+                  </label>
+                  <textarea
+                    name="notes"
+                    value={form.notes}
+                    onChange={onChange}
+                    rows={2}
+                    className="w-full px-4 py-3 rounded-xl border-2 bg-transparent transition-all duration-200 focus:ring-2 hover:border-opacity-80 focus:border-opacity-100 resize-none font-medium"
+                    style={{
+                      borderColor: form.notes ? 'var(--warning)' : 'var(--border)',
+                      backgroundColor: form.notes ? 'var(--warning-bg)' : 'var(--input-bg)',
+                      color: form.notes ? 'var(--warning-text)' : 'var(--text-primary)',
+                      ...getInputStyles(false)
+                    }}
+                    placeholder="Notas internas (no visibles para el cliente)..."
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Resumen */}
+            <div className="p-4 rounded-xl border-2 border-dashed" style={{ borderColor: 'var(--border)', backgroundColor: 'var(--bg-secondary)' }}>
+              <div className="flex items-center justify-between">
+                <div>
+                  <h4 className="font-semibold" style={{ color: 'var(--text-primary)' }}>Resumen del Pago</h4>
+                  <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+                    {form.paymentType === 'total' ? 'Pago completo' :
+                     form.paymentType === 'parcial' ? 'Pago parcial' : 'Adelanto'}
+                    {form.reference && ` • Ref: ${form.reference}`}
+                  </p>
+                </div>
+                <div className="text-right">
+                  <div className="text-2xl font-bold" style={{ color: 'var(--success-text)' }}>
+                    {form.amount > 0 ? formatAmount(form.amount) : '$0'}
+                  </div>
+                  <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+                    {form.date ? new Date(form.date).toLocaleDateString('es-CL') : 'Sin fecha'}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+          {/* Footer */}
+          <div className="flex items-center justify-between px-6 py-4 border-t bg-gray-50/50 dark:bg-gray-800/50"
+               style={{ borderColor: 'var(--border)' }}>
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-6 py-2.5 rounded-lg border transition-all duration-200 hover:bg-gray-100 dark:hover:bg-gray-700 hover:scale-105"
+              style={{ borderColor: 'var(--border)', color: 'var(--text-secondary)' }}
+            >
+              Cancelar
+            </button>
+
+            <div className="flex items-center gap-3">
+              {errors.general && (
+                <p className="text-sm flex items-center gap-1" style={{ color: 'var(--danger-text)' }}>
+                  <FiAlertCircle className="w-4 h-4" />
+                  {errors.general}
+                </p>
+              )}
+
+              <button
+                disabled={saving || form.amount <= 0}
+                type="submit"
+                className="px-8 py-2.5 rounded-lg text-white transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2 hover:scale-105 shadow-lg hover:shadow-xl"
+                style={{
+                  background: 'linear-gradient(135deg, var(--primary) 0%, var(--primary-hover) 100%)',
+                }}
+              >
+                {saving && <span className="animate-spin h-4 w-4 border-2 border-white/40 border-t-white rounded-full"></span>}
+                <FiCheck className="w-4 h-4" />
+                {saving ? 'Registrando...' : 'Registrar Pago'}
+              </button>
+            </div>
           </div>
         </form>
       </div>

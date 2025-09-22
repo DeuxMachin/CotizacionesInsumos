@@ -16,6 +16,9 @@ export class ClientesService {
         cliente_tipos:cliente_tipo_id (
           id,
           nombre
+        ),
+        cliente_saldos:cliente_saldos!cliente_saldos_cliente_id_fkey (
+          id, snapshot_date, pagado, pendiente, vencido, dinero_cotizado
         )
       `)
       .order('nombre_razon_social')
@@ -33,6 +36,9 @@ export class ClientesService {
         cliente_tipos:cliente_tipo_id (
           id,
           nombre
+        ),
+        cliente_saldos:cliente_saldos!cliente_saldos_cliente_id_fkey (
+          id, snapshot_date, pagado, pendiente, vencido, dinero_cotizado
         )
       `)
       .eq('id', id)
@@ -51,6 +57,9 @@ export class ClientesService {
         cliente_tipos:cliente_tipo_id (
           id,
           nombre
+        ),
+        cliente_saldos:cliente_saldos!cliente_saldos_cliente_id_fkey (
+          id, snapshot_date, pagado, pendiente, vencido, dinero_cotizado
         )
       `)
       .or(`nombre_razon_social.ilike.%${searchTerm}%,nombre_fantasia.ilike.%${searchTerm}%,rut.ilike.%${searchTerm}%`)

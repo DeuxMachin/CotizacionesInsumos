@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from 'next/navigation';
 import { type ClientExtended, type ClientStatus, mapRowToClientExtended } from "../model/clientsExtended";
-import type { ClienteRow } from '../model/clients';
+import type { ClienteRowWithType } from '../model/clients';
 import { Toast } from "@/shared/ui/Toast";
 import { useAuth } from "@/features/auth/model/useAuth";
 import { useActionAuthorization } from "@/middleware/AuthorizationMiddleware";
@@ -37,6 +37,7 @@ interface ClientCardProps {
   formatMoney: (amount: number) => string;
   onEliminar: (clientId: number) => void;
   onVerDetalle: (client: ClientExtended) => void;
+  onEditar: (client: ClientExtended) => void;
   financial?: { movimientos: number; porCobrar: number };
 }
 
@@ -46,6 +47,7 @@ interface ClientsTableProps {
   formatMoney: (amount: number) => string;
   onEliminar: (clientId: number) => void;
   onVerDetalle: (client: ClientExtended) => void;
+  onEditar: (client: ClientExtended) => void;
   financialMap: Record<number, { movimientos: number; porCobrar: number }>;
 }
 
@@ -89,7 +91,7 @@ export function ClientsPage() {
         const res = await fetch(url, { signal: controller.signal });
         if (!res.ok) throw new Error('Error al cargar clientes');
         const body = await res.json();
-  const rows = (body.data || []) as ClienteRow[];
+  const rows = (body.data || []) as ClienteRowWithType[];
   setClients(rows.map(r => mapRowToClientExtended(r)));
       } catch (e: unknown) {
         if (e instanceof DOMException && e.name === 'AbortError') return;
@@ -173,16 +175,32 @@ export function ClientsPage() {
 
   // Mapa financiero por cliente para reutilizar en tarjetas y tabla
   const financialByClient = useMemo(() => {
+    // Preferir valores de cliente_saldos si existen, sino usar agregados de cotizaciones
     const m: Record<number, { movimientos: number; porCobrar: number }> = {};
-    for (const [cidStr, v] of Object.entries(quotesAgg)) {
-      const cid = Number(cidStr);
-      const et = v.estadoTotals;
-      const movimientos = v.total;
-      const porCobrar = (et['borrador'] || 0) + (et['enviada'] || 0) + (et['aprobada'] || 0);
-      m[cid] = { movimientos, porCobrar };
+    for (const c of clients) {
+      const saldos = c.cliente_saldos || [];
+      const saldo = saldos
+        .slice()
+        .sort((a, b) => new Date(b.snapshot_date).getTime() - new Date(a.snapshot_date).getTime())[0];
+      if (saldo && (saldo.pagado > 0 || saldo.pendiente > 0 || saldo.vencido > 0 || (saldo.dinero_cotizado || 0) > 0)) {
+        // Usar saldos
+        const movimientos = (saldo.pagado || 0) + (saldo.pendiente || 0) + (saldo.dinero_cotizado || 0) + (saldo.vencido || 0);
+        const porCobrar = (saldo.pendiente || 0) + (saldo.dinero_cotizado || 0) + (saldo.vencido || 0);
+        m[c.id] = { movimientos, porCobrar };
+      } else {
+        // Fallback a agregados de cotizaciones
+        const v = quotesAgg[c.id];
+        if (v) {
+          const movimientos = v.total;
+          const porCobrar = (v.estadoTotals['borrador'] || 0) + (v.estadoTotals['enviada'] || 0) + (v.estadoTotals['aprobada'] || 0);
+          m[c.id] = { movimientos, porCobrar };
+        } else {
+          m[c.id] = { movimientos: 0, porCobrar: 0 };
+        }
+      }
     }
     return m;
-  }, [quotesAgg]);
+  }, [clients, quotesAgg]);
 
   // Paginación
   const totalPages = Math.max(1, Math.ceil(data.length / pageSize));
@@ -234,6 +252,10 @@ export function ClientsPage() {
 
   const handleVerDetalle = (client: ClientExtended) => {
     router.push(`/dashboard/clientes/${client.id}`);
+  };
+
+  const handleEditar = (client: ClientExtended) => {
+    router.push(`/dashboard/clientes/${client.id}?edit=true`);
   };
 
   const handleExport = async () => {
@@ -584,6 +606,7 @@ export function ClientsPage() {
               formatMoney={formatCLP}
               onEliminar={handleEliminar}
               onVerDetalle={handleVerDetalle}
+              onEditar={handleEditar}
               financial={financialByClient[client.id]}
             />
           ))}
@@ -596,6 +619,7 @@ export function ClientsPage() {
             formatMoney={formatCLP}
             onEliminar={handleEliminar}
             onVerDetalle={handleVerDetalle}
+            onEditar={handleEditar}
             financialMap={financialByClient}
           />
         )
@@ -701,7 +725,7 @@ export function ClientsPage() {
 }
 
 // Componente para tarjeta individual de cliente
-function ClientCard({ client, getStatusColor, formatMoney, onEliminar, onVerDetalle, financial }: ClientCardProps) {
+function ClientCard({ client, getStatusColor, formatMoney, onEliminar, onVerDetalle, onEditar, financial }: ClientCardProps) {
   const { canEdit, canDelete } = useActionAuthorization();
   const statusColor = getStatusColor(client.status);
   const totalMovimientos = financial?.movimientos ?? (client.paid + client.pending + client.partial + client.overdue);
@@ -822,7 +846,7 @@ function ClientCard({ client, getStatusColor, formatMoney, onEliminar, onVerDeta
               <button
                 onClick={(e) => {
                   e.stopPropagation();
-                  Toast.info(`Editando ${client.razonSocial}`);
+                  onEditar(client);
                 }}
                 className="p-1 rounded transition-colors"
                 style={{ color: 'var(--text-secondary)' }}
@@ -859,7 +883,7 @@ function ClientCard({ client, getStatusColor, formatMoney, onEliminar, onVerDeta
 }
 
 // Componente para vista de tabla
-function ClientsTable({ clients, getStatusColor, formatMoney, onEliminar, onVerDetalle, financialMap }: ClientsTableProps) {
+function ClientsTable({ clients, getStatusColor, formatMoney, onEliminar, onVerDetalle, onEditar, financialMap }: ClientsTableProps) {
   const { canEdit, canDelete } = useActionAuthorization();
   
   return (
@@ -970,7 +994,7 @@ function ClientsTable({ clients, getStatusColor, formatMoney, onEliminar, onVerD
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
-                            Toast.info(`Editando ${client.razonSocial}`);
+                            onEditar(client);
                           }}
                           className="p-1 rounded transition-colors"
                           style={{ color: 'var(--text-secondary)' }}

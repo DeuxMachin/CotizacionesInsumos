@@ -20,7 +20,7 @@ import {
   FiCreditCard,
   FiAlertCircle
 } from 'react-icons/fi';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useQuotes } from '@/features/quotes/model/useQuotes';
 import { NotasVentaService, SalesNoteRecord, SalesNoteItemRow } from '@/services/notasVentaService';
 import type { QuoteItem } from '@/core/domain/quote/Quote';
@@ -31,6 +31,7 @@ import { downloadFileFromResponse } from '@/lib/download';
 export default function QuoteDetailPage() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { getQuoteById, formatMoney, getStatusColor, loading, eliminarCotizacion } = useQuotes();
   
   const quoteFolio = params.id as string; // folio (ej: COT000002)
@@ -284,14 +285,22 @@ export default function QuoteDetailPage() {
       >
         <div className="flex items-center gap-3 sm:gap-4 flex-wrap">
           <button
-            onClick={() => router.push('/dashboard/cotizaciones')}
+            onClick={() => {
+              const from = searchParams.get('from');
+              const clientId = searchParams.get('client_id');
+              if (from === 'client' && clientId) {
+                router.push(`/dashboard/clientes/${clientId}`);
+              } else {
+                router.push('/dashboard/cotizaciones');
+              }
+            }}
             className="p-2 rounded-lg transition-colors flex-shrink-0"
             style={{ 
               backgroundColor: 'var(--bg-secondary)', 
               color: 'var(--text-secondary)',
               border: '1px solid var(--border)'
             }}
-            aria-label="Volver a cotizaciones"
+            aria-label="Volver"
           >
             <FiArrowLeft className="w-5 h-5" />
           </button>

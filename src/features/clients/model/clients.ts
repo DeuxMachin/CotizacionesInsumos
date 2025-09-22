@@ -9,7 +9,15 @@ export type ClienteRowWithType = ClienteRow & {
     id: number
     nombre: string
     descripcion?: string | null
-  } | null
+  } | null,
+  cliente_saldos?: Array<{
+    id: number
+    snapshot_date: string
+    pagado: number
+    pendiente: number
+    vencido: number
+    dinero_cotizado?: number
+  }>
 }
 
 // Tipo simplificado usado previamente en el front. Lo mantenemos para evitar romper componentes.

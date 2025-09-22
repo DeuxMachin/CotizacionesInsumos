@@ -946,9 +946,9 @@ export type Database = {
       }
       ,
       cliente_saldos: {
-        Row: { id: number; cliente_id: number; snapshot_date: string; pagado: number; pendiente: number; vencido: number; created_at: string }
-        Insert: { id?: number; cliente_id: number; snapshot_date?: string; pagado?: number; pendiente?: number; vencido?: number; created_at?: string }
-        Update: { id?: number; cliente_id?: number; snapshot_date?: string; pagado?: number; pendiente?: number; vencido?: number; created_at?: string }
+        Row: { id: number; cliente_id: number; snapshot_date: string; pagado: number; pendiente: number; vencido: number; dinero_cotizado: number; created_at: string }
+        Insert: { id?: number; cliente_id: number; snapshot_date?: string; pagado?: number; pendiente?: number; vencido?: number; dinero_cotizado?: number; created_at?: string }
+        Update: { id?: number; cliente_id?: number; snapshot_date?: string; pagado?: number; pendiente?: number; vencido?: number; dinero_cotizado?: number; created_at?: string }
       }
       ,
       cliente_tipos: {
