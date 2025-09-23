@@ -40,17 +40,22 @@ export function mapCotizacionToDomain(data: CotizacionAggregate): Quote {
 		comuna: ''
 	};
 
-	const quoteItems: QuoteItem[] = items.map(it => ({
-		id: it.id.toString(),
-		productId: it.producto_id || undefined,
-		codigo: it.producto_id ? (it.producto?.sku || `PROD-${it.producto_id}`) : 'ITEM',
-		descripcion: it.descripcion || it.producto?.nombre || 'Item',
-		unidad: it.unidad || 'unidad',
-		cantidad: Number(it.cantidad),
-		precioUnitario: Number(it.precio_unitario_neto),
-		descuento: it.descuento_pct ? Number(it.descuento_pct) : undefined,
-		subtotal: Number(it.total_neto) // ya viene calculado
-	}));
+	const quoteItems: QuoteItem[] = items.map((it) => {
+		const anyItem: any = it as any;
+		const prod = anyItem.producto ?? anyItem.productos ?? null;
+		return ({
+			id: it.id.toString(),
+			productId: it.producto_id || undefined,
+			codigo: it.producto_id ? (prod?.sku || `PROD-${it.producto_id}`) : 'ITEM',
+			descripcion: it.descripcion || prod?.nombre || 'Item',
+			unidad: it.unidad || 'unidad',
+			cantidad: Number(it.cantidad),
+			precioUnitario: Number(it.precio_unitario_neto),
+			descuento: it.descuento_pct ? Number(it.descuento_pct) : undefined,
+			subtotal: Number(it.total_neto), // ya viene calculado
+			fichaTecnica: prod?.ficha_tecnica || undefined
+		});
+	});
 
 	const delivery: DeliveryInfo | undefined = despacho ? {
 		direccion: despacho.direccion,

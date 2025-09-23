@@ -42,6 +42,7 @@ export interface QuoteItem {
   precioUnitario: number;
   descuento?: number;
   subtotal: number;
+  fichaTecnica?: string; // URL de la ficha técnica del producto
 }
 
 // Condiciones comerciales

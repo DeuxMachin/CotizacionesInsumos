@@ -772,6 +772,7 @@ export type Database = {
         Row: {
           id: number
           folio: string | null
+          Numero_Serie: string | null
           cotizacion_id: number | null
           vendedor_id: string
           cliente_principal_id: number | null
@@ -808,6 +809,7 @@ export type Database = {
         Insert: {
           id?: number
           folio?: string | null
+          Numero_Serie?: string | null
           cotizacion_id?: number | null
           vendedor_id: string
           cliente_principal_id?: number | null
@@ -844,6 +846,7 @@ export type Database = {
         Update: {
           id?: number
           folio?: string | null
+          Numero_Serie?: string | null
           cotizacion_id?: number | null
           vendedor_id?: string
           cliente_principal_id?: number | null

@@ -1,6 +1,7 @@
 "use client";
 
 import React from 'react';
+import { useAuth } from '@/features/auth/model/useAuth';
 import type { ClientInfo, QuoteItem, DeliveryInfo, CommercialTerms, Quote } from '@/core/domain/quote/Quote';
 import { PDFDownloadButton } from '@/features/reports/ui/pdf/PDFDownloadButton';
 import { 
@@ -44,6 +45,7 @@ interface QuoteSummaryProps {
 }
 
 export function QuoteSummary({ formData, totals, formatMoney, onChangeGlobalDiscountPct, onChangeCommercialTerms }: QuoteSummaryProps) {
+  const { user } = useAuth();
   const { cliente, items, despacho, condicionesComerciales, notas } = formData;
   const {
     subtotal,
@@ -60,6 +62,7 @@ export function QuoteSummary({ formData, totals, formatMoney, onChangeGlobalDisc
     formData: FormData,
     totalsCalc: { subtotal: number; descuentoTotal: number; iva: number; total: number; lineDiscountTotal?: number; globalDiscountAmount?: number }
   ): Quote => {
+    const vendedorNombre = [user?.nombre, (user as any)?.apellido].filter(Boolean).join(' ') || user?.email || 'Usuario';
     return {
       id: 'preview',
       numero: `PREV-${Date.now()}`,
@@ -73,8 +76,8 @@ export function QuoteSummary({ formData, totals, formatMoney, onChangeGlobalDisc
       despacho: Object.keys(formData.despacho).length > 0 ? formData.despacho as DeliveryInfo : undefined,
       condicionesComerciales: formData.condicionesComerciales as CommercialTerms,
       estado: formData.estado as Quote['estado'],
-      vendedorId: 'USER001', // TODO: Obtener del usuario autenticado
-      vendedorNombre: 'Usuario Actual', // TODO: Obtener del usuario autenticado
+  vendedorId: user?.id || 'desconocido',
+  vendedorNombre,
       subtotal: totalsCalc.subtotal,
       descuentoTotal: totalsCalc.descuentoTotal,
       descuentoLineasMonto: totalsCalc.lineDiscountTotal ?? 0,

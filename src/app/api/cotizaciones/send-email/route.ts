@@ -71,7 +71,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Generar PDF de la cotización
-    const pdfBuffer = await generatePDF(quote, undefined, { condensed: true });
+  const pdfBuffer = await generatePDF(quote, undefined, { condensed: true, docType: 'cotizacion' });
     
     // Convertir buffer a base64 para el adjunto
     const pdfBase64 = Buffer.from(pdfBuffer).toString('base64');

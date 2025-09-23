@@ -28,7 +28,6 @@ src/features/quotes/
 │   ├── CreateQuoteModal.tsx    # Modal de creación de cotizaciones
 │   ├── NewQuoteFromObraPage.tsx # Página para cotización desde obra
 │   ├── NewQuotePage.tsx        # Página principal de nueva cotización
-│   ├── QuoteDetailModal.tsx    # Modal de detalles de cotización
 │   ├── QuoteFiltersPanel.tsx   # Panel de filtros para cotizaciones
 │   └── QuotesPage.tsx          # Página principal de listado de cotizaciones
 └── components/
@@ -90,7 +89,6 @@ Aunque no hay un directorio `services/` explícito en esta estructura, los hooks
 #### Modales y Formularios
 
 - **`CreateQuoteModal.tsx`**: Modal modal para creación rápida
-- **`QuoteDetailModal.tsx`**: Visualización detallada con opciones de edición
 - **`QuoteFiltersPanel.tsx`**: Panel colapsable con filtros complejos
 
 ### Componentes Reutilizables (`components/`)

@@ -232,10 +232,7 @@ export function useQuotes(): UseQuotesReturn {
     if (filtros.estado && filtros.estado.length > 0) {
       filtered = filtered.filter(quote => filtros.estado!.includes(quote.estado));
     }
-    // Si NO se aplicó filtro de estado explícito, ocultar las 'aceptada' (ya convertidas a Nota de Venta)
-    if (!filtros.estado || filtros.estado.length === 0) {
-      filtered = filtered.filter(q => q.estado !== 'aceptada');
-    }
+    // Mostrar todas las cotizaciones, incluyendo las aceptadas (convertidas)
 
     // Filtro por vendedor
     if (filtros.vendedor) {
