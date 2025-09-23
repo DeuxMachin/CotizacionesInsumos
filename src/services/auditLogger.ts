@@ -321,4 +321,139 @@ export class AuditLogger {
       return []
     }
   }
+
+  /**
+   * Obtiene actividades filtradas con paginación para el panel de administración
+   */
+  static async getFilteredActivities(filters: {
+    search?: string;
+    eventType?: string;
+    dateRange?: string;
+    limit: number;
+    offset: number;
+  }): Promise<AuditLogEntry[]> {
+    try {
+      console.log('🔍 AuditLogger: Obteniendo actividades filtradas:', filters)
+      
+      let query = supabase
+        .from('audit_log')
+        .select('*')
+
+      // Aplicar filtro de búsqueda en descripción
+      if (filters.search && filters.search.trim()) {
+        query = query.ilike('descripcion', `%${filters.search.trim()}%`)
+      }
+
+      // Aplicar filtro de tipo de evento
+      if (filters.eventType && filters.eventType.trim()) {
+        query = query.eq('evento', filters.eventType.trim())
+      }
+
+      // Aplicar filtro de rango de fechas
+      if (filters.dateRange && filters.dateRange.trim()) {
+        const now = new Date()
+        let startDate: Date | null = null
+
+        switch (filters.dateRange) {
+          case '1d':
+            startDate = new Date(now.getTime() - 24 * 60 * 60 * 1000)
+            break
+          case '7d':
+            startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
+            break
+          case '30d':
+            startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
+            break
+          case '90d':
+            startDate = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000)
+            break
+        }
+
+        if (startDate) {
+          query = query.gte('created_at', startDate.toISOString())
+        }
+      }
+
+      // Aplicar ordenamiento, paginación
+      const { data, error } = await query
+        .order('created_at', { ascending: false })
+        .range(filters.offset, filters.offset + filters.limit - 1)
+
+      if (error) {
+        console.error('❌ AuditLogger: Error fetching filtered activities:', error)
+        return []
+      }
+
+      console.log('✅ AuditLogger: Actividades filtradas obtenidas:', data?.length || 0, 'registros')
+      return data || []
+    } catch (error) {
+      console.error('❌ AuditLogger: Unexpected error fetching filtered activities:', error)
+      return []
+    }
+  }
+
+  /**
+   * Obtiene el conteo de actividades filtradas para paginación
+   */
+  static async getFilteredActivitiesCount(filters: {
+    search?: string;
+    eventType?: string;
+    dateRange?: string;
+  }): Promise<number> {
+    try {
+      console.log('🔍 AuditLogger: Obteniendo conteo de actividades filtradas:', filters)
+      
+      let query = supabase
+        .from('audit_log')
+        .select('id', { count: 'exact', head: true })
+
+      // Aplicar filtro de búsqueda en descripción
+      if (filters.search && filters.search.trim()) {
+        query = query.ilike('descripcion', `%${filters.search.trim()}%`)
+      }
+
+      // Aplicar filtro de tipo de evento
+      if (filters.eventType && filters.eventType.trim()) {
+        query = query.eq('evento', filters.eventType.trim())
+      }
+
+      // Aplicar filtro de rango de fechas
+      if (filters.dateRange && filters.dateRange.trim()) {
+        const now = new Date()
+        let startDate: Date | null = null
+
+        switch (filters.dateRange) {
+          case '1d':
+            startDate = new Date(now.getTime() - 24 * 60 * 60 * 1000)
+            break
+          case '7d':
+            startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
+            break
+          case '30d':
+            startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
+            break
+          case '90d':
+            startDate = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000)
+            break
+        }
+
+        if (startDate) {
+          query = query.gte('created_at', startDate.toISOString())
+        }
+      }
+
+      const { count, error } = await query
+
+      if (error) {
+        console.error('❌ AuditLogger: Error fetching filtered activities count:', error)
+        return 0
+      }
+
+      console.log('✅ AuditLogger: Conteo de actividades filtradas obtenido:', count || 0)
+      return count || 0
+    } catch (error) {
+      console.error('❌ AuditLogger: Unexpected error fetching filtered activities count:', error)
+      return 0
+    }
+  }
 }

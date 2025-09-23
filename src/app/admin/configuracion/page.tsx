@@ -1,7 +1,22 @@
 "use client";
 
-import { SystemConfiguration } from "@/features/admin/ui/SystemConfiguration";
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 
 export default function ConfiguracionPage() {
-  return <SystemConfiguration />;
+  const router = useRouter();
+
+  useEffect(() => {
+    // Redirigir automáticamente al panel de administración
+    router.replace('/admin');
+  }, [router]);
+
+  return (
+    <div className="flex items-center justify-center min-h-screen">
+      <div className="text-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+        <p className="text-gray-600">Redirigiendo al panel de administración...</p>
+      </div>
+    </div>
+  );
 }

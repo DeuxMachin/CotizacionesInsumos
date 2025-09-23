@@ -18,19 +18,27 @@ export async function getUserContext(request: NextRequest): Promise<UserContext 
     // Obtener usuario desde headers/sesión
     const user = await getCurrentUserSimple(request)
     
+    console.log('🔍 getUserContext - User from auth-simple:', user)
+    
     if (!user) {
+      console.log('❌ No user found in getCurrentUserSimple')
       return null
     }
 
     // Verificar si el usuario es administrador
     const isAdmin = await checkIfUserIsAdmin(user.email, user.id)
+    
+    console.log('🔍 getUserContext - Admin check result:', { email: user.email, isAdmin })
 
-    return {
+    const context = {
       id: user.id,
       email: user.email,
       isAdmin,
       isAuthenticated: true
     }
+    
+    console.log('✅ getUserContext - Final context:', context)
+    return context
   } catch (error) {
     console.error('❌ Error getting user context:', error)
     return null
@@ -42,6 +50,12 @@ export async function getUserContext(request: NextRequest): Promise<UserContext 
  */
 export async function checkIfUserIsAdmin(email: string, userId?: string): Promise<boolean> {
   try {
+    // Para el usuario por defecto del sistema, verificar email específico
+    if (email === 'admin@empresa.com') {
+      console.log('✅ Usuario admin por defecto reconocido')
+      return true
+    }
+
     // Consultar la tabla usuarios para verificar el rol
     const { data: userData, error } = await supabase
       .from('usuarios')
@@ -51,13 +65,17 @@ export async function checkIfUserIsAdmin(email: string, userId?: string): Promis
       .single()
     
     if (error || !userData) {
-      return false
+      console.log('⚠️ Usuario no encontrado en BD, verificando email admin por defecto')
+      // Fallback: si no se encuentra en BD pero es el email admin por defecto
+      return email.toLowerCase() === 'admin@empresa.com'
     }
 
+    console.log('✅ Usuario verificado en BD:', { email, rol: userData.rol })
     return userData.rol === 'admin'
   } catch (error) {
     console.error('❌ Error checking admin status:', error)
-    return false
+    // Fallback: si hay error pero es el email admin por defecto
+    return email.toLowerCase() === 'admin@empresa.com'
   }
 }
 

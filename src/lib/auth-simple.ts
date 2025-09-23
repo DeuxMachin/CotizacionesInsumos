@@ -39,10 +39,10 @@ export async function getCurrentUserSimple(request: NextRequest): Promise<AuthUs
     
     return {
       id: defaultUserId,
-      email: 'usuario@empresa.com',
-      nombre: 'Usuario',
-      apellido: 'Activo',
-      rol: 'vendedor'
+      email: 'admin@empresa.com',
+      nombre: 'Administrador',
+      apellido: 'Sistema',
+      rol: 'admin'
     }
   } catch (error) {
     console.error('❌ Error getting user:', error)

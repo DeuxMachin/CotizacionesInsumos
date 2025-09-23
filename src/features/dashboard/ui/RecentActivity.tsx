@@ -136,7 +136,7 @@ function getIconForEvent(eventType: string, statusChange?: { old: string; new: s
 }
 
 export function RecentActivity() {
-  const { activities, loading, error, refresh, userContext } = useAuditLog(15);
+  const { activities, loading, error, refresh, userContext } = useAuditLog(5);
 
   if (loading) {
     return (

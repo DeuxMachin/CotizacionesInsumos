@@ -1,12 +1,12 @@
 "use client";
 
 import { useState, useEffect, useRef, lazy, Suspense } from "react";
-import { FiUsers, FiSettings, FiDatabase, FiBarChart } from "react-icons/fi";
+import { FiUsers, FiFileText, FiDatabase, FiBarChart } from "react-icons/fi";
 import { UsersManagementPage } from "./UsersManagementPage";
 import { useAdminStats, useSimpleUserCount } from '@/hooks/useSupabase';
 
 // Lazy load components
-const SystemConfiguration = lazy(() => import("./SystemConfiguration"));
+const AuditLogManagement = lazy(() => import("./AuditLogManagement"));
 const DatabaseManagement = lazy(() => import("./DatabaseManagement"));
 const ReportsManagement = lazy(() => import("./ReportsManagement"));
 
@@ -23,7 +23,7 @@ const ComponentWrapper = ({ children }: { children: React.ReactNode }) => (
 type AdminSection = 
   | 'overview' 
   | 'users' 
-  | 'configuration' 
+  | 'audit-log' 
   | 'database' 
   | 'reports';
 
@@ -48,10 +48,10 @@ const adminFeatures: AdminFeature[] = [
     category: 'core'
   },
   {
-    id: 'configuration',
-    title: 'Configuración del Sistema',
-    description: 'Ajustes generales y personalización del sistema',
-    icon: FiSettings,
+    id: 'audit-log',
+    title: 'Registro de Auditoría',
+    description: 'Visualiza todas las actividades y eventos del sistema',
+    icon: FiFileText,
     gradientFrom: '#8B5CF6',
     gradientTo: '#7C3AED',
     category: 'core'
@@ -105,8 +105,8 @@ export function AdminPanel() {
     switch (activeSection) {
       case 'users':
         return <UsersManagementPage />;
-      case 'configuration':
-        return <ComponentWrapper><SystemConfiguration /></ComponentWrapper>;
+      case 'audit-log':
+        return <ComponentWrapper><AuditLogManagement /></ComponentWrapper>;
       case 'database':
         return <ComponentWrapper><DatabaseManagement /></ComponentWrapper>;
       case 'reports':
@@ -131,7 +131,7 @@ export function AdminPanel() {
               background: 'linear-gradient(135deg, #3B82F6, #8B5CF6)'
             }}
           >
-            <FiSettings className="w-8 h-8 text-white" />
+            <FiUsers className="w-8 h-8 text-white" />
           </div>
           <h1 className="text-2xl font-bold mb-2 text-center" style={{ color: 'var(--text-primary)' }}>
             Panel de Administración
@@ -188,7 +188,7 @@ export function AdminPanel() {
           <div className="rounded-2xl p-8 text-white transform hover:scale-105 transition-transform duration-200 shadow-xl"
                style={{ background: 'linear-gradient(135deg, #8B5CF6, #7C3AED)' }}>
             <div className="flex items-center justify-between mb-3">
-              <FiSettings className="w-8 h-8 text-purple-200" />
+              <FiFileText className="w-8 h-8 text-purple-200" />
             </div>
             <div className="text-3xl font-black mb-1">
               {loadingAdminStats ? (
@@ -372,7 +372,7 @@ export function AdminPanel() {
               className="text-lg font-semibold mb-4 flex items-center gap-2"
               style={{ color: 'var(--text-primary)' }}
             >
-              <FiSettings className="w-5 h-5" />
+              <FiFileText className="w-5 h-5" />
               Actividad (30 días)
             </h3>
             {loadingAdminStats ? (
@@ -453,7 +453,7 @@ export function AdminPanel() {
                           <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
                             {feature.description}
                           </p>
-                          {feature.id === 'users' && (
+                          {(feature.id === 'users' || feature.id === 'audit-log') && (
                             <span 
                               className="inline-block mt-2 px-2 py-1 text-xs font-medium rounded"
                               style={{ 
