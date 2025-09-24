@@ -5,7 +5,8 @@ import { FiHome, FiUser, FiBriefcase, FiMapPin, FiCalendar, FiSearch, FiX } from
 import { ClientesService } from "@/services/clientesService";
 import { getObrasService } from "@/features/obras/services";
 import { useAuth } from "@/features/auth/model/useAuth";
-import type { Obra } from "@/features/obras/types/obras";
+import type { Obra, ObraContacto } from "@/features/obras/types/obras";
+import { REQUIRED_CARGOS } from "@/features/obras/types/obras";
 import { supabase } from "@/lib/supabase";
 import { useTargets } from "../model/useTargets";
 
@@ -40,6 +41,11 @@ export function ConvertToObraPanel({ targetId, defaultDireccion, onClose, onConv
   const [clientesSugeridos, setClientesSugeridos] = useState<SimpleCliente[]>([]);
   const [fechaInicio, setFechaInicio] = useState<string>("");
   const [valorEstimado, setValorEstimado] = useState<string>("");
+
+  // Contactos obligatorios (5 cargos fijos)
+  const [contacts, setContacts] = useState<ObraContacto[]>(
+    REQUIRED_CARGOS.map((cargo, idx) => ({ cargo, nombre: '', telefono: '', email: '' }))
+  );
 
   const [vendedores, setVendedores] = useState<Vendedor[]>([]);
   const [tipos, setTipos] = useState<OpcionCatalogo[]>([]);
@@ -94,13 +100,22 @@ export function ConvertToObraPanel({ targetId, defaultDireccion, onClose, onConv
       if (!nombreObra.trim()) throw new Error('Ingresa el nombre de la obra');
       if (!vendedorId) throw new Error('Selecciona el vendedor a cargo');
 
+      // Construir contactos (5 cargos fijos)
+      const contactos: ObraContacto[] = contacts.map((c, idx) => ({
+        cargo: c.cargo,
+        nombre: (c.nombre || '').trim(),
+        telefono: (c.telefono || '').trim(),
+        email: (c.email || '').trim(),
+        es_principal: idx === 0,
+      }));
+
       const obraPayload: Omit<Obra, 'id' | 'fechaCreacion' | 'fechaActualizacion' | 'fechaUltimoContacto'> = {
         nombreEmpresa: nombreObra.trim(),
         constructora: {
           nombre: clienteSel?.nombre_razon_social || '',
           rut: clienteSel?.rut || '',
           telefono: '',
-          contactoPrincipal: { nombre: '', cargo: '', telefono: '' }
+          contactoPrincipal: { nombre: contactos[0].nombre, cargo: contactos[0].cargo, telefono: contactos[0].telefono, email: contactos[0].email }
         },
         vendedorAsignado: vendedorId,
         nombreVendedor,
@@ -115,11 +130,13 @@ export function ConvertToObraPanel({ targetId, defaultDireccion, onClose, onConv
         fechaEstimadaFin: undefined,
         valorEstimado: valorEstimado ? Number(valorEstimado) : undefined,
         materialVendido: 0,
+        pendiente: 0,
         proximoSeguimiento: undefined,
         notas: undefined,
         clienteId: clienteSel?.id,
         tipoObraId: tipoObraId,
         tamanoObraId: tamanoObraId,
+        contactos,
       };
 
       // Crear obra vinculada al target y obtener ID
@@ -262,6 +279,69 @@ export function ConvertToObraPanel({ targetId, defaultDireccion, onClose, onConv
         </div>
       </div>
 
+      {/* Contactos obligatorios */}
+      <div className="mt-6">
+        <h4 className="text-md font-semibold mb-3" style={{ color: 'var(--text-primary)' }}>
+          Contactos de la Obra (5 obligatorios)
+        </h4>
+        <p className="text-sm mb-4" style={{ color: 'var(--text-secondary)' }}>
+          Los cargos están fijos y no se pueden cambiar. Si un contacto no existe, deja el nombre vacío.
+        </p>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          {contacts.map((c, idx) => (
+            <div key={REQUIRED_CARGOS[idx]} className="p-3 rounded border" style={{ borderColor: 'var(--border)' }}>
+              <div className="grid grid-cols-1 gap-2">
+                <div>
+                  <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>
+                    Cargo
+                  </label>
+                  <input type="text" value={REQUIRED_CARGOS[idx]} readOnly className="w-full px-3 py-2 rounded-lg border bg-gray-100" style={{ borderColor: 'var(--input-border)', color: 'var(--text-primary)' }} />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>
+                    Nombre {idx === 0 ? '*' : ''}
+                  </label>
+                  <input
+                    type="text"
+                    value={c.nombre}
+                    onChange={(e) => setContacts(prev => prev.map((p, i) => i === idx ? { ...p, nombre: e.target.value } : p))}
+                    placeholder="Nombre del contacto"
+                    className="w-full px-3 py-2 rounded-lg border"
+                    style={{ backgroundColor: 'var(--input-bg)', borderColor: 'var(--input-border)', color: 'var(--text-primary)' }}
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>
+                    Teléfono
+                  </label>
+                  <input
+                    type="tel"
+                    value={c.telefono}
+                    onChange={(e) => setContacts(prev => prev.map((p, i) => i === idx ? { ...p, telefono: e.target.value } : p))}
+                    placeholder="+56 9 1234 5678"
+                    className="w-full px-3 py-2 rounded-lg border"
+                    style={{ backgroundColor: 'var(--input-bg)', borderColor: 'var(--input-border)', color: 'var(--text-primary)' }}
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>
+                    Email
+                  </label>
+                  <input
+                    type="email"
+                    value={c.email}
+                    onChange={(e) => setContacts(prev => prev.map((p, i) => i === idx ? { ...p, email: e.target.value } : p))}
+                    placeholder="contacto@ejemplo.com"
+                    className="w-full px-3 py-2 rounded-lg border"
+                    style={{ backgroundColor: 'var(--input-bg)', borderColor: 'var(--input-border)', color: 'var(--text-primary)' }}
+                  />
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
       <div className="mt-6 flex items-center justify-between gap-4">
         <div className="text-sm text-gray-600">
           <p>Al crear la obra, este target se marcará como cerrado automáticamente.</p>
@@ -273,7 +353,7 @@ export function ConvertToObraPanel({ targetId, defaultDireccion, onClose, onConv
           <button 
             className="btn-primary" 
             onClick={onSubmit} 
-            disabled={loading || !nombreObra.trim() || !vendedorId}
+            disabled={loading || !nombreObra.trim() || !vendedorId || !contacts[0].nombre.trim()}
           >
             {loading ? 'Creando Obra…' : 'Crear Obra'}
           </button>

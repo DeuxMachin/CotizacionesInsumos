@@ -46,4 +46,14 @@ export interface IObrasService {
    * Actualiza una obra existente
    */
   actualizarObra(obra: Obra): Promise<boolean>;
+
+  /**
+   * Registra un préstamo (préstamo/avance) para una obra, incrementando el pendiente
+   */
+  registrarPrestamo(obraId: string, monto: number, descripcion?: string): Promise<boolean>;
+
+  /**
+   * Registra un pago para una obra, decrementando el pendiente
+   */
+  registrarPago(obraId: string, monto: number, descripcion?: string): Promise<boolean>;
 }

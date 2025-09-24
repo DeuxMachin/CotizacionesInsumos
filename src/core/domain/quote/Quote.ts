@@ -108,6 +108,9 @@ export interface Quote {
   /** Notas adicionales */
   notas?: string;
   
+  /** ID de la obra asociada (opcional) */
+  obraId?: number;
+  
   /** Fecha de expiración de la oferta */
   fechaExpiracion?: string;
 }

@@ -2,7 +2,8 @@
 
 import { supabase, type Database } from "@/lib/supabase";
 import type { IObrasService } from "./ObrasService";
-import type { Obra, EstadoObra, FiltroObras, EstadisticasObras, EtapaObra } from "../types/obras";
+import type { Obra, EstadoObra, FiltroObras, EstadisticasObras, EtapaObra, ObraContacto } from "../types/obras";
+import { REQUIRED_CARGOS } from "../types/obras";
 
 type ObrasRow = Database["public"]["Tables"]["obras"]["Row"];
 
@@ -34,17 +35,19 @@ type JoinedObra = ObrasRow & {
   } > | null;
   tipo?: { id: number; nombre: string } | null;
   tamano?: { id: number; nombre: string } | null;
+  notas_venta?: Array<{ total: number }> | null;
 };
 
 // Tipo intermedio para el resultado crudo de Supabase (con alias de relaciones)
 type SupabaseJoinedObra = {
   id: number; nombre: string; direccion: string | null; comuna: string | null; ciudad: string | null; vendedor_id: string | null; cliente_id: number | null; tipo_obra_id: number | null; tamano_obra_id: number | null;
-  estado?: string | null; etapa_actual?: string | null; descripcion?: string | null; fecha_inicio?: string | null; fecha_estimada_fin?: string | null; fecha_ultimo_contacto?: string | null; valor_estimado?: number | null; material_vendido?: number | null; proximo_seguimiento?: string | null; notas?: string | null; created_at?: string | null; updated_at?: string | null;
+  estado?: string | null; etapa_actual?: string | null; descripcion?: string | null; fecha_inicio?: string | null; fecha_estimada_fin?: string | null; fecha_ultimo_contacto?: string | null; valor_estimado?: number | null; material_vendido?: number | null; pendiente?: number | null; proximo_seguimiento?: string | null; notas?: string | null; created_at?: string | null; updated_at?: string | null;
   cliente?: { id: number; rut: string | null; nombre_razon_social: string | null; telefono: string | null; celular: string | null; email_pago: string | null; direccion: string | null; comuna: string | null; ciudad: string | null } | null;
   vendedor?: { id: string; nombre: string | null; apellido: string | null; email: string } | null;
   contactos?: Array<{ id: number; nombre: string | null; cargo: string | null; telefono: string | null; email: string | null; es_principal: boolean }> | null;
   tipo?: { id: number; nombre: string } | null;
   tamano?: { id: number; nombre: string } | null;
+  notas_venta?: Array<{ total: number }> | null;
 };
 
 function safeDate(d?: string | null, fallback?: Date): Date | undefined {
@@ -64,7 +67,14 @@ function toEtapa(value?: string | null): EtapaObra {
 }
 
 function mapDbRowToObra(row: JoinedObra): Obra {
-  const principal = (row.contactos || []).find(c => c.es_principal) || (row.contactos || [])[0];
+  const contactos = (row.contactos || []).map(c => ({
+    nombre: c.nombre || '',
+    cargo: c.cargo || '',
+    telefono: c.telefono || '',
+    email: c.email || undefined,
+    es_principal: !!c.es_principal,
+  } as ObraContacto));
+  const principal = contactos.find(c => c.es_principal) || contactos[0];
   const cliente = row.cliente;
   const vendedor = row.vendedor;
   const nombreVendedor = [vendedor?.nombre, vendedor?.apellido].filter(Boolean).join(' ') || (vendedor?.email || '');
@@ -85,7 +95,7 @@ function mapDbRowToObra(row: JoinedObra): Obra {
         email: principal?.email || undefined,
       },
     },
-    vendedorAsignado: row.vendedor_id ?? '',
+  vendedorAsignado: row.vendedor_id ?? '',
     nombreVendedor,
     estado: toEstado(row.estado ?? null),
     etapaActual: toEtapa(row.etapa_actual ?? null),
@@ -98,7 +108,8 @@ function mapDbRowToObra(row: JoinedObra): Obra {
     fechaEstimadaFin: safeDate(row.fecha_estimada_fin),
     fechaUltimoContacto: safeDate(row.fecha_ultimo_contacto, new Date())!,
     valorEstimado: row.valor_estimado ?? undefined,
-    materialVendido: row.material_vendido ?? 0,
+    materialVendido: (row.notas_venta || []).reduce((sum: number, note: any) => sum + (note.total || 0), 0),
+    pendiente: row.pendiente ?? 0,
     proximoSeguimiento: safeDate(row.proximo_seguimiento),
     fechaCreacion: safeDate(row.created_at, new Date())!,
     fechaActualizacion: safeDate(row.updated_at, new Date())!,
@@ -106,6 +117,7 @@ function mapDbRowToObra(row: JoinedObra): Obra {
     clienteId: row.cliente_id ?? undefined,
     tipoObraId: row.tipo_obra_id ?? undefined,
     tamanoObraId: row.tamano_obra_id ?? undefined,
+    contactos,
   };
 }
 
@@ -116,12 +128,13 @@ export class SupabaseObrasService implements IObrasService {
       .select(`
         id, nombre, direccion, comuna, ciudad, vendedor_id, cliente_id, tipo_obra_id, tamano_obra_id,
         estado, etapa_actual, descripcion, fecha_inicio, fecha_estimada_fin, fecha_ultimo_contacto,
-        valor_estimado, material_vendido, proximo_seguimiento, notas, created_at, updated_at,
+        valor_estimado, material_vendido, pendiente, proximo_seguimiento, notas, created_at, updated_at,
         cliente:clientes!obras_cliente_id_fkey ( id, rut, nombre_razon_social, telefono, celular, email_pago, direccion, comuna, ciudad ),
         vendedor:usuarios!obras_vendedor_id_fkey ( id, nombre, apellido, email ),
         contactos:obra_contactos ( id, nombre, cargo, telefono, email, es_principal ),
         tipo:obra_tipos ( id, nombre ),
-        tamano:obra_tamanos ( id, nombre )
+        tamano:obra_tamanos ( id, nombre ),
+        notas_venta:notas_venta!notas_venta_obra_id_fkey ( total )
       `);
 
     if (!isAdmin && userId) {
@@ -168,12 +181,13 @@ export class SupabaseObrasService implements IObrasService {
       .select(`
         id, nombre, direccion, comuna, ciudad, vendedor_id, cliente_id, tipo_obra_id, tamano_obra_id,
         estado, etapa_actual, descripcion, fecha_inicio, fecha_estimada_fin, fecha_ultimo_contacto,
-        valor_estimado, material_vendido, proximo_seguimiento, notas, created_at, updated_at,
+        valor_estimado, material_vendido, pendiente, proximo_seguimiento, notas, created_at, updated_at,
         cliente:clientes!obras_cliente_id_fkey ( id, rut, nombre_razon_social, telefono, celular, email_pago, direccion, comuna, ciudad ),
         vendedor:usuarios!obras_vendedor_id_fkey ( id, nombre, apellido, email ),
         contactos:obra_contactos ( id, nombre, cargo, telefono, email, es_principal ),
         tipo:obra_tipos ( id, nombre ),
-        tamano:obra_tamanos ( id, nombre )
+        tamano:obra_tamanos ( id, nombre ),
+        notas_venta:notas_venta!notas_venta_obra_id_fkey ( total )
       `)
       .eq("id", Number(id))
       .single();
@@ -251,18 +265,26 @@ export class SupabaseObrasService implements IObrasService {
     const newId = Array.isArray(insertResult.data) ? insertResult.data[0]?.id : (insertResult.data as { id?: number } | null)?.id;
     if (!newId) throw new Error('No se pudo obtener el ID de la nueva obra');
 
-    // Insertar contacto principal si viene en el payload
-  if (newId && obra.constructora?.contactoPrincipal?.nombre) {
-      const cp = obra.constructora.contactoPrincipal;
-      const contacto: Database['public']['Tables']['obra_contactos']['Insert'] = {
-        obra_id: newId,
-        nombre: cp.nombre,
-        cargo: cp.cargo,
-        telefono: cp.telefono || null,
-        email: cp.email || null,
-        es_principal: true,
-      };
-      const { error: cErr } = await supabase.from('obra_contactos').insert(contacto);
+    // Construir los 5 contactos requeridos
+    if (newId) {
+      const provided = (obra.contactos || []) as ObraContacto[];
+      // Asegurar que exista al menos el principal desde constructora.contactoPrincipal
+      const principal = obra.constructora?.contactoPrincipal;
+      const rows: Database['public']['Tables']['obra_contactos']['Insert'][] = REQUIRED_CARGOS.map((cargo, idx) => {
+        const match = provided.find(c => (c.cargo || '').toLowerCase() === cargo.toLowerCase());
+        const baseNombre = match?.nombre || (idx === 0 && principal?.nombre) || 'No existe';
+        const baseTel = match?.telefono || (idx === 0 && principal?.telefono) || null;
+        const baseEmail = match?.email || (idx === 0 && principal?.email) || null;
+        return {
+          obra_id: newId,
+          nombre: baseNombre,
+          cargo,
+          telefono: baseTel,
+          email: baseEmail,
+          es_principal: idx === 0 || !!match?.es_principal,
+        };
+      });
+      const { error: cErr } = await supabase.from('obra_contactos').insert(rows);
       if (cErr) throw cErr;
     }
     return true;
@@ -309,18 +331,25 @@ export class SupabaseObrasService implements IObrasService {
   const updatePayload: Database['public']['Tables']['obras']['Update'] = { target_id: targetId } as Database['public']['Tables']['obras']['Update'];
   await supabase.from('obras').update(updatePayload).eq('id', newId);
 
-  // contacto principal si viene
-    if (obra.constructora?.contactoPrincipal?.nombre) {
-      const cp = obra.constructora.contactoPrincipal;
-      const contacto: Database['public']['Tables']['obra_contactos']['Insert'] = {
-        obra_id: newId,
-        nombre: cp.nombre,
-        cargo: cp.cargo,
-        telefono: cp.telefono || null,
-        email: cp.email || null,
-        es_principal: true,
-      };
-      const { error: cErr } = await supabase.from('obra_contactos').insert(contacto);
+    // Insertar los 5 contactos requeridos desde payload (o placeholders)
+    {
+      const provided = (obra.contactos || []) as ObraContacto[];
+      const principal = obra.constructora?.contactoPrincipal;
+      const rows: Database['public']['Tables']['obra_contactos']['Insert'][] = REQUIRED_CARGOS.map((cargo, idx) => {
+        const match = provided.find(c => (c.cargo || '').toLowerCase() === cargo.toLowerCase());
+        const baseNombre = match?.nombre || (idx === 0 && principal?.nombre) || 'No existe';
+        const baseTel = match?.telefono || (idx === 0 && principal?.telefono) || null;
+        const baseEmail = match?.email || (idx === 0 && principal?.email) || null;
+        return {
+          obra_id: newId,
+          nombre: baseNombre,
+          cargo,
+          telefono: baseTel,
+          email: baseEmail,
+          es_principal: idx === 0 || !!match?.es_principal,
+        };
+      });
+      const { error: cErr } = await supabase.from('obra_contactos').insert(rows);
       if (cErr) throw cErr;
     }
 
@@ -354,32 +383,98 @@ export class SupabaseObrasService implements IObrasService {
       .eq('id', Number(obra.id));
     if (error) throw error;
 
-    // Actualizar/crear contacto principal si viene
-    const cp = obra.constructora?.contactoPrincipal;
-    if (cp && cp.nombre) {
-      // Buscar si existe contacto principal
+    // Upsert de los 5 contactos por cargo
+    const provided = (obra.contactos || []) as ObraContacto[];
+    for (let i = 0; i < REQUIRED_CARGOS.length; i++) {
+      const cargo = REQUIRED_CARGOS[i];
+      const incoming = provided.find(c => (c.cargo || '').toLowerCase() === cargo.toLowerCase());
+      const nombre = incoming?.nombre || 'No existe';
+      const telefono = incoming?.telefono || null;
+      const email = incoming?.email || null;
+      const es_principal = i === 0 || !!incoming?.es_principal;
+
+      // Existe registro para ese cargo?
       const { data: existing, error: fetchErr } = await supabase
         .from('obra_contactos')
         .select('id')
         .eq('obra_id', Number(obra.id))
-        .eq('es_principal', true)
+        .eq('cargo', cargo)
         .limit(1);
       if (fetchErr) throw fetchErr;
-
       if (existing && existing.length > 0) {
         const { error: upErr } = await supabase
           .from('obra_contactos')
-          .update({ nombre: cp.nombre, cargo: cp.cargo, telefono: cp.telefono || null, email: cp.email || null })
+          .update({ nombre, telefono, email, es_principal })
           .eq('id', existing[0].id);
         if (upErr) throw upErr;
       } else {
         const { error: insErr } = await supabase
           .from('obra_contactos')
-          .insert({ obra_id: Number(obra.id), nombre: cp.nombre, cargo: cp.cargo, telefono: cp.telefono || null, email: cp.email || null, es_principal: true });
+          .insert({ obra_id: Number(obra.id), cargo, nombre, telefono, email, es_principal });
         if (insErr) throw insErr;
       }
     }
 
     return true;
+  }
+
+  async registrarPrestamo(obraId: string, monto: number, descripcion?: string): Promise<boolean> {
+    try {
+      // Obtener el pendiente actual
+      const { data: obra, error: fetchError } = await supabase
+        .from('obras')
+        .select('pendiente')
+        .eq('id', obraId)
+        .single();
+
+      if (fetchError) throw fetchError;
+
+      const pendienteActual = obra?.pendiente || 0;
+      const nuevoPendiente = pendienteActual + monto;
+
+      // Actualizar el pendiente
+      const { error: updateError } = await supabase
+        .from('obras')
+        .update({ pendiente: nuevoPendiente })
+        .eq('id', obraId);
+
+      if (updateError) throw updateError;
+
+      console.log(`Préstamo registrado en obra ${obraId}: ${pendienteActual} -> ${nuevoPendiente} (${descripcion || 'Sin descripción'})`);
+      return true;
+    } catch (error) {
+      console.error('Error registrando préstamo:', error);
+      throw error;
+    }
+  }
+
+  async registrarPago(obraId: string, monto: number, descripcion?: string): Promise<boolean> {
+    try {
+      // Obtener el pendiente actual
+      const { data: obra, error: fetchError } = await supabase
+        .from('obras')
+        .select('pendiente')
+        .eq('id', obraId)
+        .single();
+
+      if (fetchError) throw fetchError;
+
+      const pendienteActual = obra?.pendiente || 0;
+      const nuevoPendiente = Math.max(0, pendienteActual - monto); // No permitir negativo
+
+      // Actualizar el pendiente
+      const { error: updateError } = await supabase
+        .from('obras')
+        .update({ pendiente: nuevoPendiente })
+        .eq('id', obraId);
+
+      if (updateError) throw updateError;
+
+      console.log(`Pago registrado en obra ${obraId}: ${pendienteActual} -> ${nuevoPendiente} (${descripcion || 'Sin descripción'})`);
+      return true;
+    } catch (error) {
+      console.error('Error registrando pago:', error);
+      throw error;
+    }
   }
 }

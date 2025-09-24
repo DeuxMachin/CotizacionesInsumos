@@ -40,6 +40,23 @@ export class CotizacionesService {
     return data
   }
 
+  // Obtener cotizaciones por obra ID
+  static async getByObraId(obraId: number) {
+    const { data, error } = await supabase
+      .from('cotizaciones')
+      .select(`
+        *,
+        cliente_principal:clientes!cliente_principal_id(id, nombre_razon_social, rut),
+        obra:obras(id, nombre),
+        creador:usuarios!vendedor_id(id, nombre, apellido)
+      `)
+      .eq('obra_id', obraId)
+      .order('created_at', { ascending: false })
+
+    if (error) throw error
+    return data
+  }
+
   // Crear nueva cotización
   static async create(cotizacion: CotizacionInsert, userInfo?: { id: string; email: string; name?: string }) {
     const { data, error } = await supabase

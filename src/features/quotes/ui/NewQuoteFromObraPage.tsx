@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter, useParams } from 'next/navigation';
 import { 
   FiArrowLeft, 
   FiSave, 
@@ -48,8 +48,8 @@ const STEPS = [
 
 export function NewQuoteFromObraPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const obraId = searchParams.get('obraId');
+  const params = useParams();
+  const obraId = params.id as string;
   
   const { crearCotizacion, formatMoney } = useQuotes();
   const { obtenerObra } = useObras();
@@ -73,6 +73,9 @@ export function NewQuoteFromObraPage() {
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string[]>>({});
   const [visitedSteps, setVisitedSteps] = useState<Set<FormStep>>(new Set(['client']));
+  const [showSendModal, setShowSendModal] = useState(false);
+  const [contactEmails, setContactEmails] = useState<Record<string, string>>({});
+  const [sending, setSending] = useState(false);
 
   // Cargar datos de la obra y precompletar el formulario
   useEffect(() => {
@@ -215,6 +218,82 @@ export function NewQuoteFromObraPage() {
     }
   };
 
+  const handleSendQuote = () => {
+    if (obra?.contactos) {
+      const emails: Record<string, string> = {};
+      obra.contactos.forEach((contacto, index) => {
+        emails[`contacto_${index}`] = contacto.email || '';
+      });
+      setContactEmails(emails);
+    }
+    setShowSendModal(true);
+  };
+
+  const handleConfirmSend = async () => {
+    if (sending) return;
+    setSending(true);
+    try {
+      // Guardar cotización como enviada
+      const success = await handleSave('enviada');
+      if (!success) return;
+
+      // Enviar emails a contactos válidos
+      const emailsToSend = Object.values(contactEmails).filter(email => email && /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email));
+      
+      let sentCount = 0;
+      for (const email of emailsToSend) {
+        try {
+          const response = await fetch('/api/cotizaciones/send-email', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              quoteData: {
+                cliente: formData.cliente,
+                items: formData.items,
+                despacho: formData.despacho,
+                condicionesComerciales: formData.condicionesComerciales,
+                estado: 'enviada',
+                vendedorId: 'USER001',
+                vendedorNombre: 'Usuario Actual',
+                subtotal: calculateTotals().subtotal,
+                descuentoTotal: calculateTotals().descuentoTotal,
+                iva: calculateTotals().iva,
+                total: calculateTotals().total,
+                notas: formData.notas,
+                fechaExpiracion: formData.condicionesComerciales.validezOferta ? 
+                  new Date(Date.now() + formData.condicionesComerciales.validezOferta * 24 * 60 * 60 * 1000).toISOString().split('T')[0] : 
+                  undefined
+              },
+              recipientEmail: email,
+              recipientName: obra?.contactos?.find(c => c.email === email)?.nombre || 'Contacto',
+              message: `Adjunto encontrarás la cotización solicitada para la obra ${obra?.nombreEmpresa}. Si tienes alguna pregunta, no dudes en contactarnos.`
+            }),
+          });
+          const result = await response.json();
+          if (result.success) {
+            sentCount++;
+          }
+        } catch (error) {
+          console.error(`Error sending to ${email}:`, error);
+        }
+      }
+
+      alert(`Cotización enviada a ${sentCount} de ${emailsToSend.length} contacto(s)`);
+
+      // Mostrar popup
+      alert('Cotización hecha');
+
+      // Volver a la obra
+      router.push(`/dashboard/obras/${obraId}`);
+    } catch (error) {
+      console.error('Error sending quote:', error);
+      alert('Error al enviar la cotización');
+    } finally {
+      setSending(false);
+      setShowSendModal(false);
+    }
+  };
+
   const calculateTotals = () => {
     const subtotal = formData.items.reduce((sum, item) => sum + item.subtotal, 0);
     const descuentoTotal = formData.items.reduce((sum, item) => sum + (item.descuento || 0) * item.precioUnitario * item.cantidad / 100, 0);
@@ -248,6 +327,7 @@ export function NewQuoteFromObraPage() {
         descuentoTotal,
         iva,
         total,
+        obraId: Number(obraId),
         notas: formData.notas ? `${formData.notas}\n\nCotización generada para obra: ${obra?.nombreEmpresa}` : `Cotización generada para obra: ${obra?.nombreEmpresa}`,
         fechaExpiracion: formData.condicionesComerciales.validezOferta ? 
           new Date(Date.now() + formData.condicionesComerciales.validezOferta * 24 * 60 * 60 * 1000).toISOString().split('T')[0] : 
@@ -256,13 +336,15 @@ export function NewQuoteFromObraPage() {
 
       const success = await crearCotizacion(newQuote);
       if (success) {
-        router.push('/dashboard/cotizaciones');
+        return true;
       } else {
         alert('Error al crear la cotización');
+        return false;
       }
     } catch (error) {
       console.error('Error creating quote:', error);
       alert('Error al crear la cotización');
+      return false;
     } finally {
       setLoading(false);
     }
@@ -388,15 +470,17 @@ export function NewQuoteFromObraPage() {
                 <span className="inline sm:hidden">Guardar</span>
               </button>
               
-              <button
-                onClick={() => handleSave('enviada')}
-                disabled={loading || !isStepValid('summary')}
-                className="btn-primary flex items-center gap-2 px-3 py-2 text-sm"
-              >
-                <FiSend className="w-4 h-4" />
-                <span className="hidden sm:inline">Enviar Cotización</span>
-                <span className="inline sm:hidden">Enviar</span>
-              </button>
+              {currentStep === 'summary' && (
+                <button
+                  onClick={handleSendQuote}
+                  disabled={loading || !isStepValid('summary')}
+                  className="btn-primary flex items-center gap-2 px-3 py-2 text-sm"
+                >
+                  <FiSend className="w-4 h-4" />
+                  <span className="hidden sm:inline">Enviar Cotización</span>
+                  <span className="inline sm:hidden">Enviar</span>
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -581,17 +665,69 @@ export function NewQuoteFromObraPage() {
               </div>
 
               <button
-                onClick={handleNext}
-                disabled={currentStep === 'summary'}
+                onClick={currentStep === 'summary' ? handleSendQuote : handleNext}
+                disabled={currentStep === 'summary' ? (loading || !isStepValid('summary')) : false}
                 className="btn-primary flex items-center gap-2 w-full sm:w-auto"
               >
-                Siguiente
-                <FiArrowLeft className="w-4 h-4 rotate-180" />
+                {currentStep === 'summary' ? (
+                  <>
+                    <FiSend className="w-4 h-4" />
+                    Enviar Cotización
+                  </>
+                ) : (
+                  <>
+                    Siguiente
+                    <FiArrowLeft className="w-4 h-4 rotate-180" />
+                  </>
+                )}
               </button>
             </div>
           </div>
         </div>
       </div>
+
+      {/* Modal de envío de cotización */}
+      {showSendModal && obra && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <h3 className="text-lg font-semibold mb-4">Enviar Cotización</h3>
+            <p className="text-sm text-gray-600 mb-4">
+              Confirma los correos electrónicos de los contactos de la obra para enviar la cotización.
+            </p>
+            <div className="space-y-3 mb-6">
+              {(obra.contactos || []).map((contacto, index) => (
+                <div key={index}>
+                  <label className="block text-sm font-medium mb-1">
+                    {contacto.cargo}: {contacto.nombre}
+                  </label>
+                  <input
+                    type="email"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                    value={contactEmails[`contacto_${index}`] || ''}
+                    onChange={(e) => setContactEmails(prev => ({ ...prev, [`contacto_${index}`]: e.target.value }))}
+                    placeholder="correo@ejemplo.com"
+                  />
+                </div>
+              ))}
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowSendModal(false)}
+                className="flex-1 px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleConfirmSend}
+                disabled={sending}
+                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
+              >
+                {sending ? 'Enviando...' : 'Enviar'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

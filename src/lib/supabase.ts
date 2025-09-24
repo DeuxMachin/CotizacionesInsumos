@@ -448,6 +448,7 @@ export type Database = {
           vendedor_id: string | null
           tipo_obra_id: number | null
           tamano_obra_id: number | null
+          target_id?: number | null
           estado: string
           etapa_actual: string | null
           descripcion?: string | null
@@ -456,6 +457,7 @@ export type Database = {
           fecha_ultimo_contacto?: string | null
           valor_estimado?: number | null
           material_vendido?: number | null
+          pendiente?: number | null
           proximo_seguimiento?: string | null
           notas?: string | null
           created_at?: string | null
@@ -471,6 +473,7 @@ export type Database = {
           vendedor_id?: string | null
           tipo_obra_id?: number | null
           tamano_obra_id?: number | null
+          target_id?: number | null
           estado?: string
           etapa_actual?: string | null
           descripcion?: string | null
@@ -479,6 +482,7 @@ export type Database = {
           fecha_ultimo_contacto?: string | null
           valor_estimado?: number | null
           material_vendido?: number | null
+          pendiente?: number | null
           proximo_seguimiento?: string | null
           notas?: string | null
           created_at?: string | null
@@ -494,6 +498,7 @@ export type Database = {
           vendedor_id?: string | null
           tipo_obra_id?: number | null
           tamano_obra_id?: number | null
+          target_id?: number | null
           estado?: string
           etapa_actual?: string | null
           descripcion?: string | null
@@ -502,6 +507,7 @@ export type Database = {
           fecha_ultimo_contacto?: string | null
           valor_estimado?: number | null
           material_vendido?: number | null
+          pendiente?: number | null
           proximo_seguimiento?: string | null
           notas?: string | null
           created_at?: string | null

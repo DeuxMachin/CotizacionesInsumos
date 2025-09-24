@@ -254,9 +254,8 @@ export default function EditTargetModal({ isOpen, onClose, target, onUpdated }: 
         observaciones: formData.observaciones
       });
       setSuccessMessage('¡Target actualizado exitosamente!');
-      setTimeout(() => {
-        onUpdated();
-      }, 1500);
+      // Cerrar inmediatamente ya que el estado se actualiza localmente
+      onUpdated();
     } catch (error) {
       console.error('Error updating target:', error);
     } finally {

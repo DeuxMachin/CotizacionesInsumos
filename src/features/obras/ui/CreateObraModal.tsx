@@ -16,7 +16,8 @@ import {
 import { Modal } from "@/shared/ui/Modal";
 import { ClientesService } from "@/services/clientesService";
 import { supabase, type Database } from "@/lib/supabase";
-import type { Obra, EstadoObra, EtapaObra, ContactoObra, EmpresaConstructora } from "../types/obras";
+import type { Obra, EstadoObra, EtapaObra, ContactoObra, EmpresaConstructora, ObraContacto } from "../types/obras";
+import { REQUIRED_CARGOS } from "../types/obras";
 
 interface CreateObraModalProps {
   isOpen: boolean;
@@ -42,6 +43,7 @@ interface FormErrors {
   direccionObra?: string;
   fechaInicio?: string;
   valorEstimado?: string;
+  contactos?: Record<number, { nombre?: string }>;
 }
 
 export function CreateObraModal({ 
@@ -55,7 +57,8 @@ export function CreateObraModal({
   const [loading, setSaving] = useState(false);
   const [errors, setErrors] = useState<FormErrors>({});
   const [showSuccess, setShowSuccess] = useState(false);
-  const [currentStep, setCurrentStep] = useState<1 | 2 | 3>(1);
+  const [currentStep, setCurrentStep] = useState<1 | 2 | 3 | 4>(1);
+  const [stepErrors, setStepErrors] = useState<string[]>([]);
 
   // Datos de la obra
   const [nombreEmpresa, setNombreEmpresa] = useState('');
@@ -91,6 +94,10 @@ export function CreateObraModal({
   const [contactoCargo, setContactoCargo] = useState('');
   const [contactoTelefono, setContactoTelefono] = useState('');
   const [contactoEmail, setContactoEmail] = useState('');
+  // Contactos obligatorios (5 cargos fijos)
+  const [contacts, setContacts] = useState<ObraContacto[]>(
+    REQUIRED_CARGOS.map((cargo, idx) => ({ cargo, nombre: idx === 0 ? '' : '', telefono: '', email: '' }))
+  );
   // WhatsApp se unifica con teléfono; no se maneja por separado
 
   const estadosObra: { value: EstadoObra; label: string; color: string }[] = [
@@ -187,32 +194,15 @@ export function CreateObraModal({
 
   // Teléfono de la constructora ya no es obligatorio
 
-    if (!contactoNombre.trim()) {
-      newErrors.constructora = { 
-        ...newErrors.constructora, 
-        contactoPrincipal: { ...newErrors.constructora?.contactoPrincipal, nombre: 'El nombre del contacto es obligatorio' }
-      };
-    }
-
-    if (!contactoCargo.trim()) {
-      newErrors.constructora = { 
-        ...newErrors.constructora, 
-        contactoPrincipal: { ...newErrors.constructora?.contactoPrincipal, cargo: 'El cargo del contacto es obligatorio' }
-      };
-    }
-
-    if (!contactoTelefono.trim()) {
-      newErrors.constructora = { 
-        ...newErrors.constructora, 
-        contactoPrincipal: { ...newErrors.constructora?.contactoPrincipal, telefono: 'El teléfono del contacto es obligatorio' }
-      };
-    }
-
-    if (contactoEmail && !/\S+@\S+\.\S+/.test(contactoEmail)) {
-      newErrors.constructora = { 
-        ...newErrors.constructora, 
-        contactoPrincipal: { ...newErrors.constructora?.contactoPrincipal, email: 'Email inválido' }
-      };
+    // Validación de 5 contactos: nombre obligatorio; si no existe, usar botón "No existe"
+    const contactosErrors: Record<number, { nombre?: string }> = {};
+    contacts.forEach((c, i) => {
+      if (!c.nombre || !c.nombre.trim()) {
+        contactosErrors[i] = { nombre: 'Nombre requerido o marque "No existe"' };
+      }
+    });
+    if (Object.keys(contactosErrors).length > 0) {
+      newErrors.contactos = contactosErrors;
     }
 
     if (!direccionObra.trim()) {
@@ -232,6 +222,74 @@ export function CreateObraModal({
            !Object.values(newErrors).some(error => 
              typeof error === 'object' && Object.keys(error).length > 0
            );
+  };
+
+  // Validación por paso con resumen de errores UX
+  const validateStep = (step: 1 | 2 | 3 | 4): boolean => {
+    // Ejecuta la validación completa para mantener el estado de errores
+    const okAll = validateForm();
+    const msgs: string[] = [];
+    const e = errors; // usar después de setErrors puede estar desfasado; generaremos mensajes de forma determinista también con los valores actuales
+
+    // Construir mensajes por paso usando el estado actual + reglas
+    if (step === 1) {
+      if (!nombreEmpresa.trim()) msgs.push('• Nombre de la obra es obligatorio');
+      if (!direccionObra.trim()) msgs.push('• Dirección de la obra es obligatoria');
+    }
+    if (step === 2) {
+      if (!constructoraNombre.trim()) msgs.push('• Nombre de la constructora es obligatorio');
+      if (!constructoraRut.trim()) msgs.push('• RUT de la constructora es obligatorio');
+      else if (!/^\d{7,8}-[\dkK]$/.test(constructoraRut)) msgs.push('• RUT con formato inválido (ej: 12345678-9)');
+    }
+    if (step === 3) {
+      contacts.forEach((c, i) => {
+        if (!c.nombre || !c.nombre.trim()) msgs.push(`• Contacto "${REQUIRED_CARGOS[i]}": nombre requerido o marque "No existe"`);
+      });
+    }
+    if (step === 4) {
+      if (!fechaInicio.trim()) msgs.push('• Fecha de inicio es obligatoria');
+      if (valorEstimado && isNaN(Number(valorEstimado))) msgs.push('• Valor estimado debe ser un número válido');
+    }
+
+    setStepErrors(msgs);
+    // Si hay mensajes para el paso, no permitir avanzar
+    if (msgs.length > 0) return false;
+    // Si no hay mensajes pero okAll es false por otros pasos, igualmente permitir avanzar dentro del flujo por pasos
+    return true;
+  };
+
+  const handleNextStep = () => {
+    if (validateStep(currentStep)) {
+      setStepErrors([]);
+      setCurrentStep((prev) => (Math.min(4, (prev + 1)) as 1 | 2 | 3 | 4));
+      // Desplazar al inicio del modal para visibilidad
+      const root = document.querySelector('.custom-scrollbar');
+      if (root) root.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
+  const handlePrevStep = () => {
+    setStepErrors([]);
+    setCurrentStep((prev) => (Math.max(1, (prev - 1)) as 1 | 2 | 3 | 4));
+    const root = document.querySelector('.custom-scrollbar');
+    if (root) root.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  // Indicador de validez por paso (no modifica estado de errores)
+  const isStepValidForIndicator = (step: 1 | 2 | 3 | 4): boolean => {
+    if (step === 1) {
+      return !!nombreEmpresa.trim() && !!direccionObra.trim();
+    }
+    if (step === 2) {
+      return !!constructoraNombre.trim() && /^\d{7,8}-[\dkK]$/.test(constructoraRut.trim());
+    }
+    if (step === 3) {
+      return contacts.every((c) => !!(c.nombre && c.nombre.trim()));
+    }
+    if (step === 4) {
+      return !!fechaInicio.trim() && (!valorEstimado || !isNaN(Number(valorEstimado)));
+    }
+    return false;
   };
 
   const formatRut = (rut: string): string => {
@@ -276,14 +334,15 @@ export function CreateObraModal({
     setContactoCargo('');
     setContactoTelefono('');
     setContactoEmail('');
+  setContacts(REQUIRED_CARGOS.map((cargo) => ({ cargo, nombre: '', telefono: '', email: '' })));
   // sin whatsapp separado
     setErrors({});
     setShowSuccess(false);
     setCurrentStep(1);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (e?: React.FormEvent) => {
+    if (e && typeof e.preventDefault === 'function') e.preventDefault();
     
     if (!validateForm()) {
       return;
@@ -292,12 +351,22 @@ export function CreateObraModal({
     setSaving(true);
 
     try {
+      // Construir contactos (5 cargos fijos)
+      const contactos: ObraContacto[] = contacts.map((c, idx) => ({
+        cargo: c.cargo,
+        nombre: (c.nombre || '').trim(),
+        telefono: (c.telefono || '').trim(),
+        email: (c.email || '').trim(),
+        es_principal: idx === 0,
+      }));
+
+      // Derivar contacto principal desde el primer cargo
+      const first = contactos[0];
       const contactoPrincipal: ContactoObra = {
-        nombre: contactoNombre.trim(),
-        cargo: contactoCargo.trim(),
-        telefono: contactoTelefono.trim(),
-        email: contactoEmail.trim(),
-  // whatsapp eliminado; usar teléfono
+        nombre: first.nombre,
+        cargo: first.cargo,
+        telefono: first.telefono,
+        email: first.email,
       };
 
       const constructora: EmpresaConstructora = {
@@ -313,23 +382,25 @@ export function CreateObraModal({
         nombreEmpresa: nombreEmpresa.trim(),
         descripcion: descripcion.trim(),
         direccionObra: direccionObra.trim(),
-  comuna: comuna.trim() || undefined,
-  ciudad: ciudad.trim() || undefined,
+        comuna: comuna.trim() || undefined,
+        ciudad: ciudad.trim() || undefined,
         fechaInicio: new Date(fechaInicio),
         fechaEstimadaFin: fechaEstimadaFin ? new Date(fechaEstimadaFin) : undefined,
         valorEstimado: valorEstimado ? Number(valorEstimado) : 0,
         materialVendido: Number(materialVendido),
+        pendiente: 0,
         proximoSeguimiento: proximoSeguimiento ? new Date(proximoSeguimiento) : undefined,
         notas: notas.trim(),
         estado,
         etapaActual,
         etapasCompletadas: [],
         constructora,
+        contactos,
         vendedorAsignado: currentUserId,
-  nombreVendedor: currentUserName,
-  clienteId: clienteId,
-  tipoObraId: tipoObraId,
-  tamanoObraId: tamanoObraId,
+        nombreVendedor: currentUserName,
+        clienteId: clienteId,
+        tipoObraId: tipoObraId,
+        tamanoObraId: tamanoObraId,
       };
 
       const success = await onSave(nuevaObra);
@@ -410,33 +481,63 @@ export function CreateObraModal({
           </div>
         </div>
 
-        {/* Contenido Principal */}
-        <div className="p-3 sm:p-4 md:p-6">
-          {/* Stepper */}
-          <div className="flex items-center justify-center gap-3 mb-4">
-            {[1,2,3].map((s) => (
-              <button
-                key={s}
-                type="button"
-                onClick={() => setCurrentStep(s as 1|2|3)}
-                className={`w-8 h-8 rounded-full text-sm font-semibold flex items-center justify-center ${currentStep===s ? 'text-white' : ''}`}
-                style={{ backgroundColor: currentStep===s ? 'var(--accent-primary)' : 'var(--bg-secondary)', color: currentStep===s ? 'white' : 'var(--text-secondary)', border: '1px solid var(--border)' }}
-                aria-current={currentStep===s}
-              >
-                {s}
-              </button>
-            ))}
-          </div>
-          <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Paso 1: Información General de la Obra */}
-            <div 
-              className="p-4 rounded-lg"
-              style={{ 
-                backgroundColor: 'var(--card-bg)',
-                border: '1px solid var(--border)'
-              }}
-              hidden={currentStep !== 1}
-            >
+        {/* Contenido Principal - Wizard a pantalla completa con sidebar */}
+        <div className="p-0 sm:p-4 md:p-6">
+          <div className="flex gap-4">
+            {/* Sidebar de pasos */}
+            <aside className="hidden md:block w-64 flex-shrink-0">
+              <nav className="p-3 rounded-lg" style={{ backgroundColor: 'var(--card-bg)', border: '1px solid var(--border)' }} aria-label="Pasos de creación">
+                {([
+                  { id: 1, label: 'Datos de la Obra', icon: 'home' },
+                  { id: 2, label: 'Constructora', icon: 'briefcase' },
+                  { id: 3, label: 'Contactos (5)', icon: 'user' },
+                  { id: 4, label: 'Fechas y Estado', icon: 'calendar' },
+                ] as Array<{id:1|2|3|4;label:string;icon:'home'|'briefcase'|'user'|'calendar'}>).map((s) => (
+                  <button
+                    key={s.id}
+                    type="button"
+                    onClick={() => {
+                      if (s.id > currentStep && !validateStep(currentStep)) return;
+                      setCurrentStep(s.id);
+                      setStepErrors([]);
+                    }}
+                    className={`w-full flex items-center justify-between gap-2 px-3 py-2 rounded mb-2 text-left ${currentStep===s.id ? 'shadow' : ''}`}
+                    style={{ backgroundColor: currentStep===s.id ? 'var(--accent-bg)' : 'var(--bg-secondary)', color: currentStep===s.id ? 'var(--accent-text)' : 'var(--text-primary)' }}
+                    aria-current={currentStep===s.id}
+                  >
+                    <span className="text-sm truncate">{s.label}</span>
+                    {isStepValidForIndicator(s.id) ? <FiCheck className="w-4 h-4" /> : <span className="text-[10px] opacity-70">{s.id}/4</span>}
+                  </button>
+                ))}
+              </nav>
+            </aside>
+
+            {/* Panel derecho */}
+            <div className="flex-1 min-w-0">
+              {/* Barra de progreso y resumen de errores */}
+              <div className="mb-3">
+                <div className="w-full h-2 rounded" style={{ backgroundColor: 'var(--border)' }}>
+                  <div className="h-2 rounded" style={{ width: `${(currentStep/4)*100}%`, backgroundColor: 'var(--accent-primary)' }} />
+                </div>
+                <div className="mt-1 text-xs" style={{ color: 'var(--text-secondary)' }}>Paso {currentStep} de 4</div>
+              </div>
+
+              {stepErrors.length > 0 && (
+                <div className="mb-4 p-3 rounded border" style={{ backgroundColor: 'var(--danger-bg)', borderColor: 'var(--danger-border)', color: 'var(--danger-text)' }} role="alert" aria-live="polite">
+                  <div className="font-semibold mb-1 flex items-center gap-2"><FiAlertCircle className="w-4 h-4" /> Revisa los siguientes puntos antes de continuar:</div>
+                  <ul className="list-disc ml-5 text-sm">
+                    {stepErrors.map((m, i) => (<li key={i}>{m}</li>))}
+                  </ul>
+                </div>
+              )}
+
+              <form onSubmit={handleSubmit} className="space-y-6">
+                {/* Paso 1: Información General de la Obra */}
+                <div 
+                  className="p-4 rounded-lg"
+                  style={{ backgroundColor: 'var(--card-bg)', border: '1px solid var(--border)' }}
+                  hidden={currentStep !== 1}
+                >
               <h3 className="text-base font-semibold flex items-center gap-2 mb-4" style={{ color: 'var(--text-primary)' }}>
                 <FiHome className="w-4 h-4" style={{ color: 'var(--accent-primary)' }} />
                 Información de la Obra
@@ -573,19 +674,14 @@ export function CreateObraModal({
                   />
                 </div>
               </div>
-            </div>
+                </div>
 
-            
-
-            {/* Paso 2: Información de la Constructora y Cliente */}
-            <div 
-              className="p-4 rounded-lg"
-              style={{ 
-                backgroundColor: 'var(--card-bg)',
-                border: '1px solid var(--border)'
-              }}
-              hidden={currentStep !== 2}
-            >
+                {/* Paso 2: Información de la Constructora y Cliente */}
+                <div 
+                  className="p-4 rounded-lg"
+                  style={{ backgroundColor: 'var(--card-bg)', border: '1px solid var(--border)' }}
+                  hidden={currentStep !== 2}
+                >
               <h3 className="text-base font-semibold flex items-center gap-2 mb-4" style={{ color: 'var(--text-primary)' }}>
                 <FiBriefcase className="w-4 h-4" style={{ color: 'var(--accent-primary)' }} />
                 Empresa Constructora
@@ -747,67 +843,119 @@ export function CreateObraModal({
                   />
                 </div>
               </div>
-            </div>
-
-            {/* Paso 3: Clasificación, Fechas y Estado */}
-            <div 
-              className="p-4 rounded-lg"
-              style={{ 
-                backgroundColor: 'var(--card-bg)',
-                border: '1px solid var(--border)'
-              }}
-              hidden={currentStep !== 3}
-            >
-              <h3 className="text-base font-semibold flex items-center gap-2 mb-4" style={{ color: 'var(--text-primary)' }}>
-                <FiTool className="w-4 h-4" style={{ color: 'var(--accent-primary)' }} />
-                Clasificación de la Obra
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>
-                    Tipo de obra
-                  </label>
-                  <select
-                    value={tipoObraId ?? ''}
-                    onChange={(e) => setTipoObraId(e.target.value ? Number(e.target.value) : undefined)}
-                    className="w-full px-3 py-2 rounded-lg border"
-                    style={{ backgroundColor: 'var(--input-bg)', borderColor: 'var(--input-border)', color: 'var(--text-primary)' }}
-                  >
-                    <option value="">Selecciona un tipo</option>
-                    {tiposObra.map((t) => (
-                      <option key={t.id} value={t.id}>{t.nombre}</option>
-                    ))}
-                  </select>
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>
-                    Tamaño de obra
-                  </label>
-                  <select
-                    value={tamanoObraId ?? ''}
-                    onChange={(e) => setTamanoObraId(e.target.value ? Number(e.target.value) : undefined)}
-                    className="w-full px-3 py-2 rounded-lg border"
-                    style={{ backgroundColor: 'var(--input-bg)', borderColor: 'var(--input-border)', color: 'var(--text-primary)' }}
-                  >
-                    <option value="">Selecciona un tamaño</option>
-                    {tamanosObra.map((t) => (
-                      <option key={t.id} value={t.id}>{t.nombre}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-            </div>
+                {/* Paso 3: Contactos obligatorios (5) */}
+                <div 
+                  className="p-4 rounded-lg"
+                  style={{ backgroundColor: 'var(--card-bg)', border: '1px solid var(--border)' }}
+                  hidden={currentStep !== 3}
+                >
+                  <h3 className="text-base font-semibold flex items-center gap-2 mb-2" style={{ color: 'var(--text-primary)' }}>
+                    <FiUser className="w-4 h-4" style={{ color: 'var(--accent-primary)' }} />
+                    Contactos de la Obra (5 obligatorios)
+                  </h3>
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                      Los cargos están fijos y no se pueden cambiar. Si un contacto no existe, presiona "No existe" para continuar.
+                    </p>
+                    <span className="text-xs px-2 py-0.5 rounded-full" style={{ backgroundColor: 'var(--bg-secondary)', color: 'var(--text-secondary)', border: '1px solid var(--border)' }}>
+                      {contacts.filter(c => (c.nombre || '').trim()).length}/5 completos
+                    </span>
+                  </div>
 
-            {/* Fechas y Estado (Paso 3) */}
-            <div 
-              className="p-4 rounded-lg"
-              style={{ 
-                backgroundColor: 'var(--card-bg)',
-                border: '1px solid var(--border)'
-              }}
-              hidden={currentStep !== 3}
-            >
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    {contacts.map((c, idx) => (
+                      <div key={REQUIRED_CARGOS[idx]} className="p-3 rounded border" style={{ borderColor: 'var(--border)' }}>
+                        <div className="grid grid-cols-1 sm:grid-cols-5 gap-2 items-end">
+                          <div className="sm:col-span-2">
+                            <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>Cargo</label>
+                            <input type="text" value={REQUIRED_CARGOS[idx]} readOnly className="w-full px-3 py-2 rounded-lg border bg-[var(--bg-secondary)]" style={{ borderColor: 'var(--input-border)', color: 'var(--text-primary)' }} />
+                          </div>
+                          <div className="sm:col-span-3">
+                            <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>Nombre {idx===0 ? '*' : ''}</label>
+                            <div className="flex gap-2">
+                              <input
+                                type="text"
+                                value={c.nombre}
+                                onChange={(e) => setContacts(prev => prev.map((p, i) => i===idx ? { ...p, nombre: e.target.value } : p))}
+                                placeholder="Nombre del contacto"
+                                className="flex-1 px-3 py-2 rounded-lg border focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                style={{ backgroundColor: 'var(--input-bg)', borderColor: errors.contactos?.[idx]?.nombre ? 'var(--danger-border)' : 'var(--input-border)', color: 'var(--text-primary)' }}
+                              />
+                              <button type="button" className="px-2 py-2 text-xs rounded border" onClick={() => setContacts(prev => prev.map((p, i) => i===idx ? { ...p, nombre: 'No existe', telefono: '', email: '' } : p))} style={{ borderColor: 'var(--border)', color: 'var(--text-secondary)' }}>
+                                No existe
+                              </button>
+                            </div>
+                            {errors.contactos?.[idx]?.nombre && (
+                              <span className="text-xs mt-1 flex items-center gap-1" style={{ color: 'var(--danger-text)' }}>
+                                <FiAlertCircle className="w-3 h-3" />
+                                {errors.contactos[idx]?.nombre}
+                              </span>
+                            )}
+                          </div>
+                          <div className="sm:col-span-2">
+                            <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>Teléfono</label>
+                            <input type="tel" value={c.telefono || ''} onChange={(e) => setContacts(prev => prev.map((p, i) => i===idx ? { ...p, telefono: e.target.value } : p))} placeholder="+56 9 1234 5678" className="w-full px-3 py-2 rounded-lg border" style={{ backgroundColor: 'var(--input-bg)', borderColor: 'var(--input-border)', color: 'var(--text-primary)' }} />
+                          </div>
+                          <div className="sm:col-span-3">
+                            <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>Email</label>
+                            <input type="email" value={c.email || ''} onChange={(e) => setContacts(prev => prev.map((p, i) => i===idx ? { ...p, email: e.target.value } : p))} placeholder="contacto@ejemplo.com" className="w-full px-3 py-2 rounded-lg border" style={{ backgroundColor: 'var(--input-bg)', borderColor: 'var(--input-border)', color: 'var(--text-primary)' }} />
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Paso 4: Clasificación, Fechas y Estado */}
+                <div 
+                  className="p-4 rounded-lg"
+                  style={{ backgroundColor: 'var(--card-bg)', border: '1px solid var(--border)' }}
+                  hidden={currentStep !== 4}
+                >
+                  <h3 className="text-base font-semibold flex items-center gap-2 mb-4" style={{ color: 'var(--text-primary)' }}>
+                    <FiTool className="w-4 h-4" style={{ color: 'var(--accent-primary)' }} />
+                    Clasificación de la Obra
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>Tipo de obra</label>
+                      <select
+                        value={tipoObraId ?? ''}
+                        onChange={(e) => setTipoObraId(e.target.value ? Number(e.target.value) : undefined)}
+                        className="w-full px-3 py-2 rounded-lg border"
+                        style={{ backgroundColor: 'var(--input-bg)', borderColor: 'var(--input-border)', color: 'var(--text-primary)' }}
+                      >
+                        <option value="">Selecciona un tipo</option>
+                        {tiposObra.map((t) => (
+                          <option key={t.id} value={t.id}>{t.nombre}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>Tamaño de obra</label>
+                      <select
+                        value={tamanoObraId ?? ''}
+                        onChange={(e) => setTamanoObraId(e.target.value ? Number(e.target.value) : undefined)}
+                        className="w-full px-3 py-2 rounded-lg border"
+                        style={{ backgroundColor: 'var(--input-bg)', borderColor: 'var(--input-border)', color: 'var(--text-primary)' }}
+                      >
+                        <option value="">Selecciona un tamaño</option>
+                        {tamanosObra.map((t) => (
+                          <option key={t.id} value={t.id}>{t.nombre}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Paso 4 (continuación): Fechas, Estado y Notas */}
+                <div 
+                  className="p-4 rounded-lg"
+                  style={{ backgroundColor: 'var(--card-bg)', border: '1px solid var(--border)' }}
+                  hidden={currentStep !== 4}
+                >
               <h3 className="text-base font-semibold flex items-center gap-2 mb-4" style={{ color: 'var(--text-primary)' }}>
                 <FiCalendar className="w-4 h-4" style={{ color: 'var(--accent-primary)' }} />
                 Fechas y Estado
@@ -918,154 +1066,29 @@ export function CreateObraModal({
                 </div>
               </div>
             </div>
-
-            {/* Contacto Principal (Paso 2) */}
-            <div 
-              className="p-4 rounded-lg"
-              style={{ 
-                backgroundColor: 'var(--card-bg)',
-                border: '1px solid var(--border)'
-              }}
-              hidden={currentStep !== 2}
-            >
-              <h3 className="text-base font-semibold flex items-center gap-2 mb-4" style={{ color: 'var(--text-primary)' }}>
-                <FiUser className="w-4 h-4" style={{ color: 'var(--accent-primary)' }} />
-                Contacto Principal
-              </h3>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                <div>
-                  <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>
-                    Nombre Completo *
-                  </label>
-                  <input
-                    type="text"
-                    value={contactoNombre}
-                    onChange={(e) => setContactoNombre(e.target.value)}
-                    placeholder="Nombre completo del contacto"
-                    className="w-full px-3 py-2 rounded-lg border focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    style={{ 
-                      backgroundColor: 'var(--input-bg)',
-                      borderColor: errors.constructora?.contactoPrincipal?.nombre ? 'var(--danger-border)' : 'var(--input-border)',
-                      color: 'var(--text-primary)'
-                    }}
-                  />
-                  {errors.constructora?.contactoPrincipal?.nombre && (
-                    <span className="text-xs mt-1 flex items-center gap-1" style={{ color: 'var(--danger-text)' }}>
-                      <FiAlertCircle className="w-3 h-3" />
-                      {errors.constructora.contactoPrincipal.nombre}
-                    </span>
-                  )}
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>
-                    Cargo *
-                  </label>
-                  <input
-                    type="text"
-                    value={contactoCargo}
-                    onChange={(e) => setContactoCargo(e.target.value)}
-                    placeholder="Cargo en la empresa"
-                    className="w-full px-3 py-2 rounded-lg border focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    style={{ 
-                      backgroundColor: 'var(--input-bg)',
-                      borderColor: errors.constructora?.contactoPrincipal?.cargo ? 'var(--danger-border)' : 'var(--input-border)',
-                      color: 'var(--text-primary)'
-                    }}
-                  />
-                  {errors.constructora?.contactoPrincipal?.cargo && (
-                    <span className="text-xs mt-1 flex items-center gap-1" style={{ color: 'var(--danger-text)' }}>
-                      <FiAlertCircle className="w-3 h-3" />
-                      {errors.constructora.contactoPrincipal.cargo}
-                    </span>
-                  )}
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>
-                    Teléfono *
-                  </label>
-                  <input
-                    type="tel"
-                    value={contactoTelefono}
-                    onChange={(e) => setContactoTelefono(e.target.value)}
-                    placeholder="+56 9 1234 5678"
-                    className="w-full px-3 py-2 rounded-lg border focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    style={{ 
-                      backgroundColor: 'var(--input-bg)',
-                      borderColor: errors.constructora?.contactoPrincipal?.telefono ? 'var(--danger-border)' : 'var(--input-border)',
-                      color: 'var(--text-primary)'
-                    }}
-                  />
-                  {errors.constructora?.contactoPrincipal?.telefono && (
-                    <span className="text-xs mt-1 flex items-center gap-1" style={{ color: 'var(--danger-text)' }}>
-                      <FiAlertCircle className="w-3 h-3" />
-                      {errors.constructora.contactoPrincipal.telefono}
-                    </span>
-                  )}
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>
-                    Email
-                  </label>
-                  <input
-                    type="email"
-                    value={contactoEmail}
-                    onChange={(e) => setContactoEmail(e.target.value)}
-                    placeholder="contacto@ejemplo.com"
-                    className="w-full px-3 py-2 rounded-lg border focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    style={{ 
-                      backgroundColor: 'var(--input-bg)',
-                      borderColor: errors.constructora?.contactoPrincipal?.email ? 'var(--danger-border)' : 'var(--input-border)',
-                      color: 'var(--text-primary)'
-                    }}
-                  />
-                  {errors.constructora?.contactoPrincipal?.email && (
-                    <span className="text-xs mt-1 flex items-center gap-1" style={{ color: 'var(--danger-text)' }}>
-                      <FiAlertCircle className="w-3 h-3" />
-                      {errors.constructora.contactoPrincipal.email}
-                    </span>
-                  )}
-                </div>
-
-                {/* WhatsApp eliminado: usar teléfono */}
+              {/* Notas adicionales (en Paso 4) */}
+              <div className="p-4 rounded-lg" style={{ backgroundColor: 'var(--card-bg)', border: '1px solid var(--border)' }} hidden={currentStep !== 4}>
+                <h3 className="text-base font-semibold flex items-center gap-2 mb-4" style={{ color: 'var(--text-primary)' }}>
+                  <FiFileText className="w-4 h-4" style={{ color: 'var(--accent-primary)' }} />
+                  Notas Adicionales
+                </h3>
+                <textarea
+                  value={notas}
+                  onChange={(e) => setNotas(e.target.value)}
+                  placeholder="Información adicional relevante sobre la obra..."
+                  rows={4}
+                  className="w-full px-3 py-2 rounded-lg border focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                  style={{ backgroundColor: 'var(--input-bg)', borderColor: 'var(--input-border)', color: 'var(--text-primary)' }}
+                />
               </div>
-            </div>
 
-            {/* Notas adicionales (Paso 3) */}
-            <div 
-              className="p-4 rounded-lg"
-              style={{ 
-                backgroundColor: 'var(--card-bg)',
-                border: '1px solid var(--border)'
-              }}
-              hidden={currentStep !== 3}
-            >
-              <h3 className="text-base font-semibold flex items-center gap-2 mb-4" style={{ color: 'var(--text-primary)' }}>
-                <FiFileText className="w-4 h-4" style={{ color: 'var(--accent-primary)' }} />
-                Notas Adicionales
-              </h3>
-              
-              <textarea
-                value={notas}
-                onChange={(e) => setNotas(e.target.value)}
-                placeholder="Información adicional relevante sobre la obra..."
-                rows={4}
-                className="w-full px-3 py-2 rounded-lg border focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-                style={{ 
-                  backgroundColor: 'var(--input-bg)',
-                  borderColor: 'var(--input-border)',
-                  color: 'var(--text-primary)'
-                }}
-              />
+              </form>
             </div>
-          </form>
+          </div>
         </div>
 
         {/* Footer */}
-        <div 
+        <div
           className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-3 sm:p-4 md:p-6"
           style={{ borderTop: '1px solid var(--border)' }}
         >
@@ -1074,7 +1097,6 @@ export function CreateObraModal({
               * Campos obligatorios
             </span>
           </div>
-          
           <div className="flex items-center gap-2 flex-wrap justify-end">
             <button
               type="button"
@@ -1090,21 +1112,21 @@ export function CreateObraModal({
               Cancelar
             </button>
 
-            {currentStep > 1 && (
-              <button
-                type="button"
-                onClick={() => setCurrentStep((s) => (Math.max(1, (s as number) - 1) as 1|2|3))}
-                className="px-4 py-2 rounded-lg border"
-                style={{ borderColor: 'var(--border)', color: 'var(--text-secondary)' }}
-              >
-                Atrás
-              </button>
-            )}
+            <button
+              type="button"
+              onClick={handlePrevStep}
+              disabled={currentStep===1 || loading}
+              className="px-4 py-2 rounded-lg border"
+              style={{ borderColor: 'var(--border)', color: 'var(--text-secondary)', opacity: currentStep===1 ? 0.6 : 1 }}
+            >
+              Atrás
+            </button>
 
-            {currentStep < 3 ? (
+            {currentStep < 4 ? (
               <button
                 type="button"
-                onClick={() => setCurrentStep((s) => (Math.min(3, (s as number) + 1) as 1|2|3))}
+                onClick={handleNextStep}
+                disabled={loading}
                 className="px-4 py-2 rounded-lg"
                 style={{ backgroundColor: 'var(--accent-primary)', color: 'white' }}
               >
@@ -1112,8 +1134,8 @@ export function CreateObraModal({
               </button>
             ) : (
               <button
-                type="submit"
-                onClick={handleSubmit}
+                type="button"
+                onClick={() => handleSubmit()}
                 disabled={loading}
                 className="px-4 py-2 rounded-lg transition-colors flex items-center gap-2"
                 style={{ 

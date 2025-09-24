@@ -24,6 +24,13 @@ export default function ConvertQuotePage() {
   const [numeroSerie, setNumeroSerie] = useState<string>('');
   const [formaPago, setFormaPago] = useState<string>('');
 
+  // Inicializar selectedItems con los productos de la cotización
+  useEffect(() => {
+    if (quote && quote.items) {
+      setSelectedItems(quote.items);
+    }
+  }, [quote]);
+
   // Verificar si la cotización ya fue convertida
   useEffect(() => {
     if (quote && quote.estado === 'aceptada') {
@@ -42,6 +49,22 @@ export default function ConvertQuotePage() {
 
     try {
       const cotizacionNumericId = await NotasVentaService.getCotizacionNumericIdByFolio(quote.id);
+
+      // Obtener el obra_id de la cotización
+      let obraId: number | null = null;
+      if (cotizacionNumericId) {
+        const { data: cotizacionData, error: cotizacionError } = await supabase
+          .from('cotizaciones')
+          .select('obra_id')
+          .eq('id', cotizacionNumericId)
+          .single();
+
+        if (cotizacionError) {
+          console.warn('Error obteniendo obra_id de la cotización:', cotizacionError);
+        } else {
+          obraId = cotizacionData?.obra_id || null;
+        }
+      }
 
       // Obtener el ID numérico del cliente
       const { data: clienteData, error: clienteError } = await supabase
@@ -77,10 +100,40 @@ export default function ConvertQuotePage() {
         formaPago: formaPago || undefined,
         cotizacionDbId: cotizacionNumericId || undefined,
         clientePrincipalId: clienteData.id,
+        obraId: obraId || undefined,
         itemsOverride: selectedItems,
         finalizarInmediatamente: false, // Crear con estado "creada", no "confirmada"
         numeroSerie: numeroSerie || undefined, // Pass numero serie if provided
       });
+
+      // Si la nota de venta pertenece a una obra, actualizar el material_vendido
+      if (obraId && createdNote.total) {
+        // Primero obtener el valor actual
+        const { data: obraData, error: obraFetchError } = await supabase
+          .from('obras')
+          .select('material_vendido')
+          .eq('id', obraId)
+          .single();
+
+        if (obraFetchError) {
+          console.error('Error obteniendo material_vendido actual de la obra:', obraFetchError);
+        } else {
+          const currentMaterialVendido = obraData?.material_vendido || 0;
+          const newMaterialVendido = currentMaterialVendido + createdNote.total;
+
+          const { error: obraUpdateError } = await supabase
+            .from('obras')
+            .update({ material_vendido: newMaterialVendido })
+            .eq('id', obraId);
+
+          if (obraUpdateError) {
+            console.error('Error actualizando material_vendido de la obra:', obraUpdateError);
+            // No lanzamos error aquí para no detener el flujo
+          } else {
+            console.log(`Actualizado material_vendido de la obra ${obraId}: ${currentMaterialVendido} -> ${newMaterialVendido}`);
+          }
+        }
+      }
 
       // Redirigir a la página de detalle de la nota de venta creada
       router.push(`/dashboard/notas-venta/${createdNote.id}`);

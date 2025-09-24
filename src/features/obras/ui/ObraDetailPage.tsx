@@ -24,10 +24,15 @@ import {
   FiChevronLeft,
   FiChevronRight,
   FiArrowLeft,
-  FiMapPin
+  FiMapPin,
+  FiPlus,
+  FiTrendingUp
 } from 'react-icons/fi';
-import { Obra, EtapaObra, EstadoObra, ContactoObra } from '../types/obras';
+import { Obra, EtapaObra, EstadoObra, ContactoObra, ObraContacto, REQUIRED_CARGOS } from '../types/obras';
 import { Toast } from '@/shared/ui/Toast';
+import { useObraQuotes } from '@/hooks/useObraQuotes';
+import { PrestamoModal } from './payments/PrestamoModal';
+import { PagoModal } from './payments/PagoModal';
 
 interface ObraDetailPageProps {
   obra: Obra;
@@ -53,13 +58,20 @@ export function ObraDetailPage({
   // Estado editable (compartido por editor y acciones de progreso)
   const [isEditing, setIsEditing] = useState(false); // Mantener para compatibilidad interna con progreso
   const [editedObra, setEditedObra] = useState<Obra>(obra);
-  const [showSecondaryContact, setShowSecondaryContact] = useState(false);
-  const [secondaryContact, setSecondaryContact] = useState<ContactoObra | null>(null);
+  // Carousel index for 5 fixed cargos
+  const [contactCarouselIndex, setContactCarouselIndex] = useState(0);
   const [isSaving, setIsSaving] = useState(false);
   const [saveResult, setSaveResult] = useState<{success: boolean, message: string} | null>(null);
   const [savedState, setSavedState] = useState<{etapasCompletadas: EtapaObra[], etapaActual: EtapaObra}>(
     {etapasCompletadas: [...obra.etapasCompletadas], etapaActual: obra.etapaActual}
   );
+
+  // Estados para modales de pagos
+  const [isPrestamoModalOpen, setIsPrestamoModalOpen] = useState(false);
+  const [isPagoModalOpen, setIsPagoModalOpen] = useState(false);
+
+  // Obtener cotizaciones y estadísticas de la obra
+  const { quotes, salesNotes, stats, loading: quotesLoading, refetch: refetchObraData } = useObraQuotes(Number(obra.id));
   
   useEffect(() => {
     setEditedObra(obra);
@@ -70,17 +82,7 @@ export function ObraDetailPage({
       etapaActual: obra.etapaActual
     });
     
-    // Inicializar el contacto secundario con valores predeterminados
-    // En una implementación real, esto vendría de la API
-    if (!secondaryContact) {
-      setSecondaryContact({
-        nombre: "Carlos Rodriguez",
-        cargo: "Comprador de Materiales",
-        telefono: "+56 9 8765 4321",
-        email: "carlos.rodriguez@" + obra.constructora.nombre.toLowerCase().replace(/\s+/g, '') + ".cl"
-      });
-    }
-  }, [obra, secondaryContact]);
+  }, [obra]);
 
   // Abrir editor automáticamente cuando venimos desde la lista con ?edit=1
   useEffect(() => {
@@ -94,6 +96,19 @@ export function ObraDetailPage({
   const estadoColor = getEstadoColor(obra.estado);
   const etapaColorCurrent = getEtapaColor(obra.etapaActual);
   const etapas: EtapaObra[] = ['fundacion', 'estructura', 'albanileria', 'instalaciones', 'terminaciones', 'entrega'];
+
+  const getContactsWithCargos = (o: Obra): ObraContacto[] => {
+    const list = (o.contactos || []) as ObraContacto[];
+    return REQUIRED_CARGOS.map((cargo, idx) => {
+      const found = list.find(c => (c.cargo || '').toLowerCase() === cargo.toLowerCase());
+      if (found) return { ...found, cargo, es_principal: idx === 0 };
+      if (idx === 0 && o.constructora?.contactoPrincipal) {
+        const cp = o.constructora.contactoPrincipal;
+        return { cargo, nombre: cp.nombre, telefono: cp.telefono, email: cp.email, es_principal: true };
+      }
+      return { cargo, nombre: 'No existe', telefono: '', email: '', es_principal: idx === 0 };
+    });
+  };
 
   const getProgressPercentage = () => {
     return ((obra.etapasCompletadas.length / etapas.length) * 100);
@@ -111,51 +126,31 @@ export function ObraDetailPage({
       etapasCompletadas: updatedEtapasCompletadas
     });
   };
-
+  
   const handleSave = async () => {
-    setIsSaving(true);
-    setSaveResult(null);
-    
     try {
-      const success = await onUpdate(editedObra);
-      
-      if (success) {
-  Toast.success('Se actualizó la información');
-        setSaveResult({
-          success: true,
-          message: "Cambios guardados correctamente"
-        });
-        
-        setSavedState({
-          etapasCompletadas: [...editedObra.etapasCompletadas],
-          etapaActual: editedObra.etapaActual
-        });
+      setIsSaving(true);
+      setSaveResult(null);
+      const updated: Obra = {
+        ...obra,
+        etapaActual: editedObra.etapaActual,
+        etapasCompletadas: [...editedObra.etapasCompletadas],
+      };
+      const ok = await onUpdate(updated);
+      if (ok) {
+        setSaveResult({ success: true, message: 'Progreso guardado' });
+        setSavedState({ etapasCompletadas: [...updated.etapasCompletadas], etapaActual: updated.etapaActual });
+        setEditedObra(prev => ({ ...prev, etapaActual: updated.etapaActual, etapasCompletadas: [...updated.etapasCompletadas] }));
+        router.refresh?.();
       } else {
-        Toast.error('No se pudieron guardar los cambios');
-        setSaveResult({
-          success: false,
-          message: "No se pudieron guardar los cambios"
-        });
+        setSaveResult({ success: false, message: 'No se pudo guardar' });
       }
-    } catch (error) {
-      Toast.error('Error al procesar la solicitud');
-      setSaveResult({
-        success: false,
-        message: "Error al procesar la solicitud"
-      });
-      console.error("Error al guardar los cambios:", error);
+    } catch (e) {
+      console.error(e);
+      setSaveResult({ success: false, message: 'Error al guardar' });
     } finally {
       setIsSaving(false);
-      
-      setTimeout(() => {
-        setSaveResult(null);
-      }, 3000);
     }
-  };
-
-  const handleCancel = () => {
-    setEditedObra(obra);
-    setIsEditing(false);
   };
 
   const formatDate = (date: Date) => {
@@ -396,6 +391,15 @@ export function ObraDetailPage({
               </div>
 
               <div className="flex items-center gap-2 flex-shrink-0">
+                <button
+                  onClick={handleBack}
+                  className="text-sm px-4 py-2 min-h-[44px] flex items-center gap-2 rounded-md transition-all duration-200 font-semibold"
+                  style={{ backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)', border: '1px solid var(--border)' }}
+                  title="Volver atrás"
+                >
+                  <FiArrowLeft className="w-4 h-4" />
+                  <span>Volver</span>
+                </button>
                 {obra.etapaActual === 'entrega' && obra.estado !== 'finalizada' && (
                   <button
                     onClick={handleConfirmEntrega}
@@ -409,7 +413,7 @@ export function ObraDetailPage({
                   </button>
                 )}
                 <button
-                  onClick={() => router.push(`/dashboard/cotizaciones/nueva-obra?obraId=${obra.id}`)}
+                  onClick={() => router.push(`/dashboard/obras/${obra.id}/nueva-cotizacion`)}
                   className="text-sm px-4 py-2 min-h-[44px] flex items-center gap-2 rounded-md transition-all duration-200 font-semibold text-white"
                   style={{ backgroundColor: 'var(--accent-primary)' }}
                   title="Crear cotización para esta obra"
@@ -432,7 +436,7 @@ export function ObraDetailPage({
             </div>
 
             {/* Acciones rápidas para usuarios novatos */}
-            <div className="grid grid-cols-1 xs:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
+            <div className="grid grid-cols-1 xs:grid-cols-2 lg:grid-cols-5 gap-2 sm:gap-3">
               <button onClick={() => scrollTo('section-resumen')} className="flex items-center gap-2 p-3 rounded-lg text-left"
                 style={{ backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border)' }}>
                 <div className="p-2 rounded" style={{ backgroundColor: 'var(--accent-bg)', color: 'var(--accent-text)' }}>
@@ -473,6 +477,16 @@ export function ObraDetailPage({
                   <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>Etapas y avance</p>
                 </div>
               </button>
+              <button onClick={() => scrollTo('section-cotizaciones')} className="flex items-center gap-2 p-3 rounded-lg text-left"
+                style={{ backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border)' }}>
+                <div className="p-2 rounded" style={{ backgroundColor: 'var(--accent-bg)', color: 'var(--accent-text)' }}>
+                  <FiDollarSign className="w-4 h-4" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Cotizaciones</p>
+                  <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>Historial y documentos</p>
+                </div>
+              </button>
             </div>
           </div>
         </header>
@@ -503,7 +517,7 @@ export function ObraDetailPage({
                   <div>
                     <p className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>Cotizaciones hechas</p>
                     <h3 className="text-base sm:text-lg md:text-xl font-bold mt-1" style={{ color: 'var(--text-primary)' }}>
-                      {Math.round((obra.materialVendido || 0) / 100000)}
+                      {quotesLoading ? '...' : stats.totalQuotes}
                     </h3>
                     <p className="text-xs mt-1" style={{ color: 'var(--text-secondary)' }}>Documentos emitidos</p>
                   </div>
@@ -521,20 +535,71 @@ export function ObraDetailPage({
                 <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
                   <div className="p-3 rounded text-center" style={{ backgroundColor: 'var(--bg-secondary)' }}>
                     <p className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>Total Cotizado</p>
-                    <p className="text-lg sm:text-xl font-bold mt-1 break-words" style={{ color: 'var(--text-primary)' }}>{formatMoney(obra.materialVendido * 1.3)}</p>
+                    <p className="text-lg sm:text-xl font-bold mt-1 break-words" style={{ color: 'var(--text-primary)' }}>
+                      {quotesLoading ? '...' : formatMoney(stats.totalCotizado)}
+                    </p>
                   </div>
                   <div className="p-3 rounded text-center" style={{ backgroundColor: 'var(--bg-secondary)' }}>
                     <p className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>Material Vendido</p>
-                    <p className="text-lg sm:text-xl font-bold mt-1 break-words" style={{ color: 'var(--success-text)' }}>{formatMoney(obra.materialVendido)}</p>
+                    <p className="text-lg sm:text-xl font-bold mt-1 break-words" style={{ color: 'var(--success-text)' }}>
+                      {quotesLoading ? '...' : formatMoney(stats.materialVendido)}
+                    </p>
                   </div>
                   <div className="p-3 rounded text-center" style={{ backgroundColor: 'var(--bg-secondary)' }}>
-                    <p className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>Pendiente</p>
-                    <p className="text-lg sm:text-xl font-bold mt-1 break-words" style={{ color: 'var(--warning-text)' }}>{formatMoney((obra.materialVendido * 1.3) - obra.materialVendido)}</p>
+                    <div className="flex items-center justify-center gap-1 mb-1">
+                      <p className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>Pendiente</p>
+                      {stats.pendiente > 0 && (
+                        <div className="w-2 h-2 bg-orange-500 rounded-full animate-pulse" title="Hay montos pendientes por pagar"></div>
+                      )}
+                    </div>
+                    <p className={`text-lg sm:text-xl font-bold mt-1 break-words ${
+                      stats.pendiente > 0 ? 'text-orange-600' : 'text-green-600'
+                    }`} style={{ color: stats.pendiente > 0 ? 'var(--warning-text)' : 'var(--success-text)' }}>
+                      {quotesLoading ? '...' : formatMoney(stats.pendiente)}
+                    </p>
+                    {stats.pendiente > 0 && (
+                      <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
+                        Requiere atención
+                      </p>
+                    )}
                   </div>
                   <div className="p-3 rounded text-center" style={{ backgroundColor: 'var(--bg-secondary)' }}>
                     <p className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>% Conversión</p>
-                    <p className="text-lg sm:text-xl font-bold mt-1" style={{ color: 'var(--info-text)' }}>76.9%</p>
+                    <p className="text-lg sm:text-xl font-bold mt-1" style={{ color: 'var(--info-text)' }}>
+                      {quotesLoading ? '...' : `${stats.conversionRate}%`}
+                    </p>
                   </div>
+                </div>
+                <div className="mt-6 space-y-3">
+                  <h3 className="text-sm font-medium text-center" style={{ color: 'var(--text-secondary)' }}>
+                    Gestión de Pendientes
+                  </h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <button
+                      className="flex items-center justify-center gap-2 px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-all duration-200 transform hover:scale-105 shadow-sm hover:shadow-md"
+                      onClick={() => setIsPrestamoModalOpen(true)}
+                      title="Registrar un préstamo o anticipo para esta obra"
+                    >
+                      <FiTrendingUp className="w-4 h-4" />
+                      <span>Registrar Préstamo</span>
+                    </button>
+                    <button
+                      className={`flex items-center justify-center gap-2 px-4 py-3 text-white text-sm font-medium rounded-lg transition-all duration-200 transform hover:scale-105 shadow-sm hover:shadow-md ${
+                        stats.pendiente > 0
+                          ? 'bg-green-600 hover:bg-green-700'
+                          : 'bg-gray-400 cursor-not-allowed'
+                      }`}
+                      onClick={() => stats.pendiente > 0 && setIsPagoModalOpen(true)}
+                      disabled={stats.pendiente <= 0}
+                      title={stats.pendiente > 0 ? "Registrar un pago para reducir el pendiente" : "No hay montos pendientes por pagar"}
+                    >
+                      <FiCheckCircle className="w-4 h-4" />
+                      <span>Registrar Pago</span>
+                    </button>
+                  </div>
+                  <p className="text-xs text-center" style={{ color: 'var(--text-muted)' }}>
+                    Usa estos botones para gestionar los préstamos y pagos de la obra
+                  </p>
                 </div>
               </div>
             </section>
@@ -581,120 +646,97 @@ export function ObraDetailPage({
               </div>
             </section>
 
-            {/* Contacto */}
+            {/* Contactos - Carrusel de 5 cargos fijos */}
             <section id="section-contacto" className="space-y-3">
               <div className="flex items-center justify-between">
                 <h2 className="text-base font-semibold flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
                   <FiUser className="w-4 h-4" style={{ color: 'var(--accent-primary)' }} />
-                  Contactos
+                  Contactos de la obra
                 </h2>
-                <div className="flex items-center gap-1">
-                  <button onClick={() => setShowSecondaryContact(false)} className={`p-1 rounded ${!showSecondaryContact ? 'opacity-50' : 'hover:bg-opacity-80'}`} style={{ backgroundColor: !showSecondaryContact ? 'var(--accent-bg)' : 'var(--bg-secondary)', color: !showSecondaryContact ? 'var(--accent-text)' : 'var(--text-primary)' }}>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setContactCarouselIndex((i) => Math.max(0, i - 1))}
+                    className="p-1 rounded"
+                    style={{ backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)' }}
+                    aria-label="Anterior"
+                  >
                     <FiChevronLeft className="w-4 h-4" />
                   </button>
-                  <button onClick={() => setShowSecondaryContact(true)} className={`p-1 rounded ${showSecondaryContact ? 'opacity-50' : 'hover:bg-opacity-80'}`} style={{ backgroundColor: showSecondaryContact ? 'var(--accent-bg)' : 'var(--bg-secondary)', color: showSecondaryContact ? 'var(--accent-text)' : 'var(--text-primary)' }}>
+                  <button
+                    onClick={() => setContactCarouselIndex((i) => Math.min(4, i + 1))}
+                    className="p-1 rounded"
+                    style={{ backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)' }}
+                    aria-label="Siguiente"
+                  >
                     <FiChevronRight className="w-4 h-4" />
                   </button>
                 </div>
               </div>
-              {showSecondaryContact ? (
-                <div className="p-3 sm:p-4 rounded-lg" style={{ backgroundColor: 'var(--card-bg)', border: '1px solid var(--border)' }}>
-                  <div className="p-2 rounded mb-3" style={{ backgroundColor: 'rgba(var(--accent-rgb), 0.15)' }}>
-                    <p className="text-sm" style={{ color: 'var(--accent-text)' }}>Contacto a cargo de compras de materiales</p>
-                  </div>
-                  {secondaryContact && (
-                    <>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
-                        <div>
-                          <label className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>Nombre Completo</label>
-                          <p className="mt-1 text-sm" style={{ color: 'var(--text-primary)' }}>{secondaryContact.nombre}</p>
-                        </div>
-                        <div>
-                          <label className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>Cargo</label>
-                          <p className="mt-1 text-sm" style={{ color: 'var(--text-primary)' }}>{secondaryContact.cargo}</p>
-                        </div>
+              {(() => {
+                const contacts = getContactsWithCargos(obra);
+                const c = contacts[contactCarouselIndex];
+                return (
+                  <div className="p-3 sm:p-4 rounded-lg" style={{ backgroundColor: 'var(--card-bg)', border: '1px solid var(--border)' }}>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
+                      <div>
+                        <label className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>Nombre Completo</label>
+                        <p className="mt-1 text-sm" style={{ color: 'var(--text-primary)' }}>{c.nombre}</p>
                       </div>
-                      <div className="mt-4 space-y-3">
-                        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-                          <div className="flex items-center gap-2 flex-1 min-w-0">
-                            <FiPhone className="w-4 h-4 flex-shrink-0" style={{ color: 'var(--text-muted)' }} />
-                            <div className="min-w-0">
-                              <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>Teléfono</p>
-                              <a href={`tel:${secondaryContact.telefono}`} className="text-sm font-medium transition-colors truncate block" style={{ color: 'var(--accent-primary)' }}>
-                                {secondaryContact.telefono}
+                      <div>
+                        <label className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>Cargo</label>
+                        <p className="mt-1 text-sm" style={{ color: 'var(--text-primary)' }}>{c.cargo}</p>
+                      </div>
+                    </div>
+                    <div className="mt-4 space-y-3">
+                      <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+                        <div className="flex items-center gap-2 flex-1 min-w-0">
+                          <FiPhone className="w-4 h-4 flex-shrink-0" style={{ color: 'var(--text-muted)' }} />
+                          <div className="min-w-0 w-full">
+                            <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>Teléfono</p>
+                            {c.telefono ? (
+                              <a href={`tel:${c.telefono}`} className="text-sm font-medium transition-colors truncate block" style={{ color: 'var(--accent-primary)' }}>
+                                {c.telefono}
                               </a>
-                            </div>
+                            ) : (
+                              <span className="text-sm" style={{ color: 'var(--text-muted)' }}>—</span>
+                            )}
                           </div>
-                          <button className="btn-primary text-xs px-2 py-1 flex items-center gap-1 flex-shrink-0" onClick={() => window.open(`tel:${secondaryContact.telefono}`)}>
+                        </div>
+                        {c.telefono && (
+                          <button className="btn-primary text-xs px-2 py-1 flex items-center gap-1 flex-shrink-0" onClick={() => window.open(`tel:${c.telefono}`)}>
                             <FiPhone className="w-3 h-3" />
                             <span className="hidden xs:inline">Llamar</span>
                           </button>
-                        </div>
-                        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-                          <div className="flex items-center gap-2 flex-1 min-w-0">
-                            <FiMail className="w-4 h-4 flex-shrink-0" style={{ color: 'var(--text-muted)' }} />
-                            <div className="min-w-0">
-                              <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>Email</p>
-                              <a href={`mailto:${secondaryContact.email}`} className="text-sm font-medium transition-colors truncate block" style={{ color: 'var(--accent-primary)' }}>
-                                {secondaryContact.email}
+                        )}
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+                        <div className="flex items-center gap-2 flex-1 min-w-0">
+                          <FiMail className="w-4 h-4 flex-shrink-0" style={{ color: 'var(--text-muted)' }} />
+                          <div className="min-w-0 w-full">
+                            <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>Email</p>
+                            {c.email ? (
+                              <a href={`mailto:${c.email}`} className="text-sm font-medium transition-colors truncate block" style={{ color: 'var(--accent-primary)' }}>
+                                {c.email}
                               </a>
-                            </div>
+                            ) : (
+                              <span className="text-sm" style={{ color: 'var(--text-muted)' }}>—</span>
+                            )}
                           </div>
-                          <button className="btn-secondary text-xs px-2 py-1 flex items-center gap-1 flex-shrink-0" onClick={() => window.open(`mailto:${secondaryContact.email}`)}>
+                        </div>
+                        {c.email && (
+                          <button className="btn-secondary text-xs px-2 py-1 flex items-center gap-1 flex-shrink-0" onClick={() => window.open(`mailto:${c.email}`)}>
                             <FiMail className="w-3 h-3" />
                             <span className="hidden xs:inline">Email</span>
                           </button>
-                        </div>
+                        )}
                       </div>
-                    </>
-                  )}
-                </div>
-              ) : (
-                <div className="p-3 sm:p-4 rounded-lg" style={{ backgroundColor: 'var(--card-bg)', border: '1px solid var(--border)' }}>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
-                    <div>
-                      <label className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>Nombre Completo</label>
-                      <p className="mt-1 text-sm" style={{ color: 'var(--text-primary)' }}>{obra.constructora.contactoPrincipal.nombre}</p>
                     </div>
-                    <div>
-                      <label className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>Cargo</label>
-                      <p className="mt-1 text-sm" style={{ color: 'var(--text-primary)' }}>{obra.constructora.contactoPrincipal.cargo}</p>
+                    <div className="mt-3 text-center text-xs" style={{ color: 'var(--text-secondary)' }}>
+                      {contactCarouselIndex + 1} / 5
                     </div>
                   </div>
-                  <div className="mt-4 space-y-3">
-                    <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-                      <div className="flex items-center gap-2 flex-1 min-w-0">
-                        <FiPhone className="w-4 h-4 flex-shrink-0" style={{ color: 'var(--text-muted)' }} />
-                        <div className="min-w-0 w-full">
-                          <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>Teléfono</p>
-                          <a href={`tel:${obra.constructora.contactoPrincipal.telefono}`} className="text-sm font-medium transition-colors truncate block" style={{ color: 'var(--accent-primary)' }}>
-                            {obra.constructora.contactoPrincipal.telefono}
-                          </a>
-                        </div>
-                      </div>
-                      <button className="btn-primary text-xs px-2 py-1 flex items-center gap-1 flex-shrink-0" onClick={() => window.open(`tel:${obra.constructora.contactoPrincipal.telefono}`)}>
-                        <FiPhone className="w-3 h-3" />
-                        <span className="hidden xs:inline">Llamar</span>
-                      </button>
-                    </div>
-                    <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-                      <div className="flex items-center gap-2 flex-1 min-w-0">
-                        <FiMail className="w-4 h-4 flex-shrink-0" style={{ color: 'var(--text-muted)' }} />
-                        <div className="min-w-0 w-full">
-                          <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>Email</p>
-                          <a href={`mailto:${obra.constructora.contactoPrincipal.email}`} className="text-sm font-medium transition-colors truncate block" style={{ color: 'var(--accent-primary)' }}>
-                            {obra.constructora.contactoPrincipal.email}
-                          </a>
-                        </div>
-                      </div>
-                      <button className="btn-secondary text-xs px-2 py-1 flex items-center gap-1 flex-shrink-0" onClick={() => window.open(`mailto:${obra.constructora.contactoPrincipal.email}`)}>
-                        <FiMail className="w-3 h-3" />
-                        <span className="hidden xs:inline">Email</span>
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )}
+                );
+              })()}
             </section>
 
             {/* Progreso de la obra (al final) */}
@@ -780,6 +822,138 @@ export function ObraDetailPage({
                     {isSaving ? (<div className="w-4 h-4 border-2 border-t-transparent border-white rounded-full animate-spin" />) : (<FiSave className="w-4 h-4" />)}
                     {isSaving ? 'Guardando...' : 'Guardar cambios'}
                   </button>
+                </div>
+              )}
+            </section>
+
+            {/* Historial de cotizaciones y notas de venta */}
+            <section id="section-cotizaciones" className="p-3 sm:p-4 rounded-lg" style={{ backgroundColor: 'var(--card-bg)', border: '1px solid var(--border)' }}>
+              <div className="flex items-center justify-between mb-3 sm:mb-4">
+                <h2 className="text-base font-semibold flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
+                  <FiFileText className="w-4 h-4" style={{ color: 'var(--accent-primary)' }} />
+                  Historial de cotizaciones
+                </h2>
+                <button
+                  onClick={() => router.push(`/dashboard/obras/${obra.id}/nueva-cotizacion`)}
+                  className="text-sm px-3 py-2 flex items-center gap-2 rounded-md transition-all duration-200 font-semibold text-white"
+                  style={{ backgroundColor: 'var(--accent-primary)' }}
+                  title="Crear nueva cotización"
+                >
+                  <FiPlus className="w-4 h-4" />
+                  <span>Nueva</span>
+                </button>
+              </div>
+              <p className="text-xs mb-4" style={{ color: 'var(--text-secondary)' }}>
+                Historial completo de cotizaciones y notas de venta generadas para esta obra.
+              </p>
+
+              {quotesLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <div className="w-6 h-6 border-2 border-t-transparent border-current rounded-full animate-spin" style={{ color: 'var(--accent-primary)' }} />
+                  <span className="ml-2 text-sm" style={{ color: 'var(--text-secondary)' }}>Cargando cotizaciones...</span>
+                </div>
+              ) : quotes.length === 0 ? (
+                <div className="text-center py-8">
+                  <FiFileText className="w-12 h-12 mx-auto mb-3" style={{ color: 'var(--text-muted)' }} />
+                  <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>No hay cotizaciones para esta obra</p>
+                  <button
+                    onClick={() => router.push(`/dashboard/obras/${obra.id}/nueva-cotizacion`)}
+                    className="mt-3 text-sm px-4 py-2 rounded-md font-semibold text-white"
+                    style={{ backgroundColor: 'var(--accent-primary)' }}
+                  >
+                    Crear primera cotización
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {/* Cotizaciones */}
+                  {quotes.map((quote) => (
+                    <div key={quote.id} className="p-3 rounded-lg border" style={{ backgroundColor: 'var(--bg-secondary)', borderColor: 'var(--border)' }}>
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-2">
+                            <FiFileText className="w-4 h-4" style={{ color: 'var(--accent-primary)' }} />
+                            <span className="font-medium text-sm" style={{ color: 'var(--text-primary)' }}>
+                              Cotización {quote.folio || `#${quote.id}`}
+                            </span>
+                            <span className={`px-2 py-0.5 text-xs rounded-full ${
+                              quote.estado === 'aceptada' ? 'bg-green-100 text-green-800' :
+                              quote.estado === 'enviada' ? 'bg-blue-100 text-blue-800' :
+                              quote.estado === 'rechazada' ? 'bg-red-100 text-red-800' :
+                              quote.estado === 'expirada' ? 'bg-gray-100 text-gray-800' :
+                              'bg-yellow-100 text-yellow-800'
+                            }`}>
+                              {quote.estado}
+                            </span>
+                          </div>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 text-xs" style={{ color: 'var(--text-secondary)' }}>
+                            <div>
+                              <span className="font-medium">Cliente:</span> {quote.cliente_principal?.nombre_razon_social || 'N/A'}
+                            </div>
+                            <div>
+                              <span className="font-medium">Fecha:</span> {new Date(quote.fecha_emision).toLocaleDateString('es-CL')}
+                            </div>
+                            <div>
+                              <span className="font-medium">Total:</span> {formatMoney(quote.total_final || 0)}
+                            </div>
+                          </div>
+                          {quote.nota_venta_id && (
+                            <div className="mt-2 p-2 rounded" style={{ backgroundColor: 'var(--success-bg)', border: '1px solid var(--success-text)' }}>
+                              <div className="flex items-center gap-2">
+                                <FiCheckCircle className="w-4 h-4" style={{ color: 'var(--success-text)' }} />
+                                <span className="text-xs font-medium" style={{ color: 'var(--success-text)' }}>
+                                  Tiene nota de venta asociada (ID: {quote.nota_venta_id})
+                                </span>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                        <button
+                          onClick={() => router.push(`/dashboard/cotizaciones/${quote.folio || `COT-${quote.id}`}`)}
+                          className="text-xs px-3 py-1 rounded font-medium transition-colors"
+                          style={{ backgroundColor: 'var(--accent-primary)', color: 'white' }}
+                          title="Ver cotización completa"
+                        >
+                          Ver
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+
+                  {/* TODO: Implementar notas de venta independientes */}
+                  {/* {salesNotes.filter(note => !quotes.some(q => q.nota_venta_id === note.id)).map((note) => (
+                    <div key={`nota-${note.id}`} className="p-3 rounded-lg border" style={{ backgroundColor: 'var(--bg-secondary)', borderColor: 'var(--border)' }}>
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-2">
+                            <FiCheckCircle className="w-4 h-4" style={{ color: 'var(--success-text)' }} />
+                            <span className="font-medium text-sm" style={{ color: 'var(--text-primary)' }}>
+                              Nota de venta {note.folio}
+                            </span>
+                            <span className="px-2 py-0.5 text-xs rounded-full bg-green-100 text-green-800">
+                              Vendida
+                            </span>
+                          </div>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs" style={{ color: 'var(--text-secondary)' }}>
+                            <div>
+                              <span className="font-medium">Fecha:</span> {new Date(note.fecha_emision).toLocaleDateString('es-CL')}
+                            </div>
+                            <div>
+                              <span className="font-medium">Total:</span> {formatMoney(note.total_final)}
+                            </div>
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => router.push(`/dashboard/notas-venta/${note.id}`)}
+                          className="text-xs px-3 py-1 rounded font-medium transition-colors"
+                          style={{ backgroundColor: 'var(--success-bg)', color: 'var(--success-text)', border: '1px solid var(--success-text)' }}
+                          title="Ver nota de venta"
+                        >
+                          Ver
+                        </button>
+                      </div>
+                    </div>
+                  ))} */}
                 </div>
               )}
             </section>
@@ -998,24 +1172,55 @@ export function ObraDetailPage({
                 )}
                 {activeEditTab === 'contacto' && (
                   <div className="grid grid-cols-1 gap-3">
-                    <div>
-                      <label className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>Nombre contacto</label>
-                      <input type="text" value={editedObra.constructora.contactoPrincipal.nombre} onChange={(e) => setEditedObra({ ...editedObra, constructora: { ...editedObra.constructora, contactoPrincipal: { ...editedObra.constructora.contactoPrincipal, nombre: e.target.value } } })} className="mt-1 w-full px-2 py-2 rounded text-sm" style={{ backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)' }} />
-                    </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <div>
-                        <label className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>Cargo</label>
-                        <input type="text" value={editedObra.constructora.contactoPrincipal.cargo} onChange={(e) => setEditedObra({ ...editedObra, constructora: { ...editedObra.constructora, contactoPrincipal: { ...editedObra.constructora.contactoPrincipal, cargo: e.target.value } } })} className="mt-1 w-full px-2 py-2 rounded text-sm" style={{ backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)' }} />
+                    {getContactsWithCargos(editedObra).map((c, idx) => (
+                      <div key={c.cargo} className="p-3 rounded border" style={{ borderColor: 'var(--border)' }}>
+                        <div className="grid grid-cols-1 sm:grid-cols-5 gap-2 items-end">
+                          <div className="sm:col-span-2">
+                            <label className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>Cargo</label>
+                            <input type="text" value={c.cargo} readOnly className="mt-1 w-full px-2 py-2 rounded text-sm" style={{ backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)' }} />
+                          </div>
+                          <div className="sm:col-span-3">
+                            <label className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>Nombre</label>
+                            <div className="flex gap-2">
+                              <input type="text" value={c.nombre} onChange={(e) => {
+                                const updated = [...(editedObra.contactos || [])];
+                                const i = updated.findIndex(x => (x.cargo || '').toLowerCase() === c.cargo.toLowerCase());
+                                if (i >= 0) updated[i] = { ...updated[i], nombre: e.target.value };
+                                else updated.push({ cargo: c.cargo, nombre: e.target.value, telefono: '', email: '', es_principal: idx === 0 });
+                                setEditedObra({ ...editedObra, contactos: updated });
+                              }} className="mt-1 w-full px-2 py-2 rounded text-sm" style={{ backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)' }} />
+                              <button type="button" className="px-2 py-2 text-xs rounded border" onClick={() => {
+                                const updated = [...(editedObra.contactos || [])];
+                                const i = updated.findIndex(x => (x.cargo || '').toLowerCase() === c.cargo.toLowerCase());
+                                if (i >= 0) updated[i] = { ...updated[i], nombre: 'No existe', telefono: '', email: '' };
+                                else updated.push({ cargo: c.cargo, nombre: 'No existe', telefono: '', email: '', es_principal: idx === 0 });
+                                setEditedObra({ ...editedObra, contactos: updated });
+                              }} style={{ borderColor: 'var(--border)', color: 'var(--text-secondary)' }}>No existe</button>
+                            </div>
+                          </div>
+                          <div className="sm:col-span-2">
+                            <label className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>Teléfono</label>
+                            <input type="tel" value={c.telefono || ''} onChange={(e) => {
+                              const updated = [...(editedObra.contactos || [])];
+                              const i = updated.findIndex(x => (x.cargo || '').toLowerCase() === c.cargo.toLowerCase());
+                              if (i >= 0) updated[i] = { ...updated[i], telefono: e.target.value };
+                              else updated.push({ cargo: c.cargo, nombre: '', telefono: e.target.value, email: '', es_principal: idx === 0 });
+                              setEditedObra({ ...editedObra, contactos: updated });
+                            }} className="mt-1 w-full px-2 py-2 rounded text-sm" style={{ backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)' }} />
+                          </div>
+                          <div className="sm:col-span-3">
+                            <label className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>Email</label>
+                            <input type="email" value={c.email || ''} onChange={(e) => {
+                              const updated = [...(editedObra.contactos || [])];
+                              const i = updated.findIndex(x => (x.cargo || '').toLowerCase() === c.cargo.toLowerCase());
+                              if (i >= 0) updated[i] = { ...updated[i], email: e.target.value };
+                              else updated.push({ cargo: c.cargo, nombre: '', telefono: '', email: e.target.value, es_principal: idx === 0 });
+                              setEditedObra({ ...editedObra, contactos: updated });
+                            }} className="mt-1 w-full px-2 py-2 rounded text-sm" style={{ backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)' }} />
+                          </div>
+                        </div>
                       </div>
-                      <div>
-                        <label className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>Teléfono</label>
-                        <input type="tel" value={editedObra.constructora.contactoPrincipal.telefono} onChange={(e) => setEditedObra({ ...editedObra, constructora: { ...editedObra.constructora, contactoPrincipal: { ...editedObra.constructora.contactoPrincipal, telefono: e.target.value } } })} className="mt-1 w-full px-2 py-2 rounded text-sm" style={{ backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)' }} />
-                      </div>
-                    </div>
-                    <div>
-                      <label className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>Email</label>
-                      <input type="email" value={editedObra.constructora.contactoPrincipal.email || ''} onChange={(e) => setEditedObra({ ...editedObra, constructora: { ...editedObra.constructora, contactoPrincipal: { ...editedObra.constructora.contactoPrincipal, email: e.target.value } } })} className="mt-1 w-full px-2 py-2 rounded text-sm" style={{ backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)' }} />
-                    </div>
+                    ))}
                   </div>
                 )}
             </div>
@@ -1030,6 +1235,31 @@ export function ObraDetailPage({
           </div>
         </div>
       )}
+
+      {/* Modales de pagos */}
+      <PrestamoModal
+        isOpen={isPrestamoModalOpen}
+        onClose={() => setIsPrestamoModalOpen(false)}
+        obraId={obra.id}
+        pendienteActual={stats.pendiente}
+        onPrestamoAdded={async () => {
+          // Refrescar datos de la obra y estadísticas
+          console.log('Préstamo agregado, refrescando datos');
+          await refetchObraData();
+        }}
+      />
+
+      <PagoModal
+        isOpen={isPagoModalOpen}
+        onClose={() => setIsPagoModalOpen(false)}
+        obraId={obra.id}
+        pendienteActual={stats.pendiente}
+        onPagoAdded={async () => {
+          // Refrescar datos de la obra y estadísticas
+          console.log('Pago agregado, refrescando datos');
+          await refetchObraData();
+        }}
+      />
     </div>
   );
 }

@@ -99,6 +99,7 @@ export function mapCotizacionToDomain(data: CotizacionAggregate): Quote {
 		descuentoGlobalMonto,
 		iva,
 		total,
+		obraId: cotizacion.obra_id || undefined,
 		notas: undefined, // no existe campo directo en nueva cabecera (podría mapearse desde hash_cotizacion si se desea)
 		fechaExpiracion: cotizacion.fecha_vencimiento || undefined
 	};

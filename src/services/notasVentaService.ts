@@ -387,6 +387,16 @@ export class NotasVentaService {
     return data as unknown as SalesNoteRecord | null;
   }
 
+  static async getByObraId(obraId: number): Promise<SalesNoteRecord[]> {
+    const { data, error } = await supabase
+      .from('notas_venta')
+      .select(this.SELECT_COLS)
+      .eq('obra_id', obraId)
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+    return data as unknown as SalesNoteRecord[];
+  }
+
   static async update(notaVentaId: number, patch: Partial<SalesNoteInput>) {
     const { data, error } = await supabase
       .from('notas_venta')

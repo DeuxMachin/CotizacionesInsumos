@@ -1,12 +1,13 @@
 "use client";
 
 import { Modal } from "@/shared/ui/Modal";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { ConvertToObraModal } from "./ConvertToObraModal";
 import EditTargetModal from "./EditTargetModal";
 import { StatusChangeModal } from "./StatusChangeModal";
 import { FiMapPin, FiPhone, FiMail, FiUser, FiCalendar, FiClock, FiMap, FiExternalLink, FiEdit3, FiMessageSquare, FiHome, FiFlag, FiSettings } from "react-icons/fi";
-import type { PosibleTarget } from "../model/types";
+import type { PosibleTarget, TargetEvento } from "../model/types";
+import { useTargets } from "../model/useTargets";
 
 interface TargetDetailsModalProps {
   target: PosibleTarget;
@@ -19,6 +20,20 @@ export function TargetDetailsModal({ target, isOpen, onClose, onTargetUpdated }:
   const [showConvertModal, setShowConvertModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showStatusModal, setShowStatusModal] = useState(false);
+  const [events, setEvents] = useState<TargetEvento[]>([]);
+  const [refreshKey, setRefreshKey] = useState(0);
+  const { fetchTargetEvents } = useTargets();
+
+  const handleTargetUpdated = () => {
+    setRefreshKey(prev => prev + 1);
+    onTargetUpdated?.();
+  };
+
+  useEffect(() => {
+    if (isOpen && target.id) {
+      fetchTargetEvents(target.id).then(setEvents);
+    }
+  }, [isOpen, target.id, refreshKey, fetchTargetEvents]);
   const getEstadoClass = (estado: string) => {
     switch (estado) {
       case 'pendiente': return 'badge-base badge-pendiente';
@@ -36,6 +51,28 @@ export function TargetDetailsModal({ target, isOpen, onClose, onTargetUpdated }:
       case 'media': return 'badge-base badge-media';
       case 'baja': return 'badge-base badge-baja';
       default: return 'badge-base badge-media';
+    }
+  };
+
+  const getEventColor = (tipo: string) => {
+    switch (tipo) {
+      case 'contacto': return 'var(--info-text)';
+      case 'estado_cambio': return 'var(--warning-text)';
+      case 'estimado_inicio': return 'var(--success-text)';
+      case 'nota': return 'var(--text-muted)';
+      case 'liberado': return 'var(--danger-text)';
+      default: return 'var(--accent-primary)';
+    }
+  };
+
+  const getEventLabel = (tipo: string) => {
+    switch (tipo) {
+      case 'contacto': return 'Contacto';
+      case 'estado_cambio': return 'Cambio de Estado';
+      case 'estimado_inicio': return 'Inicio Estimado';
+      case 'nota': return 'Nota';
+      case 'liberado': return 'Liberado';
+      default: return tipo;
     }
   };
 
@@ -310,62 +347,37 @@ export function TargetDetailsModal({ target, isOpen, onClose, onTargetUpdated }:
               </h3>
               
               <div className="space-y-3">
-                {/* Fecha de creación */}
-                <div className="flex items-center gap-3">
-                  <div 
-                    className="w-2 h-2 rounded-full flex-shrink-0"
-                    style={{ backgroundColor: 'var(--accent-primary)' }}
-                  />
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
-                        Target Creado
-                      </span>
-                      <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                        {formatDate(target.fechaCreacion)}
-                      </span>
-                    </div>
+                {events.length === 0 ? (
+                  <div className="text-center py-4">
+                    <FiCalendar className="w-6 h-6 mx-auto mb-2" style={{ color: 'var(--text-muted)' }} />
+                    <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+                      No hay eventos registrados
+                    </p>
                   </div>
-                </div>
-
-                {/* Fecha de contacto si existe */}
-                {target.fechaContacto && (
-                  <div className="flex items-center gap-3">
-                    <div 
-                      className="w-2 h-2 rounded-full flex-shrink-0"
-                      style={{ backgroundColor: 'var(--info-text)' }}
-                    />
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
-                          Primer Contacto
-                        </span>
-                        <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                          {formatDate(target.fechaContacto)}
-                        </span>
+                ) : (
+                  events.map((event) => (
+                    <div key={event.id} className="flex items-center gap-3">
+                      <div 
+                        className="w-2 h-2 rounded-full flex-shrink-0"
+                        style={{ backgroundColor: getEventColor(event.tipo) }}
+                      />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
+                            {getEventLabel(event.tipo)}
+                          </span>
+                          <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                            {formatDate(event.fecha_evento)}
+                          </span>
+                        </div>
+                        {event.detalle && (
+                          <p className="text-xs mt-1" style={{ color: 'var(--text-secondary)' }}>
+                            {event.detalle}
+                          </p>
+                        )}
                       </div>
                     </div>
-                  </div>
-                )}
-
-                {/* Fecha estimada de inicio */}
-                {target.fechaEstimadaInicio && (
-                  <div className="flex items-center gap-3">
-                    <div 
-                      className="w-2 h-2 rounded-full flex-shrink-0"
-                      style={{ backgroundColor: 'var(--warning-text)' }}
-                    />
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
-                          Inicio Estimado
-                        </span>
-                        <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                          {formatDate(target.fechaEstimadaInicio)}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
+                  ))
                 )}
               </div>
             </div>
@@ -386,20 +398,24 @@ export function TargetDetailsModal({ target, isOpen, onClose, onTargetUpdated }:
           </div>
           
             <div className="flex items-center gap-2 flex-wrap">
-            <button 
-              className="btn-secondary text-sm flex items-center gap-1 px-2 py-1"
-              onClick={() => setShowStatusModal(true)}
-            >
-              <FiSettings className="w-3 h-3" />
-              Cambiar Estado
-            </button>
-            <button 
-              className="btn-secondary text-sm flex items-center gap-1 px-2 py-1"
-              onClick={() => setShowEditModal(true)}
-            >
-              <FiEdit3 className="w-3 h-3" />
-              Editar
-            </button>
+            {target.estado !== 'cerrado' && (
+              <button 
+                className="btn-secondary text-sm flex items-center gap-1 px-2 py-1"
+                onClick={() => setShowStatusModal(true)}
+              >
+                <FiSettings className="w-3 h-3" />
+                Cambiar Estado
+              </button>
+            )}
+            {target.estado !== 'cerrado' && (
+              <button 
+                className="btn-secondary text-sm flex items-center gap-1 px-2 py-1"
+                onClick={() => setShowEditModal(true)}
+              >
+                <FiEdit3 className="w-3 h-3" />
+                Editar
+              </button>
+            )}
             <button 
               className="btn-primary text-sm flex items-center gap-1 px-2 py-1"
               onClick={() => {
@@ -444,7 +460,7 @@ export function TargetDetailsModal({ target, isOpen, onClose, onTargetUpdated }:
             target={target}
             onUpdated={() => {
               setShowEditModal(false);
-              onTargetUpdated?.();
+              handleTargetUpdated();
             }}
           />
         )}
@@ -457,7 +473,7 @@ export function TargetDetailsModal({ target, isOpen, onClose, onTargetUpdated }:
             target={target}
             onStatusUpdated={() => {
               setShowStatusModal(false);
-              onTargetUpdated?.();
+              handleTargetUpdated();
             }}
           />
         )}

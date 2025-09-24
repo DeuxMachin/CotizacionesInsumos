@@ -39,14 +39,6 @@ const statusOptions = [
     bgColor: 'var(--warning-bg)'
   },
   {
-    value: 'cerrado' as const,
-    label: 'Cerrado',
-    description: 'Proyecto concretado exitosamente',
-    icon: FiCheckCircle,
-    color: 'var(--success-text)',
-    bgColor: 'var(--success-bg)'
-  },
-  {
     value: 'descartado' as const,
     label: 'Descartado',
     description: 'Proyecto no viable o perdido',

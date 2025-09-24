@@ -400,6 +400,7 @@ export function useQuotes(): UseQuotesReturn {
         estado: nuevaCotizacion.estado || 'borrador',
         vendedor_id: user.id,
         cliente_principal_id: clientePrincipalId || null,
+        obra_id: nuevaCotizacion.obraId || null,
         validez_dias: nuevaCotizacion.condicionesComerciales.validezOferta || 30,
         condicion_pago_texto: nuevaCotizacion.condicionesComerciales.formaPago || null,
         plazo_entrega_texto: nuevaCotizacion.condicionesComerciales.tiempoEntrega || null,

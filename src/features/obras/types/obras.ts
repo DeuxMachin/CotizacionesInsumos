@@ -23,6 +23,20 @@ export interface ContactoObra {
   email?: string;
 }
 
+// Contacto de obra extendido con marca de principal opcional
+export interface ObraContacto extends ContactoObra {
+  es_principal?: boolean;
+}
+
+// Cargos requeridos por cada obra (orden fijo)
+export const REQUIRED_CARGOS: readonly string[] = [
+  'Jefe de Obra',
+  'Compras',
+  'Logística',
+  'Calidad',
+  'Prevención de Riesgos',
+] as const;
+
 export interface EmpresaConstructora {
   nombre: string;
   rut: string;
@@ -38,6 +52,8 @@ export interface Obra {
   constructora: EmpresaConstructora;
   vendedorAsignado: string;        
   nombreVendedor: string;          
+  // Contactos de la obra (siempre 5 cargos fijos). Si no existe, usar { nombre: 'No existe' } para ese cargo
+  contactos?: ObraContacto[];
   
   estado: EstadoObra;
   etapaActual: EtapaObra;
@@ -53,6 +69,7 @@ export interface Obra {
   
   valorEstimado?: number;
   materialVendido: number;
+  pendiente: number;
   proximoSeguimiento?: Date;
   
   fechaCreacion: Date;

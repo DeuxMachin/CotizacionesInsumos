@@ -798,7 +798,7 @@ function ObraCard({ obra, getEstadoColor, getEtapaColor, formatMoney, onEliminar
             </button>
 
             <button
-              onClick={(e) => { e.stopPropagation(); router.push(`/dashboard/cotizaciones/nueva-obra?obraId=${obra.id}`); }}
+              onClick={(e) => { e.stopPropagation(); router.push(`/dashboard/obras/${obra.id}/nueva-cotizacion`); }}
               className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-semibold text-white"
               style={{ backgroundColor: 'var(--accent-primary)' }}
               title="Crear cotización para esta obra"
@@ -925,7 +925,7 @@ function ObrasTable({ obras, getEstadoColor, formatMoney, onEliminar, onVerDetal
                         <span>Editar</span>
                       </Link>
                       <button
-                        onClick={(e) => { e.stopPropagation(); window.location.href = `/dashboard/cotizaciones/nueva-obra?obraId=${obra.id}`; }}
+                        onClick={(e) => { e.stopPropagation(); window.location.href = `/dashboard/obras/${obra.id}/nueva-cotizacion`; }}
                         className="px-2 py-1 min-h-[36px] rounded-md transition-all duration-200 flex items-center gap-1 text-xs text-white"
                         style={{ backgroundColor: 'var(--accent-primary)' }}
                         title="Cotizar"
