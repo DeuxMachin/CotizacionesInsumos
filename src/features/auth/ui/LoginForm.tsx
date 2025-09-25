@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { useAuth } from "../model/useAuth";
+import { useAuth } from "@/contexts/AuthContext";
 import { SecurityService } from "@/services/securityService";
 import { SecurityLogger } from "@/services/securityLogger";
 import {  XSSProtection } from "@/services/csrfProtection";
@@ -132,6 +132,7 @@ export function LoginForm() {
           setError("Credenciales incorrectas. Verifique su email y contraseña.");
         }
       } else {
+        console.log('[LoginForm] Login result success, esperando redirección del contexto...')
         setError("");
         SecurityService.resetAttempts(formData.email);
         SecurityLogger.logLoginAttempt(formData.email, true);

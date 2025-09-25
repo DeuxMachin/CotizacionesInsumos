@@ -1,7 +1,8 @@
 "use client";
 
 import { useSection } from "@/features/navigation/model/useSection";
-import { useAuth } from "@/features/auth/model/useAuth";
+// Migrado al nuevo AuthContext basado en JWT
+import { useAuth } from "@/contexts/AuthContext";
 import { FiMenu, FiBell, FiLogOut } from "react-icons/fi";
 import { Logo } from "@/shared/ui/Logo";
 import { ThemeToggle } from "@/features/theme/ui/ThemeToggle";
@@ -135,14 +136,14 @@ export function Header() {
             <div className="flex items-center gap-2 sm:gap-3">
               <div className="text-right hidden sm:block">
                 <p className="text-sm font-medium text-theme-primary">
-                  {user?.nombre || user?.email?.split('@')[0] || "Usuario"}
+                  {user?.name || user?.email?.split('@')[0] || "Usuario"}
                 </p>
                 <p className="text-xs text-theme-secondary capitalize">
-                  {user?.rol || "Invitado"}
+                  {user?.role || "Invitado"}
                 </p>
               </div>
               <div className="h-7 w-7 sm:h-8 sm:w-8 rounded-full bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center text-white text-xs sm:text-sm font-medium">
-                {(user?.nombre?.charAt(0) || user?.email?.charAt(0) || "A").toUpperCase()}
+                {(user?.name?.charAt(0) || user?.email?.charAt(0) || "A").toUpperCase()}
               </div>
               <button
                 onClick={logout}

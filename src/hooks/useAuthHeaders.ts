@@ -1,4 +1,4 @@
-import { useAuth } from '@/features/auth/model/useAuth'
+import { useAuth } from '@/contexts/AuthContext'
 import type { AuthUser } from '@/services/authService'
 
 /**
@@ -20,8 +20,8 @@ export function useAuthHeaders() {
     if (user) {
       headers['x-user-id'] = user.id
       headers['x-user-email'] = user.email
-      if (user.nombre) {
-        headers['x-user-name'] = user.nombre
+      if (user.name) {
+        headers['x-user-name'] = user.name
       }
     }
 

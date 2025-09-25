@@ -1,6 +1,6 @@
 "use client";
 
-import { useAuth } from "@/features/auth/model/useAuth";
+import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 
@@ -15,7 +15,7 @@ export default function HomePage() {
       router.replace("/login");
     } else {
       // Redirigir según el rol del usuario
-      const redirectPath = user?.rol === 'admin' ? '/admin' : '/dashboard';
+  const redirectPath = user?.role === 'admin' ? '/admin' : '/dashboard';
       router.replace(redirectPath);
     }
   }, [isAuthenticated, router, user]);

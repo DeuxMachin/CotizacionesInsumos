@@ -1,6 +1,8 @@
 import { NextRequest } from 'next/server'
 import { supabase } from '@/lib/supabase'
-import { getCurrentUserSimple } from '@/lib/auth-simple'
+// Eliminamos dependencia del fallback antiguo basado en headers para evitar
+// la suplantación automática de un usuario admin por defecto.
+import { verifyToken } from '@/lib/auth/tokens'
 
 export interface UserContext {
   id: string
@@ -15,18 +17,29 @@ export interface UserContext {
  */
 export async function getUserContext(request: NextRequest): Promise<UserContext | null> {
   try {
-    // Obtener usuario desde headers/sesión
-    const user = await getCurrentUserSimple(request)
-    
-    console.log('🔍 getUserContext - User from auth-simple:', user)
-    
-    if (!user) {
-      console.log('❌ No user found in getCurrentUserSimple')
+    // Extraer JWT desde cookie HttpOnly
+    const token = request.cookies.get('auth-token')?.value
+    if (!token) {
+      return null
+    }
+    let decoded: any
+    try {
+      decoded = await verifyToken(token)
+    } catch {
       return null
     }
 
+    const user = {
+      id: decoded.sub as string,
+      email: decoded.email as string,
+      nombre: decoded.nombre as string | undefined,
+      apellido: decoded.apellido as string | undefined,
+      rol: (decoded.rol as string | undefined)
+    }
+    console.log('🔍 getUserContext - User from JWT:', user)
+
     // Verificar si el usuario es administrador
-    const isAdmin = await checkIfUserIsAdmin(user.email, user.id)
+  const isAdmin = await checkIfUserIsAdmin(user.email, user.id)
     
     console.log('🔍 getUserContext - Admin check result:', { email: user.email, isAdmin })
 
@@ -51,10 +64,8 @@ export async function getUserContext(request: NextRequest): Promise<UserContext 
 export async function checkIfUserIsAdmin(email: string, userId?: string): Promise<boolean> {
   try {
     // Para el usuario por defecto del sistema, verificar email específico
-    if (email === 'admin@empresa.com') {
-      console.log('✅ Usuario admin por defecto reconocido')
-      return true
-    }
+    // Ya no forzamos admin por email estático; validamos siempre contra BD.
+    // (Podríamos mantener un super-admin config, pero se elimina fallback inseguro.)
 
     // Consultar la tabla usuarios para verificar el rol
     const { data: userData, error } = await supabase
@@ -65,17 +76,16 @@ export async function checkIfUserIsAdmin(email: string, userId?: string): Promis
       .single()
     
     if (error || !userData) {
-      console.log('⚠️ Usuario no encontrado en BD, verificando email admin por defecto')
-      // Fallback: si no se encuentra en BD pero es el email admin por defecto
-      return email.toLowerCase() === 'admin@empresa.com'
+  console.log('⚠️ Usuario no encontrado o inactivo en BD')
+  return false
     }
 
     console.log('✅ Usuario verificado en BD:', { email, rol: userData.rol })
-    return userData.rol === 'admin'
+  return userData.rol === 'admin'
   } catch (error) {
     console.error('❌ Error checking admin status:', error)
     // Fallback: si hay error pero es el email admin por defecto
-    return email.toLowerCase() === 'admin@empresa.com'
+  return false
   }
 }
 

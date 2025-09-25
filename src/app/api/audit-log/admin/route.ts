@@ -12,8 +12,8 @@ export async function GET(request: NextRequest) {
     const dateRange = searchParams.get('dateRange') || ''
     const exportFormat = searchParams.get('export') || ''
 
-    // Obtener contexto del usuario actual
-    const userContext = await getUserContext(request)
+  // Obtener contexto del usuario actual (basado en JWT, sin fallback)
+  const userContext = await getUserContext(request)
     
     console.log('🔍 API Admin Audit Log - User Context:', {
       userContext,

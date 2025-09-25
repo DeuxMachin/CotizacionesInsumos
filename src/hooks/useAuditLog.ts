@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { AuditLogger, AuditLogEntry } from '@/services/auditLogger'
-import { useAuth } from '@/features/auth/model/useAuth'
+import { useAuth } from '@/contexts/AuthContext'
 
 // Datos de ejemplo para mostrar mientras no hay datos reales
 const SAMPLE_AUDIT_DATA: AuditLogEntry[] = [
@@ -96,8 +96,8 @@ export function useAuditLog(limit: number = 20): UseAuditLogReturn {
       if (user) {
         headers['x-user-id'] = user.id
         headers['x-user-email'] = user.email
-        if (user.nombre) {
-          headers['x-user-name'] = user.nombre
+        if (user.name) {
+          headers['x-user-name'] = user.name
         }
       }
 

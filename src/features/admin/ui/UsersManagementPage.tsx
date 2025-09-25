@@ -2,7 +2,7 @@
 
 import { useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { useAuth } from "@/features/auth/model/useAuth";
+import { useAuth } from "@/contexts/AuthContext";
 import { useUsuarios } from "@/hooks/useSupabase";
 import { supabase } from "@/lib/supabase";
 import { FiUsers, FiShield, FiEdit3, FiTrash2, FiPlus, FiMail, FiCalendar } from "react-icons/fi";

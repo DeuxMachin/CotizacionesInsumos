@@ -42,7 +42,7 @@ export async function getCurrentUser(request?: NextRequest): Promise<AuthUser | 
       // Intentar obtener desde headers personalizados
       const userId = request.headers.get('x-user-id')
       const userEmail = request.headers.get('x-user-email')
-      const userName = request.headers.get('x-user-name')
+
 
       if (userId && userEmail) {
         // Verificar que el usuario existe en la base de datos

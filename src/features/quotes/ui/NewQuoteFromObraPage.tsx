@@ -10,7 +10,7 @@ import {
   FiTruck, 
   FiPackage, 
   FiDollarSign,
-  FiInfo,
+
   FiAlertCircle,
   FiCheck,
   FiTool

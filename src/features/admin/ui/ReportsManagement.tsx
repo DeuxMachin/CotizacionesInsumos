@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { FiBarChart, FiDownload, FiCalendar, FiFileText, FiUsers, FiDollarSign, FiTrendingUp, FiFilter, FiSettings } from "react-icons/fi";
 import { useAdminStats } from '@/hooks/useSupabase';
-import { useAuth } from "@/features/auth/model/useAuth";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface Report {
   id: string;

@@ -1,7 +1,7 @@
 "use client";
 
 import React from 'react';
-import { useAuth } from '@/features/auth/model/useAuth';
+import { useAuth } from '@/contexts/AuthContext';
 import type { ClientInfo, QuoteItem, DeliveryInfo, CommercialTerms, Quote } from '@/core/domain/quote/Quote';
 import { PDFDownloadButton } from '@/features/reports/ui/pdf/PDFDownloadButton';
 import { 
@@ -46,7 +46,7 @@ interface QuoteSummaryProps {
 
 export function QuoteSummary({ formData, totals, formatMoney, onChangeGlobalDiscountPct, onChangeCommercialTerms }: QuoteSummaryProps) {
   const { user } = useAuth();
-  const { cliente, items, despacho, condicionesComerciales, notas } = formData;
+  const { cliente, items, despacho,  notas } = formData;
   const {
     subtotal,
     descuentoTotal,
@@ -62,7 +62,7 @@ export function QuoteSummary({ formData, totals, formatMoney, onChangeGlobalDisc
     formData: FormData,
     totalsCalc: { subtotal: number; descuentoTotal: number; iva: number; total: number; lineDiscountTotal?: number; globalDiscountAmount?: number }
   ): Quote => {
-    const vendedorNombre = [user?.nombre, user?.apellido].filter(Boolean).join(' ') || user?.email || 'Usuario';
+  const vendedorNombre = user?.name || user?.email || 'Usuario';
     return {
       id: 'preview',
       numero: `PREV-${Date.now()}`,

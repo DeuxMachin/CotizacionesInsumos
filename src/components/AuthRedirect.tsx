@@ -1,6 +1,6 @@
 "use client";
 
-import { useAuth } from "@/features/auth/model/useAuth";
+import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 
@@ -27,11 +27,11 @@ export function AuthRedirect({
       router.push(nonAuthRedirectTo);
     } else if (!requireAuth && isAuthenticated && authRedirectTo) {
       // Si no requiere autenticación y está autenticado, redirigir según el rol
-      const redirectPath = authRedirectTo || (user?.rol === 'admin' ? '/admin' : '/dashboard');
+  const redirectPath = authRedirectTo || (user?.role === 'admin' ? '/admin' : '/dashboard');
       console.log("Ya autenticado, redirigiendo a", redirectPath);
       router.push(redirectPath);
     }
-  }, [isAuthenticated, requireAuth, router, authRedirectTo, nonAuthRedirectTo, user?.rol]);
+  }, [isAuthenticated, requireAuth, router, authRedirectTo, nonAuthRedirectTo, user?.role]);
 
   // Solo mostrar el contenido si cumple con los requisitos de autenticación
   if (requireAuth && !isAuthenticated) {

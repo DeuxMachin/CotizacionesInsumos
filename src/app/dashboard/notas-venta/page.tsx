@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { FiPlus, FiEye, FiFileText, FiCalendar, FiDollarSign, FiUser, FiSearch, FiArrowLeft } from 'react-icons/fi';
+import {  FiEye, FiFileText, FiCalendar, FiDollarSign, FiUser, FiSearch, FiArrowLeft } from 'react-icons/fi';
 import { NotasVentaService, SalesNoteRecord } from '@/services/notasVentaService';
 import { useQuotes } from '@/features/quotes/model/useQuotes';
 

@@ -6,7 +6,9 @@ export interface AuthUser {
   email: string
   nombre?: string
   apellido?: string
-  rol: string
+  rol: string // original DB role field
+  role?: string // alias for frontend uniformity
+  name?: string // computed full name for convenience
 }
 
 /**
@@ -39,13 +41,7 @@ export async function getUserFromRequest(request: NextRequest): Promise<AuthUser
         .single()
 
       if (user) {
-        return {
-          id: user.id,
-          email: user.email,
-          nombre: user.nombre || undefined,
-          apellido: user.apellido || undefined,
-          rol: user.rol
-        }
+        return mapDbUserToAuthUser(user)
       }
     }
 
@@ -80,12 +76,22 @@ export async function getUserFromRequest(request: NextRequest): Promise<AuthUser
 /**
  * Obtiene información básica del usuario para el audit log
  */
-export function getUserInfoForAudit(user: AuthUser | null): { id: string; email: string; name?: string } | undefined {
+export function getUserInfoForAudit(user: AuthUser | null): { id: string; email: string; name?: string; role?: string } | undefined {
   if (!user) return undefined
+  const name = user.name || (user.nombre && user.apellido ? `${user.nombre} ${user.apellido}` : user.nombre) || undefined
+  return { id: user.id, email: user.email, name, role: user.role || user.rol }
+}
 
+// Central mapping from raw DB row to AuthUser with aliases & computed fields
+export function mapDbUserToAuthUser(raw: any): AuthUser { // eslint-disable-line @typescript-eslint/no-explicit-any
+  const fullName = raw.nombre && raw.apellido ? `${raw.nombre} ${raw.apellido}` : raw.nombre || undefined
   return {
-    id: user.id,
-    email: user.email,
-    name: user.nombre && user.apellido ? `${user.nombre} ${user.apellido}` : user.nombre || undefined
+    id: raw.id,
+    email: raw.email,
+    nombre: raw.nombre || undefined,
+    apellido: raw.apellido || undefined,
+    rol: raw.rol,
+    role: raw.rol,
+    name: fullName
   }
 }

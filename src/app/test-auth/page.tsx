@@ -54,7 +54,9 @@ export default function TestAuthPage() {
       const result = await response.json()
       
       if (result.success) {
-        alert(`Login exitoso para ${email}!\nRol: ${result.data.user.rol}`)
+        // role alias: backend envía rol (DB) y añadimos role como alias en nuevos endpoints
+        const role = result.data.user.role || result.data.user.rol
+        alert(`Login exitoso para ${email}!\nRol: ${role}`)
       } else {
         alert(`Error de login: ${result.error}`)
       }

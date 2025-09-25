@@ -11,7 +11,7 @@ import {
   QuoteAmountCalculator,
 
 } from '@/core/domain/quote/Quote';
-import { useAuth } from '@/features/auth/model/useAuth';
+import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
 import { mapCotizacionToDomain, type CotizacionAggregate } from './adapters';
 import type { Database } from '@/lib/supabase';
@@ -152,7 +152,7 @@ function normalizeRut(rut: string): string {
 
 export function useQuotes(): UseQuotesReturn {
   const { user } = useAuth();
-  const isAdmin = user?.rol === 'admin';
+  const isAdmin = user?.role === 'admin';
   
   // Estado local
   const [allQuotes, setAllQuotes] = useState<Quote[]>([]);
@@ -772,7 +772,7 @@ export function useQuotes(): UseQuotesReturn {
     
     // Info del usuario
   userId: user?.id || null,
-  userName: [user?.nombre, user?.apellido].filter(Boolean).join(' ') || user?.email || null,
+  userName: user?.name || user?.email || null,
     isAdmin
   };
 }

@@ -3,7 +3,7 @@
 import { create } from "zustand";
 import { supabase } from '@/lib/supabase';
 import type { Database } from '@/lib/supabase';
-import { useAuth } from '@/features/auth/model/useAuth';
+import { getAuthUserId } from '@/lib/auth-user-id';
 import type { PosibleTarget, CreateTargetData, UpdateTargetData, TargetEvento } from "./types";
 
 interface TargetsStore {
@@ -121,8 +121,8 @@ export const useTargets = create<TargetsStore>((set, get) => ({
   createTarget: async (data: CreateTargetData) => {
     set({ loading: true, error: null });
     try {
-      // Obtener usuario actual (se asume hay un session en cookie o similar)
-  const userId = useAuth.getState().user?.id;
+    // Obtener usuario actual via sincronización global desde AuthContext
+  const userId = getAuthUserId();
   if (!userId) throw new Error('Usuario no autenticado');
 
       // Resolver tipo (si se envía nombre)
@@ -437,7 +437,7 @@ export const useTargets = create<TargetsStore>((set, get) => ({
   claimTarget: async (id: number) => {
     set({ loading: true, error: null });
     try {
-  const userId = useAuth.getState().user?.id;
+  const userId = getAuthUserId();
   if (!userId) throw new Error('Usuario no autenticado');
 
       // actualizar asignado y estado (si estaba pendiente => contactado)

@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { FiHome, FiSearch } from "react-icons/fi";
 import { ClientesService } from "@/services/clientesService";
 import { getObrasService } from "@/features/obras/services";
-import { useAuth } from "@/features/auth/model/useAuth";
+import { useAuth } from "@/contexts/AuthContext";
 import type { Obra, ObraContacto } from "@/features/obras/types/obras";
 import { REQUIRED_CARGOS } from "@/features/obras/types/obras";
 import { supabase } from "@/lib/supabase";

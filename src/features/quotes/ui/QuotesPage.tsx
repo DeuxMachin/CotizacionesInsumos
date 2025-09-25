@@ -81,7 +81,6 @@ export function QuotesPage() {
     canEdit,
     canDelete,
     userId,
-    userName,
     isAdmin
     
   } = useQuotes();

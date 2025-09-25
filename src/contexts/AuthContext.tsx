@@ -1,6 +1,10 @@
 "use client";
 
 import { createContext, useContext, useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { setAuthUserId } from '@/lib/auth-user-id'
+import { log } from '@/lib/log'
+// Eliminamos dependencia de AuthService para flujo limpio basado en rutas API
 
 export interface User {
   id: string
@@ -13,7 +17,9 @@ export interface User {
 export interface AuthContextType {
   user: User | null
   loading: boolean
-  setUser: (user: User | null) => void
+  isAuthenticated: boolean
+  login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>
+  logout: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -21,47 +27,136 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined)
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
+  const [lastActivity, setLastActivity] = useState<number | null>(null)
+  const router = useRouter();
 
   useEffect(() => {
-    // Load user from Zustand persisted state
-    const loadUserFromZustand = () => {
+    // Inicializar autenticación verificando la sesión
+    const initializeAuth = async () => {
+  log.debug('[Auth] Inicializando autenticación...')
       try {
-        const storedState = localStorage.getItem('auth-storage')
-        if (storedState) {
-          const parsed = JSON.parse(storedState)
-          if (parsed?.state?.user && parsed?.state?.isAuthenticated) {
-            const zustandUser = parsed.state.user
+        const response = await fetch('/api/auth/me', {
+          method: 'GET',
+          credentials: 'include'
+        });
+
+        if (response.ok) {
+          const result = await response.json();
+          if (result.success) {
+            const apiUser = result.data.user;
+            // role mapping boundary: backend / DB exposes 'rol'; UI consumes unified 'role'
+            const role = apiUser.role || apiUser.rol;
+            const name = apiUser.name || (apiUser.nombre && apiUser.apellido ? `${apiUser.nombre} ${apiUser.apellido}` : apiUser.nombre) || undefined;
             setUser({
-              id: zustandUser.id,
-              email: zustandUser.email,
-              name: zustandUser.nombre,
-              role: zustandUser.rol,
-              isAdmin: zustandUser.rol === 'admin'
-            })
+              id: apiUser.id,
+              email: apiUser.email,
+              name,
+              role,
+              isAdmin: role === 'admin'
+            });
+            setLastActivity(Date.now());
           }
         }
       } catch (error) {
-        console.error('Error loading user from Zustand storage:', error)
+        log.error('Error inicializando autenticación:', error);
       } finally {
-        setLoading(false)
+        log.debug('[Auth] Inicialización completada. user?', !!user)
+        setLoading(false);
       }
-    }
+    };
 
-    loadUserFromZustand()
+    initializeAuth();
+  }, []);
 
-    // Listen for storage changes to sync with Zustand
-    const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === 'auth-storage') {
-        loadUserFromZustand()
+  // Sistema de cierre por inactividad
+  useEffect(() => {
+    if (!user) return;
+
+    const updateActivity = () => setLastActivity(Date.now());
+
+    const events = ['mousemove', 'keydown', 'click', 'scroll', 'touchstart'];
+    events.forEach(event => window.addEventListener(event, updateActivity));
+
+    const checkInactivity = setInterval(() => {
+      if (lastActivity && Date.now() - lastActivity > 10 * 60 * 1000) {
+        alert('Su sesión ha expirado por inactividad.');
+        logout();
       }
-    }
+    }, 60000);
 
-    window.addEventListener('storage', handleStorageChange)
-    return () => window.removeEventListener('storage', handleStorageChange)
-  }, [])
+    return () => {
+      events.forEach(event => window.removeEventListener(event, updateActivity));
+      clearInterval(checkInactivity);
+    };
+  }, [user, lastActivity]);
+
+  const login = async (email: string, password: string) => {
+  log.debug('[Auth] Iniciando login (API directa) para', email)
+    setLoading(true)
+    try {
+      const resp = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ email, password })
+      });
+      const data = await resp.json();
+      if (!resp.ok || !data.success) {
+        setLoading(false);
+        return { success: false, error: data.error || 'Credenciales inválidas' };
+      }
+      const u = data.data.user;
+      const role = u.role || u.rol;
+      const name = u.name || (u.nombre && u.apellido ? `${u.nombre} ${u.apellido}` : u.nombre) || undefined;
+      setUser({ id: u.id, email: u.email, name, role, isAdmin: role === 'admin' });
+      setLastActivity(Date.now());
+      setLoading(false);
+      router.replace(role === 'admin' ? '/admin' : '/dashboard');
+      return { success: true };
+    } catch (e) {
+      log.error('[Auth] Error en login:', e);
+      setLoading(false);
+      return { success: false, error: 'Error de red' };
+    }
+  };
+
+  // Fallback: si el usuario aparece autenticado estando en /login, redirigir
+  useEffect(() => {
+    if (!loading && user) {
+      try {
+        const currentPath = window.location.pathname;
+        if (currentPath === '/login') {
+          console.log('[Auth][Fallback] Usuario autenticado detectado en /login. Redirigiendo...');
+          router.replace('/dashboard');
+        }
+      } catch {}
+    }
+  }, [loading, user, router]);
+
+  const logout = async () => {
+  log.debug('[Auth] Logout iniciado')
+    setLoading(true);
+    try {
+      await fetch('/api/auth/logout', {
+        method: 'POST',
+        credentials: 'include'
+      });
+    } catch (error) {
+      log.error('Error durante logout:', error);
+    } finally {
+      setUser(null);
+      setLoading(false);
+      router.replace('/login');
+    }
+  };
+
+  // Sincronizar userId global para stores legacy (targets)
+  useEffect(() => {
+    setAuthUserId(user?.id || null);
+  }, [user]);
 
   return (
-    <AuthContext.Provider value={{ user, loading, setUser }}>
+    <AuthContext.Provider value={{ user, loading, isAuthenticated: !!user, login, logout }}>
       {children}
     </AuthContext.Provider>
   )

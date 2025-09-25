@@ -14,13 +14,12 @@ import {
   FiChevronRight,
   FiAlertCircle,
   FiClock,
-  FiMapPin,
-  FiShoppingCart
+
 } from 'react-icons/fi';
 import { useQuotes } from '../model/useQuotes';
 import { Quote, QuoteStatus, ClientInfo, QuoteItem, DeliveryInfo, CommercialTerms } from '@/core/domain/quote/Quote';
 import { useAuthHeaders } from '@/hooks/useAuthHeaders';
-import { useAuth } from '@/features/auth/model/useAuth';
+import { useAuth } from '@/contexts/AuthContext';
 
 import dynamic from 'next/dynamic';
 
@@ -89,7 +88,7 @@ export function NewQuotePage() {
   const router = useRouter();
   const { crearCotizacion, formatMoney } = useQuotes();
   const { createHeaders } = useAuthHeaders();
-  const { user } = useAuth();
+  const { user } = useAuth(); // user.role (alias of DB rol) and user.name already normalized
   
   const [currentStep, setCurrentStep] = useState<FormStep>('client');
   const [formData, setFormData] = useState<FormData>({
@@ -234,8 +233,9 @@ export function NewQuotePage() {
         items: formData.items,
         despacho: Object.keys(formData.despacho).length > 0 ? formData.despacho as DeliveryInfo : undefined,
         condicionesComerciales: formData.condicionesComerciales as CommercialTerms,
-        estado: status,        vendedorId: user?.id || 'desconocido',
-        vendedorNombre: user?.nombre || 'Usuario',
+  estado: status,
+  vendedorId: user?.id || 'desconocido',
+  vendedorNombre: user?.name || 'Usuario',
         subtotal,
         descuentoTotal,
         iva,
@@ -314,7 +314,7 @@ export function NewQuotePage() {
         condicionesComerciales: formData.condicionesComerciales as CommercialTerms,
         estado: 'enviada',
         vendedorId: user?.id || 'desconocido',
-        vendedorNombre: user?.nombre || 'Usuario',
+  vendedorNombre: user?.name || 'Usuario',
         subtotal,
         descuentoTotal,
         iva,

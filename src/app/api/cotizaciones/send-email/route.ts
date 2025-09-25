@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { sendGmailTest } from '@/services/gmailService';
 import { generatePDF } from '@/shared/lib/pdf/generator';
-import { getCurrentUserSimple } from '@/lib/auth-simple';
+import { verifyToken } from '@/lib/auth/tokens';
 import { AuditLogger } from '@/services/auditLogger';
 import type { Quote } from '@/core/domain/quote/Quote';
 
@@ -18,8 +18,23 @@ export async function POST(request: NextRequest) {
     const body: SendQuoteEmailRequest = await request.json();
     const { quoteId, quoteData, recipientEmail, recipientName, message } = body;
 
-    // Obtener información del usuario autenticado
-    const user = await getCurrentUserSimple(request);
+    // Obtener información del usuario autenticado desde JWT
+    const token = request.cookies.get('auth-token')?.value;
+    let user: any = null;
+    if (token) {
+      try {
+        const decoded: any = await verifyToken(token);
+        user = {
+          id: decoded.sub,
+          email: decoded.email,
+          nombre: decoded.nombre,
+          apellido: decoded.apellido,
+          rol: decoded.rol
+        };
+      } catch {
+        // token inválido -> user queda null
+      }
+    }
 
     console.log('🔍 Sending quote email with user info:', { user, recipientEmail });
 

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabase'
 import bcrypt from 'bcryptjs'
 import { AuditLogger } from '@/services/auditLogger'
+import { signAccessToken, signRefreshToken } from '@/lib/auth/tokens'
 
 // Lista de contraseñas comunes filtradas (simplificada)
 const COMMON_PASSWORDS = [
@@ -106,15 +107,43 @@ export async function POST(request: NextRequest) {
       user.nombre && user.apellido ? `${user.nombre} ${user.apellido}` : user.nombre || undefined
     )
 
+    // Generar tokens (access + refresh)
+    const accessToken = await signAccessToken({ id: user.id, email: user.email, rol: user.rol });
+    const refreshToken = await signRefreshToken({ id: user.id, email: user.email, rol: user.rol });
+
     // Remover password_hash de la respuesta
     const { password_hash, ...userWithoutPassword } = user
 
-    return NextResponse.json({
+    // Crear respuesta con cookie HttpOnly
+    const response = NextResponse.json({
       success: true,
       data: {
-        user: userWithoutPassword
+        user: {
+          ...userWithoutPassword,
+          name: user.nombre && user.apellido ? `${user.nombre} ${user.apellido}` : user.nombre || undefined,
+          role: user.rol
+        }
       }
     })
+
+    // Cookies seguras
+    const isProd = process.env.NODE_ENV === 'production';
+    response.cookies.set('auth-token', accessToken, {
+      httpOnly: true,
+      secure: isProd,
+      sameSite: 'strict',
+      maxAge: 10 * 60, // 10 minutos
+      path: '/'
+    });
+    response.cookies.set('refresh-token', refreshToken, {
+      httpOnly: true,
+      secure: isProd,
+      sameSite: 'strict',
+      maxAge: 60 * 60 * 24 * 7, // 7 días
+      path: '/'
+    });
+
+    return response
 
   } catch (error) {
     console.error('Error en login:', error)

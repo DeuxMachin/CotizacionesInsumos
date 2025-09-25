@@ -1,7 +1,6 @@
 "use client";
 
 import { create } from "zustand";
-import { persist } from "zustand/middleware";
 import { useEffect } from "react";
 import { AuthService, type AuthUser } from "@/services/authService";
 
@@ -16,12 +15,11 @@ interface AuthState {
   initializeAuth: () => Promise<void>;
 }
 
-// Tiempo de inactividad antes de cerrar sesión (30 minutos en milisegundos)
-const INACTIVITY_TIMEOUT = 30 * 60 * 1000;
+// Tiempo de inactividad antes de cerrar sesión (10 minutos en milisegundos)
+const INACTIVITY_TIMEOUT = 10 * 60 * 1000;
 
 export const useAuth = create<AuthState>()(
-  persist(
-    (set) => ({
+  (set) => ({
       user: null,
       isAuthenticated: false,
       isLoading: false,
@@ -34,25 +32,25 @@ export const useAuth = create<AuthState>()(
       initializeAuth: async () => {
         set({ isLoading: true });
         try {
-          // Verificar si hay datos de autenticación en localStorage (persistidos por Zustand)
-          const storedState = localStorage.getItem('auth-storage');
-          if (storedState) {
-            try {
-              const parsed = JSON.parse(storedState);
-              if (parsed?.state?.user && parsed?.state?.isAuthenticated) {
-                set({
-                  user: parsed.state.user,
-                  isAuthenticated: true,
-                  lastActivity: parsed.state.lastActivity || Date.now()
-                });
-                return;
-              }
-            } catch (e) {
-              // Error parseando estado persistido - continuar sin sesión
+          // Verificar sesión con el servidor
+          const response = await fetch('/api/auth/me', {
+            method: 'GET',
+            credentials: 'include' // Para enviar cookies
+          });
+
+          if (response.ok) {
+            const result = await response.json();
+            if (result.success) {
+              set({
+                user: result.data.user,
+                isAuthenticated: true,
+                lastActivity: Date.now()
+              });
+              return;
             }
           }
-          
-          // Si no hay estado persistido válido, marcar como no autenticado
+
+          // Si no hay sesión válida
           set({
             user: null,
             isAuthenticated: false
@@ -77,9 +75,6 @@ export const useAuth = create<AuthState>()(
           const result = await AuthService.signIn(email, password);
           console.log('✅ AuthService.signIn exitoso');
           
-          // Generar nuevo ID de sesión para rotación
-          const sessionId = crypto.randomUUID();
-          
           set({
             user: result.user,
             isAuthenticated: true,
@@ -87,27 +82,9 @@ export const useAuth = create<AuthState>()(
             isLoading: false
           });
 
-          // Escribir cookie segura con HttpOnly, Secure, SameSite
-          try {
-            const cookiePayload = encodeURIComponent(JSON.stringify({
-              isAuthenticated: true,
-              user: result.user,
-              sessionId: sessionId,
-              createdAt: Date.now()
-            }));
-            
-            // Cookie con atributos de seguridad mejorados
-            document.cookie = `auth-storage=${cookiePayload}; path=/; SameSite=Strict; Secure; max-age=86400`;
-            
-            // Cookie adicional para CSRF protection
-            const csrfToken = crypto.randomUUID();
-            document.cookie = `csrf-token=${csrfToken}; path=/; SameSite=Strict; Secure; HttpOnly; max-age=86400`;
-            
-          } catch (cookieError) {
-            console.error('Error escribiendo cookies seguras:', cookieError);
-          }
-
           console.log('✅ useAuth.login completado exitosamente');
+          // Redirigir al dashboard después del login exitoso
+          window.location.href = '/dashboard';
           return { success: true };
         } catch (error) {
           console.error('❌ Error en useAuth.login:', error);
@@ -129,7 +106,11 @@ export const useAuth = create<AuthState>()(
       logout: async () => {
         set({ isLoading: true });
         try {
-          await AuthService.signOut();
+          // Llamar al endpoint de logout para borrar la cookie
+          await fetch('/api/auth/logout', {
+            method: 'POST',
+            credentials: 'include'
+          });
         } catch (error) {
           console.error('Error durante logout:', error);
         } finally {
@@ -140,24 +121,11 @@ export const useAuth = create<AuthState>()(
             isLoading: false
           });
 
-          // Borrar cookies de manera segura
-          document.cookie = 'auth-storage=; Max-Age=0; path=/; SameSite=Strict; Secure';
-          document.cookie = 'csrf-token=; Max-Age=0; path=/; SameSite=Strict; Secure; HttpOnly';
-          
           // Redirigir al login
           window.location.href = '/login';
         }
       }
     }),
-    {
-      name: "auth-storage",
-      partialize: (state) => ({
-        user: state.user,
-        isAuthenticated: state.isAuthenticated,
-        lastActivity: state.lastActivity
-      })
-    }
-  )
 );
 
 // Hook para manejar el cierre de sesión por inactividad

@@ -36,7 +36,7 @@ import { useActionAuthorization } from '@/middleware/AuthorizationMiddleware';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
 import { useQuotes } from '@/features/quotes/model/useQuotes';
 import { useSalesNotes } from '@/features/sales-notes/hooks/useSalesNotes';
-import { useAuth } from '@/features/auth/model/useAuth';
+import { useAuth } from '@/contexts/AuthContext';
 import type { AuthUser } from '@/services/authService';
 import type { Obra } from '@/features/obras/types/obras';
 import type { SalesNoteRecord } from '@/services/notasVentaService';
@@ -50,8 +50,11 @@ function createAuthHeaders(user: AuthUser | null): HeadersInit {
   if (user) {
     headers['x-user-id'] = user.id
     headers['x-user-email'] = user.email
-    if (user.nombre) {
-      headers['x-user-name'] = user.nombre
+    if ((user as any).name) {
+      headers['x-user-name'] = (user as any).name
+    } else if (user.nombre) {
+      const full = user.apellido ? `${user.nombre} ${user.apellido}` : user.nombre
+      headers['x-user-name'] = full
     }
   }
 
@@ -405,6 +408,15 @@ function ClientDetailPage() {
   const searchParams = useSearchParams();
   const { canEdit, canDelete } = useActionAuthorization();
   const { user } = useAuth();
+  // Adapter: AuthContext provides {id,email,name,role}; legacy expects AuthUser with nombre/apellido/rol
+  const legacyUser: AuthUser | null = user ? {
+    id: user.id,
+    email: user.email,
+    nombre: user.name?.split(' ')?.[0] || '',
+    apellido: user.name?.split(' ')?.slice(1).join(' ') || '',
+    rol: (user.role as any) || 'vendedor',
+    activo: true
+  } : null;
   const { getQuoteById } = useQuotes();
   const { getSalesNotesByClient } = useSalesNotes();
   
@@ -554,7 +566,7 @@ function ClientDetailPage() {
         return;
       }
 
-      const authHeaders = createAuthHeaders(user);
+  const authHeaders = createAuthHeaders(legacyUser);
 
       // Llamar a la API para registrar el préstamo
       const response = await fetch('/api/clientes/loan', {
@@ -584,7 +596,7 @@ function ClientDetailPage() {
 
       // Recargar datos del cliente para actualizar financialTotals
       const clientRes = await fetch(`/api/clientes/${client.id}`, {
-        headers: createAuthHeaders(user),
+  headers: createAuthHeaders(legacyUser),
         credentials: 'include'
       });
       if (clientRes.ok) {
@@ -658,7 +670,7 @@ function ClientDetailPage() {
         return;
       }
 
-      const authHeaders = createAuthHeaders(user);
+  const authHeaders = createAuthHeaders(legacyUser);
 
       // Llamar a la API para registrar el pago
       const response = await fetch('/api/pagos', {
@@ -691,7 +703,7 @@ function ClientDetailPage() {
       // Recargar datos del cliente para actualizar financialTotals
       // Recargar cliente
       const clientRes = await fetch(`/api/clientes/${client.id}`, {
-        headers: createAuthHeaders(user),
+  headers: createAuthHeaders(legacyUser),
         credentials: 'include'
       });
       if (clientRes.ok) {
@@ -701,7 +713,7 @@ function ClientDetailPage() {
 
       // Recargar cotizaciones
       const quotesRes = await fetch(`/api/cotizaciones?cliente_id=${client.id}`, {
-        headers: createAuthHeaders(user),
+  headers: createAuthHeaders(legacyUser),
         credentials: 'include'
       });
       if (quotesRes.ok) {
@@ -711,7 +723,7 @@ function ClientDetailPage() {
 
       // Recargar obras
       const obrasRes = await fetch(`/api/obras?cliente_id=${client.id}`, {
-        headers: createAuthHeaders(user),
+  headers: createAuthHeaders(legacyUser),
         credentials: 'include'
       });
       if (obrasRes.ok) {

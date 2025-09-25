@@ -657,7 +657,7 @@ export function ObrasPage() {
 }
 
 // Componente para tarjeta individual de obra
-function ObraCard({ obra, getEstadoColor, getEtapaColor, formatMoney, onEliminar, onVerDetalle }: ObraCardProps) {
+function ObraCard({ obra, getEstadoColor, getEtapaColor, formatMoney, onEliminar }: ObraCardProps) {
   const estadoColor = getEstadoColor(obra.estado);
   const router = useRouter();
 

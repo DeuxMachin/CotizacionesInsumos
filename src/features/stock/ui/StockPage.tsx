@@ -5,7 +5,7 @@ import { getAllInventory, searchInventory, getCategories, createCategory, update
 import { Toast } from "@/shared/ui/Toast";
 import { downloadFileFromResponse } from "@/lib/download";
 import type { Database } from "@/lib/supabase";
-import { useAuth } from "@/features/auth/model/useAuth";
+import { useAuth } from "@/contexts/AuthContext";
 import { useAuthHeaders } from "@/hooks/useAuthHeaders";
 import Link from "next/link";
 import { ProductosService } from "@/services/productosService";
@@ -14,7 +14,8 @@ type Category = Database['public']['Tables']['producto_tipos']['Row'];
 
 type User = {
   id?: string;
-  rol?: string;
+  rol?: string; // legacy DB field
+  role?: string; // normalized alias
 };
 
 export default function StockPage() {
@@ -205,13 +206,13 @@ export default function StockPage() {
 
   // Handlers Categorías
   const openCreateCategory = () => {
-    if (user?.rol !== 'admin') { Toast.error('Solo administradores'); return; }
+  if (user?.role !== 'admin') { Toast.error('Solo administradores'); return; }
     setShowCreateCategoryModal(true);
     setShowCategoryMenu(false);
   };
 
   const openEditCategory = () => {
-    if (user?.rol !== 'admin') { Toast.error('Solo administradores'); return; }
+  if (user?.role !== 'admin') { Toast.error('Solo administradores'); return; }
     // Preseleccionar la categoría actualmente filtrada si es válida
     const currentId = selectedCategory !== 'todas' ? Number(selectedCategory) : null;
     setEditingCategoryId(currentId);
@@ -222,7 +223,7 @@ export default function StockPage() {
   };
 
   const openDeleteCategory = () => {
-    if (user?.rol !== 'admin') { Toast.error('Solo administradores'); return; }
+  if (user?.role !== 'admin') { Toast.error('Solo administradores'); return; }
     const currentId = selectedCategory !== 'todas' ? Number(selectedCategory) : null;
     setDeletingCategoryId(currentId);
     setDeleteConfirmText("");
@@ -231,7 +232,7 @@ export default function StockPage() {
   };
 
   const handleCreateCategory = async () => {
-    if (user?.rol !== 'admin') { Toast.error('Solo administradores'); return; }
+  if (user?.role !== 'admin') { Toast.error('Solo administradores'); return; }
     const name = newCategoryName.trim();
     if (!name) { Toast.error('El nombre no puede estar vacío'); return; }
     setCreatingCategory(true);
@@ -251,7 +252,7 @@ export default function StockPage() {
   };
 
   const handleUpdateCategory = async () => {
-    if (user?.rol !== 'admin') { Toast.error('Solo administradores'); return; }
+  if (user?.role !== 'admin') { Toast.error('Solo administradores'); return; }
     if (!editingCategoryId) { Toast.error('Selecciona una categoría'); return; }
     const name = editCategoryName.trim();
     if (!name) { Toast.error('El nombre no puede estar vacío'); return; }
@@ -272,7 +273,7 @@ export default function StockPage() {
   };
 
   const handleDeleteCategory = async () => {
-    if (user?.rol !== 'admin') { Toast.error('Solo administradores'); return; }
+  if (user?.role !== 'admin') { Toast.error('Solo administradores'); return; }
     if (!deletingCategoryId) { Toast.error('Selecciona una categoría'); return; }
     const sel = categories.find(c => c.id === deletingCategoryId);
     if (!sel) { Toast.error('Categoría inválida'); return; }
@@ -302,7 +303,7 @@ export default function StockPage() {
     if (!editingProduct) return;
 
     // Verificar permisos de administrador
-    if (!user?.rol || user.rol !== 'admin') {
+  if (!user?.role || user.role !== 'admin') {
       Toast.error('Acceso denegado: Solo los administradores pueden editar productos. Contacta a un administrador si necesitas realizar cambios.');
       return;
     }
@@ -411,7 +412,7 @@ export default function StockPage() {
           <div className="flex flex-col sm:flex-row items-center gap-3 sm:gap-4 w-full lg:w-auto">
             {/* Vista simplificada - quitar el toggle complejo */}
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
-              {user?.rol === 'admin' && (
+              {user?.role === 'admin' && (
                 <Link
                   href="/dashboard/stock/nuevo"
                   className="px-4 sm:px-6 py-3 rounded-lg transition-colors duration-200 font-semibold flex items-center justify-center gap-2 shadow-md hover:shadow-lg text-sm sm:text-base"
@@ -447,7 +448,7 @@ export default function StockPage() {
                 <span className="xs:hidden">Export</span>
               </button>
 
-              {user?.rol === 'admin' && (
+              {user?.role === 'admin' && (
                 <div className="relative">
                   <button
                     onClick={() => setShowCategoryMenu(v => !v)}
@@ -730,7 +731,7 @@ export default function StockPage() {
                   <button onClick={() => { setConfirmDeleteProductId(null); setDeleteProductConfirmText(''); }} className="px-4 py-2 rounded-lg" style={{ backgroundColor: 'var(--button-secondary-bg)', color: 'var(--text-primary)' }} disabled={deletingProduct}>Cancelar</button>
                   <button
                     onClick={async () => {
-                      if (user?.rol !== 'admin') { Toast.error('Solo administradores'); return; }
+                      if (user?.role !== 'admin') { Toast.error('Solo administradores'); return; }
                       if (confirmDeleteProductId === null) return;
                       if (deleteProductConfirmText.trim().toLowerCase() !== 'borrar') { Toast.error('Escribe Borrar para confirmar'); return; }
                       try {
@@ -827,7 +828,7 @@ function ProductCard({ product, onEdit, onAskDelete, user, openRowMenuId, setOpe
           </div>
 
           {/* Botón de editar - responsive */}
-          {user?.rol === 'admin' && (
+          {user?.role === 'admin' && (
             <div className="flex items-center gap-2">
               <button
                 onClick={() => onEdit(product)}

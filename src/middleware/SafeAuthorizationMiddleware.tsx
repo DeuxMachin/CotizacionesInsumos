@@ -1,6 +1,6 @@
 "use client";
 
-import { useAuth } from "@/features/auth/model/useAuth";
+import { useAuth } from "@/contexts/AuthContext";
 import { usePermissions, type Resource, type Action } from "@/features/auth/model/permissions";
 import { useNavigationItems } from "@/features/navigation/model/navigationItems";
 import type { Section } from "@/features/navigation/model/useSection";
@@ -13,9 +13,16 @@ import { useRouter, usePathname } from "next/navigation";
  */
 export function SafeAuthorizationMiddleware({ children }: { children: React.ReactNode }) {
   const { user, isAuthenticated } = useAuth();
-  const { canAccessSection } = useNavigationItems(user?.rol || '');
+  const { canAccessSection } = useNavigationItems(user?.role || '');
   const router = useRouter();
   const pathname = usePathname();
+  
+  useEffect(() => {
+    if (!isAuthenticated && pathname !== '/login') {
+      console.log('[AuthMiddleware] Usuario no autenticado, redirigiendo a /login desde', pathname)
+      router.replace('/login');
+    }
+  }, [isAuthenticated, pathname, router]);
 
   useEffect(() => {
     if (!isAuthenticated || !user) {
@@ -39,12 +46,12 @@ export function SafeAuthorizationMiddleware({ children }: { children: React.Reac
     
     // Solo verificar autorización para rutas protegidas
   if (currentSection && !canAccessSection(currentSection as Section)) {
-      console.warn(`User ${user.rol} attempted to access unauthorized section: ${currentSection}`);
+    console.warn(`User ${user.role} attempted to access unauthorized section: ${currentSection}`);
       
       // Redirigir al dashboard usando el router de Next.js
       router.replace('/dashboard');
     }
-  }, [pathname, user?.rol, user?.id, isAuthenticated, canAccessSection, router]);
+  }, [pathname, user?.role, user?.id, isAuthenticated, canAccessSection, router]);
 
   return <>{children}</>;
 }
@@ -54,7 +61,7 @@ export function SafeAuthorizationMiddleware({ children }: { children: React.Reac
  */
 export function useActionAuthorization() {
   const { user } = useAuth();
-  const { hasPermission } = usePermissions(user?.rol || '');
+  const { hasPermission } = usePermissions(user?.role || '');
 
   const canCreate = (resource: Resource): boolean => {
     return hasPermission(resource, 'create');
@@ -77,11 +84,11 @@ export function useActionAuthorization() {
   };
 
   const isOwnerOrAdmin = (ownerId?: string): boolean => {
-    return user?.rol?.toLowerCase() === 'admin' || user?.id === ownerId;
+    return user?.role?.toLowerCase() === 'admin' || user?.id === ownerId;
   };
 
   const logUnauthorizedAction = (resource: Resource, action: Action) => {
-    console.warn(`Unauthorized action attempted: ${user?.rol} tried to ${action} ${resource}`);
+    console.warn(`Unauthorized action attempted: ${user?.role} tried to ${action} ${resource}`);
   };
 
   return {
@@ -95,7 +102,7 @@ export function useActionAuthorization() {
     user,
     // Proporcionamos isAdmin para compatibilidad
     roleInfo: {
-      isAdmin: user?.rol?.toLowerCase() === 'admin'
+      isAdmin: user?.role?.toLowerCase() === 'admin'
     },
   };
 }

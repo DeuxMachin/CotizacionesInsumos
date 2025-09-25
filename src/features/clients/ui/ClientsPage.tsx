@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { type ClientExtended, type ClientStatus, mapRowToClientExtended } from "../model/clientsExtended";
 import type { ClienteRowWithType } from '../model/clients';
 import { Toast } from "@/shared/ui/Toast";
-import { useAuth } from "@/features/auth/model/useAuth";
+import { useAuth } from "@/contexts/AuthContext";
 import { useActionAuthorization } from "@/middleware/AuthorizationMiddleware";
 import { ClientFiltersPanel } from "./ClientFiltersPanel";
 import { downloadFileFromResponse } from "@/lib/download";
@@ -133,7 +133,7 @@ export function ClientsPage() {
   }, []);
   
   const pageSize = 9; // 3 filas x 3 columnas
-  const isAdmin = user?.rol?.toLowerCase() === 'admin';
+  const isAdmin = user?.role?.toLowerCase() === 'admin';
 
   // Filtros y datos procesados
   const data = useMemo(() => {

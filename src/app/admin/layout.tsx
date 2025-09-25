@@ -3,7 +3,7 @@
 import { Sidebar } from "@/features/navigation/ui/Sidebar";
 import { Header } from "@/features/navigation/ui/HeaderNew";
 import { ToastHost } from "@/shared/ui/Toast";
-import { useAuth, useInactivityTimeout } from "@/features/auth/model/useAuth";
+import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
@@ -59,11 +59,9 @@ export default function AdminLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const { isAuthenticated } = useAuth();
+  const { user } = useAuth();
+  const isAuthenticated = !!user;
   const router = useRouter();
-
-  // Aplicar el sistema de cierre de sesión por inactividad
-  useInactivityTimeout();
 
   useEffect(() => {
     if (!isAuthenticated) {
