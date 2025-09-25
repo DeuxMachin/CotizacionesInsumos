@@ -5,8 +5,6 @@ const NOMINATIM_BASE = 'https://nominatim.openstreetmap.org'; // El servicio de 
 // Simple in-memory cache (best-effort, may not persist across serverless instances)
 const SEARCH_TTL_MS = 5 * 60 * 1000; // 5 minutes
 const REVERSE_TTL_MS = 5 * 60 * 1000;
-type SearchPayload = { results: Array<{ place_id: string; description: string; structured_formatting: { main_text: string; secondary_text: string }; lat: number; lng: number; address?: Record<string, unknown> }> };
-type ReversePayload = { lat: number; lng: number; formatted_address: string; address_components: Array<{ long_name: string; short_name: string; types: string[] }>; ciudad?: string | null; region?: string | null; comuna?: string | null };
 const searchCache = new Map<string, { ts: number; data: unknown }>();
 const reverseCache = new Map<string, { ts: number; data: unknown }>();
 

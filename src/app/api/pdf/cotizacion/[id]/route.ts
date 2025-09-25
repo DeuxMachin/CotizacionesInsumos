@@ -6,7 +6,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { generatePDF } from '@/shared/lib/pdf/generator';
 import type { Quote } from '@/core/domain/quote/Quote';
-import { supabase } from '@/lib/supabase';
+import { supabase, type Database } from '@/lib/supabase';
+
+type CotizacionItemRow = Database['public']['Tables']['cotizacion_items']['Row'];
+type ProductoPartial = { id: number; sku: string | null; nombre: string; ficha_tecnica: string | null };
 
 export async function GET(
   request: NextRequest,
@@ -123,7 +126,7 @@ async function getQuoteById(id: string): Promise<Quote | null> {
     // Usar el adaptador para convertir a dominio
     const { mapCotizacionToDomain } = await import('@/features/quotes/model/adapters');
     // Enriquecer items con datos de producto por producto_id (fallback por si el join no retorna)
-    const rawItems = (data.cotizacion_items || []) as any[];
+    const rawItems = (data.cotizacion_items || []) as (CotizacionItemRow & { producto?: ProductoPartial | null })[];
     let itemsWithProduct = rawItems;
     let fichaMap: Map<number, string | undefined> | undefined;
     try {
@@ -132,12 +135,12 @@ async function getQuoteById(id: string): Promise<Quote | null> {
         const { data: productosData } = await supabase
           .from('productos')
           .select('id, sku, nombre, ficha_tecnica')
-          .in('id', productIds.map((v:any)=> Number(v)) as number[]);
-        const prodMap = new Map<number, any>((productosData || []).map((p) => [p.id, p]));
-        fichaMap = new Map<number, string | undefined>((productosData || []).map((p) => [p.id, p.ficha_tecnica || undefined]));
+          .in('id', productIds.map((v: number)=> Number(v)) as number[]);
+        const prodMap = new Map<number, ProductoPartial>((productosData || []).map((p: ProductoPartial) => [p.id, p]));
+        fichaMap = new Map<number, string | undefined>((productosData || []).map((p: ProductoPartial) => [p.id, p.ficha_tecnica || undefined]));
         itemsWithProduct = rawItems.map((it) => ({
           ...it,
-          producto: it.producto ?? prodMap.get(it.producto_id) ?? null,
+          producto: it.producto ?? (it.producto_id ? prodMap.get(it.producto_id) : null) ?? null,
         }));
       }
     } catch {}
@@ -161,7 +164,7 @@ async function getQuoteById(id: string): Promise<Quote | null> {
       return { ...quote, items: enrichedItems };
     }
     return quote;
-  } catch (error) {
+  } catch (_error) {
     return null;
   }
 }

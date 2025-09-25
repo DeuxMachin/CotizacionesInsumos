@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { FiArrowLeft, FiCheckCircle, FiShoppingCart, FiAlertCircle, FiFileText, FiPackage } from 'react-icons/fi';
 import { supabase } from '@/lib/supabase';
@@ -9,7 +9,7 @@ import { NotasVentaService } from '@/services/notasVentaService';
 import type { QuoteItem } from '@/core/domain/quote/Quote';
 import { ProductsForm } from '@/features/quotes/ui/components/ProductsForm';
 
-export default function ConvertQuotePage() {
+function ConvertQuoteContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { getQuoteById, formatMoney, loading } = useQuotes();
@@ -273,7 +273,7 @@ export default function ConvertQuotePage() {
               color: 'var(--info-text)'
             }}>
               <FiAlertCircle className="w-4 h-4 inline mr-2" />
-              <strong>Nota:</strong> La nota de venta se creará con estado "Creada". Una vez creada, podrás revisarla y confirmarla desde el detalle de la nota de venta.
+              <strong>Nota:</strong> La nota de venta se creará con estado &quot;Creada&quot;. Una vez creada, podrás revisarla y confirmarla desde el detalle de la nota de venta.
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
@@ -400,5 +400,17 @@ export default function ConvertQuotePage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function ConvertQuotePage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-gray-300"></div>
+      </div>
+    }>
+      <ConvertQuoteContent />
+    </Suspense>
   );
 }

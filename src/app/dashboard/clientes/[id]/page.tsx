@@ -22,11 +22,12 @@ import {
   FiCalendar,
 
   FiChevronDown,
+  FiChevronLeft,
+  FiChevronRight,
   FiCopy,
   FiMapPin
 } from 'react-icons/fi';
 import { type ClientExtended, mapRowToClientExtended } from '@/features/clients/model/clientsExtended';
-import type { Obra } from '@/features/obras/types/obras';
 // Eliminado quotesData mock: ahora se obtienen cotizaciones reales desde la API
 import { Badge } from '@/shared/ui/Badge';
 import { Toast } from '@/shared/ui/Toast';
@@ -34,6 +35,28 @@ import { downloadFileFromResponse } from '@/lib/download';
 import { useActionAuthorization } from '@/middleware/AuthorizationMiddleware';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
 import { useQuotes } from '@/features/quotes/model/useQuotes';
+import { useSalesNotes } from '@/features/sales-notes/hooks/useSalesNotes';
+import { useAuth } from '@/features/auth/model/useAuth';
+import type { AuthUser } from '@/services/authService';
+import type { Obra } from '@/features/obras/types/obras';
+import type { SalesNoteRecord } from '@/services/notasVentaService';
+
+// Helper para crear headers de autenticación
+function createAuthHeaders(user: AuthUser | null): HeadersInit {
+  const headers: HeadersInit = {
+    'Content-Type': 'application/json'
+  }
+
+  if (user) {
+    headers['x-user-id'] = user.id
+    headers['x-user-email'] = user.email
+    if (user.nombre) {
+      headers['x-user-name'] = user.nombre
+    }
+  }
+
+  return headers
+}
 
 function formatCLP(amount: number): string {
   return new Intl.NumberFormat('es-CL', { 
@@ -44,7 +67,7 @@ function formatCLP(amount: number): string {
 }
 
 interface InfoCardProps {
-  title: string;
+  title: React.ReactNode;
   icon: React.ReactNode;
   children: React.ReactNode;
   collapsible?: boolean;
@@ -208,6 +231,118 @@ function StatusBadge({ status }: { status: ClientExtended['status'] }) {
   );
 }
 
+// Función helper para mostrar estados de notas de venta
+function SalesNoteStatusBadge({ estado }: { estado?: string }) {
+  const getColors = (status: string) => {
+    switch (status) {
+      case 'confirmada':
+        return { bg: 'var(--success-bg)', text: 'var(--success-text)' };
+      case 'borrador':
+        return { bg: 'var(--warning-bg)', text: 'var(--warning-text)' };
+      case 'anulada':
+        return { bg: 'var(--danger-bg)', text: 'var(--danger-text)' };
+      default:
+        return { bg: 'var(--neutral-bg)', text: 'var(--neutral-text)' };
+    }
+  };
+
+  const getLabel = (status: string) => {
+    switch (status) {
+      case 'confirmada':
+        return 'Confirmada';
+      case 'borrador':
+        return 'Borrador';
+      case 'anulada':
+        return 'Anulada';
+      default:
+        return status;
+    }
+  };
+
+  const colors = getColors(estado || 'desconocido');
+  return (
+    <span
+      className="inline-block px-2.5 py-1 text-xs font-semibold rounded-2xl transition-colors"
+      style={{ backgroundColor: colors.bg, color: colors.text }}
+    >
+      {getLabel(estado || 'desconocido')}
+    </span>
+  );
+}
+
+const QUOTES_PAGE_SIZE = 5;
+const OBRAS_PAGE_SIZE = 5;
+const SALES_NOTES_PAGE_SIZE = 5;
+
+interface PaginationControlsProps {
+  currentPage: number;
+  totalPages: number;
+  totalItems: number;
+  pageSize: number;
+  onPageChange: (page: number) => void;
+}
+
+function PaginationControls({ currentPage, totalPages, totalItems, pageSize, onPageChange }: PaginationControlsProps) {
+  if (totalItems === 0 || totalPages <= 1) {
+    return null;
+  }
+
+  const handlePrev = () => onPageChange(Math.max(1, currentPage - 1));
+  const handleNext = () => onPageChange(Math.min(totalPages, currentPage + 1));
+
+  const start = (currentPage - 1) * pageSize + 1;
+  const end = Math.min(totalItems, currentPage * pageSize);
+
+  return (
+    <div className="flex flex-col sm:flex-row items-center justify-between gap-2 sm:gap-3 mt-4">
+      <button
+        onClick={handlePrev}
+        disabled={currentPage === 1}
+        className="btn-secondary inline-flex items-center gap-1 px-2 sm:px-3 py-2 disabled:opacity-60 w-full sm:w-auto justify-center"
+        title="Página anterior"
+      >
+        <FiChevronLeft className="w-4 h-4" />
+        <span className="hidden sm:inline">Anterior</span>
+      </button>
+
+      <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 text-xs sm:text-sm text-center" style={{ color: 'var(--text-secondary)' }}>
+        <span className="whitespace-nowrap">
+          {start}-{end} de {totalItems}
+        </span>
+        <span className="hidden sm:inline whitespace-nowrap">
+          • Página {currentPage} de {totalPages}
+        </span>
+        <span className="sm:hidden whitespace-nowrap">
+          ({currentPage}/{totalPages})
+        </span>
+      </div>
+
+      <button
+        onClick={handleNext}
+        disabled={currentPage === totalPages}
+        className="btn-secondary inline-flex items-center gap-1 px-2 sm:px-3 py-2 disabled:opacity-60 w-full sm:w-auto justify-center"
+        title="Página siguiente"
+      >
+        <span className="hidden sm:inline">Siguiente</span>
+        <FiChevronRight className="w-4 h-4" />
+      </button>
+    </div>
+  );
+}
+
+function hydrateObraDatesFromApi(raw: unknown): Obra {
+  const data = raw as Record<string, unknown>;
+  return {
+    ...data,
+    fechaInicio: data.fechaInicio ? new Date(data.fechaInicio as string) : new Date(),
+    fechaEstimadaFin: data.fechaEstimadaFin ? new Date(data.fechaEstimadaFin as string) : undefined,
+    fechaUltimoContacto: data.fechaUltimoContacto ? new Date(data.fechaUltimoContacto as string) : new Date(),
+    proximoSeguimiento: data.proximoSeguimiento ? new Date(data.proximoSeguimiento as string) : undefined,
+    fechaCreacion: data.fechaCreacion ? new Date(data.fechaCreacion as string) : new Date(),
+    fechaActualizacion: data.fechaActualizacion ? new Date(data.fechaActualizacion as string) : new Date(),
+  } as Obra;
+}
+
 // Tipos mínimos para cotizaciones provenientes del backend
 interface QuoteRow {
   id: string;
@@ -256,12 +391,22 @@ interface PaymentForm {
   notes: string;
 }
 
+interface LoanForm {
+  amount: number;
+  description: string;
+  dueDate: string;
+  interestRate?: number;
+  notes: string;
+}
+
 function ClientDetailPage() {
   const router = useRouter();
   const params = useParams();
   const searchParams = useSearchParams();
   const { canEdit, canDelete } = useActionAuthorization();
-  const { getQuoteById, formatMoney, getStatusColor } = useQuotes();
+  const { user } = useAuth();
+  const { getQuoteById } = useQuotes();
+  const { getSalesNotesByClient } = useSalesNotes();
   
   // Obtener cliente por ID
   const [client, setClient] = React.useState<ClientExtended | null>(null);
@@ -277,6 +422,11 @@ function ClientDetailPage() {
   const [showPaymentModal, setShowPaymentModal] = React.useState(false);
   const [savingPayment, setSavingPayment] = React.useState(false);
   const [paymentErrors, setPaymentErrors] = React.useState<Partial<Record<string, string>>>({});
+
+  // Loan modal state
+  const [showLoanModal, setShowLoanModal] = React.useState(false);
+  const [savingLoan, setSavingLoan] = React.useState(false);
+  const [loanErrors, setLoanErrors] = React.useState<Partial<Record<string, string>>>({});
   const [paymentForm, setPaymentForm] = React.useState<PaymentForm>({
     amount: 0,
     date: new Date().toISOString().split('T')[0], // Today's date in YYYY-MM-DD format
@@ -284,6 +434,14 @@ function ClientDetailPage() {
     paymentType: 'parcial',
     paymentMethod: 'transferencia',
     reference: '',
+    notes: ''
+  });
+
+  const [loanForm, setLoanForm] = React.useState<LoanForm>({
+    amount: 0,
+    description: '',
+    dueDate: '',
+    interestRate: 0,
     notes: ''
   });
 
@@ -354,10 +512,112 @@ function ClientDetailPage() {
     setPaymentForm(f => ({ ...f, [name]: name === 'amount' ? Number(value) : value }));
   };
 
+  const handleLoanChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    setLoanForm(f => ({ ...f, [name]: name === 'amount' || name === 'interestRate' ? Number(value) : value }));
+  };
+
+  const handleLoanSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!client) return;
+
+    console.log('Iniciando registro de préstamo para cliente:', client.id);
+    setSavingLoan(true);
+    setLoanErrors({});
+
+    try {
+      // Validar el formulario
+      const errors: Partial<Record<string, string>> = {};
+      if (loanForm.amount <= 0) {
+        errors.amount = 'El monto debe ser mayor a 0';
+      }
+      if (!loanForm.description.trim()) {
+        errors.description = 'La descripción es requerida';
+      }
+
+      if (Object.keys(errors).length > 0) {
+        setLoanErrors(errors);
+        return;
+      }
+
+      console.log('Enviando datos de préstamo:', {
+        cliente_id: client.id,
+        monto: loanForm.amount,
+        descripcion: loanForm.description,
+        fecha_vencimiento: loanForm.dueDate || null,
+        tasa_interes: loanForm.interestRate || 0,
+        notas: loanForm.notes || null
+      });
+
+      if (!user) {
+        Toast.error('Tu sesión ha expirado. Inicia sesión nuevamente para registrar un préstamo.');
+        return;
+      }
+
+      const authHeaders = createAuthHeaders(user);
+
+      // Llamar a la API para registrar el préstamo
+      const response = await fetch('/api/clientes/loan', {
+        method: 'POST',
+        headers: authHeaders,
+        credentials: 'include',
+        body: JSON.stringify({
+          cliente_id: client.id,
+          monto: loanForm.amount,
+          descripcion: loanForm.description,
+          fecha_vencimiento: loanForm.dueDate || null,
+          tasa_interes: loanForm.interestRate || 0,
+          notas: loanForm.notes || null
+        })
+      });
+
+      console.log('Respuesta de la API de préstamo:', response.status, response.statusText);
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error('Error de la API de préstamo:', errorData);
+        throw new Error(errorData.error || 'Error al registrar el préstamo');
+      }
+
+      const result = await response.json();
+      console.log('Préstamo registrado exitosamente:', result);
+
+      // Recargar datos del cliente para actualizar financialTotals
+      const clientRes = await fetch(`/api/clientes/${client.id}`, {
+        headers: createAuthHeaders(user),
+        credentials: 'include'
+      });
+      if (clientRes.ok) {
+        const clientBody = await clientRes.json();
+        setClient(clientBody.data ? mapRowToClientExtended(clientBody.data) : null);
+      }
+
+      // Mostrar mensaje de éxito
+      Toast.success('Préstamo registrado exitosamente');
+
+      // Resetear formulario y cerrar modal
+      setLoanForm({
+        amount: 0,
+        description: '',
+        dueDate: '',
+        interestRate: 0,
+        notes: ''
+      });
+      setShowLoanModal(false);
+
+    } catch (error) {
+      console.error('Error registrando préstamo:', error);
+      setLoanErrors({ general: 'Error al registrar el préstamo. Intente nuevamente.' });
+    } finally {
+      setSavingLoan(false);
+    }
+  };
+
   const handlePaymentSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!client) return;
 
+    console.log('Iniciando registro de pago para cliente:', client.id);
     setSavingPayment(true);
     setPaymentErrors({});
 
@@ -382,12 +642,29 @@ function ClientDetailPage() {
         return;
       }
 
+      console.log('Enviando datos de pago:', {
+        cliente_id: client.id,
+        monto: paymentForm.amount,
+        fecha_pago: paymentForm.date,
+        tipo_pago: paymentForm.paymentType,
+        metodo_pago: paymentForm.paymentMethod,
+        referencia: paymentForm.reference || null,
+        descripcion: paymentForm.description || null,
+        notas: paymentForm.notes || null
+      });
+
+      if (!user) {
+        Toast.error('Tu sesión ha expirado. Inicia sesión nuevamente para registrar un pago.');
+        return;
+      }
+
+      const authHeaders = createAuthHeaders(user);
+
       // Llamar a la API para registrar el pago
       const response = await fetch('/api/pagos', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: authHeaders,
+        credentials: 'include',
         body: JSON.stringify({
           cliente_id: client.id,
           monto: paymentForm.amount,
@@ -400,33 +677,46 @@ function ClientDetailPage() {
         })
       });
 
+      console.log('Respuesta de la API:', response.status, response.statusText);
+
       if (!response.ok) {
         const errorData = await response.json();
+        console.error('Error de la API:', errorData);
         throw new Error(errorData.error || 'Error al registrar el pago');
       }
 
       const result = await response.json();
+      console.log('Pago registrado exitosamente:', result);
 
       // Recargar datos del cliente para actualizar financialTotals
       // Recargar cliente
-      const clientRes = await fetch(`/api/clientes/${client.id}`);
+      const clientRes = await fetch(`/api/clientes/${client.id}`, {
+        headers: createAuthHeaders(user),
+        credentials: 'include'
+      });
       if (clientRes.ok) {
         const clientBody = await clientRes.json();
         setClient(clientBody.data ? mapRowToClientExtended(clientBody.data) : null);
       }
 
       // Recargar cotizaciones
-      const quotesRes = await fetch(`/api/cotizaciones?cliente_id=${client.id}`);
+      const quotesRes = await fetch(`/api/cotizaciones?cliente_id=${client.id}`, {
+        headers: createAuthHeaders(user),
+        credentials: 'include'
+      });
       if (quotesRes.ok) {
         const quotesBody = await quotesRes.json();
         setQuotes((quotesBody.data || []) as QuoteRow[]);
       }
 
       // Recargar obras
-      const obrasRes = await fetch(`/api/obras?cliente_id=${client.id}`);
+      const obrasRes = await fetch(`/api/obras?cliente_id=${client.id}`, {
+        headers: createAuthHeaders(user),
+        credentials: 'include'
+      });
       if (obrasRes.ok) {
         const obrasBody = await obrasRes.json();
-        setObras((obrasBody.data || []) as Obra[]);
+        setObras((obrasBody.data || []).map((obra: unknown) => hydrateObraDatesFromApi(obra)));
       }
 
       // Mostrar mensaje de éxito
@@ -536,7 +826,7 @@ function ClientDetailPage() {
       openEdit();
       setAutoEditHandled(true);
     }
-  }, [client, editing, searchParams, canEdit, autoEditHandled]);
+  }, [client, editing, searchParams, canEdit, autoEditHandled, openEdit]);
   
   // Estado para cotizaciones reales del cliente
   const [quotes, setQuotes] = React.useState<QuoteRow[]>([]);
@@ -547,6 +837,18 @@ function ClientDetailPage() {
   const [obras, setObras] = React.useState<Obra[]>([]);
   const [obrasLoading, setObrasLoading] = React.useState(false);
   const [obrasError, setObrasError] = React.useState<string | null>(null);
+
+  // Estado para notas de venta del cliente
+  const [salesNotes, setSalesNotes] = React.useState<SalesNoteRecord[]>([]);
+  const [salesNotesLoading, setSalesNotesLoading] = React.useState(false);
+  const [salesNotesError, setSalesNotesError] = React.useState<string | null>(null);
+
+  // Estado para alternar entre cotizaciones y notas de venta
+  const [showSalesNotes, setShowSalesNotes] = React.useState(false);
+
+  const [quotePage, setQuotePage] = React.useState(1);
+  const [obraPage, setObraPage] = React.useState(1);
+  const [salesNotePage, setSalesNotePage] = React.useState(1);
 
   // Cargar cotizaciones del cliente por ID (cliente_principal_id)
   React.useEffect(() => {
@@ -576,27 +878,64 @@ function ClientDetailPage() {
   React.useEffect(() => {
     if (!client?.id) return;
     let cancelled = false;
+
     async function loadObras() {
-    async function loadObras() {
-      if (!client) return;
       try {
-        setObrasLoading(true); setObrasError(null);
-        const clientId = client.id;
+        const clientId = client?.id;
+        if (!clientId) return;
+        setObrasLoading(true);
+        setObrasError(null);
         const res = await fetch(`/api/obras?cliente_id=${clientId}`);
         if (!res.ok) throw new Error('Error al cargar obras');
         const body = await res.json();
-        if (!cancelled) setObras((body.data || []) as Obra[]);
+        if (!cancelled) {
+          const parsed = (body.data || []).map((obra: unknown) => hydrateObraDatesFromApi(obra));
+          setObras(parsed);
+        }
       } catch (e) {
         if (!cancelled) {
           const msg = e instanceof Error ? e.message : 'Error desconocido';
           setObrasError(msg);
         }
-      } finally { if (!cancelled) setObrasLoading(false); }
+      } finally {
+        if (!cancelled) setObrasLoading(false);
+      }
     }
-    }
+
     loadObras();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [client?.id]);
+
+  // Cargar notas de venta del cliente siempre (para financialTotals)
+  React.useEffect(() => {
+    if (!client?.id) return;
+    let cancelled = false;
+
+    async function loadSalesNotes() {
+      try {
+        setSalesNotesLoading(true);
+        setSalesNotesError(null);
+        const notes = await getSalesNotesByClient(client!.id);
+        if (!cancelled) {
+          setSalesNotes(notes);
+        }
+      } catch (e) {
+        if (!cancelled) {
+          const msg = e instanceof Error ? e.message : 'Error desconocido';
+          setSalesNotesError(msg);
+        }
+      } finally {
+        if (!cancelled) setSalesNotesLoading(false);
+      }
+    }
+
+    loadSalesNotes();
+    return () => {
+      cancelled = true;
+    };
+  }, [client?.id, getSalesNotesByClient, client]);
 
   // Adaptador mínimo para campos usados en la UI (folio/numero, fecha, estado, total)
   const clientQuotes: ClientQuote[] = useMemo(() => {
@@ -614,18 +953,56 @@ function ClientDetailPage() {
     });
   }, [quotes]);
 
-  // Totales financieros derivados de cliente_saldos
+  React.useEffect(() => {
+    setQuotePage(1);
+  }, [clientQuotes.length]);
+
+  React.useEffect(() => {
+    setObraPage(1);
+  }, [obras.length]);
+
+  React.useEffect(() => {
+    setSalesNotePage(1);
+  }, [salesNotes.length]);
+
+  const totalQuotePages = Math.max(1, Math.ceil(clientQuotes.length / QUOTES_PAGE_SIZE));
+  const paginatedQuotes = useMemo(() => {
+    const start = (quotePage - 1) * QUOTES_PAGE_SIZE;
+    return clientQuotes.slice(start, start + QUOTES_PAGE_SIZE);
+  }, [clientQuotes, quotePage]);
+
+  const totalObraPages = Math.max(1, Math.ceil(obras.length / OBRAS_PAGE_SIZE));
+  const paginatedObras = useMemo(() => {
+    const start = (obraPage - 1) * OBRAS_PAGE_SIZE;
+    return obras.slice(start, start + OBRAS_PAGE_SIZE);
+  }, [obras, obraPage]);
+
+  const totalSalesNotePages = Math.max(1, Math.ceil(salesNotes.length / SALES_NOTES_PAGE_SIZE));
+  const paginatedSalesNotes = useMemo(() => {
+    const start = (salesNotePage - 1) * SALES_NOTES_PAGE_SIZE;
+    return salesNotes.slice(start, start + SALES_NOTES_PAGE_SIZE);
+  }, [salesNotes, salesNotePage]);
+
+  // Totales financieros derivados de cliente_saldos + notas de venta
   const financialTotals = useMemo(() => {
     if (!client) return { paid: 0, pending: 0, partial: 0, overdue: 0, movimientos: 0 };
-    // Usar los valores mapeados desde cliente_saldos (último snapshot)
+    
+    // Calcular total de notas de venta del cliente
+    const totalSalesNotes = salesNotes.reduce((sum, note) => sum + (note.total || 0), 0);
+    
+    // Total Pagado = suma de notas de venta + pagos acumulados (cliente_saldos.pagado)
+    const totalPaid = totalSalesNotes + (client.paid || 0);
+    
+    console.log('[financialTotals] Client:', client.id, 'paid:', client.paid, 'pending:', client.pending, 'salesNotes:', salesNotes.length, 'totalSalesNotes:', totalSalesNotes, 'totalPaid:', totalPaid);
+    
     return {
-      paid: client.paid || 0,
+      paid: totalPaid,
       pending: client.pending || 0,
       partial: client.partial || 0, // dinero_cotizado
       overdue: client.overdue || 0,
-      movimientos: (client.paid || 0) + (client.pending || 0) + (client.partial || 0) + (client.overdue || 0)
+      movimientos: totalPaid + (client.pending || 0) + (client.partial || 0) + (client.overdue || 0)
     };
-  }, [client]);
+  }, [client, salesNotes]);
 
   // Función para descargar PDF de cotización
   const handleDownloadQuotePDF = async (quoteNumero: string) => {
@@ -751,12 +1128,32 @@ function ClientDetailPage() {
                     Editar
                   </button>
                 )}
-                <button onClick={() => setShowPaymentModal(true)} className="btn-primary flex items-center gap-2">
-                  <FiCreditCard className="w-4 h-4" />
-                  Registrar Pago
-                </button>
+                <div className="flex items-center gap-2 border-l border-gray-300 dark:border-gray-600 pl-3">
+                  <button
+                    onClick={() => {
+                      console.log('💰 Abriendo modal de PAGO - Cliente ID:', client.id);
+                      setShowPaymentModal(true);
+                    }}
+                    className="btn-success flex items-center gap-2 shadow-sm"
+                    title="Registrar un pago recibido del cliente"
+                  >
+                    <FiCreditCard className="w-4 h-4" />
+                    Registrar Pago
+                  </button>
+                  <button
+                    onClick={() => {
+                      console.log('💸 Abriendo modal de PRÉSTAMO - Cliente ID:', client.id);
+                      setShowLoanModal(true);
+                    }}
+                    className="btn-info flex items-center gap-2 shadow-sm"
+                    title="Agregar un préstamo o deuda pendiente al cliente"
+                  >
+                    <FiDollarSign className="w-4 h-4" />
+                    Agregar Préstamo
+                  </button>
+                </div>
                 {canDelete('clients') && (
-                  <button className="btn-secondary text-red-600 flex items-center gap-2">
+                  <button className="btn-secondary text-red-600 flex items-center gap-2 ml-2">
                     <FiTrash2 className="w-4 h-4" />
                     Eliminar
                   </button>
@@ -766,26 +1163,42 @@ function ClientDetailPage() {
               {/* Botones móviles */}
               <div className="flex md:hidden items-center gap-1">
                 {canEdit('clients') && (
-                  <button 
+                  <button
                     onClick={openEdit}
-                    className="p-2 rounded-lg transition-colors"
+                    className="p-2 rounded-lg transition-colores"
                     style={{ backgroundColor: 'var(--bg-secondary)', color: 'var(--text-secondary)' }}
                     title="Editar cliente"
                   >
                     <FiEdit3 className="w-4 h-4" />
                   </button>
                 )}
-                <button 
-                  onClick={() => setShowPaymentModal(true)}
-                  className="p-2 rounded-lg transition-colors"
-                  style={{ backgroundColor: 'var(--accent-bg)', color: 'var(--accent-text)' }}
-                  title="Registrar pago"
-                >
-                  <FiCreditCard className="w-4 h-4" />
-                </button>
+                <div className="flex items-center gap-1 border-l border-gray-300 dark:border-gray-600 pl-1">
+                  <button
+                    onClick={() => {
+                      console.log('💰 Abriendo modal de PAGO (móvil) - Cliente ID:', client.id);
+                      setShowPaymentModal(true);
+                    }}
+                    className="p-2 rounded-lg transition-colores shadow-sm"
+                    style={{ backgroundColor: 'var(--success-bg)', color: 'var(--success-text)' }}
+                    title="Registrar pago"
+                  >
+                    <FiCreditCard className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={() => {
+                      console.log('💸 Abriendo modal de PRÉSTAMO (móvil) - Cliente ID:', client.id);
+                      setShowLoanModal(true);
+                    }}
+                    className="p-2 rounded-lg transition-colores shadow-sm"
+                    style={{ backgroundColor: 'var(--info-bg)', color: 'var(--info-text)' }}
+                    title="Agregar préstamo"
+                  >
+                    <FiDollarSign className="w-4 h-4" />
+                  </button>
+                </div>
                 {canDelete('clients') && (
-                  <button 
-                    className="p-2 rounded-lg transition-colors text-red-600"
+                  <button
+                    className="p-2 rounded-lg transition-colores text-red-600"
                     style={{ backgroundColor: 'var(--bg-secondary)' }}
                     title="Eliminar cliente"
                   >
@@ -891,20 +1304,162 @@ function ClientDetailPage() {
 
             {/* Historial de Cotizaciones */}
             <InfoCard 
-              title={`Historial de Cotizaciones (${quotesLoading ? '...' : clientQuotes.length})`}
+              title={
+                <div className="flex items-center justify-between w-full">
+                  <span>
+                    {showSalesNotes 
+                      ? `Historia de Notas de venta (${salesNotesLoading ? '...' : salesNotes.length})`
+                      : `Historial de Cotizaciones (${quotesLoading ? '...' : clientQuotes.length})`
+                    }
+                  </span>
+                  <button
+                    onClick={() => setShowSalesNotes(!showSalesNotes)}
+                    className="btn-secondary text-xs px-3 py-1 ml-4"
+                  >
+                    {showSalesNotes ? 'Ver Cotizaciones' : 'Ver Notas de Venta'}
+                  </button>
+                </div>
+              }
               icon={<FiFileText className="w-4 h-4 sm:w-5 sm:h-5" />}
             >
-              {quotesError && (
-                <div className="text-center py-4 text-sm" style={{ color: 'var(--danger-text)' }}>
-                  {quotesError}
-                </div>
-              )}
-              {!quotesError && quotesLoading && (
-                <div className="text-center py-4 text-sm" style={{ color: 'var(--text-secondary)' }}>
-                  Cargando cotizaciones...
-                </div>
-              )}
-              {!quotesLoading && !quotesError && clientQuotes.length > 0 ? (
+              {showSalesNotes ? (
+                // Vista de Notas de Venta
+                <>
+                  {salesNotesError && (
+                    <div className="text-center py-4 text-sm" style={{ color: 'var(--danger-text)' }}>
+                      {salesNotesError}
+                    </div>
+                  )}
+                  {!salesNotesError && salesNotesLoading && (
+                    <div className="text-center py-4 text-sm" style={{ color: 'var(--text-secondary)' }}>
+                      Cargando notas de venta...
+                    </div>
+                  )}
+                  {!salesNotesLoading && !salesNotesError && salesNotes.length > 0 ? (
+                    <div className="w-full">
+                      {/* Vista de tabla para desktop */}
+                      <div className="hidden md:block w-full overflow-x-auto">
+                        <table className="w-full text-sm">
+                          <thead>
+                            <tr className="border-b" style={{ borderColor: 'var(--border)' }}>
+                              <th className="text-left pb-3 px-2" style={{ color: 'var(--text-secondary)' }}>Folio</th>
+                              <th className="text-left pb-3 px-2" style={{ color: 'var(--text-secondary)' }}>Fecha</th>
+                              <th className="text-left pb-3 px-2" style={{ color: 'var(--text-secondary)' }}>Estado</th>
+                              <th className="text-right pb-3 px-2" style={{ color: 'var(--text-secondary)' }}>Total</th>
+                              <th className="text-center pb-3 px-2" style={{ color: 'var(--text-secondary)' }}>Acciones</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {paginatedSalesNotes.map((note, index) => (
+                              <tr 
+                                key={note.id}
+                                className="border-b last:border-b-0 hover:bg-opacity-50 transition-colors"
+                                style={{ 
+                                  borderColor: 'var(--border)',
+                                  backgroundColor: index % 2 === 0 ? 'transparent' : 'var(--bg-secondary)'
+                                }}
+                              >
+                                <td className="py-3 px-2">
+                                  <div className="font-medium" style={{ color: 'var(--accent-primary)' }}>
+                                    {note.folio || `NV-${note.id}`}
+                                  </div>
+                                </td>
+                                <td className="py-3 px-2" style={{ color: 'var(--text-primary)' }}>
+                                  {note.fecha_emision ? new Date(note.fecha_emision).toLocaleDateString('es-CL') : '-'}
+                                </td>
+                                <td className="py-3 px-2">
+                                  <SalesNoteStatusBadge estado={note.estado} />
+                                </td>
+                                <td className="py-3 px-2 text-right font-medium" style={{ color: 'var(--text-primary)' }}>
+                                  {formatCLP(note.total || 0)}
+                                </td>
+                                <td className="py-3 px-2 text-center">
+                                  <button 
+                                    onClick={() => router.push(`/dashboard/notas-venta/${note.id}`)}
+                                    className="btn-secondary text-xs px-3 py-1"
+                                  >
+                                    Ver
+                                  </button>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+
+                      {/* Vista de tarjetas para móvil */}
+                      <div className="md:hidden space-y-3">
+                        {paginatedSalesNotes.map((note, index) => (
+                          <div 
+                            key={note.id}
+                            className="p-4 rounded-lg border"
+                            style={{ 
+                              backgroundColor: index % 2 === 0 ? 'var(--card-bg)' : 'var(--bg-secondary)',
+                              borderColor: 'var(--border)'
+                            }}
+                          >
+                            <div className="flex items-start justify-between mb-3">
+                              <div>
+                                <div className="font-medium text-sm" style={{ color: 'var(--accent-primary)' }}>
+                                  {note.folio || `NV-${note.id}`}
+                                </div>
+                                <div className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+                                  {note.fecha_emision ? new Date(note.fecha_emision).toLocaleDateString('es-CL') : '-'}
+                                </div>
+                              </div>
+                              <SalesNoteStatusBadge estado={note.estado} />
+                            </div>
+                            
+                            <div className="flex items-center justify-between">
+                              <span className="font-medium text-sm" style={{ color: 'var(--text-primary)' }}>
+                                {formatCLP(note.total || 0)}
+                              </span>
+                              
+                              <button 
+                                onClick={() => router.push(`/dashboard/notas-venta/${note.id}`)}
+                                className="btn-secondary text-xs px-3 py-2"
+                              >
+                                Ver
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+
+                      <PaginationControls
+                        currentPage={salesNotePage}
+                        totalPages={totalSalesNotePages}
+                        totalItems={salesNotes.length}
+                        pageSize={SALES_NOTES_PAGE_SIZE}
+                        onPageChange={setSalesNotePage}
+                      />
+                    </div>
+                  ) : (
+                    <div className="text-center py-6 w-full">
+                      <FiFileText className="w-10 h-10 mx-auto mb-3" style={{ color: 'var(--text-muted)' }} />
+                      <h4 className="font-medium mb-2" style={{ color: 'var(--text-primary)' }}>
+                        Sin notas de venta
+                      </h4>
+                      <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+                        Este cliente aún no tiene notas de venta registradas
+                      </p>
+                    </div>
+                  )}
+                </>
+              ) : (
+                // Vista de Cotizaciones
+                <>
+                  {quotesError && (
+                    <div className="text-center py-4 text-sm" style={{ color: 'var(--danger-text)' }}>
+                      {quotesError}
+                    </div>
+                  )}
+                  {!quotesError && quotesLoading && (
+                    <div className="text-center py-4 text-sm" style={{ color: 'var(--text-secondary)' }}>
+                      Cargando cotizaciones...
+                    </div>
+                  )}
+                  {!quotesLoading && !quotesError && clientQuotes.length > 0 ? (
                 <div className="w-full">
                   {/* Vista de tabla para desktop */}
       <div className="hidden md:block w-full overflow-x-auto">
@@ -919,7 +1474,7 @@ function ClientDetailPage() {
                         </tr>
                       </thead>
                       <tbody>
-                        {clientQuotes.map((quote, index) => (
+                        {paginatedQuotes.map((quote, index) => (
                           <tr 
                             key={quote.id}
                             className="border-b last:border-b-0 hover:bg-opacity-50 transition-colors"
@@ -970,7 +1525,7 @@ function ClientDetailPage() {
 
                   {/* Vista de tarjetas para móvil */}
       <div className="md:hidden grid grid-cols-1 gap-2.5 w-full">
-                    {clientQuotes.map((quote) => (
+                    {paginatedQuotes.map((quote) => (
                       <div 
                         key={quote.id}
         className="p-3 rounded-lg border"
@@ -1017,6 +1572,14 @@ function ClientDetailPage() {
                       </div>
                     ))}
                   </div>
+
+                  <PaginationControls
+                    currentPage={quotePage}
+                    totalPages={totalQuotePages}
+                    totalItems={clientQuotes.length}
+                    pageSize={QUOTES_PAGE_SIZE}
+                    onPageChange={setQuotePage}
+                  />
                 </div>
               ) : (
                 <div className="text-center py-6 w-full">
@@ -1028,6 +1591,8 @@ function ClientDetailPage() {
                     Este cliente aún no tiene cotizaciones registradas
                   </p>
                 </div>
+              )}
+                </>
               )}
             </InfoCard>
 
@@ -1061,7 +1626,7 @@ function ClientDetailPage() {
                         </tr>
                       </thead>
                       <tbody>
-                        {obras.map((obra, index) => (
+                        {paginatedObras.map((obra, index) => (
                           <tr 
                             key={obra.id}
                             className="border-b last:border-b-0 hover:bg-opacity-50 transition-colors cursor-pointer"
@@ -1115,7 +1680,7 @@ function ClientDetailPage() {
 
                   {/* Vista de tarjetas para móvil */}
                   <div className="md:hidden grid grid-cols-1 gap-2.5 w-full">
-                    {obras.map((obra) => (
+                    {paginatedObras.map((obra) => (
                       <div 
                         key={obra.id}
                         className="p-3 rounded-lg border cursor-pointer"
@@ -1165,6 +1730,14 @@ function ClientDetailPage() {
                       </div>
                     ))}
                   </div>
+
+                  <PaginationControls
+                    currentPage={obraPage}
+                    totalPages={totalObraPages}
+                    totalItems={obras.length}
+                    pageSize={OBRAS_PAGE_SIZE}
+                    onPageChange={setObraPage}
+                  />
                 </div>
               ) : (
                 <div className="text-center py-6 w-full">
@@ -1285,6 +1858,18 @@ function ClientDetailPage() {
         saving={savingPayment}
         errors={paymentErrors}
         financialTotals={financialTotals}
+        client={client}
+      />
+      <LoanModal
+        open={showLoanModal}
+        onClose={() => setShowLoanModal(false)}
+        onSubmit={handleLoanSubmit}
+        form={loanForm}
+        onChange={handleLoanChange}
+        saving={savingLoan}
+        errors={loanErrors}
+        client={client}
+        financialTotals={financialTotals}
       />
     </>
   );
@@ -1306,7 +1891,7 @@ interface EditModalProps {
 function EditModal({ open, onClose, onSubmit, form, onChange, saving, errors, clientTypes, onClientTypeChange }: EditModalProps) {
   if (!open) return null;
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/50 backdrop-blur-sm">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4">
       <div className="w-full max-w-4xl max-h-[95vh] sm:max-h-[90vh] overflow-y-auto rounded-xl border shadow-2xl" 
            style={{ backgroundColor: 'var(--card-bg)', borderColor: 'var(--border)' }}>
         
@@ -1458,9 +2043,27 @@ interface PaymentModalProps {
     partial: number;
     overdue: number;
   };
+  client: ClientExtended;
 }
 
-function PaymentModal({ open, onClose, onSubmit, form, onChange, saving, errors, financialTotals }: PaymentModalProps) {
+interface LoanModalProps {
+  open: boolean;
+  onClose: () => void;
+  onSubmit: (e: React.FormEvent) => void;
+  form: LoanForm;
+  onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => void;
+  saving: boolean;
+  errors: Partial<Record<string, string>>;
+  client: ClientExtended;
+  financialTotals: {
+    paid: number;
+    pending: number;
+    partial: number;
+    overdue: number;
+  };
+}
+
+function PaymentModal({ open, onClose, onSubmit, form, onChange, saving, errors, financialTotals, client: _client }: PaymentModalProps) {
   if (!open) return null;
 
   const formatAmount = (amount: number) => {
@@ -1511,7 +2114,7 @@ function PaymentModal({ open, onClose, onSubmit, form, onChange, saving, errors,
             <div className="p-3 rounded-xl shadow-sm"
                  style={{
                    backgroundColor: 'var(--success)',
-                   border: '2px solid var(--success-border, var(--success))',
+                   border: '2px solid var(--success-border)',
                    boxShadow: 'var(--shadow-lg)'
                  }}>
               <FiCreditCard className="w-6 h-6" style={{ color: 'var(--success-text)' }} />
@@ -1621,9 +2224,7 @@ function PaymentModal({ open, onClose, onSubmit, form, onChange, saving, errors,
             {/* Detalles del Pago */}
             <div className="space-y-4">
               <div className="flex items-center gap-3 pb-2 border-b" style={{ borderColor: 'var(--info)' }}>
-                <div className="p-2 rounded-lg" style={{ backgroundColor: 'var(--info)', border: '2px solid var(--info-border)' }}>
-                  <FiCalendar className="w-5 h-5" style={{ color: 'var(--info-text)' }} />
-                </div>
+                <FiCalendar className="w-5 h-5" style={{ color: 'var(--info-text)' }} />
                 <h3 className="text-lg font-semibold" style={{ color: 'var(--info-text)' }}>Detalles del Pago</h3>
               </div>
 
@@ -1705,7 +2306,7 @@ function PaymentModal({ open, onClose, onSubmit, form, onChange, saving, errors,
                 </div>
 
                 <div className="space-y-2">
-                  <label className="block text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
+                  <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>
                     Número de Referencia
                   </label>
                   <input
@@ -1736,8 +2337,8 @@ function PaymentModal({ open, onClose, onSubmit, form, onChange, saving, errors,
               </div>
 
               <div className="space-y-4">
-                <div className="space-y-2">
-                  <label className="block text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
+                <div>
+                  <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>
                     Descripción del Pago
                   </label>
                   <textarea
@@ -1750,14 +2351,14 @@ function PaymentModal({ open, onClose, onSubmit, form, onChange, saving, errors,
                       borderColor: form.description ? 'var(--info)' : 'var(--border)',
                       backgroundColor: form.description ? 'var(--info-bg)' : 'var(--input-bg)',
                       color: form.description ? 'var(--info-text)' : 'var(--text-primary)',
-                      ...getInputStyles(false)
+                      ...getInputStyles(!!errors.description)
                     }}
                     placeholder="Describe el motivo o detalles del pago..."
                   />
                 </div>
 
-                <div className="space-y-2">
-                  <label className="block text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
+                <div>
+                  <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>
                     Notas Internas
                   </label>
                   <textarea
@@ -1833,6 +2434,274 @@ function PaymentModal({ open, onClose, onSubmit, form, onChange, saving, errors,
                 {saving && <span className="animate-spin h-4 w-4 border-2 border-white/40 border-t-white rounded-full"></span>}
                 <FiCheck className="w-4 h-4" />
                 {saving ? 'Registrando...' : 'Registrar Pago'}
+              </button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+function LoanModal({ open, onClose, onSubmit, form, onChange, saving, errors, client: _client, financialTotals: _financialTotals }: LoanModalProps) {
+  if (!open) return null;
+
+  const formatAmount = (amount: number) => {
+    return new Intl.NumberFormat('es-CL', {
+      style: 'currency',
+      currency: 'CLP',
+      maximumFractionDigits: 0
+    }).format(amount);
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 animate-in fade-in duration-300"
+         style={{
+           backgroundColor: 'rgba(0, 0, 0, 0.5)',
+           backdropFilter: 'blur(8px)'
+         }}>
+      <div className="w-full max-w-2xl max-h-[95vh] sm:max-h-[90vh] overflow-hidden rounded-2xl border shadow-2xl animate-in zoom-in-95 duration-300"
+           style={{
+             backgroundColor: 'var(--card-bg)',
+             borderColor: 'var(--border)',
+             boxShadow: 'var(--shadow-lg, 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1))'
+           }}>
+
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-5 border-b"
+             style={{
+               borderColor: 'var(--border)',
+               backgroundColor: 'var(--info-bg)',
+               background: 'linear-gradient(135deg, var(--info-bg) 0%, var(--info-bg-secondary, var(--card-bg)) 100%)'
+             }}>
+          <div className="flex items-center gap-4">
+            <div className="p-3 rounded-xl shadow-sm"
+                 style={{
+                   backgroundColor: 'var(--info)',
+                   border: '2px solid var(--info-border, var(--info))',
+                   boxShadow: 'var(--shadow-lg)'
+                 }}>
+              <FiDollarSign className="w-6 h-6" style={{ color: 'var(--info-text)' }} />
+            </div>
+            <div>
+              <h2 className="text-2xl font-bold" style={{ color: 'var(--info-text)' }}>
+                Registrar Préstamo
+              </h2>
+              <p className="text-sm" style={{ color: 'var(--info-text-secondary, var(--text-secondary))' }}>
+                Agregar un pago pendiente al cliente
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-2 rounded-lg transition-all duration-200 hover:scale-105"
+            style={{
+              color: 'var(--info-text)',
+              backgroundColor: 'var(--info-bg-hover, rgba(255,255,255,0.1))',
+              border: '1px solid var(--info-border)',
+              boxShadow: 'var(--shadow-sm)'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = 'var(--info-hover)';
+              e.currentTarget.style.transform = 'scale(1.05)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = 'var(--info-bg-hover, rgba(255,255,255,0.1))';
+              e.currentTarget.style.transform = 'scale(1)';
+            }}
+          >
+            <FiX className="w-6 h-6" />
+          </button>
+        </div>
+
+        <form onSubmit={onSubmit} className="flex flex-col h-full max-h-[calc(95vh-140px)]">
+          {/* Content */}
+          <div className="flex-1 overflow-y-auto p-6 space-y-8">
+
+            {/* Monto del Préstamo */}
+            <div className="space-y-4">
+              <div className="flex items-center gap-3 pb-2 border-b" style={{ borderColor: 'var(--warning)' }}>
+                <FiDollarSign className="w-5 h-5" style={{ color: 'var(--warning-text)' }} />
+                <h3 className="text-lg font-medium" style={{ color: 'var(--text-primary)' }}>Monto del Préstamo</h3>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>
+                    Monto *
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
+                      $
+                    </span>
+                    <input
+                      type="number"
+                      name="amount"
+                      value={form.amount}
+                      onChange={onChange}
+                      className="w-full pl-8 pr-3 py-3 rounded-lg border bg-transparent transition-colors focus:ring-2 focus:ring-blue-500/20 text-right font-mono"
+                      style={{
+                        borderColor: errors.amount ? '#ef4444' : 'var(--border)',
+                        color: 'var(--text-primary)'
+                      }}
+                      placeholder="0"
+                      min="0"
+                      step="1"
+                      required
+                    />
+                  </div>
+                  {form.amount > 0 && (
+                    <p className="mt-1 text-xs" style={{ color: 'var(--text-secondary)' }}>
+                      {formatAmount(form.amount)}
+                    </p>
+                  )}
+                  {errors.amount && (
+                    <p className="mt-1 text-sm text-red-500">{errors.amount}</p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>
+                    Fecha de Vencimiento
+                  </label>
+                  <input
+                    type="date"
+                    name="dueDate"
+                    value={form.dueDate}
+                    onChange={onChange}
+                    className="w-full p-3 rounded-lg border bg-transparent transition-colors focus:ring-2 focus:ring-blue-500/20"
+                    style={{
+                      borderColor: errors.dueDate ? '#ef4444' : 'var(--border)',
+                      color: 'var(--text-primary)'
+                    }}
+                  />
+                  {errors.dueDate && (
+                    <p className="mt-1 text-sm text-red-500">{errors.dueDate}</p>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Detalles del Préstamo */}
+            <div className="space-y-4">
+              <div className="flex items-center gap-3 pb-2 border-b" style={{ borderColor: 'var(--info)' }}>
+                <FiFileText className="w-5 h-5" style={{ color: 'var(--info-text)' }} />
+                <h3 className="text-lg font-medium" style={{ color: 'var(--text-primary)' }}>Detalles del Préstamo</h3>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>
+                    Descripción *
+                  </label>
+                  <input
+                    type="text"
+                    name="description"
+                    value={form.description}
+                    onChange={onChange}
+                    className="w-full p-3 rounded-lg border bg-transparent transition-colors focus:ring-2 focus:ring-blue-500/20"
+                    style={{
+                      borderColor: errors.description ? '#ef4444' : 'var(--border)',
+                      color: 'var(--text-primary)'
+                    }}
+                    placeholder="Descripción del préstamo"
+                    required
+                  />
+                  {errors.description && (
+                    <p className="mt-1 text-sm text-red-500">{errors.description}</p>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>
+                      Tasa de Interés (%)
+                    </label>
+                    <input
+                      type="number"
+                      name="interestRate"
+                      value={form.interestRate}
+                      onChange={onChange}
+                      className="w-full p-3 rounded-lg border bg-transparent transition-colors focus:ring-2 focus:ring-blue-500/20"
+                      style={{
+                        borderColor: errors.interestRate ? '#ef4444' : 'var(--border)',
+                        color: 'var(--text-primary)'
+                      }}
+                      placeholder="0"
+                      min="0"
+                      step="0.01"
+                    />
+                    {errors.interestRate && (
+                      <p className="mt-1 text-sm text-red-500">{errors.interestRate}</p>
+                    )}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>
+                    Notas Adicionales
+                  </label>
+                  <textarea
+                    name="notes"
+                    value={form.notes}
+                    onChange={onChange}
+                    rows={3}
+                    className="w-full p-3 rounded-lg border bg-transparent transition-colors focus:ring-2 focus:ring-blue-500/20"
+                    style={{
+                      borderColor: errors.notes ? '#ef4444' : 'var(--border)',
+                      color: 'var(--text-primary)'
+                    }}
+                    placeholder="Notas adicionales sobre el préstamo"
+                  />
+                  {errors.notes && (
+                    <p className="mt-1 text-sm text-red-500">{errors.notes}</p>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Resumen */}
+            <div className="p-4 rounded-xl border-2 border-dashed" style={{ borderColor: 'var(--border)', backgroundColor: 'var(--bg-secondary)' }}>
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
+                  Monto del Préstamo:
+                </span>
+                <span className="text-lg font-bold" style={{ color: 'var(--warning-text)' }}>
+                  {formatAmount(form.amount)}
+                </span>
+              </div>
+            </div>
+
+          </div>
+
+          {/* Footer */}
+          <div className="flex items-center justify-between px-6 py-4 border-t bg-gray-50/50 dark:bg-gray-800/50"
+               style={{ borderColor: 'var(--border)' }}>
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-6 py-2.5 rounded-lg border transition-all duration-200 hover:bg-gray-100 dark:hover:bg-gray-700 hover:scale-105"
+              style={{ borderColor: 'var(--border)', color: 'var(--text-secondary)' }}
+            >
+              Cancelar
+            </button>
+
+            <div className="flex items-center gap-3">
+              {errors.general && (
+                <span className="text-sm text-red-500">{errors.general}</span>
+              )}
+
+              <button
+                disabled={saving || form.amount <= 0 || !form.description.trim()}
+                type="submit"
+                className="px-8 py-2.5 rounded-lg text-white transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2 hover:scale-105 shadow-lg hover:shadow-xl"
+                style={{
+                  background: 'linear-gradient(135deg, var(--warning) 0%, var(--warning-hover) 100%)',
+                }}
+              >
+                {saving && <span className="animate-spin h-4 w-4 border-2 border-white/40 border-t-white rounded-full"></span>}
+                <FiCheck className="w-4 h-4" />
+                {saving ? 'Registrando...' : 'Registrar Préstamo'}
               </button>
             </div>
           </div>

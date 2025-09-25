@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { CotizacionesService } from '@/services/cotizacionesService';
-import { NotasVentaService } from '@/services/notasVentaService';
+import { NotasVentaService, SalesNoteRecord } from '@/services/notasVentaService';
 import { SupabaseObrasService } from '@/features/obras/services/SupabaseObrasService';
 import type { Database } from '@/lib/supabase';
+import type { Obra } from '@/features/obras/types/obras';
 
 type CotizacionWithRelations = Database['public']['Tables']['cotizaciones']['Row'] & {
   cliente_principal?: {
@@ -36,8 +37,8 @@ interface ObraQuotesStats {
 
 interface UseObraQuotesReturn {
   quotes: CotizacionWithRelations[];
-  salesNotes: any[]; // TODO: Implementar consulta separada para notas de venta
-  obra: any; // Información de la obra incluyendo material_vendido y pendiente
+  salesNotes: SalesNoteRecord[]; // TODO: Implementar consulta separada para notas de venta
+  obra: Obra | null; // Información de la obra incluyendo material_vendido y pendiente
   stats: ObraQuotesStats;
   loading: boolean;
   error: string | null;
@@ -46,12 +47,12 @@ interface UseObraQuotesReturn {
 
 export function useObraQuotes(obraId: number): UseObraQuotesReturn {
   const [quotes, setQuotes] = useState<CotizacionWithRelations[]>([]);
-  const [salesNotes, setSalesNotes] = useState<any[]>([]);
-  const [obra, setObra] = useState<any>(null);
+  const [salesNotes, setSalesNotes] = useState<SalesNoteRecord[]>([]);
+  const [obra, setObra] = useState<Obra | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchQuotes = async () => {
+  const fetchQuotes = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -73,13 +74,13 @@ export function useObraQuotes(obraId: number): UseObraQuotesReturn {
     } finally {
       setLoading(false);
     }
-  };
+  }, [obraId]);
 
   useEffect(() => {
     if (obraId) {
       fetchQuotes();
     }
-  }, [obraId]);
+  }, [obraId, fetchQuotes]);
 
   // Calcular estadísticas
   const stats: ObraQuotesStats = {

@@ -1,3 +1,5 @@
+"use client";
+
 import { createContext, useContext, useEffect, useState } from 'react'
 
 export interface User {
@@ -21,34 +23,42 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    // Intentar obtener usuario desde localStorage o sessionStorage
-    const loadUserFromStorage = () => {
+    // Load user from Zustand persisted state
+    const loadUserFromZustand = () => {
       try {
-        const storedUser = localStorage.getItem('currentUser')
-        if (storedUser) {
-          const parsedUser = JSON.parse(storedUser)
-          console.log('👤 Loaded user from storage:', parsedUser)
-          setUser(parsedUser)
+        const storedState = localStorage.getItem('auth-storage')
+        if (storedState) {
+          const parsed = JSON.parse(storedState)
+          if (parsed?.state?.user && parsed?.state?.isAuthenticated) {
+            const zustandUser = parsed.state.user
+            setUser({
+              id: zustandUser.id,
+              email: zustandUser.email,
+              name: zustandUser.nombre,
+              role: zustandUser.rol,
+              isAdmin: zustandUser.rol === 'admin'
+            })
+          }
         }
       } catch (error) {
-        console.error('Error loading user from storage:', error)
+        console.error('Error loading user from Zustand storage:', error)
       } finally {
         setLoading(false)
       }
     }
 
-    loadUserFromStorage()
-  }, [])
+    loadUserFromZustand()
 
-  // Guardar usuario en localStorage cuando cambie
-  useEffect(() => {
-    if (user) {
-      localStorage.setItem('currentUser', JSON.stringify(user))
-      console.log('💾 Saved user to storage:', user)
-    } else {
-      localStorage.removeItem('currentUser')
+    // Listen for storage changes to sync with Zustand
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'auth-storage') {
+        loadUserFromZustand()
+      }
     }
-  }, [user])
+
+    window.addEventListener('storage', handleStorageChange)
+    return () => window.removeEventListener('storage', handleStorageChange)
+  }, [])
 
   return (
     <AuthContext.Provider value={{ user, loading, setUser }}>

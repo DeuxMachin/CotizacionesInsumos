@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FiX, FiDollarSign, FiInfo, FiCheckCircle, FiTrendingUp } from 'react-icons/fi';
+import { FiX,  FiInfo, FiCheckCircle, FiTrendingUp } from 'react-icons/fi';
 import { SupabaseObrasService } from '../../services/SupabaseObrasService';
 
 interface PrestamoModalProps {

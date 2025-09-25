@@ -60,6 +60,9 @@ export function mapRowToClientExtended(row: ClienteRowWithType): ClientExtended 
   const latestSaldo = saldos
     .slice()
     .sort((a, b) => new Date(b.snapshot_date).getTime() - new Date(a.snapshot_date).getTime())[0];
+  
+  console.log('[mapRowToClientExtended] Cliente:', row.id, 'Saldos:', saldos.length, 'Latest:', latestSaldo);
+  
   const paid = latestSaldo?.pagado ?? 0;
   const pending = latestSaldo?.pendiente ?? 0;
   const overdue = latestSaldo?.vencido ?? 0;

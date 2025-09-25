@@ -428,6 +428,43 @@ export function useQuotes(): UseQuotesReturn {
       if (insertError) throw insertError;
       const cotizacionId = cabecera!.id;
 
+      // Actualizar dinero_cotizado en cliente_saldos
+      if (clientePrincipalId && (cabecera.total_final ?? cabecera.total_neto ?? 0) > 0) {
+        const monto = (cabecera.total_final ?? cabecera.total_neto ?? 0) as number;
+        console.log('🔄 Actualizando saldo para cotización:', { clienteId: clientePrincipalId, monto, total_final: cabecera.total_final, total_neto: cabecera.total_neto });
+
+        // Obtener el saldo más reciente
+        const { data: saldoActual } = await supabase
+          .from('cliente_saldos')
+          .select('id, dinero_cotizado')
+          .eq('cliente_id', clientePrincipalId)
+          .order('snapshot_date', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        console.log('Saldo actual:', saldoActual);
+        if (saldoActual) {
+          const nuevoDineroCotizado = (saldoActual.dinero_cotizado || 0) + monto;
+          console.log('Actualizando saldo existente:', { id: saldoActual.id, nuevoDineroCotizado });
+          await supabase
+            .from('cliente_saldos')
+            .update({ dinero_cotizado: nuevoDineroCotizado })
+            .eq('id', saldoActual.id);
+        } else {
+          console.log('Insertando nuevo saldo:', { clienteId: clientePrincipalId, monto });
+          await supabase
+            .from('cliente_saldos')
+            .insert({
+              cliente_id: clientePrincipalId,
+              snapshot_date: new Date().toISOString().split('T')[0],
+              pagado: 0,
+              pendiente: 0,
+              vencido: 0,
+              dinero_cotizado: monto
+            });
+        }
+      }
+
       // Insert items
       if (nuevaCotizacion.items.length > 0) {
         const itemsPayload = nuevaCotizacion.items.map(it => ({
@@ -499,7 +536,16 @@ export function useQuotes(): UseQuotesReturn {
       // Encontrar registro por folio (id en dominio == folio)
       const target = allQuotes.find(q => q.id === id);
       if (!target) throw new Error('Cotización no encontrada');
-  const updates: Database['public']['Tables']['cotizaciones']['Update'] = {};
+
+      // Obtener datos actuales antes de actualizar
+      const { data: oldQuote, error: oldError } = await supabase
+        .from('cotizaciones')
+        .select('cliente_principal_id, total_final, total_neto, estado')
+        .eq('folio', id)
+        .single();
+      if (oldError) throw oldError;
+
+      const updates: Database['public']['Tables']['cotizaciones']['Update'] = {};
       if (datosActualizados.estado) updates.estado = datosActualizados.estado;
       if (datosActualizados.condicionesComerciales) {
         updates.validez_dias = datosActualizados.condicionesComerciales.validezOferta;
@@ -511,8 +557,51 @@ export function useQuotes(): UseQuotesReturn {
       if (typeof datosActualizados.descuentoTotal === 'number') updates.total_descuento = datosActualizados.descuentoTotal;
       if (typeof datosActualizados.iva === 'number') updates.iva_monto = datosActualizados.iva;
       if (typeof datosActualizados.total === 'number') updates.total_final = datosActualizados.total;
-      const { error: updError } = await supabase.from('cotizaciones').update(updates).eq('folio', id);
+
+      const { data: updatedQuote, error: updError } = await supabase
+        .from('cotizaciones')
+        .update(updates)
+        .eq('folio', id)
+        .select('cliente_principal_id, total_final, total_neto, estado')
+        .single();
       if (updError) throw updError;
+
+      // Ajustar dinero_cotizado si cambió el total y la cotización no está aceptada
+      if (oldQuote && updatedQuote && oldQuote.estado !== 'aceptada' && updatedQuote.estado !== 'aceptada') {
+        const oldTotal = oldQuote.total_final ?? oldQuote.total_neto ?? 0;
+        const newTotal = updatedQuote.total_final ?? updatedQuote.total_neto ?? 0;
+        const difference = newTotal - oldTotal;
+
+        if (difference !== 0 && updatedQuote.cliente_principal_id) {
+          const { data: saldoActual } = await supabase
+            .from('cliente_saldos')
+            .select('id, dinero_cotizado')
+            .eq('cliente_id', updatedQuote.cliente_principal_id)
+            .order('snapshot_date', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+          if (saldoActual) {
+            const nuevoDineroCotizado = (saldoActual.dinero_cotizado || 0) + difference;
+            await supabase
+              .from('cliente_saldos')
+              .update({ dinero_cotizado: Math.max(0, nuevoDineroCotizado) })
+              .eq('id', saldoActual.id);
+          } else if (newTotal > 0) {
+            await supabase
+              .from('cliente_saldos')
+              .insert({
+                cliente_id: updatedQuote.cliente_principal_id,
+                snapshot_date: new Date().toISOString().split('T')[0],
+                pagado: 0,
+                pendiente: 0,
+                vencido: 0,
+                dinero_cotizado: newTotal
+              });
+          }
+        }
+      }
+
       return true;
     } catch (error) {
       console.error('Error updating quote:', error);
@@ -522,15 +611,37 @@ export function useQuotes(): UseQuotesReturn {
 
   const eliminarCotizacion = async (id: string): Promise<boolean> => {
     try {
-      // 1. Obtener id numérico real por folio
+      // 1. Obtener id numérico real por folio y datos para ajustar saldos
       const { data: cot, error: findErr } = await supabase
         .from('cotizaciones')
-        .select('id')
+        .select('id, cliente_principal_id, total_final, total_neto, estado')
         .eq('folio', id)
         .maybeSingle();
       if (findErr) throw findErr;
       if (!cot) throw new Error('Cotización no encontrada');
       const numericId = cot.id;
+
+      // Ajustar dinero_cotizado si la cotización no está aceptada
+      if (cot.estado !== 'aceptada' && cot.cliente_principal_id) {
+        const total = cot.total_final ?? cot.total_neto ?? 0;
+        if (total > 0) {
+          const { data: saldoActual } = await supabase
+            .from('cliente_saldos')
+            .select('id, dinero_cotizado')
+            .eq('cliente_id', cot.cliente_principal_id)
+            .order('snapshot_date', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+          if (saldoActual) {
+            const nuevoDineroCotizado = Math.max(0, (saldoActual.dinero_cotizado || 0) - total);
+            await supabase
+              .from('cliente_saldos')
+              .update({ dinero_cotizado: nuevoDineroCotizado })
+              .eq('id', saldoActual.id);
+          }
+        }
+      }
 
       // 2. Eliminar nota de venta asociada (y sus ítems)
       try {

@@ -6,6 +6,7 @@ import { Inter, JetBrains_Mono, Lexend } from "next/font/google";
 import { ThemeProvider } from "next-themes";
 import Script from "next/script";
 import { AuthInitializer } from "@/components/AuthInitializer";
+import { AuthProvider } from "@/contexts/AuthContext";
 
 // Fuente principal para texto general - muy profesional y legible
 const inter = Inter({ 
@@ -57,16 +58,18 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         />
       </head>
       <body className="antialiased">
-        <AuthInitializer />
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="light"
-          enableSystem
-          disableTransitionOnChange
-          storageKey="theme"
-        >
-          {children}
-        </ThemeProvider>
+        <AuthProvider>
+          <AuthInitializer />
+          <ThemeProvider
+            attribute="class"
+            defaultTheme="light"
+            enableSystem
+            disableTransitionOnChange
+            storageKey="theme"
+          >
+            {children}
+          </ThemeProvider>
+        </AuthProvider>
       </body>
     </html>
   );

@@ -24,7 +24,7 @@ import { FiShoppingCart } from 'react-icons/fi';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useQuotes } from '@/features/quotes/model/useQuotes';
 import { downloadFileFromResponse } from '@/lib/download';
-import { NotasVentaService } from '@/services/notasVentaService';
+import { NotasVentaService, SalesNoteRecord } from '@/services/notasVentaService';
 
 export default function QuoteDetailPage() {
   const params = useParams();
@@ -38,7 +38,7 @@ export default function QuoteDetailPage() {
   // Estado para exportar PDF
   const [exporting, setExporting] = React.useState(false);
   // Estado para la nota de venta correspondiente (si existe)
-  const [relatedSalesNote, setRelatedSalesNote] = React.useState<any>(null);
+  const [relatedSalesNote, setRelatedSalesNote] = React.useState<SalesNoteRecord | null>(null);
 
   // Buscar nota de venta correspondiente cuando la cotización esté aceptada
   React.useEffect(() => {

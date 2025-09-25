@@ -1,12 +1,8 @@
 import { supabase } from '../lib/supabase';
 import type { Database } from '@/lib/supabase';
 
-type CxcDocumento = Database['public']['Tables']['cxc_documentos']['Row'];
-type CxcDocumentoInsert = Database['public']['Tables']['cxc_documentos']['Insert'];
-type CxcPago = Database['public']['Tables']['cxc_pagos']['Row'];
+
 type CxcPagoInsert = Database['public']['Tables']['cxc_pagos']['Insert'];
-type CxcAplicacion = Database['public']['Tables']['cxc_aplicaciones']['Row'];
-type CxcAplicacionInsert = Database['public']['Tables']['cxc_aplicaciones']['Insert'];
 
 export class CxcService {
   // Crear un pago y aplicarlo a documentos

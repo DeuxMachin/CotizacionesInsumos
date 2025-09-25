@@ -16,10 +16,8 @@ import {
   FiFileText,
   FiEdit3,
   FiSave,
-  FiRotateCcw,
   FiHome,
   FiMessageSquare,
-  FiFlag,
   FiBox,
   FiChevronLeft,
   FiChevronRight,
@@ -28,7 +26,7 @@ import {
   FiPlus,
   FiTrendingUp
 } from 'react-icons/fi';
-import { Obra, EtapaObra, EstadoObra, ContactoObra, ObraContacto, REQUIRED_CARGOS } from '../types/obras';
+import { Obra, EtapaObra, EstadoObra,  ObraContacto, REQUIRED_CARGOS } from '../types/obras';
 import { Toast } from '@/shared/ui/Toast';
 import { useObraQuotes } from '@/hooks/useObraQuotes';
 import { PrestamoModal } from './payments/PrestamoModal';
@@ -55,8 +53,8 @@ export function ObraDetailPage({
   const [isEditPanelOpen, setIsEditPanelOpen] = useState(false);
   const [activeEditTab, setActiveEditTab] = useState<'datos' | 'contacto'>('datos');
   const [isPanelSaving, setIsPanelSaving] = useState(false);
-  // Estado editable (compartido por editor y acciones de progreso)
-  const [isEditing, setIsEditing] = useState(false); // Mantener para compatibilidad interna con progreso
+  // Estado editable 
+  const [isEditing, setIsEditing] = useState(false); 
   const [editedObra, setEditedObra] = useState<Obra>(obra);
   // Carousel index for 5 fixed cargos
   const [contactCarouselIndex, setContactCarouselIndex] = useState(0);
@@ -71,7 +69,7 @@ export function ObraDetailPage({
   const [isPagoModalOpen, setIsPagoModalOpen] = useState(false);
 
   // Obtener cotizaciones y estadísticas de la obra
-  const { quotes, salesNotes, stats, loading: quotesLoading, refetch: refetchObraData } = useObraQuotes(Number(obra.id));
+  const { quotes,  stats, loading: quotesLoading, refetch: refetchObraData } = useObraQuotes(Number(obra.id));
   
   useEffect(() => {
     setEditedObra(obra);

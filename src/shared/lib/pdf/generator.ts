@@ -271,13 +271,8 @@ export async function generatePDF(
   
   let browser: Awaited<ReturnType<typeof puppeteer.launch>> | null = null;
   try {
-    // Configuración para producción vs desarrollo
-    const isProduction = process.env.NODE_ENV === 'production';
-    
-    // Estrategia robusta multi-entorno:
-    // 1) Intentar con Chrome instalado del sistema (canal 'chrome') si no estamos en serverless
-    // 2) Intentar con Chromium descargado por puppeteer en postinstall
-    // 3) En producción/serverless, intentar con @sparticuz/chromium
+
+  
 
     // Preferimos headless por defecto
     const commonArgs = ['--no-sandbox', '--disable-setuid-sandbox', '--disable-web-security', '--hide-scrollbars'];

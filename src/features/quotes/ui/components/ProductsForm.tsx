@@ -13,16 +13,11 @@ import {
   FiShoppingCart,
   FiCheck,
   FiX,
-  FiTrendingDown,
-  FiFilter,
-  FiStar,
-  FiClock,
-  FiDollarSign,
   FiChevronUp,
   FiChevronDown
 } from 'react-icons/fi';
 import { QuoteItem } from '@/core/domain/quote/Quote';
-import { useProducts } from '../../model/useProducts';
+import { useProducts, Product } from '../../model/useProducts';
 
 interface ProductsFormProps {
   items: QuoteItem[];
@@ -592,7 +587,7 @@ export function ProductsForm({ items, onChange }: ProductsFormProps) {
     return subtotal * (1 - descuento / 100);
   };
 
-  const addProductToQuote = (product: any) => {
+  const addProductToQuote = (product: Product) => {
     const existingIndex = items.findIndex(item =>
       item.productId === product.id || item.codigo === (product.sku || `PROD-${product.id}`)
     );

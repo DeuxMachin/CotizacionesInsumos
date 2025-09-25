@@ -1,233 +1,192 @@
+// Endpoint de Pagos - implementación limpia
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
-import { getCurrentUser, getUserInfoForAudit } from '@/lib/auth-helpers';
+import { getCurrentUser } from '@/lib/auth-helpers';
 
+// ----- Utilidades de cálculo -----
+async function recalcSaldos(clienteId: number) {
+  // Total pagos
+  const { data: pagos, error: pagosErr } = await supabase
+    .from('cxc_pagos')
+    .select('monto_total')
+    .eq('cliente_id', clienteId);
+  if (pagosErr) throw pagosErr;
+  const totalPagos = (pagos || []).reduce((s, p) => s + (p.monto_total || 0), 0);
+
+  // Total notas de venta (todas) por cliente_principal_id
+  const { data: notas, error: notasErr } = await supabase
+    .from('notas_venta')
+    .select('total')
+    .eq('cliente_principal_id', clienteId);
+  if (notasErr) throw notasErr;
+  const totalNotas = (notas || []).reduce((s, n) => s + (n.total || 0), 0);
+
+  // Documentos abiertos (estado != pagado) para pendiente y vencido
+  const { data: docs, error: docsErr } = await supabase
+    .from('cxc_documentos')
+    .select('saldo_pendiente, fecha_vencimiento, estado')
+    .eq('cliente_id', clienteId)
+    .neq('estado', 'pagado');
+  if (docsErr) throw docsErr;
+
+  const hoy = new Date().toISOString().split('T')[0];
+  let pendiente = 0;
+  let vencido = 0;
+  for (const d of docs || []) {
+    const saldo = d.saldo_pendiente || 0;
+    pendiente += saldo;
+    if (d.fecha_vencimiento && d.fecha_vencimiento < hoy) vencido += saldo;
+  }
+
+  // Snapshot existente (sin upsert por falta de unique constraint)
+  const { data: existente, error: selErr } = await supabase
+    .from('cliente_saldos')
+    .select('id, dinero_cotizado')
+    .eq('cliente_id', clienteId)
+    .single();
+  if (selErr && selErr.code !== 'PGRST116') throw selErr; // ignorar no rows
+
+  const payload = {
+    cliente_id: clienteId,
+    pagado: totalNotas, // regla: suma total de todas las notas de venta (sin incluir pagos)
+    pendiente,
+    vencido,
+    dinero_cotizado: existente?.dinero_cotizado || 0,
+    snapshot_date: new Date().toISOString().split('T')[0]
+  };
+
+  console.log('[recalcSaldos] Calculando para cliente', clienteId, { totalPagos, totalNotas, pendiente, vencido, payload });
+
+  if (existente) {
+    const { error: updErr } = await supabase
+      .from('cliente_saldos')
+      .update(payload)
+      .eq('cliente_id', clienteId);
+    if (updErr) throw updErr;
+  } else {
+    const { error: insErr } = await supabase
+      .from('cliente_saldos')
+      .insert(payload);
+    if (insErr) throw insErr;
+  }
+  return payload;
+}
+
+async function aplicarPagoAFacturas(pagoId: number, clienteId: number, monto: number) {
+  const { data: docs, error: docsErr } = await supabase
+    .from('cxc_documentos')
+    .select('id, saldo_pendiente')
+    .eq('cliente_id', clienteId)
+    .neq('estado', 'pagado')
+    .gt('saldo_pendiente', 0)
+    .order('fecha_vencimiento', { ascending: true, nullsFirst: false });
+  if (docsErr) throw docsErr;
+
+  let restante = monto;
+  for (const d of docs || []) {
+    if (restante <= 0) break;
+    const aplicar = Math.min(restante, d.saldo_pendiente || 0);
+    if (aplicar <= 0) continue;
+
+    const { error: appErr } = await supabase
+      .from('cxc_aplicaciones')
+      .insert({ pago_id: pagoId, documento_id: d.id, monto_aplicado: aplicar });
+    if (appErr) throw appErr;
+
+    const nuevoSaldo = (d.saldo_pendiente || 0) - aplicar;
+    const nuevoEstado = nuevoSaldo <= 0 ? 'pagado' : 'parcial';
+    const { error: updErr } = await supabase
+      .from('cxc_documentos')
+      .update({ saldo_pendiente: Math.max(0, nuevoSaldo), estado: nuevoEstado })
+      .eq('id', d.id);
+    if (updErr) throw updErr;
+    restante -= aplicar;
+  }
+}
+
+// ----- Handlers -----
 export async function POST(request: NextRequest) {
   try {
-    // Verificar autenticación
     const user = await getCurrentUser(request);
-    if (!user?.id) {
-      return NextResponse.json(
-        { error: 'No autorizado' },
-        { status: 401 }
-      );
-    }
+    if (!user?.id) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
 
     const body = await request.json();
-    const {
-      cliente_id,
-      monto,
-      fecha_pago,
-      tipo_pago,
-      metodo_pago,
-      referencia,
-      descripcion,
-      notas
-    } = body;
+    const { cliente_id, monto, fecha_pago, metodo_pago, referencia, descripcion, notas } = body || {};
 
-    // Validaciones
-    if (!cliente_id || typeof cliente_id !== 'number') {
-      return NextResponse.json(
-        { error: 'ID de cliente requerido' },
-        { status: 400 }
-      );
+    if (typeof cliente_id !== 'number' || cliente_id <= 0) {
+      return NextResponse.json({ error: 'cliente_id inválido' }, { status: 400 });
     }
-
-    if (!monto || typeof monto !== 'number' || monto <= 0) {
-      return NextResponse.json(
-        { error: 'Monto válido requerido' },
-        { status: 400 }
-      );
+    if (typeof monto !== 'number' || monto <= 0) {
+      return NextResponse.json({ error: 'Monto inválido' }, { status: 400 });
     }
-
     if (!fecha_pago) {
-      return NextResponse.json(
-        { error: 'Fecha de pago requerida' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Fecha de pago requerida' }, { status: 400 });
     }
 
-    if (!tipo_pago || !['parcial', 'total', 'adelanto'].includes(tipo_pago)) {
-      return NextResponse.json(
-        { error: 'Tipo de pago inválido' },
-        { status: 400 }
-      );
-    }
-
-    if (!metodo_pago || !['efectivo', 'transferencia', 'cheque', 'tarjeta', 'otro'].includes(metodo_pago)) {
-      return NextResponse.json(
-        { error: 'Método de pago inválido' },
-        { status: 400 }
-      );
-    }
-
-    // Verificar que el cliente existe
-    const { data: cliente, error: clienteError } = await supabase
+    // Validar cliente
+    const { data: clienteRow, error: clienteErr } = await supabase
       .from('clientes')
-      .select('id, nombre_razon_social')
+      .select('id')
       .eq('id', cliente_id)
       .single();
-
-    if (clienteError || !cliente) {
-      return NextResponse.json(
-        { error: 'Cliente no encontrado' },
-        { status: 404 }
-      );
+    if (clienteErr || !clienteRow) {
+      return NextResponse.json({ error: 'Cliente no encontrado' }, { status: 404 });
     }
 
-    // Insertar el pago
-    const { data: pago, error: pagoError } = await supabase
-      .from('pagos')
+    // Insertar pago
+    const { data: pago, error: pagoErr } = await supabase
+      .from('cxc_pagos')
       .insert({
         cliente_id,
-        monto,
         fecha_pago,
-        tipo_pago,
-        metodo_pago,
+        monto_total: monto,
+        moneda: 'CLP',
+        metodo_pago: metodo_pago || null,
         referencia: referencia || null,
-        descripcion: descripcion || null,
-        notas: notas || null,
-        registrado_por: user.id
+        observacion: `${descripcion || ''} ${notas || ''}`.trim() || null,
+        created_by: user.id
       })
       .select()
       .single();
-
-    if (pagoError) {
-      console.error('Error creando pago:', pagoError);
-      return NextResponse.json(
-        { error: 'Error al registrar el pago' },
-        { status: 500 }
-      );
+    if (pagoErr || !pago) {
+      return NextResponse.json({ error: 'Error registrando pago' }, { status: 500 });
     }
 
-    // Registrar en audit log
-    await supabase
-      .from('audit_log')
-      .insert({
-        usuario_id: user.id,
-        evento: 'pago_registrado',
-        descripcion: `Pago registrado para cliente ${cliente.nombre_razon_social}`,
-        detalles: {
-          pago_id: pago.id,
-          cliente_id,
-          monto,
-          tipo_pago,
-          metodo_pago
-        },
-        tabla_afectada: 'pagos',
-        registro_id: pago.id.toString()
-      });
+    // Aplicar a documentos
+    await aplicarPagoAFacturas(pago.id, cliente_id, monto);
+    // Recalcular snapshot
+    const snapshot = await recalcSaldos(cliente_id);
 
-    // Actualizar saldos del cliente
-    // Primero obtener el saldo actual más reciente
-    const { data: saldoActual, error: saldoError } = await supabase
-      .from('cliente_saldos')
-      .select('id, pagado, pendiente, vencido')
-      .eq('cliente_id', cliente_id)
-      .order('snapshot_date', { ascending: false })
-      .limit(1)
-      .single();
-
-    if (saldoActual && !saldoError) {
-      // Actualizar el saldo existente
-      const nuevoPagado = saldoActual.pagado + monto;
-      const nuevoPendiente = Math.max(0, saldoActual.pendiente - monto);
-
-      const { error: updateSaldoError } = await supabase
-        .from('cliente_saldos')
-        .update({
-          pagado: nuevoPagado,
-          pendiente: nuevoPendiente,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', saldoActual.id);
-
-      if (updateSaldoError) {
-        console.error('Error actualizando saldo del cliente:', updateSaldoError);
-        // No fallar la operación completa por esto, solo loggear
-      }
-    } else {
-      // Si no hay saldo existente, crear uno nuevo con el pago
-      const { error: insertSaldoError } = await supabase
-        .from('cliente_saldos')
-        .insert({
-          cliente_id,
-          snapshot_date: new Date().toISOString().split('T')[0], // Fecha actual
-          pagado: monto,
-          pendiente: 0, // Asumir que este pago cubre todo lo pendiente inicialmente
-          vencido: 0
-        });
-
-      if (insertSaldoError) {
-        console.error('Error creando saldo inicial del cliente:', insertSaldoError);
-        // No fallar la operación completa por esto, solo loggear
-      }
-    }
-
-    return NextResponse.json({
-      success: true,
-      pago,
-      message: 'Pago registrado exitosamente'
-    });
-
+    return NextResponse.json({ success: true, pago, snapshot });
   } catch (error) {
-    console.error('Error en API pagos:', error);
-    return NextResponse.json(
-      { error: 'Error interno del servidor' },
-      { status: 500 }
-    );
+    console.error('[POST /api/pagos] Error:', error);
+    return NextResponse.json({ error: 'Error interno del servidor' }, { status: 500 });
   }
 }
 
 export async function GET(request: NextRequest) {
   try {
-    // Verificar autenticación
     const user = await getCurrentUser(request);
-    if (!user?.id) {
-      return NextResponse.json(
-        { error: 'No autorizado' },
-        { status: 401 }
-      );
-    }
+    if (!user?.id) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
 
     const { searchParams } = new URL(request.url);
-    const cliente_id = searchParams.get('cliente_id');
+    const clienteIdParam = searchParams.get('cliente_id');
+    if (!clienteIdParam) return NextResponse.json({ error: 'cliente_id requerido' }, { status: 400 });
+    const cliente_id = Number(clienteIdParam);
+    if (Number.isNaN(cliente_id)) return NextResponse.json({ error: 'cliente_id inválido' }, { status: 400 });
 
-    if (!cliente_id) {
-      return NextResponse.json(
-        { error: 'ID de cliente requerido' },
-        { status: 400 }
-      );
-    }
-
-    // Obtener pagos del cliente
     const { data: pagos, error } = await supabase
-      .from('pagos')
-      .select(`
-        *,
-        registrado_por_usuario:usuarios!pagos_registrado_por_fkey (
-          nombre,
-          apellido
-        )
-      `)
+      .from('cxc_pagos')
+      .select('*')
       .eq('cliente_id', cliente_id)
       .order('fecha_pago', { ascending: false });
-
     if (error) {
-      console.error('Error obteniendo pagos:', error);
-      return NextResponse.json(
-        { error: 'Error al obtener pagos' },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: 'Error obteniendo pagos' }, { status: 500 });
     }
 
-    return NextResponse.json({ pagos });
-
+    return NextResponse.json({ success: true, pagos });
   } catch (error) {
-    console.error('Error en API pagos GET:', error);
-    return NextResponse.json(
-      { error: 'Error interno del servidor' },
-      { status: 500 }
-    );
+    console.error('[GET /api/pagos] Error:', error);
+    return NextResponse.json({ error: 'Error interno del servidor' }, { status: 500 });
   }
 }

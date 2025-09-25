@@ -10,7 +10,6 @@ import {
   FiLogOut,
   FiHome,
   FiTarget,
-  FiShoppingCart,
   FiRefreshCw,
   FiTool,
   FiDollarSign,
@@ -18,7 +17,6 @@ import {
   FiChevronLeft,
   FiChevronRight,
   FiSearch,
-  FiFilter,
   FiDownload
 } from "react-icons/fi";
 import { AuditLogEntry } from "@/services/auditLogger";

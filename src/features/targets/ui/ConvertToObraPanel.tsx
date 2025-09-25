@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { FiHome, FiUser, FiBriefcase, FiMapPin, FiCalendar, FiSearch, FiX } from "react-icons/fi";
+import { FiHome, FiSearch } from "react-icons/fi";
 import { ClientesService } from "@/services/clientesService";
 import { getObrasService } from "@/features/obras/services";
 import { useAuth } from "@/features/auth/model/useAuth";
@@ -44,7 +44,7 @@ export function ConvertToObraPanel({ targetId, defaultDireccion, onClose, onConv
 
   // Contactos obligatorios (5 cargos fijos)
   const [contacts, setContacts] = useState<ObraContacto[]>(
-    REQUIRED_CARGOS.map((cargo, idx) => ({ cargo, nombre: '', telefono: '', email: '' }))
+    REQUIRED_CARGOS.map((cargo) => ({ cargo, nombre: '', telefono: '', email: '' }))
   );
 
   const [vendedores, setVendedores] = useState<Vendedor[]>([]);

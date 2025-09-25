@@ -7,11 +7,11 @@ type CotizacionClienteRow = Database['public']['Tables']['cotizacion_clientes'][
 type CotizacionDespachoRow = Database['public']['Tables']['cotizacion_despachos']['Row'];
 type ClienteRow = Database['public']['Tables']['clientes']['Row'];
 type UsuarioRow = Database['public']['Tables']['usuarios']['Row'];
-type ProductoRow = Database['public']['Tables']['productos']['Row'];
+
 
 export interface CotizacionAggregate {
 	cotizacion: CotizacionRow;
-	items: (CotizacionItemRow & { producto?: ProductoRow | null })[];
+	items: (CotizacionItemRow & { producto?: { id: number; sku: string | null; nombre: string; ficha_tecnica: string | null } | null })[];
 	clientes_adicionales: (CotizacionClienteRow & { cliente?: ClienteRow | null })[];
 	despacho?: CotizacionDespachoRow | null;
 	cliente_principal?: ClienteRow | null;
@@ -41,8 +41,8 @@ export function mapCotizacionToDomain(data: CotizacionAggregate): Quote {
 	};
 
 	const quoteItems: QuoteItem[] = items.map((it) => {
-		const anyItem: any = it as any;
-		const prod = anyItem.producto ?? anyItem.productos ?? null;
+		const itemWithProduct: CotizacionItemRow & { producto?: { id: number; sku: string | null; nombre: string; ficha_tecnica: string | null } | null; productos?: { id: number; sku: string | null; nombre: string; ficha_tecnica: string | null } | null } = it;
+		const prod = itemWithProduct.producto ?? itemWithProduct.productos ?? null;
 		return ({
 			id: it.id.toString(),
 			productId: it.producto_id || undefined,

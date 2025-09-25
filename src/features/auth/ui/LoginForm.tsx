@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "../model/useAuth";
 import { SecurityService } from "@/services/securityService";
 import { SecurityLogger } from "@/services/securityLogger";
-import { CSRFProtection, XSSProtection } from "@/services/csrfProtection";
+import {  XSSProtection } from "@/services/csrfProtection";
 import { FiMail, FiLock, FiEye, FiEyeOff, FiArrowRight, FiShield, FiAlertCircle, FiWifi, FiUserX } from "react-icons/fi";
 import { Logo } from "@/shared/ui/Logo";
 
@@ -23,7 +23,7 @@ export function LoginForm() {
   const [, setLockoutTime] = useState("");
 
   const { login } = useAuth();
-  const router = useRouter();
+
 
   // Validar formulario en tiempo real
   const validateForm = () => {

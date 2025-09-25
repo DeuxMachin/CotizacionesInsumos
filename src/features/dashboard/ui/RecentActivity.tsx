@@ -9,14 +9,13 @@ import {
   FiLogOut,
   FiHome,
   FiTarget,
-  FiShoppingCart,
   FiRefreshCw,
   FiTool,
   FiDollarSign,
   FiActivity
 } from "react-icons/fi";
 import { useAuditLog, formatRelativeTime } from '@/hooks/useAuditLog';
-import { AuditLogEntry } from "@/services/auditLogger";
+
 
 type ActivityIcon = "quote" | "approved" | "client" | "updated" | "login" | "logout" | "obra" | "target" | "sale" | "refresh" | "tool" | "dollar" | "activity";
 

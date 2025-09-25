@@ -5,11 +5,8 @@ import { useParams, useRouter } from 'next/navigation';
 import {
   FiArrowLeft,
   FiDownload,
-  FiEdit2,
   FiFileText,
   FiUser,
-  FiMapPin,
-  FiCalendar,
   FiDollarSign,
   FiPackage,
   FiTruck,
@@ -21,12 +18,11 @@ import {
 import { NotasVentaService, SalesNoteRecord, SalesNoteItemRow } from '@/services/notasVentaService';
 import { useQuotes } from '@/features/quotes/model/useQuotes';
 import { downloadFileFromResponse } from '@/lib/download';
-import { useAuth } from '@/features/auth/model/useAuth';
+
 
 export default function SalesNoteDetailPage() {
   const params = useParams();
   const router = useRouter();
-    const { user } = useAuth();
   const { formatMoney } = useQuotes();
 
   const noteId = params.id as string;

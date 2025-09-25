@@ -5,7 +5,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { generatePDF } from '@/shared/lib/pdf/generator';
-import type { Quote } from '@/core/domain/quote/Quote';
+import type { Quote, QuoteItem } from '@/core/domain/quote/Quote';
 
 export async function POST(request: NextRequest) {
   try {
@@ -24,7 +24,7 @@ export async function POST(request: NextRequest) {
     
   // Enriquecer items con ficha_técnica si faltara (preview/borrador)
   const items = Array.isArray(quoteData.items) ? quoteData.items : [];
-  const productIds = Array.from(new Set(items.map((it:any) => it?.productId).filter((v:any) => v != null))) as number[];
+  const productIds = Array.from(new Set(items.map((it: QuoteItem) => it?.productId).filter((v: number | undefined) => v != null))) as number[];
   let enrichedQuote = quoteData;
   try {
     if (productIds.length > 0) {
@@ -33,8 +33,8 @@ export async function POST(request: NextRequest) {
         .from('productos')
         .select('id, ficha_tecnica')
         .in('id', productIds);
-      const fichaMap = new Map<number, string | undefined>((productos || []).map((p:any) => [p.id, p.ficha_tecnica || undefined]));
-      const newItems = items.map((it:any) => {
+      const fichaMap = new Map<number, string | undefined>((productos || []).map((p: { id: number; ficha_tecnica: string | null }) => [p.id, p.ficha_tecnica || undefined]));
+      const newItems = items.map((it: QuoteItem) => {
         if (it.fichaTecnica || !it.productId) return it;
         const ficha = fichaMap.get(Number(it.productId));
         return ficha ? { ...it, fichaTecnica: ficha } : it;

@@ -5,7 +5,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { generatePDF } from '@/shared/lib/pdf/generator';
-import { NotasVentaService } from '@/services/notasVentaService';
+import { NotasVentaService, SalesNoteItemRow } from '@/services/notasVentaService';
 import type { SalesNoteRecord } from '@/services/notasVentaService';
 
 export async function GET(
@@ -61,7 +61,7 @@ export async function GET(
 }
 
 // Función para convertir el formato de nota de venta al formato Quote esperado por generatePDF
-async function convertSalesNoteToPDFData(salesNote: SalesNoteRecord, noteItems: any[]) {
+async function convertSalesNoteToPDFData(salesNote: SalesNoteRecord, noteItems: (SalesNoteItemRow & { productos?: { ficha_tecnica: string | null } | null })[]) {
   // Adaptar la estructura de datos de nota de venta al formato Quote esperado por generatePDF
   const pdfData = {
     id: salesNote.id.toString(),
@@ -86,10 +86,10 @@ async function convertSalesNoteToPDFData(salesNote: SalesNoteRecord, noteItems: 
     vendedorNombre: 'Vendedor', // TODO: Obtener nombre real del vendedor
     items: noteItems.map((item) => ({
       id: item.id.toString(),
-      productId: item.producto_id,
+      productId: item.producto_id || undefined,
       codigo: item.producto_id?.toString() || '',
-      descripcion: item.descripcion,
-      unidad: item.unidad,
+      descripcion: item.descripcion || '',
+      unidad: item.unidad || '',
       cantidad: item.cantidad,
       precioUnitario: item.precio_unitario_neto,
       descuento: item.descuento_pct || 0,

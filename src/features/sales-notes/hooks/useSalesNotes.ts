@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
 import { NotasVentaService, SalesNoteRecord, SalesNoteItemRow } from '@/services/notasVentaService';
+import type { Quote, QuoteItem } from '@/core/domain/quote/Quote';
 
 export function useSalesNotes() {
   const [loading, setLoading] = useState(false);
@@ -51,11 +52,11 @@ export function useSalesNotes() {
   }, []);
 
   const convertQuoteToSalesNote = useCallback(async (
-    quote: any,
+    quote: Quote,
     options: {
       formaPago?: string;
       cotizacionDbId?: number;
-      itemsOverride?: any[];
+      itemsOverride?: QuoteItem[];
       finalizarInmediatamente?: boolean;
     } = {}
   ): Promise<void> => {
@@ -86,12 +87,28 @@ export function useSalesNotes() {
     }
   }, []);
 
+  const getSalesNotesByClient = useCallback(async (clienteId: number): Promise<SalesNoteRecord[]> => {
+    try {
+      setLoading(true);
+      setError(null);
+      const notes = await NotasVentaService.getByClient(clienteId);
+      return notes;
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : 'Error desconocido';
+      setError(msg);
+      throw e;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   return {
     loading,
     error,
     getAllSalesNotes,
     getSalesNoteById,
     getSalesNoteItems,
+    getSalesNotesByClient,
     convertQuoteToSalesNote,
     confirmSalesNote,
     clearError: () => setError(null)

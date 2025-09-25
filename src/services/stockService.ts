@@ -4,13 +4,7 @@ import type { Database } from '../lib/supabase'
 type Producto = Database['public']['Tables']['productos']['Row']
 type ProductoTipo = Database['public']['Tables']['producto_tipos']['Row']
 
-type StockItem = {
-  bodega_id: number
-  bodega_nombre: string
-  ubicacion: string | null
-  stock_actual: number
-  total_valorizado: number
-}
+
 
 export interface InventoryItem {
   id: number

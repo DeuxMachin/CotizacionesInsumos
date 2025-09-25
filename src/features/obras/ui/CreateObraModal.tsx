@@ -89,11 +89,6 @@ export function CreateObraModal({
   const [showClienteDropdown, setShowClienteDropdown] = useState(false);
   const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Contacto principal
-  const [contactoNombre, setContactoNombre] = useState('');
-  const [contactoCargo, setContactoCargo] = useState('');
-  const [contactoTelefono, setContactoTelefono] = useState('');
-  const [contactoEmail, setContactoEmail] = useState('');
   // Contactos obligatorios (5 cargos fijos)
   const [contacts, setContacts] = useState<ObraContacto[]>(
     REQUIRED_CARGOS.map((cargo, idx) => ({ cargo, nombre: idx === 0 ? '' : '', telefono: '', email: '' }))
@@ -227,9 +222,8 @@ export function CreateObraModal({
   // Validación por paso con resumen de errores UX
   const validateStep = (step: 1 | 2 | 3 | 4): boolean => {
     // Ejecuta la validación completa para mantener el estado de errores
-    const okAll = validateForm();
+    validateForm();
     const msgs: string[] = [];
-    const e = errors; // usar después de setErrors puede estar desfasado; generaremos mensajes de forma determinista también con los valores actuales
 
     // Construir mensajes por paso usando el estado actual + reglas
     if (step === 1) {
@@ -243,7 +237,7 @@ export function CreateObraModal({
     }
     if (step === 3) {
       contacts.forEach((c, i) => {
-        if (!c.nombre || !c.nombre.trim()) msgs.push(`• Contacto "${REQUIRED_CARGOS[i]}": nombre requerido o marque "No existe"`);
+        if (!c.nombre || !c.nombre.trim()) msgs.push(`• Contacto &quot;${REQUIRED_CARGOS[i]}&quot;: nombre requerido o marque "No existe"`);
       });
     }
     if (step === 4) {
@@ -330,10 +324,6 @@ export function CreateObraModal({
   setShowClienteDropdown(false);
   setTipoObraId(undefined);
   setTamanoObraId(undefined);
-    setContactoNombre('');
-    setContactoCargo('');
-    setContactoTelefono('');
-    setContactoEmail('');
   setContacts(REQUIRED_CARGOS.map((cargo) => ({ cargo, nombre: '', telefono: '', email: '' })));
   // sin whatsapp separado
     setErrors({});
@@ -857,7 +847,7 @@ export function CreateObraModal({
                   </h3>
                   <div className="flex items-center justify-between mb-2">
                     <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                      Los cargos están fijos y no se pueden cambiar. Si un contacto no existe, presiona "No existe" para continuar.
+                      Los cargos están fijos y no se pueden cambiar. Si un contacto no existe, presiona &quot;No existe&quot; para continuar.
                     </p>
                     <span className="text-xs px-2 py-0.5 rounded-full" style={{ backgroundColor: 'var(--bg-secondary)', color: 'var(--text-secondary)', border: '1px solid var(--border)' }}>
                       {contacts.filter(c => (c.nombre || '').trim()).length}/5 completos

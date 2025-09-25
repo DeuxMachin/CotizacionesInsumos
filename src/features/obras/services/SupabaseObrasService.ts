@@ -4,122 +4,7 @@ import { supabase, type Database } from "@/lib/supabase";
 import type { IObrasService } from "./ObrasService";
 import type { Obra, EstadoObra, FiltroObras, EstadisticasObras, EtapaObra, ObraContacto } from "../types/obras";
 import { REQUIRED_CARGOS } from "../types/obras";
-
-type ObrasRow = Database["public"]["Tables"]["obras"]["Row"];
-
-type JoinedObra = ObrasRow & {
-  cliente?: {
-    id: number;
-    rut: string | null;
-    nombre_razon_social: string | null;
-    telefono: string | null;
-    celular: string | null;
-    email_pago: string | null;
-    direccion: string | null;
-    comuna: string | null;
-    ciudad: string | null;
-  } | null;
-  vendedor?: {
-    id: string;
-    nombre: string | null;
-    apellido: string | null;
-    email: string;
-  } | null;
-  contactos?: Array<{
-    id: number;
-    nombre: string | null;
-    cargo: string | null;
-    telefono: string | null;
-    email: string | null;
-    es_principal: boolean;
-  } > | null;
-  tipo?: { id: number; nombre: string } | null;
-  tamano?: { id: number; nombre: string } | null;
-  notas_venta?: Array<{ total: number }> | null;
-};
-
-// Tipo intermedio para el resultado crudo de Supabase (con alias de relaciones)
-type SupabaseJoinedObra = {
-  id: number; nombre: string; direccion: string | null; comuna: string | null; ciudad: string | null; vendedor_id: string | null; cliente_id: number | null; tipo_obra_id: number | null; tamano_obra_id: number | null;
-  estado?: string | null; etapa_actual?: string | null; descripcion?: string | null; fecha_inicio?: string | null; fecha_estimada_fin?: string | null; fecha_ultimo_contacto?: string | null; valor_estimado?: number | null; material_vendido?: number | null; pendiente?: number | null; proximo_seguimiento?: string | null; notas?: string | null; created_at?: string | null; updated_at?: string | null;
-  cliente?: { id: number; rut: string | null; nombre_razon_social: string | null; telefono: string | null; celular: string | null; email_pago: string | null; direccion: string | null; comuna: string | null; ciudad: string | null } | null;
-  vendedor?: { id: string; nombre: string | null; apellido: string | null; email: string } | null;
-  contactos?: Array<{ id: number; nombre: string | null; cargo: string | null; telefono: string | null; email: string | null; es_principal: boolean }> | null;
-  tipo?: { id: number; nombre: string } | null;
-  tamano?: { id: number; nombre: string } | null;
-  notas_venta?: Array<{ total: number }> | null;
-};
-
-function safeDate(d?: string | null, fallback?: Date): Date | undefined {
-  return d ? new Date(d) : fallback;
-}
-
-function toEstado(value?: string | null): EstadoObra {
-  const v = (value || '').toLowerCase();
-  const allowed: EstadoObra[] = ['planificacion','activa','pausada','finalizada','cancelada','sin_contacto'];
-  return (allowed as string[]).includes(v) ? (v as EstadoObra) : 'planificacion';
-}
-
-function toEtapa(value?: string | null): EtapaObra {
-  const v = (value || '').toLowerCase();
-  const allowed: EtapaObra[] = ['fundacion','estructura','albanileria','instalaciones','terminaciones','entrega'];
-  return (allowed as string[]).includes(v) ? (v as EtapaObra) : 'fundacion';
-}
-
-function mapDbRowToObra(row: JoinedObra): Obra {
-  const contactos = (row.contactos || []).map(c => ({
-    nombre: c.nombre || '',
-    cargo: c.cargo || '',
-    telefono: c.telefono || '',
-    email: c.email || undefined,
-    es_principal: !!c.es_principal,
-  } as ObraContacto));
-  const principal = contactos.find(c => c.es_principal) || contactos[0];
-  const cliente = row.cliente;
-  const vendedor = row.vendedor;
-  const nombreVendedor = [vendedor?.nombre, vendedor?.apellido].filter(Boolean).join(' ') || (vendedor?.email || '');
-
-  return {
-    id: String(row.id),
-    nombreEmpresa: row.nombre,
-    constructora: {
-      nombre: cliente?.nombre_razon_social || '',
-      rut: cliente?.rut || '',
-      telefono: cliente?.telefono || cliente?.celular || '',
-      email: cliente?.email_pago || undefined,
-      direccion: cliente?.direccion || undefined,
-      contactoPrincipal: {
-        nombre: principal?.nombre || '',
-        cargo: principal?.cargo || '',
-        telefono: principal?.telefono || '',
-        email: principal?.email || undefined,
-      },
-    },
-  vendedorAsignado: row.vendedor_id ?? '',
-    nombreVendedor,
-    estado: toEstado(row.estado ?? null),
-    etapaActual: toEtapa(row.etapa_actual ?? null),
-    etapasCompletadas: [],
-    descripcion: row.descripcion || undefined,
-    direccionObra: [row.direccion, row.comuna, row.ciudad].filter(Boolean).join(', '),
-    comuna: row.comuna ?? undefined,
-    ciudad: row.ciudad ?? undefined,
-    fechaInicio: safeDate(row.fecha_inicio, new Date())!,
-    fechaEstimadaFin: safeDate(row.fecha_estimada_fin),
-    fechaUltimoContacto: safeDate(row.fecha_ultimo_contacto, new Date())!,
-    valorEstimado: row.valor_estimado ?? undefined,
-    materialVendido: (row.notas_venta || []).reduce((sum: number, note: any) => sum + (note.total || 0), 0),
-    pendiente: row.pendiente ?? 0,
-    proximoSeguimiento: safeDate(row.proximo_seguimiento),
-    fechaCreacion: safeDate(row.created_at, new Date())!,
-    fechaActualizacion: safeDate(row.updated_at, new Date())!,
-    notas: row.notas || undefined,
-    clienteId: row.cliente_id ?? undefined,
-    tipoObraId: row.tipo_obra_id ?? undefined,
-    tamanoObraId: row.tamano_obra_id ?? undefined,
-    contactos,
-  };
-}
+import { mapSupabaseObra, type SupabaseJoinedObra } from "../model/obraMapper";
 
 export class SupabaseObrasService implements IObrasService {
   async getObras(filtros: FiltroObras, userId?: string, isAdmin?: boolean): Promise<Obra[]> {
@@ -141,9 +26,9 @@ export class SupabaseObrasService implements IObrasService {
       query = query.eq("vendedor_id", userId);
     }
 
-  const { data, error } = await query;
+    const { data, error } = await query;
     if (error) throw error;
-  const obras = (data ?? []).map((r) => mapDbRowToObra((r as unknown as SupabaseJoinedObra) as JoinedObra));
+    const obras = (data ?? []).map((r) => mapSupabaseObra(r as unknown as SupabaseJoinedObra));
 
     // Apply client-side filters for fields not present in DB
     let filtered = obras;
@@ -195,7 +80,7 @@ export class SupabaseObrasService implements IObrasService {
       if (error.code === "PGRST116" /* not found */) return null;
       throw error;
     }
-  return data ? mapDbRowToObra((data as unknown as SupabaseJoinedObra) as JoinedObra) : null;
+    return data ? mapSupabaseObra(data as unknown as SupabaseJoinedObra) : null;
   }
 
   getEstadisticas(obras: Obra[]): EstadisticasObras {

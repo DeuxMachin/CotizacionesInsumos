@@ -119,7 +119,7 @@ export async function GET(request: NextRequest) {
     });
 
     // Productos más vendidos (mock usando productos disponibles)
-    const topProductos = productos.slice(0, 5).map((producto, index) => ({
+    const topProductos = productos.slice(0, 5).map((producto) => ({
       id: producto.id,
       nombre: producto.nombre,
       cantidad: Math.floor(Math.random() * 100) + 20, // Mock data

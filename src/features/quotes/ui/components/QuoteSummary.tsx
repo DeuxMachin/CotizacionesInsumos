@@ -62,7 +62,7 @@ export function QuoteSummary({ formData, totals, formatMoney, onChangeGlobalDisc
     formData: FormData,
     totalsCalc: { subtotal: number; descuentoTotal: number; iva: number; total: number; lineDiscountTotal?: number; globalDiscountAmount?: number }
   ): Quote => {
-    const vendedorNombre = [user?.nombre, (user as any)?.apellido].filter(Boolean).join(' ') || user?.email || 'Usuario';
+    const vendedorNombre = [user?.nombre, user?.apellido].filter(Boolean).join(' ') || user?.email || 'Usuario';
     return {
       id: 'preview',
       numero: `PREV-${Date.now()}`,

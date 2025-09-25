@@ -63,6 +63,7 @@ export interface SalesNoteRecord extends SalesNoteInput {
 // Precise row types from Supabase schema
 export type SalesNoteRow = Database['public']['Tables']['notas_venta']['Row'];
 export type SalesNoteItemRow = Database['public']['Tables']['nota_venta_items']['Row'];
+type ProductJoin = { id: number; nombre: string; ficha_tecnica: string | null };
 
 export class NotasVentaService {
   // Columnas reales según DDL (evita usar columnas antiguas como forma_pago)
@@ -239,7 +240,7 @@ export class NotasVentaService {
         // Actualizar dinero_cotizado en cliente_saldos
         const { data: saldoActual } = await supabase
           .from('cliente_saldos')
-          .select('id, dinero_cotizado, pendiente')
+          .select('id, dinero_cotizado, pendiente, pagado')
           .eq('cliente_id', clienteId)
           .order('snapshot_date', { ascending: false })
           .limit(1)
@@ -255,7 +256,8 @@ export class NotasVentaService {
             dineroCotizadoActual: saldoActual.dinero_cotizado,
             nuevoCotizado,
             pendienteActual: saldoActual.pendiente,
-            nuevoPendiente
+            nuevoPendiente,
+            pagadoActual: saldoActual.pagado
           });
 
           const { error: saldoError } = await supabase
@@ -263,19 +265,21 @@ export class NotasVentaService {
             .update({
               dinero_cotizado: nuevoCotizado,
               pendiente: nuevoPendiente
+              // pagado no se toca aquí, solo se actualiza con pagos
             })
             .eq('id', saldoActual.id);
           if (saldoError) {
             console.error('[NotasVentaService.create] Error actualizando cliente_saldos', saldoError);
             throw new Error(`Fallo al actualizar saldos del cliente: ${saldoError.message}`);
+          } else {
+            console.log('[NotasVentaService.create] cliente_saldos actualizado exitosamente:', { id: saldoActual.id, pendiente: nuevoPendiente });
           }
         } else {
-          // Si no existe registro en cliente_saldos, crear uno con dinero_cotizado = 0
-          // (ya que la cotización se convirtió a venta, el dinero ya no está cotizado)
+          // Si no existe registro en cliente_saldos, crear uno con pagado = 0
           const nuevoSaldo = {
             cliente_id: clienteId,
             snapshot_date: new Date().toISOString().split('T')[0],
-            pagado: 0,
+            pagado: 0, // Pagos acumulados, inicia en 0
             pendiente: total, // El monto de la venta pasa a pendiente
             vencido: 0,
             dinero_cotizado: 0 // Ya no está cotizado
@@ -288,6 +292,8 @@ export class NotasVentaService {
           if (saldoError) {
             console.error('[NotasVentaService.create] Error creando registro en cliente_saldos', saldoError);
             throw new Error(`Fallo al crear registro de saldos del cliente: ${saldoError.message}`);
+          } else {
+            console.log('[NotasVentaService.create] cliente_saldos creado exitosamente:', nuevoSaldo);
           }
         }
       }
@@ -322,7 +328,7 @@ export class NotasVentaService {
       .eq('nota_venta_id', notaVentaId)
       .order('id', { ascending: true });
     if (error) throw error;
-  return data as (SalesNoteItemRow & { productos?: any })[];
+  return data as (SalesNoteItemRow & { productos?: ProductJoin })[];
   }
 
   static async addItem(notaVentaId: number, item: SalesNoteItemInput) {
@@ -517,6 +523,17 @@ export class NotasVentaService {
     const { data, error } = await supabase
       .from('notas_venta')
       .select(this.SELECT_COLS)
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+    return data as unknown as SalesNoteRecord[];
+  }
+
+  static async getByClient(clienteId: number): Promise<SalesNoteRecord[]> {
+    const { data, error } = await supabase
+      .from('notas_venta')
+      .select(this.SELECT_COLS)
+      .eq('cliente_principal_id', clienteId)
       .order('created_at', { ascending: false });
 
     if (error) throw error;
