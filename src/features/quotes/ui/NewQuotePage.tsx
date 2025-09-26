@@ -483,15 +483,16 @@ export function NewQuotePage() {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="flex flex-col lg:flex-row gap-8">
-          {/* Sidebar Moderno */}
-          <div className="lg:w-80">
-            <div className="rounded-xl shadow-sm p-6 sticky top-8" style={{ backgroundColor: 'var(--card-bg)', border: '1px solid var(--border-subtle)' }}>
-              <h3 className="text-lg font-semibold mb-6" style={{ color: 'var(--text-primary)' }}>
-                Progreso de la Cotización
-              </h3>
+        {/* Progreso horizontal y compacto */}
+        <div>
+          <div className="text-center mb-3">
+            <h3 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>Pasos de cotización</h3>
+            <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>Sigue el proceso para completar la cotización</p>
+          </div>
 
-              <div className="space-y-4">
+          <div className="rounded-xl shadow-sm p-3 sm:p-4 mb-6" style={{ backgroundColor: 'var(--card-bg)', border: '1px solid var(--border-subtle)' }}>
+            <div className="flex items-center justify-center">
+              <div className="flex items-center gap-3 sm:gap-4 overflow-x-auto max-w-full px-2">
                 {STEPS.map((step, index) => {
                   const Icon = step.icon;
                   const isActive = currentStep === step.id;
@@ -500,113 +501,50 @@ export function NewQuotePage() {
                   const isAccessible = index === 0 || isStepCompleted(STEPS[index - 1].id as FormStep);
 
                   return (
-                    <div key={step.id} className="relative">
-                      {/* Conector entre pasos */}
-                      {index < STEPS.length - 1 && (
-                        <div
-                          className="absolute left-6 top-12 w-0.5 h-8 transition-colors"
-                          style={{
-                            backgroundColor: isCompleted ? step.color : '#E5E7EB'
-                          }}
-                        />
-                      )}
-
+                    <div key={step.id} className="flex items-center min-w-max">
                       <button
                         onClick={() => isAccessible && handleStepChange(step.id as FormStep)}
                         disabled={!isAccessible}
-                        className={`w-full text-left p-4 rounded-lg transition-all duration-200 ${!isAccessible ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
-                        style={{
-                          border: '2px solid',
-                          borderColor: isActive
-                            ? 'var(--info)'
-                            : isCompleted
-                            ? 'var(--success)'
-                            : 'var(--border-subtle)',
-                          backgroundColor: isActive
-                            ? 'var(--info-bg)'
-                            : isCompleted
-                            ? 'var(--success-bg)'
-                            : 'var(--bg-secondary)'
-                        }}
+                        className={`flex flex-col items-center justify-center px-2 py-1 rounded-md text-xs ${!isAccessible ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                        title={step.description}
                       >
-                        <div className="flex items-start gap-4">
-                          <div
-                            className={`flex items-center justify-center w-12 h-12 rounded-full transition-all duration-200 ${
-                              isCompleted
-                                ? 'bg-green-500 text-white'
-                                : isActive
-                                ? 'bg-blue-500 text-white'
-                                : hasErrors
-                                ? 'bg-red-500 text-white'
-                                : 'bg-slate-200 dark:bg-slate-600 text-slate-600 dark:text-slate-400'
-                            }`}
-                          >
-                            {isCompleted ? (
-                              <FiCheck className="w-6 h-6" />
-                            ) : hasErrors ? (
-                              <FiAlertCircle className="w-6 h-6" />
-                            ) : (
-                              <Icon className="w-6 h-6" />
-                            )}
-                          </div>
-
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 mb-1">
-                              <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
-                                {step.label}
-                              </span>
-                              {step.required && (
-                                <span className="text-red-500 text-xs">*</span>
-                              )}
-                              {!isAccessible && (
-                                <FiClock className="w-3 h-3" style={{ color: 'var(--text-muted)' }} />
-                              )}
-                            </div>
-                            <p className="text-xs leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
-                              {step.description}
-                            </p>
-                            {hasErrors && (
-                              <div className="flex items-center gap-1 mt-2">
-                                <FiAlertCircle className="w-3 h-3 text-red-500" />
-                                <span className="text-xs" style={{ color: 'var(--danger-text)' }}>
-                                  {errors[step.id]?.length} error(es)
-                                </span>
-                              </div>
-                            )}
-                          </div>
-
-                          <FiChevronRight className={`w-5 h-5 transition-transform ${
-                            isActive ? 'rotate-90 text-blue-500' : 'text-slate-400'
-                          }`} />
+                        <div
+                          className={`flex items-center justify-center w-8 h-8 sm:w-9 sm:h-9 rounded-full border-2 transition-all ${
+                            isCompleted
+                              ? 'bg-green-500 border-green-500 text-white'
+                              : isActive
+                              ? 'bg-blue-500 border-blue-500 text-white'
+                              : hasErrors
+                              ? 'bg-red-500 border-red-500 text-white'
+                              : 'bg-slate-200 dark:bg-slate-600 border-slate-300 dark:border-slate-500 text-slate-600 dark:text-slate-300'
+                          }`}
+                        >
+                          {isCompleted ? (
+                            <FiCheck className="w-4 h-4" />
+                          ) : hasErrors ? (
+                            <FiAlertCircle className="w-4 h-4" />
+                          ) : (
+                            <Icon className="w-4 h-4" />
+                          )}
                         </div>
+                        <span className="mt-1 font-medium" style={{ color: 'var(--text-primary)' }}>
+                          {step.label}
+                        </span>
                       </button>
+
+                      {/* Conector horizontal */}
+                      {index < STEPS.length - 1 && (
+                        <div className="mx-2 sm:mx-3 h-0.5 w-6 sm:w-10 rounded" style={{ backgroundColor: isStepCompleted(STEPS[index].id as FormStep) ? step.color : 'var(--border-subtle)' }} />
+                      )}
                     </div>
                   );
                 })}
               </div>
-
-              {/* Resumen del progreso */}
-              <div className="mt-6 pt-6" style={{ borderTop: '1px solid var(--border-subtle)' }}>
-                <div className="flex items-center justify-between text-sm">
-                  <span style={{ color: 'var(--text-secondary)' }}>Progreso</span>
-                  <span className="font-medium" style={{ color: 'var(--text-primary)' }}>
-                    {STEPS.filter(step => isStepCompleted(step.id as FormStep)).length} de {STEPS.length}
-                  </span>
-                </div>
-                <div className="mt-2 bg-slate-200 dark:bg-slate-600 rounded-full h-2">
-                  <div
-                    className="bg-blue-500 h-2 rounded-full transition-all duration-300"
-                    style={{
-                      width: `${(STEPS.filter(step => isStepCompleted(step.id as FormStep)).length / STEPS.length) * 100}%`
-                    }}
-                  />
-                </div>
-              </div>
             </div>
           </div>
 
-          {/* Contenido Principal */}
-          <div className="flex-1">
+          {/* Contenido Principal (full width) */}
+          <div>
             <div className="rounded-xl shadow-sm overflow-hidden" style={{ backgroundColor: 'var(--card-bg)', border: '1px solid var(--border-subtle)' }}>
               {/* Header del paso actual */}
               <div className="px-6 py-4" style={{ borderBottom: '1px solid var(--border-subtle)' }}>
@@ -735,8 +673,8 @@ export function NewQuotePage() {
                   )}
                 </div>
               </div>
-            </div>
           </div>
+        </div>
         </div>
       </div>
       {/* Modal de envío */}
