@@ -34,9 +34,23 @@ function ConvertQuoteContent() {
   // Verificar si la cotización ya fue convertida
   useEffect(() => {
     if (quote && quote.estado === 'aceptada') {
-      // Si ya está aceptada, redirigir a la lista de notas de venta
-      alert('Esta cotización ya fue convertida a nota de venta.');
-      router.push('/dashboard/notas-venta');
+      // Buscar si ya existe una nota de venta para esta cotización
+      const checkExistingNote = async () => {
+        try {
+          const cotizacionNumericId = await NotasVentaService.getCotizacionNumericIdByFolio(quote.id);
+          if (cotizacionNumericId) {
+            const existingNote = await NotasVentaService.getByCotizacionId(cotizacionNumericId);
+            if (existingNote) {
+              // Si ya existe una nota de venta, redirigir a la lista de notas de venta
+              alert('Esta cotización ya fue convertida a nota de venta.');
+              router.push('/dashboard/notas-venta');
+            }
+          }
+        } catch (error) {
+          console.warn('Error verificando nota de venta existente:', error);
+        }
+      };
+      checkExistingNote();
     }
   }, [quote, router]);
 
@@ -73,12 +87,15 @@ function ConvertQuoteContent() {
         .eq('rut', quote.cliente.rut)
         .single();
 
-      if (clienteError || !clienteData) {
-        console.error('Error buscando cliente:', { clienteError, rut: quote.cliente.rut });
-        throw new Error(`No se pudo encontrar el cliente con RUT ${quote.cliente.rut}. Error: ${clienteError?.message || 'Cliente no encontrado'}`);
-      }
-
       console.log('Cliente encontrado:', clienteData);
+
+      console.log('Convirtiendo cotización:', {
+        quoteId: quote.id,
+        cotizacionNumericId,
+        clienteData,
+        numeroSerie,
+        quoteVendedorId: quote.vendedorId
+      });
 
       console.log('Convirtiendo cotización:', {
         quoteId: quote.id,
@@ -99,7 +116,7 @@ function ConvertQuoteContent() {
       const createdNote = await NotasVentaService.convertFromQuote(quote, {
         formaPago: formaPago || undefined,
         cotizacionDbId: cotizacionNumericId || undefined,
-        clientePrincipalId: clienteData.id,
+        clientePrincipalId: clienteData!.id,
         obraId: obraId || undefined,
         itemsOverride: selectedItems,
         finalizarInmediatamente: false, // Crear con estado "creada", no "confirmada"
@@ -132,6 +149,20 @@ function ConvertQuoteContent() {
           } else {
             console.log(`Actualizado material_vendido de la obra ${obraId}: ${currentMaterialVendido} -> ${newMaterialVendido}`);
           }
+        }
+      }
+
+      // Cambiar el estado de la cotización a 'aceptada' si no lo está ya
+      if (quote.estado !== 'aceptada') {
+        const { error: updateQuoteError } = await supabase
+          .from('cotizaciones')
+          .update({ estado: 'aceptada' })
+          .eq('id', cotizacionNumericId);
+
+        if (updateQuoteError) {
+          console.warn('Error actualizando estado de la cotización:', updateQuoteError);
+        } else {
+          console.log('Cotización actualizada a estado aceptada');
         }
       }
 

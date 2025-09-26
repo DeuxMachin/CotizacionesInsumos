@@ -16,7 +16,10 @@ export class ClientesService {
         cliente_tipos:cliente_tipo_id (
           id,
           nombre
-        )
+        ),
+        cliente_saldos:cliente_saldos!cliente_saldos_cliente_id_fkey (
+          id, snapshot_date, pagado, pendiente, vencido, dinero_cotizado
+        ).order(snapshot_date.desc)
       `)
       .order('nombre_razon_social')
 

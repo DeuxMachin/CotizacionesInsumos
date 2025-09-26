@@ -80,6 +80,8 @@ export function ClientsPage() {
   interface QuoteRow { cliente_principal_id?: number | null; total_final?: number | null; total_neto?: number | null; estado?: string | null; }
   const [quotesAgg, setQuotesAgg] = useState<Record<number, QuoteAgg>>({});
   const [, setQuotesLoading] = useState(false);
+    const [salesNotesTotal, setSalesNotesTotal] = useState(0); // Total vendido (fn_total_ventas_nv o fallback)
+  const [ventasMethod, setVentasMethod] = useState<'rpc' | 'fallback' | null>(null);
 
   // Fetch de clientes
   useEffect(() => {
@@ -131,6 +133,53 @@ export function ClientsPage() {
     loadQuotes();
     return () => { cancelled = true; };
   }, []);
+
+  // Cargar total vendido desde función Postgres (RPC) o fallback
+  useEffect(() => {
+    let cancelled = false;
+    async function loadTotalVendido() {
+      try {
+        const res = await fetch('/api/reportes/ventas/total');
+        if (res.ok) {
+          const body = await res.json();
+          if (body?.success) {
+            const total = body?.data?.total ?? 0;
+            const method = body?.data?.methodUsed || 'rpc';
+            if (!cancelled) {
+              setSalesNotesTotal(Number(total) || 0);
+              setVentasMethod(method);
+            }
+            return;
+          }
+        }
+        // Si llega aquí, el endpoint falló o no fue exitoso
+        console.warn('Endpoint /api/reportes/ventas/total falló, usando fallback');
+      } catch (e) {
+        console.warn('Error en endpoint principal, usando fallback:', e.message);
+      }
+
+      // Fallback: usar endpoint existente de reportes
+      try {
+        const resNv = await fetch('/api/reportes?period=Último año');
+        if (resNv.ok) {
+          const body = await resNv.json();
+          const total = body?.kpis?.totalVentas?.value ?? 0;
+          if (!cancelled) {
+            setSalesNotesTotal(Number(total) || 0);
+            setVentasMethod('fallback');
+          }
+        } else {
+          console.warn('Fallback también falló');
+          if (!cancelled) setVentasMethod('error');
+        }
+      } catch (inner) {
+        console.warn('Fallback secundario falló:', inner.message);
+        if (!cancelled) setVentasMethod('error');
+      }
+    }
+    loadTotalVendido();
+    return () => { cancelled = true; };
+  }, []);
   
   const pageSize = 9; // 3 filas x 3 columnas
   const isAdmin = user?.role?.toLowerCase() === 'admin';
@@ -157,21 +206,25 @@ export function ClientsPage() {
     const vigentes = clients.filter(c => c.status === 'vigente').length;
     const morosos = clients.filter(c => c.status === 'moroso').length;
     const inactivos = clients.filter(c => c.status === 'inactivo').length;
-    // Financiero: usamos agregados de cotizaciones.
-    // Asunción temporal: totalFacturado = suma de cotizaciones en estado 'aprobada'
-    // PorCobrar = suma de cotizaciones en estado 'enviada' + 'borrador' (potenciales) + 'aprobada' aún no convertidas (sin tabla de pagos todavía)
-    let totalFacturado = 0;
+    
+    // Financiero: usar cliente_saldos para datos reales
     let totalPorCobrar = 0;
-    Object.values(quotesAgg).forEach(v => {
-      const aprobada = v.estadoTotals['aprobada'] || 0;
-      totalFacturado += aprobada;
-      const enviada = v.estadoTotals['enviada'] || 0;
-      const borrador = v.estadoTotals['borrador'] || 0;
-      const aprobadaPend = aprobada; // hasta tener pagos se suma también a por cobrar
-      totalPorCobrar += enviada + borrador + aprobadaPend;
+    
+    // Sumar valores de cliente_saldos para todos los clientes
+    clients.forEach(client => {
+      const saldos = client.cliente_saldos || [];
+      const saldoMasReciente = saldos
+        .slice()
+        .sort((a, b) => new Date(b.snapshot_date).getTime() - new Date(a.snapshot_date).getTime())[0];
+      
+      if (saldoMasReciente) {
+        // Por cobrar = pendiente (solo lo que está pendiente de pago)
+        totalPorCobrar += saldoMasReciente.pendiente || 0;
+      }
     });
-    return { total, vigentes, morosos, inactivos, totalFacturado, totalPorCobrar };
-  }, [clients, quotesAgg]);
+    
+    return { total, vigentes, morosos, inactivos, totalVendido: salesNotesTotal, totalPorCobrar };
+  }, [clients, salesNotesTotal]);
 
   // Mapa financiero por cliente para reutilizar en tarjetas y tabla
   const financialByClient = useMemo(() => {
@@ -185,14 +238,14 @@ export function ClientsPage() {
       if (saldo && (saldo.pagado > 0 || saldo.pendiente > 0 || saldo.vencido > 0 || (saldo.dinero_cotizado || 0) > 0)) {
         // Usar saldos
         const movimientos = (saldo.pagado || 0) + (saldo.pendiente || 0) + (saldo.dinero_cotizado || 0) + (saldo.vencido || 0);
-        const porCobrar = (saldo.pendiente || 0) + (saldo.dinero_cotizado || 0) + (saldo.vencido || 0);
+        const porCobrar = saldo.pendiente || 0; // Solo pendiente
         m[c.id] = { movimientos, porCobrar };
       } else {
         // Fallback a agregados de cotizaciones
         const v = quotesAgg[c.id];
         if (v) {
           const movimientos = v.total;
-          const porCobrar = (v.estadoTotals['borrador'] || 0) + (v.estadoTotals['enviada'] || 0) + (v.estadoTotals['aprobada'] || 0);
+          const porCobrar = 0; // No usar cotizaciones para por cobrar
           m[c.id] = { movimientos, porCobrar };
         } else {
           m[c.id] = { movimientos: 0, porCobrar: 0 };
@@ -560,10 +613,10 @@ export function ClientsPage() {
             </div>
             <div>
               <div className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>
-                {formatCLP(stats.totalFacturado)}
+                {formatCLP(stats.totalVendido)}
               </div>
               <div className="text-xs" style={{ color: 'var(--text-secondary)' }}>
-                Total Facturado
+                Total Vendido
               </div>
             </div>
           </div>
@@ -729,7 +782,7 @@ function ClientCard({ client, getStatusColor, formatMoney, onEliminar, onVerDeta
   const { canEdit, canDelete } = useActionAuthorization();
   const statusColor = getStatusColor(client.status);
   const totalMovimientos = financial?.movimientos ?? (client.paid + client.pending + client.partial + client.overdue);
-  const totalPorCobrar = financial?.porCobrar ?? (client.pending + client.partial + client.overdue);
+  const totalPorCobrar = financial?.porCobrar ?? client.pending;
   
   return (
     <div
@@ -920,7 +973,7 @@ function ClientsTable({ clients, getStatusColor, formatMoney, onEliminar, onVerD
               const statusColor = getStatusColor(client.status);
               const fin = financialMap[client.id];
               const totalMovimientos = fin?.movimientos ?? (client.paid + client.pending + client.partial + client.overdue);
-              const totalPorCobrar = fin?.porCobrar ?? (client.pending + client.partial + client.overdue);
+              const totalPorCobrar = fin?.porCobrar ?? client.pending;
               
               return (
                 <tr 

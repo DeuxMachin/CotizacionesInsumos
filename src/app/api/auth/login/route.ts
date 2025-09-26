@@ -132,7 +132,7 @@ export async function POST(request: NextRequest) {
       httpOnly: true,
       secure: isProd,
       sameSite: 'strict',
-      maxAge: 10 * 60, // 10 minutos
+      maxAge: 60 * 60 * 24, // 24 horas (en lugar de 10 minutos)
       path: '/'
     });
     response.cookies.set('refresh-token', refreshToken, {

@@ -178,12 +178,9 @@ export function QuotesPage() {
   const handleChangeStatus = async (id: string, status: QuoteStatus) => {
     const success = await cambiarEstado(id, status);
     if (success) {
-      // Si se acepta la cotización, automáticamente ir a la página de conversión
+      // Si se acepta la cotización, mostrar mensaje pero no redirigir automáticamente
       if (status === 'aceptada') {
-        const quote = quotes.find(q => q.id === id);
-        if (quote) {
-          router.push(`/dashboard/notas-venta/convertir?quoteId=${encodeURIComponent(quote.id)}`);
-        }
+        Toast.success('Cotización aceptada exitosamente');
       }
     }
   };
@@ -747,7 +744,7 @@ function QuoteCard({
                 onConvert(quote);
               }}
               className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
-              title="Pasar a Venta"
+              title="Convertir a nota de venta"
             >
               <FiShoppingCart className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />
             </button>
@@ -784,7 +781,7 @@ function QuoteCard({
                   onChangeStatus(quote.id, 'aceptada');
                 }}
                 className="px-3 py-1 text-xs rounded bg-green-500 text-white hover:bg-green-600"
-                title="Aceptar cotización y convertir a venta"
+                title="Aceptar cotización"
               >
                 Aceptar
               </button>
@@ -796,7 +793,7 @@ function QuoteCard({
                   onChangeStatus(quote.id, 'aceptada');
                 }}
                 className="px-3 py-1 text-xs rounded bg-green-500 text-white hover:bg-green-600"
-                title="Aceptar cotización y convertir a venta"
+                title="Aceptar cotización"
               >
                 Aceptar
               </button>
@@ -923,7 +920,7 @@ function QuotesTable({
                       <button
                         onClick={() => onConvert(quote)}
                         className="p-1 rounded hover:bg-gray-100"
-                        title="Pasar a Venta"
+                        title="Convertir a nota de venta"
                         disabled={quote.estado === 'aceptada'}
                         style={quote.estado === 'aceptada' ? { opacity: 0.5, cursor: 'not-allowed' } : {}}
                       >

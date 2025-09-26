@@ -929,7 +929,9 @@ function ClientDetailPage() {
       try {
         setSalesNotesLoading(true);
         setSalesNotesError(null);
+        console.log('Cargando notas de venta para cliente ID:', client!.id);
         const notes = await getSalesNotesByClient(client!.id);
+        console.log('Notas de venta obtenidas:', notes);
         if (!cancelled) {
           setSalesNotes(notes);
         }
@@ -940,16 +942,14 @@ function ClientDetailPage() {
         }
       } finally {
         if (!cancelled) setSalesNotesLoading(false);
-      }
+        }
     }
 
     loadSalesNotes();
     return () => {
       cancelled = true;
     };
-  }, [client?.id, getSalesNotesByClient, client]);
-
-  // Adaptador mínimo para campos usados en la UI (folio/numero, fecha, estado, total)
+  }, [client?.id, getSalesNotesByClient, client]);  // Adaptador mínimo para campos usados en la UI (folio/numero, fecha, estado, total)
   const clientQuotes: ClientQuote[] = useMemo(() => {
     const allowed: QuoteStatus[] = ['borrador','enviada','aceptada','rechazada','expirada'];
     return quotes.map((q) => {

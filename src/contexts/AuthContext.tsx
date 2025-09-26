@@ -68,7 +68,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     initializeAuth();
   }, []);
 
-  // Sistema de cierre por inactividad
+  // Sistema de renovación automática de tokens
   useEffect(() => {
     if (!user) return;
 
@@ -77,8 +77,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const events = ['mousemove', 'keydown', 'click', 'scroll', 'touchstart'];
     events.forEach(event => window.addEventListener(event, updateActivity));
 
+    // Renovar token cada 30 minutos si hay actividad reciente
+    const tokenRefreshInterval = setInterval(async () => {
+      if (lastActivity && Date.now() - lastActivity < 30 * 60 * 1000) { // Actividad en los últimos 30 minutos
+        try {
+          const response = await fetch('/api/auth/refresh', {
+            method: 'POST',
+            credentials: 'include'
+          });
+          
+          if (response.ok) {
+            log.debug('[Auth] Token renovado automáticamente');
+          } else {
+            log.warn('[Auth] Error renovando token automáticamente');
+          }
+        } catch (error) {
+          log.error('[Auth] Error en renovación automática de token:', error);
+        }
+      }
+    }, 30 * 60 * 1000); // Cada 30 minutos
+
     const checkInactivity = setInterval(() => {
-      if (lastActivity && Date.now() - lastActivity > 10 * 60 * 1000) {
+      if (lastActivity && Date.now() - lastActivity > 20 * 60 * 1000) { // 20 minutos de inactividad
         alert('Su sesión ha expirado por inactividad.');
         logout();
       }
@@ -86,6 +106,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     return () => {
       events.forEach(event => window.removeEventListener(event, updateActivity));
+      clearInterval(tokenRefreshInterval);
       clearInterval(checkInactivity);
     };
   }, [user, lastActivity]);
