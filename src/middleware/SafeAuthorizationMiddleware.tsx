@@ -102,7 +102,7 @@ export function useActionAuthorization() {
     user,
     // Proporcionamos isAdmin para compatibilidad
     roleInfo: {
-      isAdmin: user?.role?.toLowerCase() === 'admin'
+      isAdmin: ['admin', 'dueño', 'dueno'].includes(user?.role?.toLowerCase() || '')
     },
   };
 }

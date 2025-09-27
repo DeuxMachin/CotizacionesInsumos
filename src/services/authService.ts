@@ -5,7 +5,7 @@ export interface AuthUser {
   email: string
   nombre: string | null
   apellido: string | null
-  rol: 'admin' | 'vendedor' | 'cliente'
+  rol: 'dueño' | 'dueno' | 'admin' | 'vendedor' | 'cliente'
   activo: boolean
 }
 

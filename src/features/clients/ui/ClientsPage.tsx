@@ -81,7 +81,7 @@ export function ClientsPage() {
   const [quotesAgg, setQuotesAgg] = useState<Record<number, QuoteAgg>>({});
   const [, setQuotesLoading] = useState(false);
     const [salesNotesTotal, setSalesNotesTotal] = useState(0); // Total vendido (fn_total_ventas_nv o fallback)
-  const [ventasMethod, setVentasMethod] = useState<'rpc' | 'fallback' | null>(null);
+  const [ventasMethod, setVentasMethod] = useState<'rpc' | 'fallback' | 'error' | null>(null);
 
   // Fetch de clientes
   useEffect(() => {
@@ -155,7 +155,7 @@ export function ClientsPage() {
         // Si llega aquí, el endpoint falló o no fue exitoso
         console.warn('Endpoint /api/reportes/ventas/total falló, usando fallback');
       } catch (e) {
-        console.warn('Error en endpoint principal, usando fallback:', e.message);
+        console.warn('Error en endpoint principal, usando fallback:', e instanceof Error ? e.message : 'Error desconocido');
       }
 
       // Fallback: usar endpoint existente de reportes
@@ -173,7 +173,7 @@ export function ClientsPage() {
           if (!cancelled) setVentasMethod('error');
         }
       } catch (inner) {
-        console.warn('Fallback secundario falló:', inner.message);
+        console.warn('Fallback secundario falló:', inner instanceof Error ? inner.message : 'Error desconocido');
         if (!cancelled) setVentasMethod('error');
       }
     }
@@ -182,7 +182,7 @@ export function ClientsPage() {
   }, []);
   
   const pageSize = 9; // 3 filas x 3 columnas
-  const isAdmin = user?.role?.toLowerCase() === 'admin';
+  const isAdmin = ['admin', 'dueño', 'dueno'].includes(user?.role?.toLowerCase() || '');
 
   // Filtros y datos procesados
   const data = useMemo(() => {

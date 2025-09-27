@@ -27,7 +27,7 @@ export function AuthRedirect({
       router.push(nonAuthRedirectTo);
     } else if (!requireAuth && isAuthenticated && authRedirectTo) {
       // Si no requiere autenticación y está autenticado, redirigir según el rol
-  const redirectPath = authRedirectTo || (user?.role === 'admin' ? '/admin' : '/dashboard');
+  const redirectPath = authRedirectTo || ((['admin', 'dueño', 'dueno'].includes(user?.role?.toLowerCase() || '')) ? '/admin' : '/dashboard');
       console.log("Ya autenticado, redirigiendo a", redirectPath);
       router.push(redirectPath);
     }

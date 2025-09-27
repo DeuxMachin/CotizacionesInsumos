@@ -12,7 +12,7 @@ interface User {
   email: string;
   name: string;
   lastName: string;
-  role: 'admin' | 'vendedor' | 'cliente';
+  role: 'dueño' | 'dueno' | 'admin' | 'vendedor' | 'cliente';
   createdAt: Date;
   lastLogin?: Date;
   isActive: boolean;
@@ -29,7 +29,7 @@ export function UsersManagementPage() {
       email: string;
       nombre?: string | null;
       apellido?: string | null;
-      rol: 'admin' | 'vendedor' | 'cliente';
+      rol: 'dueño' | 'dueno' | 'admin' | 'vendedor' | 'cliente';
       created_at?: string | null;
       last_login_at?: string | null;
       activo?: boolean | null;
@@ -48,6 +48,9 @@ export function UsersManagementPage() {
 
   const getRoleBadgeColor = (role: string) => {
     switch (role.toLowerCase()) {
+      case 'dueño':
+      case 'dueno':
+        return 'badge-purple';
       case 'admin':
         return 'badge-red';
       case 'vendedor':
@@ -61,6 +64,9 @@ export function UsersManagementPage() {
 
   const getRoleDisplayName = (role: string) => {
     switch (role.toLowerCase()) {
+      case 'dueño':
+      case 'dueno':
+        return 'Dueño';
       case 'admin':
         return 'Administrador';
       case 'vendedor':
@@ -127,10 +133,10 @@ export function UsersManagementPage() {
             >
               <FiUsers className="w-5 h-5 md:w-6 md:h-6" />
             </div>
-            Gestión de Vendedores
+            Gestión de Usuarios
           </h1>
           <p className="mt-1 md:mt-2 text-sm md:text-base" style={{ color: 'var(--text-secondary)' }}>
-            Administra el equipo de vendedores y sus permisos en el sistema
+            Administra el equipo de usuarios y sus permisos en el sistema
           </p>
         </div>
         <button
@@ -139,12 +145,12 @@ export function UsersManagementPage() {
           style={{ background: 'linear-gradient(135deg, #ff5600, #e6004d)' }}
         >
           <FiPlus className="w-3.5 h-3.5 md:w-4 md:h-4" />
-          Nuevo Vendedor
+          Nuevo Usuario
         </button>
       </div>
 
       {/* Estadísticas */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 md:gap-4">
         <div 
           className="p-3 md:p-4 rounded-lg"
           style={{ backgroundColor: 'var(--card-bg)', border: '1px solid var(--border)' }}
@@ -186,6 +192,37 @@ export function UsersManagementPage() {
               style={{ 
                 backgroundColor: 'var(--success-bg)',
                 color: 'var(--success-text)'
+              }}
+            >
+              <FiShield className="w-4 h-4 md:w-5 md:h-5" />
+            </div>
+            <div>
+              <div 
+                className="text-lg md:text-2xl font-semibold"
+                style={{ color: 'var(--text-primary)' }}
+              >
+                {loadingUsers ? '—' : users.filter(u => u.role === 'dueño').length}
+              </div>
+              <div 
+                className="text-xs md:text-sm"
+                style={{ color: 'var(--text-secondary)' }}
+              >
+                Dueños
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div 
+          className="p-3 md:p-4 rounded-lg"
+          style={{ backgroundColor: 'var(--card-bg)', border: '1px solid var(--border)' }}
+        >
+          <div className="flex items-center gap-2 md:gap-3">
+            <div 
+              className="p-1.5 md:p-2 rounded"
+              style={{ 
+                backgroundColor: 'var(--info-bg)',
+                color: 'var(--info-text)'
               }}
             >
               <FiShield className="w-4 h-4 md:w-5 md:h-5" />
