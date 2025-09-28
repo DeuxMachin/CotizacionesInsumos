@@ -20,8 +20,13 @@ export function useAuthHeaders() {
     if (user) {
       headers['x-user-id'] = user.id
       headers['x-user-email'] = user.email
+      
+      // Usar el nombre completo del usuario si está disponible
       if (user.name) {
-        headers['x-user-name'] = user.name
+        headers['x-user-name'] = user.name;
+      } else {
+        // Fallback al email sin dominio si no hay nombre
+        headers['x-user-name'] = user.email.split('@')[0];
       }
     }
 

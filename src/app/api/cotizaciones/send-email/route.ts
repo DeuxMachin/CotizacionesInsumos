@@ -18,18 +18,25 @@ export async function POST(request: NextRequest) {
     const body: SendQuoteEmailRequest = await request.json();
     const { quoteId, quoteData, recipientEmail, recipientName, message } = body;
 
-    // Obtener información del usuario autenticado desde JWT
+    // Obtener información del usuario autenticado desde JWT y headers
     const token = request.cookies.get('auth-token')?.value;
     let user: any = null;
     if (token) {
       try {
         const decoded: any = await verifyToken(token);
+        
+        // Obtener información adicional desde headers (enviados por el frontend)
+        const userNameFromHeader = request.headers.get('x-user-name');
+        const userEmailFromHeader = request.headers.get('x-user-email');
+        
         user = {
           id: decoded.sub,
-          email: decoded.email,
+          email: decoded.email || userEmailFromHeader,
           nombre: decoded.nombre,
           apellido: decoded.apellido,
-          rol: decoded.rol
+          rol: decoded.rol,
+          // Usar el nombre completo desde header si está disponible
+          fullName: userNameFromHeader
         };
       } catch {
         // token inválido -> user queda null
@@ -152,10 +159,15 @@ export async function POST(request: NextRequest) {
 
     // Registrar en audit log que se envió la cotización
     if (user) {
+      // Prioridad: 1) nombre completo del header, 2) nombre + apellido del JWT, 3) solo nombre del JWT, 4) email como fallback
+      const userName = user.fullName || 
+                      (user.nombre && user.apellido ? `${user.nombre} ${user.apellido}` : user.nombre) || 
+                      user.email.split('@')[0];
+      
       await AuditLogger.logEvent({
         usuario_id: user.id,
         evento: 'cotizacion_enviada',
-        descripcion: `Envió cotización #${quoteNumber} por email a ${recipientEmail}`,
+        descripcion: `${userName} envió cotización #${quoteNumber} por email a ${recipientEmail}`,
         detalles: {
           folio: quoteNumber,
           destinatario: recipientEmail,
@@ -163,6 +175,7 @@ export async function POST(request: NextRequest) {
           mensaje_personalizado: message || null,
           email_id: result.data?.messageId,
           user_email: user.email,
+          user_name: userName,
           cliente: {
             nombre: clientName,
             razon_social: quote.cliente.razonSocial

@@ -326,12 +326,7 @@ export function QuoteSummary({ formData, totals, formatMoney, onChangeGlobalDisc
                 <select
                   value={formData.condicionesComerciales.validezOferta || 30}
                   onChange={(e) => onChangeCommercialTerms?.({ ...formData.condicionesComerciales, validezOferta: parseInt(e.target.value) })}
-                  className="w-full px-3 py-2 rounded-lg border transition-colors focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  style={{ 
-                    borderColor: 'var(--border-subtle)', 
-                    backgroundColor: 'var(--card-bg)', 
-                    color: 'var(--text-primary)' 
-                  }}
+                  className="form-select"
                 >
                   <option value={15}>15 días</option>
                   <option value={30}>30 días</option>
@@ -347,12 +342,7 @@ export function QuoteSummary({ formData, totals, formatMoney, onChangeGlobalDisc
                 <select
                   value={formData.condicionesComerciales.formaPago || 'Transferencia bancaria'}
                   onChange={(e) => onChangeCommercialTerms?.({ ...formData.condicionesComerciales, formaPago: e.target.value })}
-                  className="w-full px-3 py-2 rounded-lg border transition-colors focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  style={{ 
-                    borderColor: 'var(--border-subtle)', 
-                    backgroundColor: 'var(--card-bg)', 
-                    color: 'var(--text-primary)' 
-                  }}
+                  className="form-select"
                 >
                   <option value="Transferencia bancaria">Transferencia bancaria</option>
                   <option value="Efectivo">Efectivo</option>

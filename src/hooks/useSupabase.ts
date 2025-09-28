@@ -227,11 +227,11 @@ export function useEstadisticas() {
 export function useAdminStats() {
   return useSupabaseQuery(async () => {
     const [clientes, cotizaciones, productos, obras, usuarios] = await Promise.all([
-      supabase.from('clientes').select('id, estado, created_at, linea_credito'),
-      supabase.from('cotizaciones').select('id, estado, total_final, created_at, fecha_emision'),
-      supabase.from('productos').select('id, activo, precio_venta_neto, created_at'),
-      supabase.from('obras').select('id, created_at'),
-      supabase.from('usuarios').select('id, activo, created_at, last_login_at, rol')
+      supabase.from('clientes').select('*'),
+      supabase.from('cotizaciones').select('*'),
+      supabase.from('productos').select('*'),
+      supabase.from('obras').select('*'),
+      supabase.from('usuarios').select('*')
     ])
 
     if (clientes.error) throw clientes.error
@@ -240,23 +240,28 @@ export function useAdminStats() {
     if (obras.error) throw obras.error
     if (usuarios.error) throw usuarios.error
 
+
+
     // Calcular estadísticas avanzadas
     const now = new Date()
     const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
     
-    const nuevosClientesUltimoMes = clientes.data?.filter(c => 
-      new Date(c.created_at) >= thirtyDaysAgo
-    ).length || 0
+    const nuevosClientesUltimoMes = clientes.data?.filter(c => {
+      const fecha = c.created_at || c.fecha_creacion;
+      return fecha && new Date(fecha) >= thirtyDaysAgo;
+    }).length || 0
     
-    const nuevasCotizacionesUltimoMes = cotizaciones.data?.filter(c => 
-      new Date(c.created_at) >= thirtyDaysAgo
-    ).length || 0
+    const nuevasCotizacionesUltimoMes = cotizaciones.data?.filter(c => {
+      const fecha = c.created_at || c.fecha_creacion;
+      return fecha && new Date(fecha) >= thirtyDaysAgo;
+    }).length || 0
     
-    const usuariosActivosRecientes = usuarios.data?.filter(u => 
-      u.activo && u.last_login_at && new Date(u.last_login_at) >= thirtyDaysAgo
-    ).length || 0
+    const usuariosActivosRecientes = usuarios.data?.filter(u => {
+      const lastLogin = u.last_login_at || u.ultimo_acceso;
+      return u.activo && lastLogin && new Date(lastLogin) >= thirtyDaysAgo;
+    }).length || 0
 
-    return {
+    const stats = {
       usuarios: {
         total: usuarios.data?.length || 0,
         activos: usuarios.data?.filter(u => u.activo).length || 0,
@@ -270,7 +275,7 @@ export function useAdminStats() {
       },
       clientes: {
         total: clientes.data?.length || 0,
-        activos: clientes.data?.filter(c => c.estado === 'activo').length || 0,
+        activos: clientes.data?.filter(c => c.estado === 'activo' || c.estado === 'vigente').length || 0,
         nuevosUltimoMes: nuevosClientesUltimoMes,
         lineaCreditoTotal: clientes.data?.reduce((sum, c) => sum + (c.linea_credito || 0), 0) || 0
       },
@@ -288,9 +293,12 @@ export function useAdminStats() {
       },
       productos: {
         total: productos.data?.length || 0,
-        activos: productos.data?.filter(p => p.activo).length || 0,
-        inactivos: productos.data?.filter(p => !p.activo).length || 0,
-        valorInventario: productos.data?.reduce((sum, p) => sum + (p.precio_venta_neto || 0), 0) || 0
+        activos: productos.data?.filter(p => p.activo === true).length || 0,
+        inactivos: productos.data?.filter(p => p.activo === false).length || 0,
+        valorInventario: productos.data?.reduce((sum, p) => {
+          const precio = p.precio_venta_neto || p.precio_venta || p.precio || 0;
+          return sum + precio;
+        }, 0) || 0
       },
       obras: {
         total: obras.data?.length || 0
@@ -301,6 +309,8 @@ export function useAdminStats() {
         ultimaActualizacion: new Date().toISOString()
       }
     }
+
+    return stats;
   })
 }
 

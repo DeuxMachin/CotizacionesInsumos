@@ -297,6 +297,17 @@ export function CategoryDistributionChart({ period }: CategoryDistributionChartP
           </div>
         </div>
       </div>
+      
+      {/* Indicador de datos mock */}
+      <div className="mt-2 text-center">
+        <span className="text-xs px-2 py-1 rounded-full" 
+              style={{ 
+                backgroundColor: 'var(--warning-bg)', 
+                color: 'var(--warning-text)' 
+              }}>
+          📊 Datos de demostración - Requiere categorías de productos
+        </span>
+      </div>
     </div>
   );
 }

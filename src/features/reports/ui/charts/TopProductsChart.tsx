@@ -74,13 +74,14 @@ export function TopProductsChart({ period }: TopProductsChartProps) {
         const data = await reportesService.getReportData(period);
         
         // Convertir datos reales a formato ProductData
+        const maxIngresos = Math.max(...data.topProductos.map(p => p.ingresos));
         const products: ProductData[] = data.topProductos.map((producto, index) => ({
           rank: index + 1,
           name: producto.nombre,
           sales: producto.cantidad,
           revenue: reportesService.formatCurrency(producto.ingresos),
           color: getProductColor(index),
-          percentage: Math.max(20, Math.min(100, (producto.ingresos / Math.max(...data.topProductos.map(p => p.ingresos))) * 100))
+          percentage: index === 0 ? 100 : Math.max(15, (producto.ingresos / maxIngresos) * 100)
         }));
         
         setTopProducts(products);
@@ -133,117 +134,129 @@ export function TopProductsChart({ period }: TopProductsChartProps) {
   }
 
   const productsToShow = topProducts.length > 0 ? topProducts : mockProductsData;
+  
+  // Calcular totales dinámicos
+  const totalIngresos = productsToShow.reduce((sum, product) => {
+    // Extraer el número de la string de revenue (ej: "$20,808" -> 20808)
+    const amount = parseInt(product.revenue.replace(/[$,]/g, '')) || 0;
+    return sum + amount;
+  }, 0);
+  
+  const totalProductos = 83; // Este valor podría venir del endpoint
+  const contribucionPorcentaje = 73; // Este valor podría calcularse dinámicamente
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       {productsToShow.map((product, index) => (
         <div 
           key={product.rank}
-          className="group relative"
+          className="group relative p-3 rounded-lg transition-colors hover:bg-opacity-50"
+          style={{ backgroundColor: 'var(--bg-secondary)' }}
         >
           {/* Header del producto */}
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center gap-3">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-3 min-w-0 flex-1">
               <div 
-                className="flex items-center justify-center w-6 h-6 rounded-full text-white text-xs font-bold flex-shrink-0"
+                className="flex items-center justify-center w-8 h-8 rounded-full text-white text-sm font-bold flex-shrink-0 shadow-sm"
                 style={{ backgroundColor: product.color }}
               >
                 #{product.rank}
               </div>
               <div className="min-w-0 flex-1">
-                <h4 className="font-medium text-sm truncate" style={{ color: 'var(--text-primary)' }}>
+                <h4 className="font-semibold text-sm truncate mb-1" style={{ color: 'var(--text-primary)' }}>
                   {product.name}
                 </h4>
-                <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
+                <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
                   {product.sales} ventas
                 </p>
               </div>
             </div>
-            <div className="text-right flex-shrink-0">
-              <p className="font-bold text-sm" style={{ color: 'var(--text-primary)' }}>
+            <div className="text-right flex-shrink-0 ml-4">
+              <p className="font-bold text-base" style={{ color: 'var(--text-primary)' }}>
                 {product.revenue}
               </p>
+              <div className="mt-1">
+                <span 
+                  className="text-xs font-medium px-2 py-1 rounded-full"
+                  style={{ 
+                    backgroundColor: product.color + '20',
+                    color: product.color
+                  }}
+                >
+                  {Math.round(product.percentage)}%
+                </span>
+              </div>
             </div>
           </div>
 
-          {/* Barra de progreso animada */}
+          {/* Barra de progreso mejorada */}
           <div className="relative">
             <div 
-              className="h-3 rounded-full overflow-hidden"
-              style={{ backgroundColor: 'var(--bg-tertiary)' }}
+              className="h-2 rounded-full overflow-hidden"
+              style={{ backgroundColor: 'var(--border-subtle)' }}
             >
               <div 
                 className="h-full transition-all duration-1000 ease-out rounded-full relative"
                 style={{ 
                   backgroundColor: product.color,
-                  width: `${product.percentage}%`
+                  width: `${product.percentage}%`,
+                  boxShadow: `0 0 10px ${product.color}40`
                 }}
               >
-                {/* Efecto de brillo */}
+                {/* Efecto de brillo animado */}
                 <div 
-                  className="absolute inset-0 bg-white bg-opacity-20 rounded-full"
-                  style={{
-                    background: `linear-gradient(45deg, transparent 30%, rgba(255,255,255,0.2) 50%, transparent 70%)`
-                  }}
+                  className="absolute inset-0 bg-gradient-to-r from-transparent via-white to-transparent opacity-30 rounded-full animate-pulse"
                 />
               </div>
-            </div>
-            
-            {/* Porcentaje flotante */}
-            <div 
-              className="absolute right-2 top-0.5 text-xs font-medium text-white"
-              style={{ textShadow: '0 1px 2px rgba(0,0,0,0.5)' }}
-            >
-              {product.percentage}%
             </div>
           </div>
         </div>
       ))}
 
       {/* Resumen total con diseño mejorado */}
-      <div className="mt-6 pt-4 border-t" style={{ borderColor: 'var(--border-subtle)' }}>
-        <div 
-          className="p-4 rounded-lg"
-          style={{ backgroundColor: 'var(--bg-secondary)' }}
-        >
-          <div className="grid grid-cols-2 gap-4 text-center">
-            <div>
-              <p className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>
-                83
-              </p>
-              <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
-                Productos activos
-              </p>
-            </div>
-            <div>
-              <p className="text-lg font-bold text-green-600 dark:text-green-400">
-                $99,475
-              </p>
-              <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
-                Ingresos Top 5
-              </p>
-            </div>
+      <div className="mt-6 pt-4">
+        <div className="grid grid-cols-2 gap-6 mb-4">
+          <div className="text-center">
+            <p className="text-2xl font-bold mb-1" style={{ color: 'var(--text-primary)' }}>
+              {totalProductos}
+            </p>
+            <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+              Productos activos
+            </p>
           </div>
-          
-          {/* Barra de contribución total */}
-          <div className="mt-4">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>
-                Contribución al total
-              </span>
-              <span className="text-xs font-medium" style={{ color: 'var(--text-primary)' }}>
-                73%
-              </span>
-            </div>
+          <div className="text-center">
+            <p className="text-2xl font-bold mb-1" 
+               style={{ color: 'var(--success-text)' }}>
+              {reportesService.formatCurrency(totalIngresos)}
+            </p>
+            <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+              Ingresos Top 5
+            </p>
+          </div>
+        </div>
+        
+        {/* Barra de contribución total */}
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
+              Contribución al total
+            </span>
+            <span className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>
+              {contribucionPorcentaje}%
+            </span>
+          </div>
+          <div 
+            className="h-3 rounded-full overflow-hidden"
+            style={{ backgroundColor: 'var(--border-subtle)' }}
+          >
             <div 
-              className="h-2 rounded-full"
-              style={{ backgroundColor: 'var(--bg-tertiary)' }}
-            >
-              <div 
-                className="h-full bg-gradient-to-r from-purple-500 to-blue-500 rounded-full transition-all duration-700"
-                style={{ width: '73%' }}
-              />
-            </div>
+              className="h-full rounded-full transition-all duration-1000 ease-out"
+              style={{ 
+                background: 'linear-gradient(90deg, #8b5cf6 0%, #06b6d4 100%)',
+                width: `${contribucionPorcentaje}%`,
+                boxShadow: '0 0 15px rgba(139, 92, 246, 0.3)'
+              }}
+            />
           </div>
         </div>
       </div>

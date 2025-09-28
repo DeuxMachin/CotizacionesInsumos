@@ -50,13 +50,16 @@ export class AuditLogger {
   /**
    * Registra login de usuario
    */
-  static async logUserLogin(userId: string, userEmail: string, userAgent?: string): Promise<void> {
+  static async logUserLogin(userId: string, userEmail: string, userName?: string, userAgent?: string): Promise<void> {
+    const displayName = userName || userEmail.split('@')[0];
     await this.logEvent({
       usuario_id: userId,
       evento: 'user_login',
-      descripcion: `Usuario ${userEmail} inició sesión`,
+      descripcion: `${displayName} inició sesión`,
       detalles: {
         email: userEmail,
+        user_email: userEmail,
+        user_name: displayName,
         timestamp: new Date().toISOString()
       },
       user_agent: userAgent
@@ -66,13 +69,16 @@ export class AuditLogger {
   /**
    * Registra logout de usuario
    */
-  static async logUserLogout(userId: string, userEmail: string): Promise<void> {
+  static async logUserLogout(userId: string, userEmail: string, userName?: string): Promise<void> {
+    const displayName = userName || userEmail.split('@')[0];
     await this.logEvent({
       usuario_id: userId,
       evento: 'user_logout',
-      descripcion: `Usuario ${userEmail} cerró sesión`,
+      descripcion: `${displayName} cerró sesión`,
       detalles: {
-        email: userEmail
+        email: userEmail,
+        user_email: userEmail,
+        user_name: displayName
       }
     })
   }
@@ -85,17 +91,20 @@ export class AuditLogger {
     userEmail: string,
     cotizacionId: number,
     folio: string,
-    clienteInfo?: { id: number; nombre: string }
+    clienteInfo?: { id: number; nombre: string },
+    userName?: string
   ): Promise<void> {
+    const displayName = userName || userEmail.split('@')[0];
     await this.logEvent({
       usuario_id: userId,
       evento: 'cotizacion_creada',
-      descripcion: `Creó cotización ${folio}${clienteInfo ? ` para ${clienteInfo.nombre}` : ''}`,
+      descripcion: `${displayName} creó cotización ${folio}${clienteInfo ? ` para ${clienteInfo.nombre}` : ''}`,
       detalles: {
         cotizacion_id: cotizacionId,
         folio,
         cliente: clienteInfo ? { id: clienteInfo.id, nombre: clienteInfo.nombre } : undefined,
-        user_email: userEmail
+        user_email: userEmail,
+        user_name: displayName
       },
       tabla_afectada: 'cotizaciones',
       registro_id: cotizacionId.toString()
@@ -111,18 +120,21 @@ export class AuditLogger {
     cotizacionId: number,
     folio: string,
     oldStatus: string,
-    newStatus: string
+    newStatus: string,
+    userName?: string
   ): Promise<void> {
+    const displayName = userName || userEmail.split('@')[0];
     await this.logEvent({
       usuario_id: userId,
       evento: 'cotizacion_actualizada',
-      descripcion: `Cambió estado de cotización ${folio} de "${oldStatus}" a "${newStatus}"`,
+      descripcion: `${displayName} cambió estado de cotización ${folio} de "${oldStatus}" a "${newStatus}"`,
       detalles: {
         cotizacion_id: cotizacionId,
         folio,
         estado_anterior: oldStatus,
         estado_nuevo: newStatus,
-        user_email: userEmail
+        user_email: userEmail,
+        user_name: displayName
       },
       tabla_afectada: 'cotizaciones',
       registro_id: cotizacionId.toString()
@@ -137,17 +149,86 @@ export class AuditLogger {
     userEmail: string,
     clienteId: number,
     clienteNombre: string,
-    rut: string
+    rut: string,
+    userName?: string
   ): Promise<void> {
+    const displayName = userName || userEmail.split('@')[0];
     await this.logEvent({
       usuario_id: userId,
       evento: 'cliente_creado',
-      descripcion: `Creó cliente ${clienteNombre} (${rut})`,
+      descripcion: `${displayName} creó cliente ${clienteNombre} (${rut})`,
       detalles: {
         cliente_id: clienteId,
         nombre: clienteNombre,
         rut,
-        user_email: userEmail
+        user_email: userEmail,
+        user_name: displayName
+      },
+      tabla_afectada: 'clientes',
+      registro_id: clienteId.toString()
+    })
+  }
+
+  /**
+   * Registra actualización de cliente
+   */
+  static async logClienteUpdated(
+    userId: string,
+    userEmail: string,
+    clienteId: number,
+    clienteNombre: string,
+    rut: string,
+    cambios?: Record<string, { anterior: unknown; nuevo: unknown }>,
+    userName?: string
+  ): Promise<void> {
+    const displayName = userName || userEmail.split('@')[0];
+    const descripcionCambios = cambios 
+      ? Object.entries(cambios).map(([campo, { anterior, nuevo }]) => 
+          `${campo}: "${anterior}" → "${nuevo}"`
+        ).join(', ')
+      : '';
+    
+    await this.logEvent({
+      usuario_id: userId,
+      evento: 'cliente_actualizado',
+      descripcion: `${displayName} actualizó cliente ${clienteNombre} (${rut})${descripcionCambios ? ` - ${descripcionCambios}` : ''}`,
+      detalles: {
+        cliente_id: clienteId,
+        nombre: clienteNombre,
+        rut,
+        cambios,
+        user_email: userEmail,
+        user_name: displayName
+      },
+      tabla_afectada: 'clientes',
+      registro_id: clienteId.toString()
+    })
+  }
+
+  /**
+   * Registra eliminación de cliente
+   */
+  static async logClienteDeleted(
+    userId: string,
+    userEmail: string,
+    clienteId: number,
+    clienteNombre: string,
+    rut: string,
+    userName?: string
+  ): Promise<void> {
+    const displayName = userName || userEmail.split('@')[0];
+    await this.logEvent({
+      usuario_id: userId,
+      evento: 'cliente_eliminado',
+      descripcion: `${displayName} eliminó cliente ${clienteNombre} (${rut})`,
+      detalles: {
+        cliente_id: clienteId,
+        nombre: clienteNombre,
+        rut,
+        user_email: userEmail,
+        user_name: displayName,
+        estado_anterior: 'activo',
+        estado_nuevo: 'inactivo'
       },
       tabla_afectada: 'clientes',
       registro_id: clienteId.toString()
