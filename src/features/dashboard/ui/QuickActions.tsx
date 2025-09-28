@@ -1,8 +1,6 @@
 "use client";
 import { FiPlusCircle, FiUserPlus, FiBox, FiTrendingUp } from "react-icons/fi";
-import { useSection } from "@/features/navigation/model/useSection";
-
-
+import { useRouter } from "next/navigation";
 import { Toast } from "@/shared/ui/Toast";
 
 // Acciones rápidas inspiradas en el HTML de referencia
@@ -34,22 +32,24 @@ const quickActions = [
 ];
 
 export function QuickActions() {
-  const { setSection } = useSection();
+  const router = useRouter();
 
   const handleActionClick = (action: string) => {
-  switch (action) {
+    switch (action) {
       case "create-quote":
-    // TODO: open new quote modal or navigate
+        router.push("/dashboard/cotizaciones/nueva");
         break;
       case "go-clients":
-        setSection("clientes");
+        router.push("/dashboard/clientes");
         break;
       case "go-catalog":
-  setSection("stock");
+        router.push("/dashboard/stock");
         break;
       case "go-reports":
-        setSection("reportes");
+        router.push("/dashboard/reportes");
         break;
+      default:
+        Toast.info("Funcionalidad en desarrollo");
     }
   };
 

@@ -240,14 +240,7 @@ export function useAdminStats() {
     if (obras.error) throw obras.error
     if (usuarios.error) throw usuarios.error
 
-    console.log('🔍 useAdminStats - Datos obtenidos:', {
-      clientes: clientes.data?.length || 0,
-      cotizaciones: cotizaciones.data?.length || 0,
-      cotizacionesData: cotizaciones.data?.map(c => ({ id: c.id, estado: c.estado, total_final: c.total_final })),
-      productos: productos.data?.length || 0,
-      obras: obras.data?.length || 0,
-      usuarios: usuarios.data?.length || 0
-    });
+
 
     // Calcular estadísticas avanzadas
     const now = new Date()
@@ -316,12 +309,6 @@ export function useAdminStats() {
         ultimaActualizacion: new Date().toISOString()
       }
     }
-
-    console.log('🔍 useAdminStats - Estadísticas calculadas:', {
-      cotizacionesTotal: stats.cotizaciones.total,
-      cotizacionesValorTotal: stats.cotizaciones.valorTotal,
-      cotizacionesPromedio: stats.cotizaciones.promedioValor
-    });
 
     return stats;
   })

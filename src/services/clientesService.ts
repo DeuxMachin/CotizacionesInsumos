@@ -107,27 +107,17 @@ export class ClientesService {
     // Obtener información del cliente antes de actualizarlo para el audit log
     let clienteAntes: { id: number; nombre_razon_social: string; rut: string; nombre_fantasia?: string; direccion?: string } | null = null;
     try {
-      console.log('🔍 ClientesService.update - Obteniendo cliente antes de actualizar, id:', id);
       const { data: clienteData, error: clienteError } = await supabase
         .from('clientes')
         .select('id, nombre_razon_social, rut, nombre_fantasia, telefono, direccion')
         .eq('id', id)
         .single();
       
-      console.log('🔍 ClientesService.update - Resultado obtener cliente:', { 
-        clienteData: !!clienteData, 
-        clienteError: clienteError?.message || 'no error',
-        id 
-      });
-      
       if (!clienteError && clienteData) {
         clienteAntes = clienteData;
-        console.log('🔍 ClientesService.update - clienteAntes asignado correctamente');
-      } else {
-        console.log('🔍 ClientesService.update - Error o datos nulos:', clienteError);
       }
     } catch (err) {
-      console.warn('🔍 ClientesService.update - Excepción obteniendo cliente para audit log:', err);
+      console.warn('Error obteniendo cliente para audit log:', err);
     }
 
     const { data, error } = await supabase
@@ -146,13 +136,6 @@ export class ClientesService {
     if (error) throw error
 
     // Registrar en audit log si se proporciona información del usuario
-    console.log('🔍 ClientesService.update - Verificando audit log', { 
-      userInfo: !!userInfo, 
-      data: !!data, 
-      clienteAntes: !!clienteAntes,
-      userInfoDetails: userInfo ? { id: userInfo.id, email: userInfo.email, name: userInfo.name } : null 
-    });
-
     if (userInfo && data && clienteAntes) {
       // Detectar cambios principales
       const cambios: Record<string, { anterior: unknown; nuevo: unknown }> = {};
@@ -167,8 +150,6 @@ export class ClientesService {
         cambios.direccion = { anterior: clienteAntes.direccion, nuevo: cliente.direccion };
       }
 
-      console.log('🔍 ClientesService.update - Registrando audit log con cambios:', cambios);
-
       await AuditLogger.logClienteUpdated(
         userInfo.id,
         userInfo.email,
@@ -178,14 +159,6 @@ export class ClientesService {
         Object.keys(cambios).length > 0 ? cambios : undefined,
         userInfo.name
       )
-      
-      console.log('🔍 ClientesService.update - Audit log registrado exitosamente');
-    } else {
-      console.log('🔍 ClientesService.update - NO se registra audit log', { 
-        userInfo: !!userInfo, 
-        data: !!data, 
-        clienteAntes: !!clienteAntes 
-      });
     }
 
     return data
