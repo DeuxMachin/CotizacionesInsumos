@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import {
   FiPackage,
   FiPlus,
@@ -109,10 +109,11 @@ interface CategorySelectorProps {
   categories: { id: number; nombre: string }[];
   selected: number | 'all';
   onSelect: (id: number | 'all') => void;
+  isExpanded: boolean;
+  onToggleExpanded: () => void;
 }
 
-const CategorySelector: React.FC<CategorySelectorProps> = ({ categories, selected, onSelect }) => {
-  const [isExpanded, setIsExpanded] = useState(false);
+const CategorySelector: React.FC<CategorySelectorProps> = ({ categories, selected, onSelect, isExpanded, onToggleExpanded }) => {
 
   const getCategoryIcon = (name: string) => {
     const lowerName = name.toLowerCase();
@@ -127,62 +128,75 @@ const CategorySelector: React.FC<CategorySelectorProps> = ({ categories, selecte
     return '📦';
   };
 
-  const displayCategories = isExpanded ? categories : categories.slice(0, 6);
-  const hiddenCount = categories.length - 6;
+  const displayCategories = isExpanded ? categories : categories.slice(0, 8);
+  const hiddenCount = categories.length - 8;
+
+  const truncateText = (text: string, maxLength: number = 15) => {
+    if (text.length <= maxLength) return text;
+    return text.substring(0, maxLength - 3) + '...';
+  };
 
   return (
     <div className="space-y-4">
       {/* Categories row */}
-      <div className="flex flex-wrap gap-2 py-1">
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-2">
         <button
           onClick={() => onSelect('all')}
-          className={`px-3 py-2 rounded-lg flex flex-col items-center justify-center min-w-[90px] text-xs gap-1 transition-all hover:shadow-sm ${selected === 'all' ? 'transform scale-105' : ''}`}
+          className={`px-2 py-3 rounded-lg flex flex-col items-center justify-center text-xs gap-1 transition-all hover:shadow-sm min-h-[70px] ${
+            selected === 'all' ? 'transform scale-105' : ''
+          }`}
           style={{
             backgroundColor: selected === 'all' ? 'var(--accent-bg)' : 'var(--card-bg)',
             color: selected === 'all' ? 'var(--accent-text)' : 'var(--text-secondary)',
             border: `1px solid ${selected === 'all' ? 'var(--accent-primary)' : 'var(--border)'}`,
             boxShadow: selected === 'all' ? '0 2px 4px rgba(0,0,0,0.1)' : 'none'
           }}
+          title="Mostrar todas las categorías"
         >
-          <span className="text-base">📂</span>
-          <span className="truncate max-w-[80px] font-medium" title="Todas">Todas</span>
+          <span className="text-lg">📂</span>
+          <span className="font-medium text-center leading-tight">Todas</span>
         </button>
         {displayCategories.map(cat => (
           <button
             key={cat.id}
             onClick={() => onSelect(cat.id)}
-            className={`px-3 py-2 rounded-lg flex flex-col items-center justify-center min-w-[90px] text-xs gap-1 transition-all hover:shadow-sm ${selected === cat.id ? 'transform scale-105' : ''}`}
+            className={`px-2 py-3 rounded-lg flex flex-col items-center justify-center text-xs gap-1 transition-all hover:shadow-sm min-h-[70px] ${
+              selected === cat.id ? 'transform scale-105' : ''
+            }`}
             style={{
               backgroundColor: selected === cat.id ? 'var(--accent-bg)' : 'var(--card-bg)',
               color: selected === cat.id ? 'var(--accent-text)' : 'var(--text-secondary)',
               border: `1px solid ${selected === cat.id ? 'var(--accent-primary)' : 'var(--border)'}`,
               boxShadow: selected === cat.id ? '0 2px 4px rgba(0,0,0,0.1)' : 'none'
             }}
+            title={cat.nombre}
           >
-            <span className="text-base">{getCategoryIcon(cat.nombre)}</span>
-            <span className="truncate max-w-[80px] font-medium" title={cat.nombre}>{cat.nombre}</span>
+            <span className="text-lg">{getCategoryIcon(cat.nombre)}</span>
+            <span className="font-medium text-center leading-tight break-words max-w-full" style={{ fontSize: '10px', lineHeight: '1.2' }}>
+              {truncateText(cat.nombre, 12)}
+            </span>
           </button>
         ))}
       </div>
 
-      {/* Toggle button - only show if we have more than 6 categories */}
-      {categories.length > 6 && (
-        <div className="flex justify-start">
+      {/* Toggle button - only show if we have more than 8 categories */}
+      {categories.length > 8 && (
+        <div className="flex justify-center">
           <button
             type="button"
-            onClick={() => setIsExpanded(!isExpanded)}
-            className="flex items-center gap-2 px-4 py-2 rounded-md text-sm transition-all hover:shadow-sm"
+            onClick={onToggleExpanded}
+            className="flex items-center gap-1 px-3 py-1.5 rounded-md text-xs transition-all hover:shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 opacity-75 hover:opacity-100"
             style={{
-              backgroundColor: 'var(--accent-bg)',
-              borderColor: 'var(--accent-primary)',
-              border: '1px solid var(--accent-primary)',
-              color: 'var(--accent-text)',
+              backgroundColor: 'var(--card-bg)',
+              borderColor: 'var(--border)',
+              border: '1px solid var(--border)',
+              color: 'var(--text-secondary)',
               boxShadow: '0 1px 2px rgba(0,0,0,0.1)'
             }}
           >
             {isExpanded ? (
               <>
-                <FiChevronUp size={16} /> Ver menos
+                <FiChevronUp size={16} /> Ver menos ({hiddenCount})
               </>
             ) : (
               <>
@@ -213,7 +227,7 @@ interface ProductCardProps {
 const ProductCard: React.FC<ProductCardProps> = ({ product, onAdd, isInCart }) => {
   return (
     <div
-      className="group relative border rounded-xl p-4 hover:shadow-lg transition-all duration-200 cursor-pointer"
+      className="group relative border rounded-xl p-4 hover:shadow-lg transition-all duration-200 cursor-pointer flex flex-col h-full"
       style={{
         backgroundColor: 'var(--card-bg)',
         borderColor: 'var(--border)',
@@ -356,32 +370,65 @@ const CartItem: React.FC<CartItemProps> = ({
       <div className="space-y-3">
         {/* Quantity Controls */}
         <div className="flex items-center justify-between">
-          <span className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
+          <span className="text-xs font-medium flex items-center gap-1" style={{ color: 'var(--text-secondary)' }}>
             Cantidad
+            <span className="text-xs opacity-60" title="Haz click para editar"> </span>
           </span>
           <div className="flex items-center gap-2">
             <button
               onClick={() => onUpdateQuantity(index, Math.max(1, item.cantidad - 1))}
-              className="w-7 h-7 rounded-full flex items-center justify-center border transition-colors"
+              className="w-7 h-7 rounded-full flex items-center justify-center border transition-colors hover:opacity-80"
               style={{
                 borderColor: 'var(--border)',
                 backgroundColor: 'var(--bg-secondary)',
                 color: 'var(--text-primary)'
               }}
+              title="Disminuir cantidad"
             >
               <FiMinus className="w-3 h-3" />
             </button>
-            <span className="w-10 text-center font-semibold text-sm" style={{ color: 'var(--text-primary)' }}>
-              {item.cantidad}
-            </span>
+            <input
+              type="number"
+              min="1"
+              step="1"
+              value={item.cantidad}
+              onChange={(e) => {
+                const value = e.target.value;
+                if (value === '') return; // Allow empty input temporarily
+                const newQuantity = parseInt(value);
+                if (!isNaN(newQuantity) && newQuantity >= 1) {
+                  onUpdateQuantity(index, newQuantity);
+                }
+              }}
+              onBlur={(e) => {
+                const value = e.target.value;
+                if (value === '' || parseInt(value) < 1) {
+                  onUpdateQuantity(index, 1); // Reset to 1 if invalid
+                }
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  (e.target as HTMLInputElement).blur(); // Trigger blur on Enter
+                }
+              }}
+              className="w-16 px-2 py-1 text-sm rounded border text-center font-semibold focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+              style={{
+                backgroundColor: 'var(--input-bg)',
+                borderColor: 'var(--border)',
+                color: 'var(--text-primary)'
+              }}
+              title="Cantidad (presiona Enter para confirmar)"
+              placeholder="1"
+            />
             <button
               onClick={() => onUpdateQuantity(index, item.cantidad + 1)}
-              className="w-7 h-7 rounded-full flex items-center justify-center border transition-colors"
+              className="w-7 h-7 rounded-full flex items-center justify-center border transition-colors hover:opacity-80"
               style={{
                 borderColor: 'var(--border)',
                 backgroundColor: 'var(--bg-secondary)',
                 color: 'var(--text-primary)'
               }}
+              title="Aumentar cantidad"
             >
               <FiPlus className="w-3 h-3" />
             </button>
@@ -401,14 +448,42 @@ const CartItem: React.FC<CartItemProps> = ({
               type="number"
               min="0"
               max="100"
-              value={item.descuento || 0}
-              onChange={(e) => onUpdateDiscount(index, parseFloat(e.target.value) || 0)}
-              className="w-16 px-2 py-1 text-xs rounded border text-center"
+              step="0.1"
+              value={item.descuento || ''}
+              placeholder="0"
+              onChange={(e) => {
+                const value = e.target.value;
+                if (value === '') {
+                  // If empty, set to 0
+                  onUpdateDiscount(index, 0);
+                } else {
+                  const numericValue = parseFloat(value);
+                  if (!isNaN(numericValue)) {
+                    // Ensure value is between 0 and 100
+                    const clampedValue = Math.max(0, Math.min(100, numericValue));
+                    onUpdateDiscount(index, clampedValue);
+                  }
+                }
+              }}
+              onBlur={(e) => {
+                // If field is empty on blur, ensure it's 0
+                if (e.target.value === '') {
+                  onUpdateDiscount(index, 0);
+                }
+              }}
+              onFocus={(e) => {
+                // If currently showing 0, clear it for easier editing
+                if (e.target.value === '0' || e.target.value === '') {
+                  e.target.value = '';
+                }
+              }}
+              className="w-16 px-2 py-1 text-xs rounded border text-center focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
               style={{
                 backgroundColor: 'var(--input-bg)',
                 borderColor: 'var(--border)',
                 color: 'var(--text-primary)'
               }}
+              title="Descuento porcentual (0-100%)"
             />
             <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>%</span>
           </div>
@@ -526,10 +601,40 @@ export function ProductsForm({ items, onChange }: ProductsFormProps) {
   const [selectedCategory, setSelectedCategory] = useState<number | 'all'>('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [categoriesExpanded, setCategoriesExpanded] = useState(false);
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [toasts, setToasts] = useState<Array<{ id: number; message: string; type: 'success' | 'error' | 'info' }>>([]);
   const [currentPage, setCurrentPage] = useState(1);
+
+  // Alignment refs and state (to align Cart top with Categories row)
+  const leftPanelRef = useRef<HTMLDivElement | null>(null);
+  const categoryAnchorRef = useRef<HTMLDivElement | null>(null);
+  const [alignOffset, setAlignOffset] = useState(0);
+
+  useEffect(() => {
+    const computeOffset = () => {
+      if (leftPanelRef.current && categoryAnchorRef.current) {
+        try {
+          const offset = categoryAnchorRef.current.offsetTop - leftPanelRef.current.offsetTop;
+          setAlignOffset(Math.max(0, offset));
+        } catch {
+          // no-op
+        }
+      }
+    };
+
+    // Compute on mount and when window resizes
+    computeOffset();
+    const onResize = () => computeOffset();
+    window.addEventListener('resize', onResize);
+    // Recompute shortly after mount to catch font/layout shifts
+    const t = setTimeout(computeOffset, 100);
+    return () => {
+      window.removeEventListener('resize', onResize);
+      clearTimeout(t);
+    };
+  }, []);
 
   // Form state for custom product
   const [newItem, setNewItem] = useState<Partial<QuoteItem>>({
@@ -763,9 +868,9 @@ export function ProductsForm({ items, onChange }: ProductsFormProps) {
         </button>
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left Panel - Product Catalog */}
-        <div className="xl:col-span-2 space-y-4">
+        <div ref={leftPanelRef} className="lg:col-span-2 space-y-4">
           {/* Search and Filters */}
           <div className="flex flex-col sm:flex-row gap-4">
             <div className="flex-1 relative">
@@ -786,37 +891,45 @@ export function ProductsForm({ items, onChange }: ProductsFormProps) {
                 }}
               />
             </div>
-
-            <div className="flex rounded-xl overflow-hidden border" style={{ borderColor: 'var(--border)' }}>
-              <button
-                onClick={() => setViewMode('grid')}
-                className={`px-4 py-3 transition-colors ${viewMode === 'grid' ? 'bg-accent' : ''}`}
-                style={{
-                  backgroundColor: viewMode === 'grid' ? 'var(--accent-bg)' : 'var(--card-bg)',
-                  color: viewMode === 'grid' ? 'var(--accent-text)' : 'var(--text-secondary)'
-                }}
-              >
-                <FiGrid className="w-5 h-5" />
-              </button>
-              <button
-                onClick={() => setViewMode('list')}
-                className={`px-4 py-3 border-l transition-colors ${viewMode === 'list' ? 'bg-accent' : ''}`}
-                style={{
-                  backgroundColor: viewMode === 'list' ? 'var(--accent-bg)' : 'var(--card-bg)',
-                  color: viewMode === 'list' ? 'var(--accent-text)' : 'var(--text-secondary)',
-                  borderColor: 'var(--border)'
-                }}
-              >
-                <FiList className="w-5 h-5" />
-              </button>
-            </div>
           </div>
 
           {/* Categories */}
+          {/* Anchor used to align the Cart top with the start of Categories */}
+          <div ref={categoryAnchorRef} />
+
+          {/* Categories Header with Toggle */}
+          <div className="flex items-center justify-between mb-4">
+            <h4 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>
+              Categorías
+            </h4>
+
+            {/* Category Expansion Toggle Button */}
+            {types.length > 8 && (
+              <button
+                onClick={() => setCategoriesExpanded(!categoriesExpanded)}
+                className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                style={{
+                  backgroundColor: 'var(--accent-bg)',
+                  color: 'var(--accent-text)',
+                  border: `1px solid var(--accent-primary)`
+                }}
+                title={categoriesExpanded ? "Contraer categorías" : "Expandir categorías"}
+                aria-label={categoriesExpanded ? "Contraer categorías" : "Expandir categorías"}
+              >
+                {categoriesExpanded ? <FiChevronUp className="w-4 h-4" /> : <FiChevronDown className="w-4 h-4" />}
+                <span className="hidden sm:inline">
+                  {categoriesExpanded ? 'Contraer' : 'Expandir'}
+                </span>
+              </button>
+            )}
+          </div>
+
           <CategorySelector
             categories={types}
             selected={selectedCategory}
             onSelect={setSelectedCategory}
+            isExpanded={categoriesExpanded}
+            onToggleExpanded={() => setCategoriesExpanded(!categoriesExpanded)}
           />
 
           {/* Products Grid/List */}
@@ -828,6 +941,46 @@ export function ProductsForm({ items, onChange }: ProductsFormProps) {
                   ({filteredProducts.length} productos • Página {currentPage} de {totalPages})
                 </span>
               </h4>
+
+              {/* Product View Toggle Buttons */}
+              <div className="flex rounded-xl overflow-hidden border shadow-sm" style={{ borderColor: 'var(--border)' }}>
+                <button
+                  onClick={() => setViewMode('grid')}
+                  className={`px-4 py-3 transition-all duration-200 hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-500 relative flex items-center gap-2 ${
+                    viewMode === 'grid' ? 'shadow-inner bg-opacity-90' : 'hover:shadow-md'
+                  }`}
+                  style={{
+                    backgroundColor: viewMode === 'grid' ? 'var(--accent-bg)' : 'var(--card-bg)',
+                    color: viewMode === 'grid' ? 'var(--accent-text)' : 'var(--text-secondary)',
+                    border: 'none'
+                  }}
+                  title="Vista de tarjetas"
+                  aria-label="Cambiar a vista de tarjetas"
+                >
+                  <FiGrid className="w-5 h-5" />
+                  <span className="text-xs font-medium hidden sm:inline">
+                    {viewMode === 'grid' && 'Tarjetas'}
+                  </span>
+                </button>
+                <button
+                  onClick={() => setViewMode('list')}
+                  className={`px-4 py-3 border-l transition-all duration-200 hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-500 relative flex items-center gap-2 ${
+                    viewMode === 'list' ? 'shadow-inner bg-opacity-90' : 'hover:shadow-md'
+                  }`}
+                  style={{
+                    backgroundColor: viewMode === 'list' ? 'var(--accent-bg)' : 'var(--card-bg)',
+                    color: viewMode === 'list' ? 'var(--accent-text)' : 'var(--text-secondary)',
+                    borderColor: 'var(--border)'
+                  }}
+                  title="Vista de lista"
+                  aria-label="Cambiar a vista de lista"
+                >
+                  <FiList className="w-5 h-5" />
+                  <span className="text-xs font-medium hidden sm:inline">
+                    {viewMode === 'list' && 'Lista'}
+                  </span>
+                </button>
+              </div>
             </div>
 
             {loading ? (
@@ -848,7 +1001,7 @@ export function ProductsForm({ items, onChange }: ProductsFormProps) {
                 </p>
               </div>
             ) : viewMode === 'grid' ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
                 {paginatedProducts.map(product => {
                   const isInCart = items.some(item =>
                     item.productId === product.id || item.codigo === (product.sku || `PROD-${product.id}`)
@@ -925,9 +1078,12 @@ export function ProductsForm({ items, onChange }: ProductsFormProps) {
         </div>
 
         {/* Right Panel - Cart */}
-        <div>
+        <div
+          className="lg:col-span-1 mt-0 lg:mt-[var(--align-offset)]"
+          style={{ ['--align-offset' as any]: `${alignOffset}px` }}
+        >
           <div
-            className="sticky top-6 border rounded-xl p-6"
+            className="border rounded-xl p-6"
             style={{
               backgroundColor: 'var(--card-bg)',
               borderColor: 'var(--border)',

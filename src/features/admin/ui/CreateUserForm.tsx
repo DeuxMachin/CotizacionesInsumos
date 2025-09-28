@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useUsuarios } from "@/hooks/useSupabase";
 import { supabase } from "@/lib/supabase";
+import { useAuth } from "@/contexts/AuthContext";
 import bcrypt from "bcryptjs";
 import { FiMail, FiUser, FiShield, FiLock, FiEye, FiEyeOff, FiCheck, FiAlertCircle, FiArrowLeft, FiCheckCircle, FiXCircle } from "react-icons/fi";
 
@@ -11,7 +12,7 @@ interface NewUserForm {
   email: string;
   name: string;
   lastName: string;
-  role: 'admin' | 'vendedor';
+  role: 'dueño' | 'dueno' | 'admin' | 'vendedor';
   password: string;
   confirmPassword: string;
 }
@@ -27,10 +28,20 @@ const initialFormState: NewUserForm = {
   confirmPassword: ''
 };
 
-const roleOptions: Array<{ value: 'admin' | 'vendedor'; label: string; description: string }> = [
-  { value: 'admin', label: 'Administrador', description: 'Acceso completo al sistema' },
-  { value: 'vendedor', label: 'Vendedor', description: 'Gestión de cotizaciones y clientes' }
-];
+const getRoleOptions = (userRole: string) => {
+  if (['dueño', 'dueno'].includes(userRole.toLowerCase())) {
+    return [
+      { value: 'dueño' as const, label: 'Dueño', description: 'Acceso total al sistema' },
+      { value: 'admin' as const, label: 'Administrador', description: 'Acceso completo al sistema' },
+      { value: 'vendedor' as const, label: 'Vendedor', description: 'Gestión de cotizaciones y clientes' }
+    ];
+  } else if (userRole.toLowerCase() === 'admin') {
+    return [
+      { value: 'vendedor' as const, label: 'Vendedor', description: 'Gestión de cotizaciones y clientes' }
+    ];
+  }
+  return [];
+};
 
 // Lista de contraseñas comunes prohibidas
 const commonPasswords = [
@@ -96,6 +107,7 @@ type DbUser = {
 
 export function CreateUserForm() {
   const router = useRouter();
+  const { user } = useAuth();
   const { data: dbUsers, refetch } = useUsuarios();
   const [formData, setFormData] = useState<NewUserForm>(initialFormState);
   const [formErrors, setFormErrors] = useState<NewUserFormErrors>({});
@@ -415,7 +427,7 @@ export function CreateUserForm() {
                   Rol del usuario *
                 </label>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {roleOptions.map((option) => (
+                  {getRoleOptions(user?.role || '').map((option) => (
                     <div
                       key={option.value}
                       onClick={() => handleInputChange('role', option.value)}

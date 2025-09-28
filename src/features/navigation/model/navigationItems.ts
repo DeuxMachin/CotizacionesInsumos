@@ -118,8 +118,8 @@ export function useNavigationItems(userRole: string) {
       // Verificar si el usuario tiene permisos para ver este elemento
       const hasRequiredPermissions = hasAnyPermission(item.resource, item.requiredActions);
 
-      // Si es adminOnly, verificar que sea admin
-      if (item.adminOnly && userRole.toLowerCase() !== 'admin') {
+      // Si es adminOnly, verificar que sea admin o dueño
+      if (item.adminOnly && !['admin', 'dueño', 'dueno'].includes(userRole.toLowerCase())) {
         return false;
       }
 
@@ -141,7 +141,7 @@ export function useNavigationItems(userRole: string) {
       const item = ALL_NAVIGATION_ITEMS.find(nav => nav.key === section);
       if (!item) return false;
 
-      if (item.adminOnly && userRole.toLowerCase() !== 'admin') {
+      if (item.adminOnly && !['admin', 'dueño', 'dueno'].includes(userRole.toLowerCase())) {
         return false;
       }
 

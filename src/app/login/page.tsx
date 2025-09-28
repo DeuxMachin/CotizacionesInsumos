@@ -12,7 +12,7 @@ export default function LoginPage() {
   useEffect(() => {
     if (user) {
       console.log('[LoginPage] Detectado usuario autenticado, redirigiendo...', user.email)
-      const redirectPath = user.role === 'admin' ? '/admin' : '/dashboard';
+      const redirectPath = (['admin', 'dueño', 'dueno'].includes(user.role?.toLowerCase() || '')) ? '/admin' : '/dashboard';
       router.replace(redirectPath);
     } else {
       console.log('[LoginPage] Sin usuario autenticado todavía.')

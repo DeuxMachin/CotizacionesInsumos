@@ -66,7 +66,7 @@ export function Sidebar() {
             <Logo height={22} className="shrink-0 sm:h-7" />
             <div className="flex flex-col min-w-0">
               <span className="font-bold text-theme-primary text-sm truncate">
-                {user?.role?.toLowerCase() === 'admin' ? 'Panel Admin' : 'Sistema'}
+                {(['admin', 'dueño', 'dueno'].includes(user?.role?.toLowerCase() || '')) ? 'Panel Admin' : 'Sistema'}
               </span>
               <span className="text-xs text-theme-secondary truncate">v1.0</span>
             </div>

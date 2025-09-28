@@ -38,8 +38,8 @@ export function ProtectedRoute({
     return null;
   }
 
-  // Si requiere admin y no es admin, mostrar fallback
-  if (requireAdmin && effectiveRole.toLowerCase() !== 'admin') {
+  // Si requiere admin y no es admin o dueño, mostrar fallback
+  if (requireAdmin && !['admin', 'dueño', 'dueno'].includes(effectiveRole.toLowerCase())) {
     return fallback || <UnauthorizedView />;
   }
 

@@ -52,7 +52,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               email: apiUser.email,
               name,
               role,
-              isAdmin: role === 'admin'
+              isAdmin: ['admin', 'dueño', 'dueno'].includes(role?.toLowerCase() || '')
             });
             setLastActivity(Date.now());
           }
@@ -129,10 +129,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const u = data.data.user;
       const role = u.role || u.rol;
       const name = u.name || (u.nombre && u.apellido ? `${u.nombre} ${u.apellido}` : u.nombre) || undefined;
-      setUser({ id: u.id, email: u.email, name, role, isAdmin: role === 'admin' });
+      setUser({ id: u.id, email: u.email, name, role, isAdmin: ['admin', 'dueño', 'dueno'].includes(role?.toLowerCase() || '') });
       setLastActivity(Date.now());
       setLoading(false);
-      router.replace(role === 'admin' ? '/admin' : '/dashboard');
+      router.replace((['admin', 'dueño', 'dueno'].includes(role?.toLowerCase() || '')) ? '/admin' : '/dashboard');
       return { success: true };
     } catch (e) {
       log.error('[Auth] Error en login:', e);

@@ -88,7 +88,7 @@ export function useActionAuthorization() {
     user,
     // La propiedad roleInfo ya no existe, pero proporcionamos isAdmin para compatibilidad
     roleInfo: {
-      isAdmin: user?.role?.toLowerCase() === 'admin'
+      isAdmin: ['admin', 'dueño', 'dueno'].includes(user?.role?.toLowerCase() || '')
     },
   };
 }

@@ -15,7 +15,7 @@ export default function HomePage() {
       router.replace("/login");
     } else {
       // Redirigir según el rol del usuario
-  const redirectPath = user?.role === 'admin' ? '/admin' : '/dashboard';
+  const redirectPath = (['admin', 'dueño', 'dueno'].includes(user?.role?.toLowerCase() || '')) ? '/admin' : '/dashboard';
       router.replace(redirectPath);
     }
   }, [isAuthenticated, router, user]);

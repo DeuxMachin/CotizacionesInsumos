@@ -412,7 +412,7 @@ export default function StockPage() {
           <div className="flex flex-col sm:flex-row items-center gap-3 sm:gap-4 w-full lg:w-auto">
             {/* Vista simplificada - quitar el toggle complejo */}
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
-              {user?.role === 'admin' && (
+              {(['admin', 'dueño', 'dueno'].includes(user?.role?.toLowerCase() || '')) && (
                 <Link
                   href="/dashboard/stock/nuevo"
                   className="px-4 sm:px-6 py-3 rounded-lg transition-colors duration-200 font-semibold flex items-center justify-center gap-2 shadow-md hover:shadow-lg text-sm sm:text-base"
@@ -448,7 +448,7 @@ export default function StockPage() {
                 <span className="xs:hidden">Export</span>
               </button>
 
-              {user?.role === 'admin' && (
+              {(['admin', 'dueño', 'dueno'].includes(user?.role?.toLowerCase() || '')) && (
                 <div className="relative">
                   <button
                     onClick={() => setShowCategoryMenu(v => !v)}
@@ -828,7 +828,7 @@ function ProductCard({ product, onEdit, onAskDelete, user, openRowMenuId, setOpe
           </div>
 
           {/* Botón de editar - responsive */}
-          {user?.role === 'admin' && (
+          {(['admin', 'dueño', 'dueno'].includes(user?.role?.toLowerCase() || '')) && (
             <div className="flex items-center gap-2">
               <button
                 onClick={() => onEdit(product)}
