@@ -123,7 +123,8 @@ export class CotizacionesService {
         userInfo.email,
         data.id,
         data.folio || `#${data.id}`,
-        clienteInfo
+        clienteInfo,
+        userInfo.name
       )
     }
 
@@ -250,7 +251,8 @@ export class CotizacionesService {
         data.id,
         data.folio || `#${data.id}`,
         oldStatus,
-        estado
+        estado,
+        userInfo.name
       )
     }
 

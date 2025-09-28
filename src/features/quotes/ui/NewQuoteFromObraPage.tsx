@@ -19,6 +19,7 @@ import { useQuotes } from '../model/useQuotes';
 import { useObras } from '@/features/obras/model/useObras';
 import { Quote, QuoteStatus, ClientInfo, QuoteItem, DeliveryInfo, CommercialTerms } from '@/core/domain/quote/Quote';
 import { Obra } from '@/features/obras/types/obras';
+import { useAuthHeaders } from '@/hooks/useAuthHeaders';
 import dynamic from 'next/dynamic';
 
 // Cargar componentes de formulario dinámicamente en cliente para evitar referencias
@@ -53,6 +54,7 @@ export function NewQuoteFromObraPage() {
   
   const { crearCotizacion, formatMoney } = useQuotes();
   const { obtenerObra } = useObras();
+  const { createHeaders } = useAuthHeaders();
   
   const [obra, setObra] = useState<Obra | null>(null);
   const [loadingObra, setLoadingObra] = useState(true);
@@ -245,7 +247,7 @@ export function NewQuoteFromObraPage() {
         try {
           const response = await fetch('/api/cotizaciones/send-email', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: createHeaders(),
             body: JSON.stringify({
               quoteData: {
                 cliente: formData.cliente,

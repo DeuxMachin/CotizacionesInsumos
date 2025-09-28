@@ -17,7 +17,7 @@ const QuickActions = dynamic(() => import("@/features/dashboard/ui/QuickActions"
   </div>
 });
 
-const RecentActivity = dynamic(() => import("@/features/dashboard/ui/RecentActivity").then(m => m.RecentActivity), {
+const UnifiedAuditLog = dynamic(() => import("@/components/UnifiedAuditLog"), {
   ssr: false,
   loading: () => <div className="rounded-xl p-6 animate-pulse" style={{ backgroundColor: 'var(--bg-primary)', border: '1px solid var(--border-subtle)' }}>
     <div className="mb-4">
@@ -78,7 +78,7 @@ export default function DashboardPage() {
       {/* Grid de contenido secundario */}
       <div className="grid gap-3 sm:gap-4 lg:gap-6 xl:grid-cols-2">
         {/* Actividad reciente */}
-        <RecentActivity />
+        <UnifiedAuditLog mode="dashboard" limit={5} />
 
         {/* Gráfico de ventas mensuales */}
         <div className="rounded-xl" style={{ overflow: 'hidden' }}>

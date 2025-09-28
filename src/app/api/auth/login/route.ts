@@ -101,10 +101,12 @@ export async function POST(request: NextRequest) {
     console.log(`✅ Login exitoso para: ${email}`);
 
     // Registrar en audit log
+    const userName = user.nombre && user.apellido ? `${user.nombre} ${user.apellido}` : user.nombre || undefined;
     await AuditLogger.logUserLogin(
       user.id, 
       user.email, 
-      user.nombre && user.apellido ? `${user.nombre} ${user.apellido}` : user.nombre || undefined
+      userName,
+      request.headers.get('user-agent') || undefined
     )
 
     // Generar tokens (access + refresh)

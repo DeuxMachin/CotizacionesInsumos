@@ -4,9 +4,9 @@ import { useState, useEffect, useRef, lazy, Suspense } from "react";
 import { FiUsers, FiFileText, FiDatabase, FiBarChart } from "react-icons/fi";
 import { UsersManagementPage } from "./UsersManagementPage";
 import { useAdminStats, useSimpleUserCount } from '@/hooks/useSupabase';
+import UnifiedAuditLog from "@/components/UnifiedAuditLog";
 
 // Lazy load components
-const AuditLogManagement = lazy(() => import("./AuditLogManagement"));
 const DatabaseManagement = lazy(() => import("./DatabaseManagement"));
 const ReportsManagement = lazy(() => import("./ReportsManagement"));
 
@@ -106,7 +106,7 @@ export function AdminPanel() {
       case 'users':
         return <UsersManagementPage />;
       case 'audit-log':
-        return <ComponentWrapper><AuditLogManagement /></ComponentWrapper>;
+        return <UnifiedAuditLog mode="admin" />;
       case 'database':
         return <ComponentWrapper><DatabaseManagement /></ComponentWrapper>;
       case 'reports':

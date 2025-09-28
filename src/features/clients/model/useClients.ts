@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback } from 'react';
+import { useAuthHeaders } from '@/hooks/useAuthHeaders';
 
 // Eliminados helpers de mocks; ahora la data proviene de la API/Supabase
 import { Toast } from '@/shared/ui/Toast';
@@ -80,6 +81,9 @@ export function useClients() {
     return dv === calculatedDV;
   }, []);
 
+  // Hook para headers de autenticación
+  const { createHeaders } = useAuthHeaders();
+
   // Función para crear un nuevo cliente
   const crearCliente = useCallback(async (clientData: NewClientData): Promise<boolean> => {
     setLoading(true);
@@ -95,7 +99,7 @@ export function useClients() {
       // Llamada real a la API
       const res = await fetch('/api/clientes', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: createHeaders(),
         body: JSON.stringify({
           rut: clientData.rut,
             // Campos mínimos; otros opcionales. Ajustar según necesidades reales.
@@ -132,7 +136,7 @@ export function useClients() {
       setLoading(false);
       return false;
     }
-  }, [validateRUT]);
+  }, [validateRUT, createHeaders]);
 
   // Función para validar email
   const validateEmail = useCallback((email: string): boolean => {
