@@ -625,6 +625,45 @@ function ClientDetailPage() {
     }
   };
 
+  const handleDeleteClient = async () => {
+    if (!client) return;
+
+    const confirmDelete = window.confirm(
+      `¿Estás seguro de que deseas eliminar el cliente "${client.razonSocial}"?\n\nEsta acción no se puede deshacer.`
+    );
+
+    if (!confirmDelete) return;
+
+    try {
+      if (!user) {
+        Toast.error('Tu sesión ha expirado. Inicia sesión nuevamente.');
+        return;
+      }
+
+      const authHeaders = createAuthHeaders(legacyUser);
+
+      const response = await fetch(`/api/clientes/${client.id}`, {
+        method: 'DELETE',
+        headers: authHeaders,
+        credentials: 'include'
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Error al eliminar el cliente');
+      }
+
+      Toast.success('Cliente eliminado exitosamente');
+      
+      // Redirigir a la lista de clientes
+      router.push('/dashboard/clientes');
+
+    } catch (error) {
+      console.error('Error eliminando cliente:', error);
+      Toast.error(error instanceof Error ? error.message : 'Error al eliminar el cliente');
+    }
+  };
+
   const handlePaymentSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!client) return;
@@ -792,7 +831,7 @@ function ClientDetailPage() {
       setSaving(true);
       const res = await fetch(`/api/clientes/${client.id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: createAuthHeaders(legacyUser),
         body: JSON.stringify(form)
       });
       if (!res.ok) throw new Error('Error al actualizar');
@@ -1165,7 +1204,10 @@ function ClientDetailPage() {
                   </button>
                 </div>
                 {canDelete('clients') && (
-                  <button className="btn-secondary text-red-600 flex items-center gap-2 ml-2">
+                  <button 
+                    onClick={handleDeleteClient}
+                    className="btn-secondary text-red-600 flex items-center gap-2 ml-2"
+                  >
                     <FiTrash2 className="w-4 h-4" />
                     Eliminar
                   </button>
@@ -1210,6 +1252,7 @@ function ClientDetailPage() {
                 </div>
                 {canDelete('clients') && (
                   <button
+                    onClick={handleDeleteClient}
                     className="p-2 rounded-lg transition-colores text-red-600"
                     style={{ backgroundColor: 'var(--bg-secondary)' }}
                     title="Eliminar cliente"

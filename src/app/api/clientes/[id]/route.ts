@@ -74,6 +74,13 @@ export async function PUT(
       name: request.headers.get('x-user-name') || 'Usuario'
     };
 
+    console.log('🔍 PUT /api/clientes/[id] - Headers recibidos:', {
+      'x-user-id': request.headers.get('x-user-id'),
+      'x-user-email': request.headers.get('x-user-email'),
+      'x-user-name': request.headers.get('x-user-name'),
+      userInfo
+    });
+
     const cliente = await ClientesService.update(id, body, userInfo)
 
     return NextResponse.json({
