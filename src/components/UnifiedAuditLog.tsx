@@ -526,12 +526,7 @@ export default function UnifiedAuditLog({
               <select
                 value={selectedEventType}
                 onChange={(e) => setSelectedEventType(e.target.value)}
-                className="w-full px-3 py-2 border rounded-lg text-sm"
-                style={{ 
-                  backgroundColor: 'var(--bg-secondary)',
-                  borderColor: 'var(--border-subtle)',
-                  color: 'var(--text-primary)'
-                }}
+                className="form-select"
               >
                 {eventTypes.map(type => (
                   <option key={type.value} value={type.value}>{type.label}</option>
@@ -547,12 +542,7 @@ export default function UnifiedAuditLog({
               <select
                 value={selectedDateRange}
                 onChange={(e) => setSelectedDateRange(e.target.value)}
-                className="w-full px-3 py-2 border rounded-lg text-sm"
-                style={{ 
-                  backgroundColor: 'var(--bg-secondary)',
-                  borderColor: 'var(--border-subtle)',
-                  color: 'var(--text-primary)'
-                }}
+                className="form-select"
               >
                 {dateRanges.map(range => (
                   <option key={range.value} value={range.value}>{range.label}</option>

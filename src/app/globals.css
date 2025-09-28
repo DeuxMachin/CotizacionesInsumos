@@ -745,105 +745,78 @@ p, .text-body {
   border-color: var(--accent-primary);
 }
 
-/* Estilos para selects de filtros */
-.filter-select {
-  width: 100%;
-  padding: 0.5rem 0.75rem;
+/* Estilos unificados para todos los selectores con tipografía global */
+select, .filter-select, .form-select {
+  /* Tipografía global */
+  font-family: var(--font-sans);
   font-size: 0.875rem;
+  font-weight: 500;
+  line-height: 1.25rem;
+  
+  /* Layout y espaciado */
+  width: 100%;
+  padding: 0.75rem 2.5rem 0.75rem 0.875rem;
   border-radius: 0.5rem;
+  
+  /* Colores y temas */
   border: 1px solid var(--border);
-  background-color: var(--bg-secondary);
+  background-color: var(--bg-primary);
   color: var(--text-primary);
-  transition: all 0.2s ease;
+  
+  /* Interactividad */
+  transition: all 0.2s ease-in-out;
+  cursor: pointer;
+  
+  /* Personalización de flecha */
   appearance: none;
   -webkit-appearance: none;
   -moz-appearance: none;
   background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
   background-position: right 0.5rem center;
   background-repeat: no-repeat;
-  background-size: 1.5em 1.5em;
-  padding-right: 2.5rem;
+  background-size: 1.25em 1.25em;
 }
 
-.filter-select:hover {
+/* Estados interactivos */
+select:hover, .filter-select:hover, .form-select:hover {
   border-color: var(--accent-primary);
-  background-color: var(--card-bg);
-}
-
-.filter-select:focus {
-  outline: 2px solid var(--accent-primary);
-  outline-offset: 2px;
-  border-color: var(--accent-primary);
-}
-
-.filter-select option {
-  background-color: var(--card-bg);
-  color: var(--text-primary);
-  padding: 0.5rem;
-}
-
-/* Tema oscuro - ajustes específicos para select */
-.dark .filter-select {
-  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%9ca3af' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
   background-color: var(--bg-secondary);
-  border-color: var(--border);
-  color: var(--text-primary);
 }
 
-.dark .filter-select:hover {
-  background-color: var(--card-bg);
+select:focus, .filter-select:focus, .form-select:focus {
+  outline: none;
   border-color: var(--accent-primary);
+  box-shadow: 0 0 0 2px rgba(249, 115, 22, 0.2);
 }
 
-.dark .filter-select option {
-  background-color: var(--card-bg);
-  color: var(--text-primary);
-}
-
-/* Estilos para selects de filtros - Compatibilidad con temas */
-.filter-select {
-  appearance: none;
-  -webkit-appearance: none;
-  -moz-appearance: none;
-  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
-  background-position: right 0.5rem center;
-  background-repeat: no-repeat;
-  background-size: 1.5em 1.5em;
-  padding-right: 2.5rem;
-  width: 100%;
-  padding: 0.5rem 0.75rem;
+/* Estilos para opciones */
+select option, .filter-select option, .form-select option {
+  font-family: var(--font-sans);
   font-size: 0.875rem;
-  border-radius: 0.5rem;
-  border: 1px solid var(--border);
-  background-color: var(--bg-secondary);
+  font-weight: 500;
+  background-color: var(--bg-primary);
   color: var(--text-primary);
-  transition: all 0.2s ease;
+  padding: 0.5rem 0.75rem;
 }
 
-.filter-select:hover {
-  border-color: var(--accent-primary);
-}
-
-.filter-select:focus {
-  outline: 2px solid var(--accent-primary);
-  outline-offset: 2px;
-  border-color: var(--accent-primary);
-}
-
-.filter-select option {
-  background-color: var(--card-bg);
-  color: var(--text-primary);
-}
-
-/* Tema oscuro - ajustes para selects */
-.dark .filter-select {
+/* Modo oscuro - ajustes específicos */
+.dark select, .dark .filter-select, .dark .form-select {
   background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%23d1d5db' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
-  background-color: var(--bg-secondary);
+  background-color: var(--bg-primary);
   border-color: var(--border);
   color: var(--text-primary);
 }
 
-.dark .filter-select option {
-  background-color: var(--card-bg);
+.dark select:hover, .dark .filter-select:hover, .dark .form-select:hover {
+  background-color: var(--bg-secondary);
+  border-color: var(--accent-primary);
+}
+
+.dark select:focus, .dark .filter-select:focus, .dark .form-select:focus {
+  box-shadow: 0 0 0 2px rgba(251, 146, 60, 0.2);
+}
+
+.dark select option, .dark .filter-select option, .dark .form-select option {
+  background-color: var(--bg-primary);
   color: var(--text-primary);
 }

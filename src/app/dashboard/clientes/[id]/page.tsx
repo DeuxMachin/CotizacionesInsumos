@@ -1978,7 +1978,7 @@ function EditModal({ open, onClose, onSubmit, form, onChange, saving, errors, cl
               <h3 className="text-lg font-medium" style={{ color: 'var(--text-primary)' }}>Estado del Cliente</h3>
             </div>
             <div className="pl-8">
-              <select name="estado" value={form.estado} onChange={onChange} className="filter-select">
+              <select name="estado" value={form.estado} onChange={onChange} className="form-select">
                 <option value="vigente">Vigente</option>
                 <option value="moroso">Moroso</option>
                 <option value="inactivo">Inactivo</option>
@@ -2008,8 +2008,7 @@ function EditModal({ open, onClose, onSubmit, form, onChange, saving, errors, cl
                       name="cliente_tipo_id" 
                       value={form.cliente_tipo_id || ''} 
                       onChange={(e) => onClientTypeChange(e.target.value ? Number(e.target.value) : null)}
-                      className="w-full p-3 rounded-lg border bg-transparent transition-colors focus:ring-2 focus:ring-blue-500/20"
-                      style={{ borderColor: 'var(--border)', color: 'var(--text-primary)' }}
+                      className="form-select"
                     >
                       <option value="">Seleccionar tipo...</option>
                       {clientTypes.map((type) => (

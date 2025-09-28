@@ -200,7 +200,7 @@ export function ConvertToObraPanel({ targetId, defaultDireccion, onClose, onConv
             Vendedor a cargo <span className="text-red-500">*</span>
           </label>
           <select 
-            className="form-input mt-1" 
+            className="form-select mt-1" 
             value={vendedorId} 
             onChange={(e) => setVendedorId(e.target.value)}
             required
@@ -213,14 +213,14 @@ export function ConvertToObraPanel({ targetId, defaultDireccion, onClose, onConv
         </div>
         <div>
           <label className="form-label">Tipo de obra</label>
-          <select className="form-input mt-1" value={tipoObraId ?? ''} onChange={(e) => setTipoObraId(e.target.value ? Number(e.target.value) : undefined)}>
+          <select className="form-select mt-1" value={tipoObraId ?? ''} onChange={(e) => setTipoObraId(e.target.value ? Number(e.target.value) : undefined)}>
             <option value="">No especificado</option>
             {tipos.map(t => (<option key={t.id} value={t.id}>{t.nombre}</option>))}
           </select>
         </div>
         <div>
           <label className="form-label">Tamaño de obra</label>
-          <select className="form-input mt-1" value={tamanoObraId ?? ''} onChange={(e) => setTamanoObraId(e.target.value ? Number(e.target.value) : undefined)}>
+          <select className="form-select mt-1" value={tamanoObraId ?? ''} onChange={(e) => setTamanoObraId(e.target.value ? Number(e.target.value) : undefined)}>
             <option value="">No especificado</option>
             {tamanos.map(t => (<option key={t.id} value={t.id}>{t.nombre}</option>))}
           </select>

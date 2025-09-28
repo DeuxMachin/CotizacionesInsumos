@@ -276,7 +276,7 @@ export function FilterSelect({
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="filter-select"
+        className="form-select"
       >
         <option value="">{placeholder}</option>
         {options.map((option) => (
