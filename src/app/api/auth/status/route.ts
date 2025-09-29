@@ -8,7 +8,7 @@ export async function GET(request: NextRequest) {
     if (!token) {
       return NextResponse.json({ authenticated: false }, { status: 200 });
     }
-    let decoded: any;
+    let decoded: { sub: string; [key: string]: unknown };
     try {
       decoded = await verifyToken(token);
     } catch {

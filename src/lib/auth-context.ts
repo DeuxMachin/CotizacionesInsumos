@@ -22,7 +22,7 @@ export async function getUserContext(request: NextRequest): Promise<UserContext 
     if (!token) {
       return null
     }
-    let decoded: any
+    let decoded: { sub: string; email?: string; nombre?: string; apellido?: string; rol?: string; type?: string }
     try {
       decoded = await verifyToken(token)
     } catch {

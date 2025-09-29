@@ -4,7 +4,7 @@ import { verifyToken } from '@/lib/auth/tokens';
 
 export async function middleware(request: NextRequest) {
   const jwtCookie = request.cookies.get('auth-token');
-  let payload: any = null;
+  let payload: { sub: string; email?: string; nombre?: string; apellido?: string; rol?: string; exp?: number; type?: string } | null = null;
   let isAuthenticated = false;
   let role: string | undefined;
   if (jwtCookie?.value) {
@@ -13,7 +13,7 @@ export async function middleware(request: NextRequest) {
       const now = Math.floor(Date.now() / 1000);
       if (payload.exp && payload.exp > now) {
         isAuthenticated = true;
-        role = payload.rol || payload.role;
+        role = payload.rol;
       }
     } catch (e) {
       // token inválido -> permanece no autenticado

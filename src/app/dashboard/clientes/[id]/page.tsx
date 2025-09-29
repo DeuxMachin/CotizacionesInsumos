@@ -50,8 +50,8 @@ function createAuthHeaders(user: AuthUser | null): HeadersInit {
   if (user) {
     headers['x-user-id'] = user.id
     headers['x-user-email'] = user.email
-    if ((user as any).name) {
-      headers['x-user-name'] = (user as any).name
+    if ('name' in user && typeof user.name === 'string') {
+      headers['x-user-name'] = user.name
     } else if (user.nombre) {
       const full = user.apellido ? `${user.nombre} ${user.apellido}` : user.nombre
       headers['x-user-name'] = full
@@ -414,7 +414,7 @@ function ClientDetailPage() {
     email: user.email,
     nombre: user.name?.split(' ')?.[0] || '',
     apellido: user.name?.split(' ')?.slice(1).join(' ') || '',
-    rol: (user.role as any) || 'vendedor',
+    rol: (typeof user.role === 'string' ? user.role as 'cliente' | 'dueño' | 'dueno' | 'admin' | 'vendedor' : 'vendedor'),
     activo: true
   } : null;
   const { getQuoteById } = useQuotes();

@@ -1080,7 +1080,7 @@ export function ProductsForm({ items, onChange }: ProductsFormProps) {
         {/* Right Panel - Cart */}
         <div
           className="lg:col-span-1 mt-0 lg:mt-[var(--align-offset)]"
-          style={{ ['--align-offset' as any]: `${alignOffset}px` }}
+          style={{ '--align-offset': `${alignOffset}px` } as React.CSSProperties}
         >
           <div
             className="border rounded-xl p-6"

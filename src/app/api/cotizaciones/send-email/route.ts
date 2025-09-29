@@ -20,10 +20,10 @@ export async function POST(request: NextRequest) {
 
     // Obtener información del usuario autenticado desde JWT y headers
     const token = request.cookies.get('auth-token')?.value;
-    let user: any = null;
+    let user: { id: string; email: string; nombre?: string; apellido?: string; rol?: string; fullName?: string } | null = null;
     if (token) {
       try {
-        const decoded: any = await verifyToken(token);
+        const decoded: { sub: string; email?: string; nombre?: string; apellido?: string; rol?: string; type?: string } = await verifyToken(token);
         
         // Obtener información adicional desde headers (enviados por el frontend)
         const userNameFromHeader = request.headers.get('x-user-name');
@@ -31,12 +31,12 @@ export async function POST(request: NextRequest) {
         
         user = {
           id: decoded.sub,
-          email: decoded.email || userEmailFromHeader,
+          email: decoded.email || userEmailFromHeader || '',
           nombre: decoded.nombre,
           apellido: decoded.apellido,
           rol: decoded.rol,
           // Usar el nombre completo desde header si está disponible
-          fullName: userNameFromHeader
+          fullName: userNameFromHeader || undefined
         };
       } catch {
         // token inválido -> user queda null
