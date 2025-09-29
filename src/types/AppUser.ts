@@ -10,15 +10,16 @@ export interface AppUser {
 }
 
 // Helper to build AppUser from a raw DB user or API payload
-export function toAppUser(raw: any): AppUser { // eslint-disable-line @typescript-eslint/no-explicit-any
-  if (!raw) return raw
-  const role = raw.role || raw.rol
-  const name = raw.name || (raw.nombre && raw.apellido ? `${raw.nombre} ${raw.apellido}` : raw.nombre) || undefined
+export function toAppUser(raw: unknown): AppUser {
+  if (!raw || typeof raw !== 'object') return {} as AppUser;
+  const r = raw as Record<string, unknown>;
+  const role = (r.role as string) || (r.rol as string);
+  const name = (r.name as string) || ((r.nombre as string) && (r.apellido as string) ? `${r.nombre} ${r.apellido}` : (r.nombre as string)) || undefined;
   return {
-    id: raw.id,
-    email: raw.email,
+    id: r.id as string,
+    email: r.email as string,
     name,
     role,
     isAdmin: role === 'admin'
-  }
+  };
 }
