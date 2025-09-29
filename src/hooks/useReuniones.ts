@@ -37,7 +37,7 @@ export function useReuniones(obraId?: number) {
     }
   };
 
-  const checkin = async (obraId: number, location?: any) => {
+  const checkin = async (obraId: number, location?: { lat: number; lng: number; accuracy?: number; address?: string }) => {
     try {
       const response = await fetch(`/api/obras/${obraId}/reuniones`, {
         method: 'POST',

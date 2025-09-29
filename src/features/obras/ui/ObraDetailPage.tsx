@@ -27,7 +27,7 @@ import {
   FiTrendingUp,
   FiPlay
 } from 'react-icons/fi';
-import { Obra, EtapaObra, EstadoObra,  ObraContacto, REQUIRED_CARGOS, ETAPAS, getProgressByStage } from '../types/obras';
+import { Obra, EtapaObra, EstadoObra,  ObraContacto, REQUIRED_CARGOS, ETAPAS, getProgressByStage, ReunionObra } from '../types/obras';
 import { Toast } from '@/shared/ui/Toast';
 import { useObraQuotes } from '@/hooks/useObraQuotes';
 import { PrestamoModal } from './payments/PrestamoModal';
@@ -35,6 +35,7 @@ import { PagoModal } from './payments/PagoModal';
 import { ReunionPopup } from './components/ReunionPopup';
 import { useReuniones } from '@/hooks/useReuniones';
 import { useAuth } from '@/contexts/AuthContext';
+import { LocationData } from '@/lib/geolocation';
 
 interface ObraDetailPageProps {
   obra: Obra;
@@ -58,7 +59,6 @@ export function ObraDetailPage({
   const [activeEditTab, setActiveEditTab] = useState<'datos' | 'contacto'>('datos');
   const [isPanelSaving, setIsPanelSaving] = useState(false);
   // Estado editable 
-  const [isEditing, setIsEditing] = useState(false); 
   const [editedObra, setEditedObra] = useState<Obra>(obra);
   // Carousel index for 5 fixed cargos
   const [contactCarouselIndex, setContactCarouselIndex] = useState(0);
@@ -76,14 +76,12 @@ export function ObraDetailPage({
   const [isReunionPopupOpen, setIsReunionPopupOpen] = useState(false);
   const [isStartingReunion, setIsStartingReunion] = useState(false);
   const [endingReunion, setEndingReunion] = useState(false);
-  const [refreshKey, setRefreshKey] = useState(0);
-  const [reunionUpdateTrigger, setReunionUpdateTrigger] = useState(0);
-  const [currentActiveReunion, setCurrentActiveReunion] = useState<any>(null);
+  const [currentActiveReunion, setCurrentActiveReunion] = useState<ReunionObra | null>(null);
   const [checkingReunionStatus, setCheckingReunionStatus] = useState(true);
 
   // Hooks para reuniones y auth
   const { user } = useAuth();
-  const { checkin, checkout, getActiveReunion, reuniones, fetchReuniones } = useReuniones(obra.id);
+  const { checkin, checkout, reuniones } = useReuniones(obra.id);
 
   // Obtener cotizaciones y estadísticas de la obra
   const { quotes,  stats, loading: quotesLoading, refetch: refetchObraData } = useObraQuotes(Number(obra.id));
@@ -105,15 +103,7 @@ export function ObraDetailPage({
       setActiveEditTab('datos');
       setIsEditPanelOpen(true);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
-
-  // Obtener reunión activa - buscar directamente en reuniones
-  const activeReunion = user ? reuniones.find(r => 
-    r.obraId === obra.id && 
-    r.userId === user.id && 
-    r.status === 'abierta'
-  ) : null;
 
   // Función de prueba para verificar conectividad con la API
   const testApiConnection = async () => {
@@ -217,7 +207,7 @@ export function ObraDetailPage({
     } else {
       console.log('❌ useEffect conditions not met', { user: !!user, obraId: obra.id });
     }
-  }, [user, obra.id]);
+  }, [user, obra.id, checkActiveReunion]);
 
   // Mostrar popup de reunión al cargar si no hay reunión activa
   useEffect(() => {
@@ -412,7 +402,6 @@ export function ObraDetailPage({
 
   // Confirmar entrega: cuando etapaActual es 'entrega' pasar a estado 'finalizada'
   const [confirmingEntrega, setConfirmingEntrega] = useState(false);
-  const [entregaConfirmada, setEntregaConfirmada] = useState(obra.estado === 'finalizada');
 
   const handleConfirmEntrega = async () => {
     try {
@@ -426,7 +415,6 @@ export function ObraDetailPage({
       const ok = await onUpdate(updated);
       if (ok) {
         Toast.success('Obra marcada como FINALIZADA');
-        setEntregaConfirmada(true);
         setEditedObra(updated);
         setSavedState({ etapasCompletadas: [...updated.etapasCompletadas], etapaActual: updated.etapaActual });
         // Refrescar datos de la página para que el listado principal lo refleje
@@ -443,7 +431,7 @@ export function ObraDetailPage({
   };
 
   // Handlers para reuniones
-  const handleStartReunion = async (location?: any) => {
+  const handleStartReunion = async (location?: LocationData) => {
     if (!user) return;
 
     try {
@@ -526,7 +514,6 @@ export function ObraDetailPage({
   };
   const closeEditPanel = () => {
     setIsEditPanelOpen(false);
-    setIsEditing(false);
     setEditedObra(obra);
   };
   const saveEditPanel = async () => {
@@ -537,7 +524,6 @@ export function ObraDetailPage({
         Toast.success('Cambios guardados');
         setSavedState({ etapasCompletadas: [...editedObra.etapasCompletadas], etapaActual: editedObra.etapaActual });
         setIsEditPanelOpen(false);
-        setIsEditing(false);
         router.refresh?.();
       } else {
         Toast.error('No se pudieron guardar los cambios');

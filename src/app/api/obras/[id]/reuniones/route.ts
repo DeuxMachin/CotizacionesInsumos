@@ -2,14 +2,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 import { verifyToken } from '@/lib/auth/tokens';
 import { cookies } from 'next/headers';
-import { ReunionObra } from '@/features/obras/types/obras';
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const obraId = (await params).id;
+    const { id: obraId } = await context.params;
     const cookieStore = await cookies();
     const authToken = cookieStore.get('auth-token')?.value;
 
@@ -73,10 +72,10 @@ export async function POST(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const obraId = (await params).id;
+    const { id: obraId } = await context.params;
     const cookieStore = await cookies();
     const authToken = cookieStore.get('auth-token')?.value;
 

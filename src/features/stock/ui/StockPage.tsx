@@ -51,6 +51,9 @@ export default function StockPage() {
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
   const [deletingCategory, setDeletingCategory] = useState(false);
 
+  // Estado para modal de guía
+  const [showGuideModal, setShowGuideModal] = useState(false);
+
   // Eliminar producto
   const [confirmDeleteProductId, setConfirmDeleteProductId] = useState<number | null>(null);
   const [deletingProduct, setDeletingProduct] = useState(false);
@@ -412,6 +415,15 @@ export default function StockPage() {
           <div className="flex flex-col sm:flex-row items-center gap-3 sm:gap-4 w-full lg:w-auto">
             {/* Vista simplificada - quitar el toggle complejo */}
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
+              <button
+                onClick={() => setShowGuideModal(true)}
+                className="px-4 sm:px-6 py-3 rounded-lg transition-colors duration-200 font-semibold flex items-center justify-center gap-2 shadow-md hover:shadow-lg text-sm sm:text-base"
+                style={{ backgroundColor: 'var(--info-bg)', color: 'var(--info-text)' }}
+                title="Guía de productos"
+              >
+                ❓ Guía
+              </button>
+
               {(['admin', 'dueño', 'dueno'].includes(user?.role?.toLowerCase() || '')) && (
                 <Link
                   href="/dashboard/stock/nuevo"
@@ -758,11 +770,37 @@ export default function StockPage() {
               </div>
             </div>
           )}
+
+          {/* Modal de guía */}
+          {showGuideModal && (
+            <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+              <div className="bg-white rounded-xl w-full max-w-2xl max-h-[80vh] overflow-y-auto" style={{ backgroundColor: 'var(--card-bg)' }}>
+                <div className="p-6 border-b" style={{ borderColor: 'var(--border)' }}>
+                  <h3 className="text-xl font-bold" style={{ color: 'var(--text-primary)' }}>📚 Guía de Productos</h3>
+                </div>
+                <div className="p-6 space-y-4">
+                  <p style={{ color: 'var(--text-primary)' }}>Bienvenido al apartado de productos. Aquí puedes gestionar tu catálogo de insumos y materiales.</p>
+                  <h4 className="font-semibold" style={{ color: 'var(--text-primary)' }}>💡 Tips útiles:</h4>
+                  <ul className="list-disc list-inside space-y-2" style={{ color: 'var(--text-secondary)' }}>
+                    <li>Usa la búsqueda para encontrar productos rápidamente por nombre.</li>
+                    <li>Filtra por categoría para organizar mejor tu inventario.</li>
+                    <li>Ordena los productos por nombre, precio de venta o costo unitario.</li>
+                    <li><strong>Haz clic en el nombre o categoría de un producto</strong> para expandir el texto completo si aparece truncado (con &hellip;).</li>
+                    <li>Solo administradores pueden editar, crear o eliminar productos y categorías.</li>
+                    <li>Exporta tu catálogo a Excel para análisis externos.</li>
+                    <li>Recuerda que eliminar un producto lo marca como inactivo, no lo borra permanentemente.</li>
+                    <li>Si tienes dudas, contacta al soporte o revisa la documentación.</li>
+                  </ul>
+                </div>
+                <div className="p-6 border-t flex justify-end" style={{ borderColor: 'var(--border)' }}>
+                  <button onClick={() => setShowGuideModal(false)} className="px-4 py-2 rounded-lg" style={{ backgroundColor: 'var(--accent-primary)', color: 'white' }}>Entendido</button>
+                </div>
+              </div>
+            </div>
+          )}
     </div>
   );
 }
-
-// Componente para vista de grilla - responsive
 function ProductGrid({ products, onEdit, onAskDelete, user, openRowMenuId, setOpenRowMenuId }: { products: InventoryItem[]; onEdit: (product: InventoryItem) => void; onAskDelete: (id: number) => void; user: User | null; openRowMenuId: number | null; setOpenRowMenuId: (id: number | null) => void }) {
   return (
     <div className="max-w-7xl mx-auto grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6 px-4 sm:px-0 items-stretch">
@@ -776,6 +814,8 @@ function ProductGrid({ products, onEdit, onAskDelete, user, openRowMenuId, setOp
 // Componente para tarjeta de producto mejorada para usuarios no técnicos
 function ProductCard({ product, onEdit, onAskDelete, user, openRowMenuId, setOpenRowMenuId }: { product: InventoryItem; onEdit: (product: InventoryItem) => void; onAskDelete: (id: number) => void; user: User | null; openRowMenuId: number | null; setOpenRowMenuId: (id: number | null) => void }) {
   const menuOpen = openRowMenuId === product.id;
+  const [expandedName, setExpandedName] = useState(false);
+  const [expandedCategory, setExpandedCategory] = useState(false);
   return (
     <div 
       className="rounded-xl border-2 overflow-hidden hover:shadow-lg transition-all duration-300 min-h-[350px] sm:min-h-[400px] h-full flex flex-col group"
@@ -796,24 +836,30 @@ function ProductCard({ product, onEdit, onAskDelete, user, openRowMenuId, setOpe
       >
         <div className="flex items-start justify-between gap-4">
           <div className="flex-1 min-w-0 min-h-[120px]">
-            {/* Nombre del producto - responsive */}
-            <h3 className="text-lg sm:text-2xl font-bold mb-2 sm:mb-3 leading-tight" style={{ color: 'var(--text-primary)' }}>
-              {product.nombre}
-            </h3>
+            {/* Nombre del producto - responsive - altura fija para alineación */}
+            <div className="h-16 mb-2 sm:mb-3 flex items-start">
+              <h3 className={`text-lg sm:text-2xl font-bold leading-tight w-full ${expandedName ? '' : 'line-clamp-2'} cursor-pointer`} style={{ color: 'var(--text-primary)' }} onClick={() => setExpandedName(!expandedName)} title={product.nombre}>
+                {product.nombre}
+              </h3>
+            </div>
 
-            {/* Categoría - badge responsive */}
-            {product.tipo && (
-              <span 
-                className="inline-flex items-center px-3 sm:px-4 py-1 sm:py-2 rounded-full text-xs sm:text-sm font-semibold"
-                style={{ 
-                  backgroundColor: 'var(--accent-bg)', 
-                  color: 'var(--accent-text)', 
-                  borderColor: 'var(--accent-primary)' 
-                }}
-              >
-                📁 {product.tipo.nombre}
-              </span>
-            )}
+            {/* Categoría - badge responsive - siempre reservar espacio para alineación */}
+            <div className="h-8 flex items-center mb-2 overflow-hidden">
+              {product.tipo ? (
+                <span 
+                  className={`inline-flex items-center px-3 sm:px-4 py-1 sm:py-2 rounded-full text-xs sm:text-sm font-semibold ${expandedCategory ? '' : 'truncate'} max-w-full cursor-pointer`}
+                  style={{ 
+                    backgroundColor: 'var(--accent-bg)', 
+                    color: 'var(--accent-text)', 
+                    borderColor: 'var(--accent-primary)' 
+                  }}
+                  onClick={() => setExpandedCategory(!expandedCategory)}
+                  title={product.tipo.nombre}
+                >
+                  📁 {product.tipo.nombre}
+                </span>
+              ) : null}
+            </div>
 
             {/* Código (SKU) siempre visible con placeholder) */}
             <p 
@@ -1443,6 +1489,7 @@ function ProductEditModal({
               <textarea
                 className="form-input w-full"
                 rows={3}
+                maxLength={200}
                 value={formData.descripcion}
                 onChange={(e) => handleInputChange('descripcion', e.target.value)}
               />

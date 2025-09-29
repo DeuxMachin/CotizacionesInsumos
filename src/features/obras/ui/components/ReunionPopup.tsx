@@ -1,22 +1,21 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { FiMapPin, FiClock, FiPlay, FiX } from 'react-icons/fi';
-import { getCurrentLocation } from '@/lib/geolocation';
+import { FiMapPin, FiClock, FiX } from 'react-icons/fi';
+import { getCurrentLocation, LocationData } from '@/lib/geolocation';
 import { useAuth } from '@/contexts/AuthContext';
 
 interface ReunionPopupProps {
   isOpen: boolean;
   onClose: () => void;
-  onStart: (location?: any) => void;
+  onStart: (location?: LocationData) => void;
   obraName: string;
   isLoading?: boolean;
 }
 
 export function ReunionPopup({ isOpen, onClose, onStart, obraName, isLoading }: ReunionPopupProps) {
   const { user } = useAuth();
-  const [location, setLocation] = useState<any>(null);
-  const [gettingLocation, setGettingLocation] = useState(false);
+  const [location, setLocation] = useState<LocationData | null>(null);
   const [locationError, setLocationError] = useState<string | null>(null);
 
   const isOwner = user?.role === 'dueño';
@@ -25,34 +24,8 @@ export function ReunionPopup({ isOpen, onClose, onStart, obraName, isLoading }: 
     if (isOpen) {
       setLocation(null);
       setLocationError(null);
-      setGettingLocation(false);
-      // No obtener ubicación automáticamente al abrir el popup
     }
   }, [isOpen]);
-
-  const handleGetLocation = async () => {
-    setGettingLocation(true);
-    setLocationError(null);
-
-    try {
-      const loc = await getCurrentLocation();
-      if (loc) {
-        setLocation(loc);
-      } else {
-        // Don't show error for non-owners, just silently fail
-        if (isOwner) {
-          setLocationError('No se pudo obtener la ubicación. Verifica permisos de GPS.');
-        }
-      }
-    } catch (error) {
-      // Don't show error for non-owners, just silently fail
-      if (isOwner) {
-        setLocationError('Error al obtener ubicación.');
-      }
-    } finally {
-      setGettingLocation(false);
-    }
-  };
 
   const handleStart = async () => {
     // Obtener ubicación actual justo antes de iniciar la reunión (transparente)
@@ -66,7 +39,7 @@ export function ReunionPopup({ isOpen, onClose, onStart, obraName, isLoading }: 
       }
     }
     
-    onStart(currentLocation);
+    onStart(currentLocation || undefined);
   };
 
   if (!isOpen) return null;

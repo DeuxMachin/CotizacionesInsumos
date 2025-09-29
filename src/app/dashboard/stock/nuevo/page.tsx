@@ -197,10 +197,19 @@ export default function NuevoProductoPage() {
                 <textarea
                   className="form-input w-full"
                   rows={3}
+                  maxLength={200}
                   value={formData.descripcion}
                   onChange={(e) => handleInputChange('descripcion', e.target.value)}
                   placeholder="Descripción del producto (opcional)"
                 />
+                <div className="flex justify-between items-center mt-2">
+                  <p className="text-xs text-theme-text-muted">
+                    💡 <strong>Tip:</strong> Describe brevemente las características principales del producto. Máximo 200 caracteres para mantener la interfaz ordenada.
+                  </p>
+                  <span className="text-xs text-theme-text-muted">
+                    {formData.descripcion.length}/200
+                  </span>
+                </div>
               </div>
             </div>
           </div>
@@ -270,75 +279,85 @@ export default function NuevoProductoPage() {
 
           {/* Configuración */}
           <div>
-            <h2 className="text-xl font-semibold text-theme-text-primary mb-6">
-              Configuración
+            <h2 className="text-xl font-semibold text-theme-text-primary mb-6 flex items-center gap-2">
+              ⚙️ Configuración
             </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="flex items-center space-x-3">
-                <input
-                  type="checkbox"
-                  id="afecto_iva"
-                  checked={formData.afecto_iva}
-                  onChange={(e) => handleInputChange('afecto_iva', e.target.checked)}
-                  className="rounded border-theme-border"
-                />
-                <label htmlFor="afecto_iva" className="text-sm text-theme-text-primary">
-                  Afecto a IVA
-                </label>
+            <div className="space-y-6">
+              {/* Opciones de configuración en cards */}
+              <div className="space-y-4">
+                <div className="flex items-center gap-3">
+                  <input
+                    id="afecto_iva"
+                    type="checkbox"
+                    checked={formData.afecto_iva}
+                    onChange={e => setFormData(prev => ({ ...prev, afecto_iva: e.target.checked }))}
+                    className="form-checkbox h-5 w-5 text-theme-accent-primary border-theme-border focus:ring-theme-accent-primary"
+                  />
+                  <label htmlFor="afecto_iva" className="text-base text-theme-text-primary font-medium cursor-pointer">
+                    💰 Afecto a IVA
+                  </label>
+                  <span className="text-xs text-theme-text-muted">Incluye IVA en el precio</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <input
+                    id="control_stock"
+                    type="checkbox"
+                    checked={formData.control_stock}
+                    onChange={e => setFormData(prev => ({ ...prev, control_stock: e.target.checked }))}
+                    className="form-checkbox h-5 w-5 text-theme-warning border-theme-border focus:ring-theme-warning"
+                  />
+                  <label htmlFor="control_stock" className="text-base text-theme-text-primary font-medium cursor-pointer">
+                    📦 Control de Stock
+                  </label>
+                  <span className="text-xs text-theme-text-muted">Monitorear inventario disponible</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <input
+                    id="activo"
+                    type="checkbox"
+                    checked={formData.activo}
+                    onChange={e => setFormData(prev => ({ ...prev, activo: e.target.checked }))}
+                    className="form-checkbox h-5 w-5 text-theme-success border-theme-border focus:ring-theme-success"
+                  />
+                  <label htmlFor="activo" className="text-base text-theme-text-primary font-medium cursor-pointer">
+                    ✅ Producto Activo
+                  </label>
+                  <span className="text-xs text-theme-text-muted">Disponible para ventas y cotizaciones</span>
+                </div>
               </div>
 
-              <div className="flex items-center space-x-3">
-                <input
-                  type="checkbox"
-                  id="control_stock"
-                  checked={formData.control_stock}
-                  onChange={(e) => handleInputChange('control_stock', e.target.checked)}
-                  className="rounded border-theme-border"
-                />
-                <label htmlFor="control_stock" className="text-sm text-theme-text-primary">
-                  Control de Stock
-                </label>
-              </div>
+              {/* Estado y Ficha Técnica */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-medium text-theme-text-primary mb-2">
+                    📊 Estado del Producto
+                  </label>
+                  <select
+                    className="form-input w-full"
+                    value={formData.estado}
+                    onChange={(e) => handleInputChange('estado', e.target.value)}
+                  >
+                    <option value="disponible">🟢 Disponible</option>
+                    <option value="no_disponible">🟡 No Disponible</option>
+                    <option value="agotado">🔴 Agotado</option>
+                  </select>
+                </div>
 
-              <div className="flex items-center space-x-3">
-                <input
-                  type="checkbox"
-                  id="activo"
-                  checked={formData.activo}
-                  onChange={(e) => handleInputChange('activo', e.target.checked)}
-                  className="rounded border-theme-border"
-                />
-                <label htmlFor="activo" className="text-sm text-theme-text-primary">
-                  Producto Activo
-                </label>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-theme-text-primary mb-2">
-                  Estado
-                </label>
-                <select
-                  className="form-input w-full"
-                  value={formData.estado}
-                  onChange={(e) => handleInputChange('estado', e.target.value)}
-                >
-                  <option value="disponible">Disponible</option>
-                  <option value="no_disponible">No Disponible</option>
-                  <option value="agotado">Agotado</option>
-                </select>
-              </div>
-
-              <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-theme-text-primary mb-2">
-                  Ficha Técnica
-                </label>
-                <textarea
-                  className="form-input w-full"
-                  rows={4}
-                  value={formData.ficha_tecnica}
-                  onChange={(e) => handleInputChange('ficha_tecnica', e.target.value)}
-                  placeholder="Información técnica del producto (opcional)"
-                />
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-theme-text-primary mb-2">
+                    📋 Ficha Técnica
+                  </label>
+                  <textarea
+                    className="form-input w-full"
+                    rows={4}
+                    value={formData.ficha_tecnica}
+                    onChange={(e) => handleInputChange('ficha_tecnica', e.target.value)}
+                    placeholder="Ingrese el URL de la ficha técnica para que los usuarios puedan consultarla.(opcional)"
+                  />
+                  <p className="text-xs text-theme-text-muted mt-2">
+                    Se pueden hacer modificaciones en caso de que sea necesario.
+                  </p>
+                </div>
               </div>
             </div>
           </div>
