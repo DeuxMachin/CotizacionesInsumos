@@ -1,9 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { sendGmailTest } from '@/services/gmailService';
 import { generatePDF } from '@/shared/lib/pdf/generator';
-import { verifyToken } from '@/lib/auth/tokens';
+import { verifyToken, type JWTPayload } from '@/lib/auth/tokens';
 import { AuditLogger } from '@/services/auditLogger';
 import type { Quote } from '@/core/domain/quote/Quote';
+
+interface AuthenticatedUser {
+  id: string;
+  email: string;
+  nombre: string;
+  apellido: string;
+  rol: string;
+  fullName: string;
+}
 
 interface SendQuoteEmailRequest {
   quoteId?: string;
@@ -20,23 +29,23 @@ export async function POST(request: NextRequest) {
 
     // Obtener información del usuario autenticado desde JWT y headers
     const token = request.cookies.get('auth-token')?.value;
-    let user: any = null;
+    let user: AuthenticatedUser | null = null;
     if (token) {
       try {
-        const decoded: any = await verifyToken(token);
+        const decoded: JWTPayload = await verifyToken(token);
         
         // Obtener información adicional desde headers (enviados por el frontend)
         const userNameFromHeader = request.headers.get('x-user-name');
         const userEmailFromHeader = request.headers.get('x-user-email');
         
         user = {
-          id: decoded.sub,
-          email: decoded.email || userEmailFromHeader,
-          nombre: decoded.nombre,
-          apellido: decoded.apellido,
-          rol: decoded.rol,
+          id: decoded.sub!,
+          email: decoded.email || userEmailFromHeader!,
+          nombre: decoded.nombre!,
+          apellido: decoded.apellido!,
+          rol: decoded.rol!,
           // Usar el nombre completo desde header si está disponible
-          fullName: userNameFromHeader
+          fullName: userNameFromHeader!
         };
       } catch {
         // token inválido -> user queda null
@@ -216,7 +225,7 @@ export async function POST(request: NextRequest) {
 }
 
 
-async function getQuoteById(id: string): Promise<Quote | null> {
+async function getQuoteById(_id: string): Promise<Quote | null> {
   // IMPORTANTE: Reemplaza esto con tu lógica real de base de datos
   // Por ahora retornamos null para indicar que no está implementado
   console.warn('getQuoteById not implemented - using quoteData from request instead');

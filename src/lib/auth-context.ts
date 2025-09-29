@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server'
 import { supabase } from '@/lib/supabase'
 // Eliminamos dependencia del fallback antiguo basado en headers para evitar
 // la suplantación automática de un usuario admin por defecto.
-import { verifyToken } from '@/lib/auth/tokens'
+import { verifyToken, type JWTPayload } from '@/lib/auth/tokens'
 
 export interface UserContext {
   id: string
@@ -22,7 +22,7 @@ export async function getUserContext(request: NextRequest): Promise<UserContext 
     if (!token) {
       return null
     }
-    let decoded: any
+    let decoded: JWTPayload
     try {
       decoded = await verifyToken(token)
     } catch {
@@ -59,7 +59,7 @@ export async function getUserContext(request: NextRequest): Promise<UserContext 
 }
 
 /**
- * Verifica si un usuario es administrador consultando la base de datos
+ * Verifica si un usuario es administrador o dueño consultando la base de datos
  */
 export async function checkIfUserIsAdmin(email: string, userId?: string): Promise<boolean> {
   try {
@@ -81,7 +81,7 @@ export async function checkIfUserIsAdmin(email: string, userId?: string): Promis
     }
 
     console.log('✅ Usuario verificado en BD:', { email, rol: userData.rol })
-  return userData.rol === 'admin'
+  return ['admin', 'dueño', 'dueno'].includes(userData.rol?.toLowerCase())
   } catch (error) {
     console.error('❌ Error checking admin status:', error)
     // Fallback: si hay error pero es el email admin por defecto
@@ -91,6 +91,7 @@ export async function checkIfUserIsAdmin(email: string, userId?: string): Promis
 
 /**
  * Verifica si el usuario actual puede ver todos los logs de auditoría
+ * (administradores y dueños)
  */
 export async function canViewAllAuditLogs(request: NextRequest): Promise<boolean> {
   const userContext = await getUserContext(request)
@@ -108,7 +109,7 @@ export async function getUserIdForAuditFilter(request: NextRequest): Promise<str
   }
   
   if (userContext.isAdmin) {
-    // Los admins pueden ver todos los logs
+    // Los admins y dueños pueden ver todos los logs
     return null
   }
   

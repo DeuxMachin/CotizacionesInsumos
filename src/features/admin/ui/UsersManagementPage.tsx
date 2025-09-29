@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { useUsuarios } from "@/hooks/useSupabase";
 import { supabase } from "@/lib/supabase";
-import { FiUsers, FiShield, FiEdit3, FiTrash2, FiPlus, FiMail, FiCalendar } from "react-icons/fi";
+import { FiUsers, FiShield, FiEdit3, FiTrash2, FiPlus, FiMail, FiCalendar, FiUserCheck, FiUserX } from "react-icons/fi";
 
 interface User {
   id: string;
@@ -29,7 +29,7 @@ export function UsersManagementPage() {
       email: string;
       nombre?: string | null;
       apellido?: string | null;
-      rol: 'dueño' | 'dueno' | 'admin' | 'vendedor' | 'cliente';
+  rol: 'dueño' |  'admin' | 'vendedor' | 'cliente';
       created_at?: string | null;
       last_login_at?: string | null;
       activo?: boolean | null;
@@ -39,7 +39,7 @@ export function UsersManagementPage() {
       email: u.email,
       name: u.nombre ?? '',
       lastName: u.apellido ?? '',
-      role: u.rol as 'admin' | 'vendedor' | 'cliente',
+  role: u.rol as 'dueño' | 'dueno' | 'admin' | 'vendedor' | 'cliente',
       createdAt: new Date(u.created_at || Date.now()),
       lastLogin: u.last_login_at ? new Date(u.last_login_at) : undefined,
       isActive: Boolean(u.activo)
@@ -87,6 +87,9 @@ export function UsersManagementPage() {
     try {
       const target = users.find(u => u.id === userId);
       if (!target) return;
+      // Optional confirm to make intent clearer for users
+      const confirmed = confirm(target.isActive ? '¿Desactivar este usuario? No podrá iniciar sesión.' : '¿Activar este usuario?');
+      if (!confirmed) return;
       const { error } = await supabase
         .from('usuarios')
         .update({ activo: !target.isActive })
@@ -201,7 +204,7 @@ export function UsersManagementPage() {
                 className="text-lg md:text-2xl font-semibold"
                 style={{ color: 'var(--text-primary)' }}
               >
-                {loadingUsers ? '—' : users.filter(u => u.role === 'dueño').length}
+                {loadingUsers ? '—' : users.filter(u => (u.role === 'dueño' || u.role === 'dueno')).length}
               </div>
               <div 
                 className="text-xs md:text-sm"
@@ -416,14 +419,25 @@ export function UsersManagementPage() {
                         <>
                           <button
                             onClick={() => handleToggleStatus(user.id)}
-                            className="p-1.5 md:p-2 rounded-lg transition-all duration-200 hover:scale-105"
+                            className="px-2.5 md:px-3 py-1.5 md:py-2 rounded-lg transition-all duration-200 hover:scale-[1.02] flex items-center gap-1.5 md:gap-2 text-xs md:text-sm"
                             style={{ 
                               backgroundColor: user.isActive ? 'var(--warning-bg)' : 'var(--success-bg)',
                               color: user.isActive ? 'var(--warning-text)' : 'var(--success-text)'
                             }}
                             title={user.isActive ? 'Desactivar usuario' : 'Activar usuario'}
+                            aria-label={user.isActive ? 'Desactivar usuario' : 'Activar usuario'}
                           >
-                            <FiShield className="w-3 h-3 md:w-4 md:h-4" />
+                            {user.isActive ? (
+                              <>
+                                <FiUserX className="w-3 h-3 md:w-4 md:h-4" />
+                                <span className="hidden sm:inline">Desactivar</span>
+                              </>
+                            ) : (
+                              <>
+                                <FiUserCheck className="w-3 h-3 md:w-4 md:h-4" />
+                                <span className="hidden sm:inline">Activar</span>
+                              </>
+                            )}
                           </button>
                           <button
                             onClick={() => handleDeleteUser(user.id)}

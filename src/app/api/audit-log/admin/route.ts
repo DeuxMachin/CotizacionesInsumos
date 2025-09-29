@@ -31,14 +31,14 @@ export async function GET(request: NextRequest) {
     }
     
     if (!userContext.isAdmin) {
-      console.log('❌ User is not admin:', userContext.email)
+      console.log('❌ User is not admin or owner:', userContext.email)
       return NextResponse.json({
         success: false,
-        error: 'Acceso denegado. Solo administradores pueden acceder a este endpoint.'
+        error: 'Acceso denegado. Solo administradores y dueños pueden acceder a este endpoint.'
       }, { status: 403 })
     }
     
-    console.log('✅ Admin access granted for:', userContext.email)
+    console.log('✅ Admin/Owner access granted for:', userContext.email)
 
     // Calcular offset para paginación
     const offset = (page - 1) * limit

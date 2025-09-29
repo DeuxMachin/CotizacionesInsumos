@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { useUsuarios } from "@/hooks/useSupabase";
 import { supabase } from "@/lib/supabase";
 import bcrypt from "bcryptjs";
 import { FiMail, FiUser, FiLock, FiEye, FiEyeOff, FiCheck, FiAlertCircle, FiArrowLeft, FiEdit3, FiCheckCircle, FiXCircle } from "react-icons/fi";
+import { useAuth } from "@/contexts/AuthContext";
 
 type DbUser = {
   id: string;
@@ -24,6 +25,7 @@ interface EditUserForm {
   lastName: string;
   password: string;
   confirmPassword: string;
+  role?: 'dueño' | 'admin' | 'vendedor' | 'cliente';
 }
 
 type EditUserFormErrors = Partial<Record<keyof EditUserForm, string>>;
@@ -84,24 +86,28 @@ export function EditUserForm() {
   const params = useParams();
   const userId = params.id as string;
   const { data: dbUsers, refetch } = useUsuarios();
+  const { user: authUser, logout } = useAuth();
   const [formData, setFormData] = useState<EditUserForm | null>(null);
   const [formErrors, setFormErrors] = useState<EditUserFormErrors>({});
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [passwordStrength, setPasswordStrength] = useState({ score: 0, label: '', color: '' });
-  const [passwordRequirementsStatus, setPasswordRequirementsStatus] = useState<Record<string, boolean>>({});
+  // Derived values via useMemo to reduce state updates
+  const isOwner = useMemo(() => {
+    const r = authUser?.role?.toLowerCase();
+    return r === 'dueño' || r === 'dueno';
+  }, [authUser?.role]);
 
-  const users = (dbUsers || []).map((u: DbUser) => ({
+  const users = useMemo(() => (dbUsers || []).map((u: DbUser) => ({
     id: u.id,
     email: u.email,
     nombre: u.nombre ?? '',
     apellido: u.apellido ?? '',
-    rol: u.rol as 'admin' | 'vendedor' | 'cliente'
-  }));
+    rol: u.rol as 'dueño' | 'admin' | 'vendedor' | 'cliente'
+  })), [dbUsers]);
 
-  const currentUser = users.find(u => u.id === userId);
+  const currentUser = useMemo(() => users.find(u => u.id === userId), [users, userId]);
 
   useEffect(() => {
     if (currentUser && !formData) {
@@ -110,7 +116,8 @@ export function EditUserForm() {
         name: currentUser.nombre,
         lastName: currentUser.apellido,
         password: '',
-        confirmPassword: ''
+        confirmPassword: '',
+        role: currentUser.rol
       });
       setLoading(false);
     } else if (!currentUser && dbUsers) {
@@ -205,10 +212,16 @@ export function EditUserForm() {
         apellido: formData.lastName
       };
 
-      if (formData.password) {
+      const changedPassword = !!formData.password;
+      if (changedPassword) {
         const newHash = await bcrypt.hash(formData.password, 10);
         (payload as { password_hash?: string }).password_hash = newHash;
         (payload as { password_updated_at?: string }).password_updated_at = new Date().toISOString();
+      }
+
+      // Only owners can change roles
+      if (isOwner && formData.role) {
+        (payload as { rol?: EditUserForm['role'] }).rol = formData.role;
       }
 
       const { error } = await supabase
@@ -219,6 +232,13 @@ export function EditUserForm() {
       if (error) throw error;
 
       await refetch();
+      // If the logged-in user changed their own password, force logout to apply change
+      if (changedPassword && authUser?.id === userId) {
+        alert('Contraseña actualizada. Se cerrará la sesión para aplicar los cambios.');
+        await logout();
+        return;
+      }
+
       alert('Usuario actualizado exitosamente');
       router.push('/admin/usuarios');
     } catch (err: unknown) {
@@ -229,7 +249,7 @@ export function EditUserForm() {
     }
   };
 
-  const handleInputChange = (field: keyof EditUserForm, value: string) => {
+  const handleInputChange = (field: keyof EditUserForm, value: string | undefined) => {
     if (!formData) return;
 
     setFormData(prev => prev ? { ...prev, [field]: value } : prev);
@@ -238,36 +258,30 @@ export function EditUserForm() {
     if (formErrors[field]) {
       setFormErrors(prev => ({ ...prev, [field]: undefined }));
     }
-
-    // Actualizar fortaleza de contraseña en tiempo real
-    if (field === 'password') {
-      const strength = calculatePasswordStrength(value);
-      setPasswordStrength(strength);
-
-      // Verificar requisitos individuales
-      const requirements: Record<string, boolean> = {};
-      passwordRequirements.forEach(req => {
-        requirements[req.key] = req.regex.test(value);
-      });
-
-      // Verificaciones adicionales
-      requirements.common = !commonPasswords.includes(value.toLowerCase());
-      requirements.personal = !containsPersonalInfo(value, formData.name, formData.lastName, formData.email);
-      requirements.sequences = !/(.)\1{2,}/.test(value);
-
-      setPasswordRequirementsStatus(requirements);
-    }
-
-    // Si cambiamos nombre, apellido o email, actualizar verificación de información personal
-    if (['name', 'lastName', 'email'].includes(field)) {
-      const requirements = { ...passwordRequirementsStatus };
-      requirements.personal = !containsPersonalInfo(formData.password, field === 'name' ? value : formData.name, field === 'lastName' ? value : formData.lastName, field === 'email' ? value : formData.email);
-      setPasswordRequirementsStatus(requirements);
-    }
   };
+
+  // Derived password strength and requirements to avoid extra state updates
+  const derivedPasswordStrength = useMemo(() => calculatePasswordStrength(formData?.password || ''), [formData?.password]);
+  const derivedPasswordRequirementsStatus = useMemo(() => {
+    const pwd = formData?.password || '';
+    const name = formData?.name || '';
+    const lastName = formData?.lastName || '';
+    const email = formData?.email || '';
+    const reqs: Record<string, boolean> = {};
+    passwordRequirements.forEach(req => {
+      reqs[req.key] = req.regex.test(pwd);
+    });
+    reqs.common = !commonPasswords.includes(pwd.toLowerCase());
+    reqs.personal = !containsPersonalInfo(pwd, name, lastName, email);
+    reqs.sequences = !/(.)\1{2,}/.test(pwd);
+    return reqs;
+  }, [formData?.password, formData?.name, formData?.lastName, formData?.email]);
 
   const getRoleDisplayName = (role: string) => {
     switch (role.toLowerCase()) {
+      case 'dueño':
+      case 'dueno':
+        return 'Dueño';
       case 'admin':
         return 'Administrador';
       case 'vendedor':
@@ -363,7 +377,7 @@ export function EditUserForm() {
                 className="w-20 h-20 mx-auto rounded-full flex items-center justify-center text-2xl font-bold text-white shadow-lg mb-4"
                 style={{ background: 'linear-gradient(135deg, #ff5600, #e6004d)' }}
               >
-                {currentUser.nombre[0]}{currentUser.apellido[0]}
+                {(currentUser.nombre?.[0] || '?')}{(currentUser.apellido?.[0] || '')}
               </div>
               <div className="space-y-2">
                 <p className="font-semibold text-lg" style={{ color: 'var(--text-primary)' }}>
@@ -381,6 +395,24 @@ export function EditUserForm() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
+              {/* Rol (solo visible para Dueño) */}
+              {isOwner && (
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-semibold mb-2" style={{ color: 'var(--text-primary)' }}>
+                    Rol del usuario
+                  </label>
+                  <select
+                    value={formData.role}
+                    onChange={(e) => handleInputChange('role', e.target.value)}
+                    className="w-full px-4 py-3 rounded-lg border-2 transition-all duration-200 focus:outline-none focus:border-orange-500"
+                    style={{ backgroundColor: 'var(--bg-secondary)', borderColor: 'var(--border)', color: 'var(--text-primary)' }}
+                  >
+                    {(['dueño',  'admin', 'vendedor', 'cliente'] as const).map(r => (
+                      <option key={r} value={r}>{getRoleDisplayName(r)}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
               {/* Email */}
               <div className="md:col-span-2">
                 <label className="block text-sm font-semibold mb-2" style={{ color: 'var(--text-primary)' }}>
@@ -473,7 +505,7 @@ export function EditUserForm() {
                     type={showPassword ? 'text' : 'password'}
                     value={formData.password}
                     onChange={(e) => handleInputChange('password', e.target.value)}
-                    placeholder="Mínimo 6 caracteres"
+                    placeholder="Mínimo 8 caracteres"
                     className={`w-full px-4 py-3 pr-12 rounded-lg border-2 transition-all duration-200 focus:outline-none ${
                       formErrors.password ? 'border-red-400 focus:border-red-500' : 'focus:border-orange-500'
                     }`}
@@ -505,17 +537,17 @@ export function EditUserForm() {
                       </span>
                       <span
                         className="text-xs font-semibold px-2 py-1 rounded"
-                        style={{ backgroundColor: passwordStrength.color + '20', color: passwordStrength.color }}
+                        style={{ backgroundColor: derivedPasswordStrength.color + '20', color: derivedPasswordStrength.color }}
                       >
-                        {passwordStrength.label}
+                        {derivedPasswordStrength.label}
                       </span>
                     </div>
                     <div className="w-full bg-gray-200 rounded-full h-2">
                       <div
                         className="h-2 rounded-full transition-all duration-300"
                         style={{
-                          width: `${passwordStrength.score}%`,
-                          backgroundColor: passwordStrength.color
+                          width: `${derivedPasswordStrength.score}%`,
+                          backgroundColor: derivedPasswordStrength.color
                         }}
                       />
                     </div>
@@ -530,14 +562,14 @@ export function EditUserForm() {
                     </p>
                     {passwordRequirements.map((req) => (
                       <div key={req.key} className="flex items-center gap-2">
-                        {passwordRequirementsStatus[req.key] ? (
+                        {derivedPasswordRequirementsStatus[req.key] ? (
                           <FiCheckCircle className="w-3 h-3 text-green-500 flex-shrink-0" />
                         ) : (
                           <FiXCircle className="w-3 h-3 text-red-400 flex-shrink-0" />
                         )}
                         <span
                           className={`text-xs ${
-                            passwordRequirementsStatus[req.key] ? 'text-green-600' : 'text-red-500'
+                            derivedPasswordRequirementsStatus[req.key] ? 'text-green-600' : 'text-red-500'
                           }`}
                         >
                           {req.label}
@@ -545,42 +577,42 @@ export function EditUserForm() {
                       </div>
                     ))}
                     <div className="flex items-center gap-2">
-                      {passwordRequirementsStatus.common !== false ? (
+                      {derivedPasswordRequirementsStatus.common !== false ? (
                         <FiCheckCircle className="w-3 h-3 text-green-500 flex-shrink-0" />
                       ) : (
                         <FiXCircle className="w-3 h-3 text-red-400 flex-shrink-0" />
                       )}
                       <span
                         className={`text-xs ${
-                          passwordRequirementsStatus.common !== false ? 'text-green-600' : 'text-red-500'
+                          derivedPasswordRequirementsStatus.common !== false ? 'text-green-600' : 'text-red-500'
                         }`}
                       >
                         No usar contraseñas comunes
                       </span>
                     </div>
                     <div className="flex items-center gap-2">
-                      {passwordRequirementsStatus.personal !== false ? (
+                      {derivedPasswordRequirementsStatus.personal !== false ? (
                         <FiCheckCircle className="w-3 h-3 text-green-500 flex-shrink-0" />
                       ) : (
                         <FiXCircle className="w-3 h-3 text-red-400 flex-shrink-0" />
                       )}
                       <span
                         className={`text-xs ${
-                          passwordRequirementsStatus.personal !== false ? 'text-green-600' : 'text-red-500'
+                          derivedPasswordRequirementsStatus.personal !== false ? 'text-green-600' : 'text-red-500'
                         }`}
                       >
                         No usar información personal
                       </span>
                     </div>
                     <div className="flex items-center gap-2">
-                      {passwordRequirementsStatus.sequences !== false ? (
+                      {derivedPasswordRequirementsStatus.sequences !== false ? (
                         <FiCheckCircle className="w-3 h-3 text-green-500 flex-shrink-0" />
                       ) : (
                         <FiXCircle className="w-3 h-3 text-red-400 flex-shrink-0" />
                       )}
                       <span
                         className={`text-xs ${
-                          passwordRequirementsStatus.sequences !== false ? 'text-green-600' : 'text-red-500'
+                          derivedPasswordRequirementsStatus.sequences !== false ? 'text-green-600' : 'text-red-500'
                         }`}
                       >
                         Evitar caracteres repetidos

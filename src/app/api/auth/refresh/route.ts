@@ -19,8 +19,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'Expired refresh token' }, { status: 401 });
     }
 
-    const accessToken = await signAccessToken({ id: payload.sub, email: payload.email, rol: payload.rol });
-    const newRefreshToken = await signRefreshToken({ id: payload.sub, email: payload.email, rol: payload.rol });
+    const accessToken = await signAccessToken({ id: payload.sub!, email: payload.email!, rol: payload.rol! });
+    const newRefreshToken = await signRefreshToken({ id: payload.sub!, email: payload.email!, rol: payload.rol! });
 
     const response = NextResponse.json({ success: true });
     const isProd = process.env.NODE_ENV === 'production';

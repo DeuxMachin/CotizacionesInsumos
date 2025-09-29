@@ -164,7 +164,7 @@ async function getQuoteById(id: string): Promise<Quote | null> {
       return { ...quote, items: enrichedItems };
     }
     return quote;
-  } catch (_error) {
+  } catch {
     return null;
   }
 }

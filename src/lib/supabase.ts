@@ -15,7 +15,7 @@ export type Database = {
           email: string
           nombre: string | null
           apellido: string | null
-          rol: 'dueño' | 'dueno' | 'admin' | 'vendedor' | 'cliente'
+          rol: 'dueño'  | 'admin' | 'vendedor' | 'cliente'
           activo: boolean
           created_at: string
           password_hash: string

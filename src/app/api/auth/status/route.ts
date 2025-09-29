@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { verifyToken } from '@/lib/auth/tokens';
+import { verifyToken, type JWTPayload } from '@/lib/auth/tokens';
 import { supabase } from '@/lib/supabase';
 
 export async function GET(request: NextRequest) {
@@ -8,7 +8,7 @@ export async function GET(request: NextRequest) {
     if (!token) {
       return NextResponse.json({ authenticated: false }, { status: 200 });
     }
-    let decoded: any;
+    let decoded: JWTPayload;
     try {
       decoded = await verifyToken(token);
     } catch {
