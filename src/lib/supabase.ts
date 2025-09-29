@@ -1022,6 +1022,60 @@ export type Database = {
           created_at?: string
         }
       }
+      ,
+      obra_visitas: {
+        Row: {
+          id: number
+          obra_id: number
+          vendedor_id: string
+          tipo: string
+          motivo: string | null
+          inicio_at: string
+          fin_at: string | null
+          estado: string
+          lat: number | null
+          lng: number | null
+          accuracy_m: number | null
+          ubicacion_text: string | null
+          notas: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: number
+          obra_id: number
+          vendedor_id: string
+          tipo?: string
+          motivo?: string | null
+          inicio_at?: string
+          fin_at?: string | null
+          estado?: string
+          lat?: number | null
+          lng?: number | null
+          accuracy_m?: number | null
+          ubicacion_text?: string | null
+          notas?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: number
+          obra_id?: number
+          vendedor_id?: string
+          tipo?: string
+          motivo?: string | null
+          inicio_at?: string
+          fin_at?: string | null
+          estado?: string
+          lat?: number | null
+          lng?: number | null
+          accuracy_m?: number | null
+          ubicacion_text?: string | null
+          notas?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+      }
     }
     Views: {
       [_ in never]: never

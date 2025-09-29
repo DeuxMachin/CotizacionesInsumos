@@ -26,7 +26,7 @@ export interface IObrasService {
   /**
    * Elimina una obra del sistema
    */
-  eliminarObra(id: string): Promise<boolean>;
+  eliminarObra(id: number): Promise<boolean>;
 
   /**
    * Crea una nueva obra

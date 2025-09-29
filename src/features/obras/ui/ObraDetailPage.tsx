@@ -24,13 +24,17 @@ import {
   FiArrowLeft,
   FiMapPin,
   FiPlus,
-  FiTrendingUp
+  FiTrendingUp,
+  FiPlay
 } from 'react-icons/fi';
-import { Obra, EtapaObra, EstadoObra,  ObraContacto, REQUIRED_CARGOS } from '../types/obras';
+import { Obra, EtapaObra, EstadoObra,  ObraContacto, REQUIRED_CARGOS, ETAPAS, getProgressByStage } from '../types/obras';
 import { Toast } from '@/shared/ui/Toast';
 import { useObraQuotes } from '@/hooks/useObraQuotes';
 import { PrestamoModal } from './payments/PrestamoModal';
 import { PagoModal } from './payments/PagoModal';
+import { ReunionPopup } from './components/ReunionPopup';
+import { useReuniones } from '@/hooks/useReuniones';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface ObraDetailPageProps {
   obra: Obra;
@@ -68,6 +72,19 @@ export function ObraDetailPage({
   const [isPrestamoModalOpen, setIsPrestamoModalOpen] = useState(false);
   const [isPagoModalOpen, setIsPagoModalOpen] = useState(false);
 
+  // Estados para reuniones
+  const [isReunionPopupOpen, setIsReunionPopupOpen] = useState(false);
+  const [isStartingReunion, setIsStartingReunion] = useState(false);
+  const [endingReunion, setEndingReunion] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
+  const [reunionUpdateTrigger, setReunionUpdateTrigger] = useState(0);
+  const [currentActiveReunion, setCurrentActiveReunion] = useState<any>(null);
+  const [checkingReunionStatus, setCheckingReunionStatus] = useState(true);
+
+  // Hooks para reuniones y auth
+  const { user } = useAuth();
+  const { checkin, checkout, getActiveReunion, reuniones, fetchReuniones } = useReuniones(obra.id);
+
   // Obtener cotizaciones y estadísticas de la obra
   const { quotes,  stats, loading: quotesLoading, refetch: refetchObraData } = useObraQuotes(Number(obra.id));
   
@@ -91,9 +108,135 @@ export function ObraDetailPage({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
 
+  // Obtener reunión activa - buscar directamente en reuniones
+  const activeReunion = user ? reuniones.find(r => 
+    r.obraId === obra.id && 
+    r.userId === user.id && 
+    r.status === 'abierta'
+  ) : null;
+
+  // Función de prueba para verificar conectividad con la API
+  const testApiConnection = async () => {
+    try {
+      console.log('🧪 Probando conexión a API...');
+      const response = await fetch('/api/reuniones', {
+        credentials: 'include',
+      });
+      console.log('🧪 Respuesta de prueba:', response.status, response.ok);
+      if (response.ok) {
+        const data = await response.json();
+        console.log('🧪 Datos de prueba:', data);
+      } else {
+        const errorText = await response.text();
+        console.log('🧪 Error de prueba:', errorText);
+      }
+    } catch (error) {
+      console.error('🧪 Error en prueba de conexión:', error);
+    }
+  };
+
+  // Función para verificar reunión activa directamente desde la API
+  const checkActiveReunion = async () => {
+    if (!user || !obra.id) {
+      console.log('❌ checkActiveReunion: faltan user u obra.id', { user: !!user, obraId: obra.id, userId: user?.id });
+      return null;
+    }
+
+    try {
+      setCheckingReunionStatus(true);
+
+      // Primero intentar sin userId para ver todas las reuniones activas de la obra
+      const params = new URLSearchParams({
+        obraId: obra.id.toString(),
+        status: 'active'
+      });
+
+      console.log('🔍 Consultando reunión activa (sin userId):', `/api/reuniones?${params}`);
+      console.log('👤 User info:', { id: user.id, role: user.role, email: user.email });
+
+      const response = await fetch(`/api/reuniones?${params}`, {
+        credentials: 'include',
+      });
+
+      console.log('📡 Respuesta checkActiveReunion:', response.status, response.ok);
+
+      if (!response.ok) {
+        console.error('❌ Error checking active reunion:', response.status);
+        const errorText = await response.text();
+        console.error('Error details:', errorText);
+
+        // Si falla, intentar sin filtros para debug
+        console.log('🔄 Intentando consulta sin filtros...');
+        const debugParams = new URLSearchParams({
+          obraId: obra.id.toString()
+        });
+        const debugResponse = await fetch(`/api/reuniones?${debugParams}`, {
+          credentials: 'include',
+        });
+        console.log('📡 Respuesta debug:', debugResponse.status, debugResponse.ok);
+        if (debugResponse.ok) {
+          const debugData = await debugResponse.json();
+          console.log('📋 Datos debug:', debugData);
+        }
+
+        return null;
+      }
+
+      const reuniones = await response.json();
+      console.log('📋 Reuniones activas encontradas:', reuniones.length, reuniones);
+
+      // Si encontramos reuniones activas, tomar la primera (debería haber solo una activa por obra)
+      const activeReunion = reuniones.length > 0 ? reuniones[0] : null;
+      setCurrentActiveReunion(activeReunion);
+      console.log('✅ Active reunion set:', activeReunion);
+      return activeReunion;
+    } catch (error) {
+      console.error('❌ Error checking active reunion:', error);
+      return null;
+    } finally {
+      setCheckingReunionStatus(false);
+    }
+  };
+
+  // Debug: mostrar cambios en el estado de reuniones
+  useEffect(() => {
+    console.log('🔄 currentActiveReunion cambió:', currentActiveReunion ? 'ACTIVA' : 'NINGUNA');
+  }, [currentActiveReunion]);
+
+  // Verificar reunión activa al cargar la página (con leve espera)
+  useEffect(() => {
+    console.log('🚀 useEffect checkActiveReunion triggered', { user: !!user, obraId: obra.id });
+    if (user && obra.id) {
+      // Pequeña espera para que la página cargue primero
+      const timer = setTimeout(() => {
+        console.log('⏰ Timer expired, calling functions');
+        testApiConnection(); // Probar conexión primero
+        checkActiveReunion();
+      }, 200); // 200ms de espera leve
+      return () => clearTimeout(timer);
+    } else {
+      console.log('❌ useEffect conditions not met', { user: !!user, obraId: obra.id });
+    }
+  }, [user, obra.id]);
+
+  // Mostrar popup de reunión al cargar si no hay reunión activa
+  useEffect(() => {
+    if (user && obra.id && !checkingReunionStatus && !currentActiveReunion) {
+      // Solo mostrar para roles que pueden iniciar reuniones
+      const allowedRoles = ['vendedor', 'admin', 'dueño', 'dueno'];
+      if (allowedRoles.includes(user.role || '')) {
+        // Pequeño delay para que la página cargue primero
+        const timer = setTimeout(() => {
+          setIsReunionPopupOpen(true);
+        }, 1000);
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [user, obra.id, checkingReunionStatus, currentActiveReunion]);
+
   const estadoColor = getEstadoColor(obra.estado);
   const etapaColorCurrent = getEtapaColor(obra.etapaActual);
-  const etapas: EtapaObra[] = ['fundacion', 'estructura', 'albanileria', 'instalaciones', 'terminaciones', 'entrega'];
+  const etapas: readonly EtapaObra[] = ETAPAS;
 
   const getContactsWithCargos = (o: Obra): ObraContacto[] => {
     const list = (o.contactos || []) as ObraContacto[];
@@ -108,21 +251,16 @@ export function ObraDetailPage({
     });
   };
 
-  const getProgressPercentage = () => {
-    return ((obra.etapasCompletadas.length / etapas.length) * 100);
-  };
+  const getProgressPercentage = () => getProgressByStage(editedObra.etapaActual);
 
   const setCurrentStage = (etapa: EtapaObra) => {
     const etapaIndex = etapas.indexOf(etapa);
-    const prevEtapas = etapas.slice(0, etapaIndex);
-    
-    const updatedEtapasCompletadas = [...prevEtapas];
-    
-    setEditedObra({
-      ...editedObra,
+    const updatedEtapasCompletadas = etapas.slice(0, etapaIndex + 1) as EtapaObra[];
+    setEditedObra(prev => ({
+      ...prev,
       etapaActual: etapa,
-      etapasCompletadas: updatedEtapasCompletadas
-    });
+      etapasCompletadas: updatedEtapasCompletadas,
+    }));
   };
   
   const handleSave = async () => {
@@ -304,6 +442,83 @@ export function ObraDetailPage({
     }
   };
 
+  // Handlers para reuniones
+  const handleStartReunion = async (location?: any) => {
+    if (!user) return;
+
+    try {
+      setIsStartingReunion(true);
+      console.log('▶️ Iniciando reunión en obra:', obra.nombreEmpresa);
+      await checkin(obra.id, location);
+      console.log('✅ Reunión iniciada, verificando estado...');
+      Toast.success('Reunión iniciada');
+      
+      // Actualizar estado local inmediatamente
+      await checkActiveReunion();
+      
+      // Cerrar popup después de un breve delay
+      setTimeout(() => {
+        setIsReunionPopupOpen(false);
+        console.log('🔒 Popup cerrado');
+      }, 100);
+      
+    } catch (error) {
+      console.error('❌ Error starting reunion:', error);
+      Toast.error(error instanceof Error ? error.message : 'Error al iniciar reunión');
+    } finally {
+      setIsStartingReunion(false);
+    }
+  };
+
+  const handleEndReunion = async () => {
+    if (!user) return;
+
+    try {
+      setEndingReunion(true);
+      await checkout(obra.id);
+      Toast.success('Reunión finalizada');
+      
+      // Actualizar estado local inmediatamente
+      await checkActiveReunion();
+      
+    } catch (error) {
+      console.error('Error ending reunion:', error);
+      Toast.error(error instanceof Error ? error.message : 'Error al finalizar reunión');
+    } finally {
+      setEndingReunion(false);
+    }
+  };
+
+  const handleForceEndReunion = async () => {
+    if (!user || !currentActiveReunion) return;
+
+    if (!confirm('¿Estás seguro de que quieres forzar la finalización de la reunión activa?')) {
+      return;
+    }
+
+    try {
+      setEndingReunion(true);
+      // Llamar directamente a la API de checkout
+      const response = await fetch(`/api/obras/${obra.id}/reuniones`, {
+        method: 'PUT',
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Error al finalizar reunión');
+      }
+
+      Toast.success('Reunión finalizada forzosamente');
+      await checkActiveReunion();
+    } catch (error) {
+      console.error('Error force ending reunion:', error);
+      Toast.error(error instanceof Error ? error.message : 'Error al finalizar reunión');
+    } finally {
+      setEndingReunion(false);
+    }
+  };
+
   // Editor moderno: abrir/cerrar y guardar
   const openEditPanel = () => {
   setActiveEditTab('datos');
@@ -384,6 +599,12 @@ export function ObraDetailPage({
                     <span className="px-2 sm:px-3 py-0.5 text-[10px] sm:text-xs font-medium rounded-full capitalize" style={{ backgroundColor: etapaColorCurrent.bg, color: etapaColorCurrent.text }}>
                       {obra.etapaActual.replace('_', ' ')}
                     </span>
+                    {currentActiveReunion && (
+                      <span className="px-2 sm:px-3 py-0.5 text-[10px] sm:text-xs font-medium rounded-full flex items-center gap-1" style={{ backgroundColor: 'var(--success-bg)', color: 'var(--success-text)' }}>
+                        <FiClock className="w-3 h-3" />
+                        En reunión
+                      </span>
+                    )}
                   </div>
                 </div>
               </div>
@@ -398,6 +619,29 @@ export function ObraDetailPage({
                   <FiArrowLeft className="w-4 h-4" />
                   <span>Volver</span>
                 </button>
+                
+                {/* Botón de reunión */}
+                {currentActiveReunion ? (
+                  <button
+                    onClick={handleEndReunion}
+                    disabled={endingReunion}
+                    className="text-sm px-4 py-2 min-h-[44px] flex items-center gap-2 rounded-md transition-all duration-200 font-semibold text-white bg-orange-500 hover:bg-orange-600 disabled:opacity-50"
+                    title="Finalizar reunión actual"
+                  >
+                    <FiClock className="w-4 h-4" />
+                    {endingReunion ? 'Finalizando...' : 'Finalizar reunión'}
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => setIsReunionPopupOpen(true)}
+                    className="text-sm px-4 py-2 min-h-[44px] flex items-center gap-2 rounded-md transition-all duration-200 font-semibold text-white bg-green-500 hover:bg-green-600"
+                    title="Iniciar reunión en esta obra"
+                  >
+                    <FiPlay className="w-4 h-4" />
+                    Iniciar reunión
+                  </button>
+                )}
+                
                 {obra.etapaActual === 'entrega' && obra.estado !== 'finalizada' && (
                   <button
                     onClick={handleConfirmEntrega}
@@ -432,6 +676,34 @@ export function ObraDetailPage({
                 </button>
               </div>
             </div>
+
+            {/* Banner de reunión activa */}
+            {currentActiveReunion && (
+              <div className="p-3 rounded-lg" style={{ backgroundColor: 'var(--success-bg)', border: '1px solid var(--success-text)' }}>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-full" style={{ backgroundColor: 'var(--success-text)', color: 'white' }}>
+                      <FiClock className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium" style={{ color: 'var(--success-text)' }}>
+                        Reunión activa
+                      </p>
+                      <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+                        Iniciada {new Date(currentActiveReunion.startTime).toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' })}
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={handleEndReunion}
+                    className="px-3 py-1 text-xs font-medium rounded transition-colors"
+                    style={{ backgroundColor: 'var(--success-text)', color: 'white' }}
+                  >
+                    Finalizar
+                  </button>
+                </div>
+              </div>
+            )}
 
             {/* Acciones rápidas para usuarios novatos */}
             <div className="grid grid-cols-1 xs:grid-cols-2 lg:grid-cols-5 gap-2 sm:gap-3">
@@ -1238,7 +1510,7 @@ export function ObraDetailPage({
       <PrestamoModal
         isOpen={isPrestamoModalOpen}
         onClose={() => setIsPrestamoModalOpen(false)}
-        obraId={obra.id}
+        obraId={obra.id.toString()}
         pendienteActual={stats.pendiente}
         onPrestamoAdded={async () => {
           // Refrescar datos de la obra y estadísticas
@@ -1250,13 +1522,21 @@ export function ObraDetailPage({
       <PagoModal
         isOpen={isPagoModalOpen}
         onClose={() => setIsPagoModalOpen(false)}
-        obraId={obra.id}
+        obraId={obra.id.toString()}
         pendienteActual={stats.pendiente}
         onPagoAdded={async () => {
           // Refrescar datos de la obra y estadísticas
           console.log('Pago agregado, refrescando datos');
           await refetchObraData();
         }}
+      />
+
+      <ReunionPopup
+        isOpen={isReunionPopupOpen}
+        onClose={() => setIsReunionPopupOpen(false)}
+        onStart={handleStartReunion}
+        obraName={obra.nombreEmpresa}
+        isLoading={isStartingReunion}
       />
     </div>
   );

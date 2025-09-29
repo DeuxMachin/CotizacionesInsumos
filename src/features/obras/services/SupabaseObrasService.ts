@@ -108,8 +108,8 @@ export class SupabaseObrasService implements IObrasService {
 
   async actualizarEstadoObra(_id: string, _nuevoEstado: EstadoObra): Promise<boolean> { return true; }
 
-  async eliminarObra(id: string): Promise<boolean> {
-    const { error } = await supabase.from("obras").delete().eq("id", Number(id));
+  async eliminarObra(id: number): Promise<boolean> {
+    const { error } = await supabase.from("obras").delete().eq("id", id);
     if (error) throw error;
     return true;
   }

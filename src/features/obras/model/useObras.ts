@@ -182,7 +182,7 @@ export function useObras() {
     }
   }, []);
 
-  const eliminarObra = useCallback(async (id: string) => {
+  const eliminarObra = useCallback(async (id: number) => {
     setLoading(true);
     try {
       const ok = await service.eliminarObra(id);

@@ -109,7 +109,7 @@ export function mapSupabaseObra(row: SupabaseJoinedObra): Obra {
   const materialVendido = (row.notas_venta || []).reduce((acc, nota) => acc + (nota?.total || 0), 0)
 
   return {
-    id: String(row.id),
+    id: Number(row.id),
     nombreEmpresa: row.nombre,
     constructora: {
       nombre: cliente?.nombre_razon_social || 'Sin nombre',

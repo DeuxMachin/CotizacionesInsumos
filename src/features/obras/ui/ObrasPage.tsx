@@ -22,9 +22,12 @@ import {
   FiChevronLeft,
   FiChevronRight,
   FiX,
-  FiInfo
+  FiInfo,
+  FiUsers
 } from "react-icons/fi";
 import { useObras } from "../model/useObras";
+import { useReuniones } from "@/hooks/useReuniones";
+import { useAuth } from "@/contexts/AuthContext";
 import type { 
   Obra, 
   EstadoObra, 
@@ -33,8 +36,10 @@ import type {
   ObraCardProps,
   ObrasTableProps,
   GetEstadoColor,
-  GetEtapaColor
+  GetEtapaColor,
+  ReunionObra
 } from "../types/obras";
+import { getProgressByStage } from "../types/obras";
 import dynamic from "next/dynamic";
 const CreateObraModal = dynamic(() => import("./CreateObraModal").then(m => m.CreateObraModal), {
   loading: () => <div className="p-6">Cargando formulario…</div>,
@@ -61,6 +66,18 @@ export function ObrasPage() {
     userId,
     userName
   } = useObras();
+
+  const { user } = useAuth();
+  const { reuniones, getActiveReunion } = useReuniones();
+
+  // Crear mapa de reuniones activas por obra
+  const activeReuniones = useMemo(() => {
+    const map: Record<number, ReunionObra | null> = {};
+    obras.forEach(obra => {
+      map[obra.id] = reuniones.find(r => r.obraId === obra.id && r.status === 'abierta') || null;
+    });
+    return map;
+  }, [obras, reuniones]);
 
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedEstados, setSelectedEstados] = useState<EstadoObra[]>([]);
@@ -136,7 +153,7 @@ export function ObrasPage() {
   };
 
   // Manejar acciones de obra
-  const handleEliminar = async (obraId: string) => {
+  const handleEliminar = async (obraId: number) => {
     if (confirm('¿Estás seguro de que deseas eliminar esta obra?')) {
       const success = await eliminarObra(obraId);
       if (success) {
@@ -521,17 +538,21 @@ export function ObrasPage() {
       {/* Lista de obras - Vista Grid */}
       {viewMode === 'grid' ? (
         <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-          {obras.map((obra) => (
-            <ObraCard 
-              key={obra.id} 
-              obra={obra} 
-              getEstadoColor={getEstadoColor}
-              getEtapaColor={getEtapaColor}
-              formatMoney={formatMoney}
-              onEliminar={handleEliminar}
-              onVerDetalle={handleVerDetalle}
-            />
-          ))}
+          {obras.map((obra) => {
+            const activeReunion = reuniones.find(r => r.obraId === obra.id && r.status === 'abierta');
+            return (
+              <ObraCard 
+                key={obra.id} 
+                obra={obra} 
+                getEstadoColor={getEstadoColor}
+                getEtapaColor={getEtapaColor}
+                formatMoney={formatMoney}
+                onEliminar={handleEliminar}
+                onVerDetalle={handleVerDetalle}
+                activeReunion={activeReunion}
+              />
+            );
+          })}
         </div>
       ) : (
         <ObrasTable 
@@ -540,6 +561,7 @@ export function ObrasPage() {
           formatMoney={formatMoney}
           onEliminar={handleEliminar}
           onVerDetalle={handleVerDetalle}
+          activeReuniones={activeReuniones}
         />
       )}
 
@@ -657,11 +679,12 @@ export function ObrasPage() {
 }
 
 // Componente para tarjeta individual de obra
-function ObraCard({ obra, getEstadoColor, getEtapaColor, formatMoney, onEliminar }: ObraCardProps) {
+function ObraCard({ obra, getEstadoColor, getEtapaColor, formatMoney, onEliminar, activeReunion }: ObraCardProps) {
   const estadoColor = getEstadoColor(obra.estado);
   const router = useRouter();
 
   const goToDetalle = () => router.push(`/dashboard/obras/${obra.id}`);
+  const progress = getProgressByStage(obra.etapaActual);
   const onKey = (e: React.KeyboardEvent<HTMLDivElement>) => {
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault();
@@ -684,12 +707,24 @@ function ObraCard({ obra, getEstadoColor, getEtapaColor, formatMoney, onEliminar
           <h3 className="text-lg font-semibold line-clamp-2" style={{ color: 'var(--text-primary)' }}>
             {obra.nombreEmpresa}
           </h3>
-          <span 
-            className="px-2 py-1 text-xs font-medium rounded-full whitespace-nowrap"
-            style={{ backgroundColor: estadoColor.bg, color: estadoColor.text }}
-          >
-            {obra.estado.replace('_', ' ')}
-          </span>
+          <div className="flex items-center gap-2">
+            {activeReunion && (
+              <span 
+                className="px-2 py-1 text-xs font-medium rounded-full whitespace-nowrap flex items-center gap-1"
+                style={{ backgroundColor: '#fef3c7', color: '#92400e' }}
+                title={`Reunión activa desde ${activeReunion.startTime.toLocaleTimeString()}`}
+              >
+                <FiUsers className="w-3 h-3" />
+                En reunión
+              </span>
+            )}
+            <span 
+              className="px-2 py-1 text-xs font-medium rounded-full whitespace-nowrap"
+              style={{ backgroundColor: estadoColor.bg, color: estadoColor.text }}
+            >
+              {obra.estado.replace('_', ' ')}
+            </span>
+          </div>
         </div>
 
         {/* Constructora */}
@@ -727,19 +762,15 @@ function ObraCard({ obra, getEstadoColor, getEtapaColor, formatMoney, onEliminar
         </div>
 
         {/* Etapa actual */}
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            <div 
-              className="w-3 h-3 rounded-full"
-              style={{ backgroundColor: getEtapaColor(obra.etapaActual).bg }}
-            />
-            <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
-              {obra.etapaActual}
-            </span>
+        {/* Progreso de la obra */}
+        <div className="mb-4">
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>Progreso</span>
+            <span className="text-xs font-semibold" style={{ color: 'var(--success-text)' }}>{progress}%</span>
           </div>
-          <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
-            {obra.etapasCompletadas.length} etapas completadas
-          </span>
+          <div className="w-full h-2 rounded-full" aria-label="Progreso de la obra" role="progressbar" aria-valuenow={progress} aria-valuemin={0} aria-valuemax={100} style={{ backgroundColor: 'var(--bg-secondary)' }}>
+            <div className="h-2 rounded-full transition-all duration-300" style={{ width: `${progress}%`, background: 'linear-gradient(90deg, #22c55e, #16a34a)' }} />
+          </div>
         </div>
 
         {/* Valores */}
@@ -825,7 +856,7 @@ function ObraCard({ obra, getEstadoColor, getEtapaColor, formatMoney, onEliminar
 }
 
 // Componente para vista de tabla (simplificado)
-function ObrasTable({ obras, getEstadoColor, formatMoney, onEliminar, onVerDetalle }: ObrasTableProps) {
+function ObrasTable({ obras, getEstadoColor, formatMoney, onEliminar, onVerDetalle, activeReuniones }: ObrasTableProps) {
   return (
     <div 
       className="rounded-lg overflow-hidden"
@@ -841,8 +872,8 @@ function ObrasTable({ obras, getEstadoColor, formatMoney, onEliminar, onVerDetal
               <th className="px-4 py-3 text-left text-sm font-medium w-[12%]" style={{ color: 'var(--text-secondary)' }}>
                 Estado
               </th>
-              <th className="px-4 py-3 text-left text-sm font-medium w-[12%]" style={{ color: 'var(--text-secondary)' }}>
-                Etapa
+              <th className="px-4 py-3 text-left text-sm font-medium w-[18%]" style={{ color: 'var(--text-secondary)' }}>
+                Progreso
               </th>
               <th className="px-4 py-3 text-left text-sm font-medium w-1/4" style={{ color: 'var(--text-secondary)' }}>
                 Valor / Vendido
@@ -880,17 +911,40 @@ function ObrasTable({ obras, getEstadoColor, formatMoney, onEliminar, onVerDetal
                     </Link>
                   </td>
                   <td className="px-4 py-4">
-                    <span 
-                      className="px-2 py-1 text-xs font-medium rounded-full"
-                      style={{ backgroundColor: estadoColor.bg, color: estadoColor.text }}
-                    >
-                      {obra.estado.replace('_', ' ')}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      {activeReuniones?.[obra.id] && (
+                        <span 
+                          className="px-2 py-1 text-xs font-medium rounded-full whitespace-nowrap flex items-center gap-1"
+                          style={{ backgroundColor: '#fef3c7', color: '#92400e' }}
+                          title={`Reunión activa desde ${activeReuniones[obra.id]!.startTime.toLocaleTimeString()}`}
+                        >
+                          <FiUsers className="w-3 h-3" />
+                          En reunión
+                        </span>
+                      )}
+                      <span 
+                        className="px-2 py-1 text-xs font-medium rounded-full"
+                        style={{ backgroundColor: estadoColor.bg, color: estadoColor.text }}
+                      >
+                        {obra.estado.replace('_', ' ')}
+                      </span>
+                    </div>
                   </td>
                   <td className="px-4 py-4">
-                    <span className="text-sm" style={{ color: 'var(--text-primary)' }}>
-                      {obra.etapaActual}
-                    </span>
+                    {(() => {
+                      const progress = getProgressByStage(obra.etapaActual);
+                      return (
+                        <div>
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-xs capitalize" style={{ color: 'var(--text-muted)' }}>{obra.etapaActual.replace('_', ' ')}</span>
+                            <span className="text-xs font-semibold" style={{ color: 'var(--success-text)' }}>{progress}%</span>
+                          </div>
+                          <div className="w-full h-2 rounded-full" aria-label="Progreso de la obra" role="progressbar" aria-valuenow={progress} aria-valuemin={0} aria-valuemax={100} style={{ backgroundColor: 'var(--bg-secondary)' }}>
+                            <div className="h-2 rounded-full" style={{ width: `${progress}%`, background: 'linear-gradient(90deg, #22c55e, #16a34a)' }} />
+                          </div>
+                        </div>
+                      );
+                    })()}
                   </td>
                   <td className="px-4 py-4">
                     <div>

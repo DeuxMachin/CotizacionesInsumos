@@ -22,6 +22,7 @@ export function Sidebar() {
     if (path.startsWith('/dashboard/cotizaciones')) return 'cotizaciones';
     if (path.startsWith('/dashboard/clientes')) return 'clientes';
     if (path.startsWith('/dashboard/obras')) return 'obras';
+    if (path.startsWith('/dashboard/reuniones')) return 'reuniones';
     if (path.startsWith('/dashboard/posibles-targets')) return 'posibles-targets';
     if (path.startsWith('/dashboard/stock')) return 'stock';
     if (path.startsWith('/dashboard/reportes')) return 'reportes';
