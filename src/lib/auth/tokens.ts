@@ -59,7 +59,7 @@ export async function verifyToken(token: string) {
   const { payload } = await jwtVerify(token, getSecret(), {
     algorithms: ['HS256']
   })
-  return payload as JWTPayload
+  return payload as { sub: string; email?: string; nombre?: string; apellido?: string; rol?: string; exp?: number; iat?: number; type?: string }
 }
 
 export function isExpired(exp?: number) {

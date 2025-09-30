@@ -8,7 +8,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'No refresh token' }, { status: 401 });
     }
 
-    let payload;
+    let payload: { sub: string; email?: string; nombre?: string; apellido?: string; rol?: string; exp?: number; type?: string };
     try {
       payload = await verifyToken(refreshCookie);
     } catch (e) {
@@ -19,8 +19,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'Expired refresh token' }, { status: 401 });
     }
 
-    const accessToken = await signAccessToken({ id: payload.sub!, email: payload.email!, rol: payload.rol! });
-    const newRefreshToken = await signRefreshToken({ id: payload.sub!, email: payload.email!, rol: payload.rol! });
+    const accessToken = await signAccessToken({ id: payload.sub, email: payload.email || '', rol: payload.rol || 'vendedor' });
+    const newRefreshToken = await signRefreshToken({ id: payload.sub, email: payload.email || '', rol: payload.rol || 'vendedor' });
 
     const response = NextResponse.json({ success: true });
     const isProd = process.env.NODE_ENV === 'production';
