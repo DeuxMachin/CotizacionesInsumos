@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { FiBarChart, FiDownload, FiCalendar, FiFileText, FiUsers, FiDollarSign, FiTrendingUp, FiFilter, FiSettings } from "react-icons/fi";
+import React, { useState } from "react";
+import { FiBarChart, FiDownload, FiCalendar, FiFileText, FiUsers, FiDollarSign, FiTrendingUp, FiFilter, FiSettings, FiInfo, FiCheck, FiX } from "react-icons/fi";
 import { useAdminStats } from '@/hooks/useSupabase';
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -21,7 +21,7 @@ const availableReports: Report[] = [
   {
     id: 'clients-history',
     name: 'Historial de Clientes',
-    description: 'Reporte detallado del historial y actividad de clientes en el sistema',
+    description: 'Excel detallado con información completa de clientes, historial de cotizaciones y estadísticas por cliente',
     type: 'users',
     lastGenerated: new Date(Date.now() - 1000 * 60 * 60 * 24),
     size: '2.3 MB',
@@ -31,19 +31,19 @@ const availableReports: Report[] = [
   },
   {
     id: 'quotes-summary',
-    name: 'Resumen de Cotizaciones',
-    description: 'Estadísticas y análisis de cotizaciones generadas',
+    name: 'Resumen Ejecutivo de Cotizaciones',
+    description: 'Excel con estadísticas clave: total cotizaciones, ingresos generados, rendimiento por vendedor y tendencias mensuales',
     type: 'quotes',
     lastGenerated: new Date(Date.now() - 1000 * 60 * 60 * 12),
-    size: '4.1 MB',
+    size: '1.2 MB',
     icon: FiFileText,
     gradientFrom: '#10B981',
     gradientTo: '#047857'
   },
   {
     id: 'financial-analysis',
-    name: 'Análisis Financiero',
-    description: 'Reporte financiero con ingresos, gastos y proyecciones',
+    name: 'Análisis Financiero Completo',
+    description: 'Excel con análisis financiero detallado: ingresos, descuentos, IVA, proyecciones y métricas de rentabilidad',
     type: 'financial',
     lastGenerated: new Date(Date.now() - 1000 * 60 * 60 * 48),
     size: '1.8 MB',
@@ -53,8 +53,8 @@ const availableReports: Report[] = [
   },
   {
     id: 'works-history',
-    name: 'Historial de Obras',
-    description: 'Registro detallado del historial y progreso de obras del sistema',
+    name: 'Historial de Stock',
+    description: 'Excel con inventario completo, movimientos de stock y estadísticas de productos',
     type: 'system',
     lastGenerated: new Date(Date.now() - 1000 * 60 * 60 * 6),
     size: '856 KB',
@@ -64,71 +64,70 @@ const availableReports: Report[] = [
   }
 ];
 
-const dateRanges = [
-  { value: 'last-7-days', label: 'Últimos 7 días' },
-  { value: 'last-30-days', label: 'Últimos 30 días' },
-  { value: 'last-3-months', label: 'Últimos 3 meses' },
-  { value: 'last-year', label: 'Último año' },
-  { value: 'custom', label: 'Personalizado' }
-];
-
-const formats = [
-  { value: 'pdf', label: 'PDF', icon: '📄' },
-  { value: 'excel', label: 'Excel', icon: '📊' }
-];
-
 export function ReportsManagement() {
   const { user } = useAuth();
   const { data: adminStats, loading: loadingStats } = useAdminStats();
   const [reports] = useState<Report[]>(availableReports);
-  const [dateRange, setDateRange] = useState('last-30-days');
-  const [format, setFormat] = useState('pdf');
   const [isGenerating, setIsGenerating] = useState<string | null>(null);
-  const [showFilters, setShowFilters] = useState(false);
+  const [showPopup, setShowPopup] = useState(false);
+  const [popupMessage, setPopupMessage] = useState('');
+  const [popupType, setPopupType] = useState<'success' | 'error'>('success');
 
   const handleGenerateReport = async (reportId: string) => {
     setIsGenerating(reportId);
     try {
       // Determinar el endpoint según el tipo de reporte
       let endpoint = '';
+      let params = '';
+
       if (reportId === 'clients-history') {
         endpoint = '/api/downloads/clients';
+        params = `userId=${user?.id}`;
       } else if (reportId === 'quotes-summary') {
-        endpoint = '/api/downloads/quotes';
+        endpoint = '/api/reports/quotes-summary';
+        params = `userId=${user?.id}`;
+      } else if (reportId === 'financial-analysis') {
+        endpoint = '/api/reports/financial-analysis';
+        params = `userId=${user?.id}`;
       } else if (reportId === 'works-history') {
-        endpoint = '/api/downloads/stock'; // Usar stock como ejemplo para obras
+        // Por ahora usar stock como placeholder hasta tener API de obras
+        endpoint = '/api/downloads/stock';
+        params = `userId=${user?.id}`;
       }
 
       if (endpoint) {
         // Obtener el userId del contexto de autenticación
         const userId = user?.id;
         if (!userId) {
-          alert('Usuario no identificado');
+          setPopupMessage('Usuario no identificado');
+          setPopupType('error');
+          setShowPopup(true);
           setIsGenerating(null);
           return;
         }
 
-        const response = await fetch(`${endpoint}?userId=${userId}&format=${format}`, {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        });
+        // Crear URL completa
+        const url = `${endpoint}?${params}`;
 
-        if (!response.ok) {
-          throw new Error(`Error ${response.status}: ${response.statusText}`);
-        }
+        // Abrir en nueva pestaña para descarga directa
+        window.open(url, '_blank');
 
-        // El archivo se descargará automáticamente
-        alert('Reporte generado exitosamente');
+        // Mostrar popup de éxito
+        setPopupMessage('¡Reporte generado exitosamente! El archivo se descargará en una nueva pestaña.');
+        setPopupType('success');
+        setShowPopup(true);
       } else {
         // Simular generación para reportes que no tienen endpoint específico
         await new Promise(resolve => setTimeout(resolve, 3000));
-        alert('Reporte generado exitosamente');
+        setPopupMessage('¡Reporte generado exitosamente!');
+        setPopupType('success');
+        setShowPopup(true);
       }
     } catch (error) {
       console.error('Error generando reporte:', error);
-      alert('Error al generar el reporte. Por favor, inténtalo de nuevo.');
+      setPopupMessage('Error al generar el reporte. Por favor, inténtalo de nuevo.');
+      setPopupType('error');
+      setShowPopup(true);
     } finally {
       setIsGenerating(null);
     }
@@ -148,19 +147,22 @@ export function ReportsManagement() {
     <div className="min-h-screen p-6" style={{ backgroundColor: 'var(--bg-secondary)' }}>
       <div className="max-w-7xl mx-auto space-y-8">
         {/* Header con gradiente */}
-        <div 
-          className="rounded-2xl p-8 text-white shadow-xl"
-          style={{ background: 'linear-gradient(135deg, #6366F1, #8B5CF6)' }}
+        <div
+          className="rounded-2xl p-8 shadow-xl"
+          style={{
+            background: 'var(--orange-gradient)',
+            color: 'white'
+          }}
         >
           <div className="flex items-center gap-4 mb-4">
-            <div className="p-3 bg-white/20 rounded-xl backdrop-blur-sm">
-              <FiBarChart className="w-8 h-8" />
+            <div className="p-3 rounded-xl backdrop-blur-sm" style={{ backgroundColor: 'rgba(255, 255, 255, 0.2)' }}>
+              <FiBarChart className="w-8 h-8 text-white" />
             </div>
             <div>
-              <h1 className="text-3xl font-bold">
+              <h1 className="text-3xl font-bold text-white">
                 Reportes y Analíticas
               </h1>
-              <p className="text-indigo-100 text-lg">
+              <p className="text-lg text-orange-100">
                 Genera y descarga reportes detallados del sistema
               </p>
             </div>
@@ -290,245 +292,165 @@ export function ReportsManagement() {
           </div>
         </div>
 
-        {/* Generador de reportes mejorado */}
-        <div 
-          className="rounded-2xl shadow-xl border overflow-hidden"
-          style={{ 
-            backgroundColor: 'var(--bg-primary)',
+        {/* Información adicional */}
+        <div
+          className="rounded-xl p-6 border"
+          style={{
+            backgroundColor: 'var(--bg-secondary)',
             borderColor: 'var(--border-subtle)'
           }}
         >
-          <div 
-            className="px-8 py-6 border-b"
-            style={{ 
-              backgroundColor: 'var(--bg-secondary)',
-              borderColor: 'var(--border)'
-            }}
-          >
-            <h2 className="text-2xl font-bold flex items-center gap-3" style={{ color: 'var(--text-primary)' }}>
-              <div 
-                className="p-2 rounded-lg"
-                style={{ background: 'linear-gradient(135deg, #6366F1, #8B5CF6)' }}
-              >
-                <FiFilter className="w-5 h-5 text-white" />
-              </div>
-              Generar Reporte Personalizado
-            </h2>
-            <p className="mt-2" style={{ color: 'var(--text-secondary)' }}>Configura los parámetros para generar tu reporte</p>
-          </div>
-          
-          <div className="p-8">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-              <div className="space-y-2">
-                <label className="block text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
-                  Rango de Fechas
-                </label>
-                <select
-                  value={dateRange}
-                  onChange={(e) => setDateRange(e.target.value)}
-                  className="w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200"
-                  style={{
-                    backgroundColor: 'var(--bg-secondary)',
-                    borderColor: 'var(--border)',
-                    color: 'var(--text-primary)'
-                  }}
-                >
-                  {dateRanges.map(range => (
-                    <option key={range.value} value={range.value}>
-                      {range.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              
-              <div className="space-y-2">
-                <label className="block text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
-                  Formato de Exportación
-                </label>
-                <select
-                  value={format}
-                  onChange={(e) => setFormat(e.target.value)}
-                  className="w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200"
-                  style={{
-                    backgroundColor: 'var(--bg-secondary)',
-                    borderColor: 'var(--border)',
-                    color: 'var(--text-primary)'
-                  }}
-                >
-                  {formats.map(fmt => (
-                    <option key={fmt.value} value={fmt.value}>
-                      {fmt.icon} {fmt.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              
-              <div className="flex flex-col justify-end">
-                <button
-                  onClick={() => setShowFilters(!showFilters)}
-                  className="px-6 py-3 text-white font-medium rounded-xl transition-all duration-200 flex items-center justify-center gap-2 shadow-lg hover:shadow-xl"
-                  style={{ background: 'linear-gradient(135deg, #6366F1, #8B5CF6)' }}
-                >
-                  <FiFilter className="w-5 h-5" />
-                  Filtros Avanzados
-                </button>
-              </div>
+          <div className="flex items-start gap-4">
+            <div
+              className="p-2 rounded-lg flex-shrink-0"
+              style={{
+                backgroundColor: 'var(--info-bg)',
+                color: 'var(--info-text)'
+              }}
+            >
+              <FiInfo className="w-5 h-5" />
             </div>
-
-            {showFilters && (
-              <div 
-                className="rounded-xl p-6 mb-6 border"
-                style={{ 
-                  backgroundColor: 'var(--bg-secondary)',
-                  borderColor: 'var(--border-subtle)'
-                }}
-              >
-                <h3 className="font-semibold text-lg mb-4 flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
-                  <FiSettings className="w-5 h-5" />
-                  Filtros Avanzados
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <label className="block text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
-                      Estado de Cotizaciones
-                    </label>
-                    <select 
-                      className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500"
-                      style={{
-                        backgroundColor: 'var(--bg-primary)',
-                        borderColor: 'var(--border)',
-                        color: 'var(--text-primary)'
-                      }}
-                    >
-                      <option value="">Todas</option>
-                      <option value="pending">Pendientes</option>
-                      <option value="approved">Aprobadas</option>
-                      <option value="rejected">Rechazadas</option>
-                    </select>
-                  </div>
-                  <div className="space-y-2">
-                    <label className="block text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
-                      Rango de Montos
-                    </label>
-                    <div className="flex gap-3">
-                      <input 
-                        type="number" 
-                        placeholder="Mínimo" 
-                        className="flex-1 px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500"
-                        style={{
-                          backgroundColor: 'var(--bg-primary)',
-                          borderColor: 'var(--border)',
-                          color: 'var(--text-primary)'
-                        }}
-                      />
-                      <input 
-                        type="number" 
-                        placeholder="Máximo" 
-                        className="flex-1 px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500"
-                        style={{
-                          backgroundColor: 'var(--bg-primary)',
-                          borderColor: 'var(--border)',
-                          color: 'var(--text-primary)'
-                        }}
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
+            <div>
+              <h3 className="font-semibold text-lg mb-2" style={{ color: 'var(--text-primary)' }}>
+                ¿Cómo funcionan los reportes?
+              </h3>
+              <ul className="space-y-1 text-sm" style={{ color: 'var(--text-secondary)' }}>
+                <li>• Los reportes se generan automáticamente con los datos más recientes</li>
+                <li>• Cada reporte incluye toda la información disponible en el sistema</li>
+                <li>• Los archivos se descargan en una nueva pestaña del navegador</li>
+                <li>• Si tienes problemas, contacta al administrador del sistema</li>
+              </ul>
+            </div>
           </div>
         </div>
 
-        {/* Reportes disponibles mejorados */}
+        {/* Reportes disponibles - Diseño simplificado */}
         <div className="space-y-6">
-          <div className="flex items-center justify-between">
-            <h2 className="text-2xl font-bold flex items-center gap-3" style={{ color: 'var(--text-primary)' }}>
-              <div 
-                className="p-2 rounded-lg"
-                style={{ background: 'linear-gradient(135deg, #10B981, #047857)' }}
-              >
-                <FiFileText className="w-6 h-6 text-white" />
-              </div>
+          <div className="text-center">
+            <h2 className="text-3xl font-bold mb-3" style={{ color: 'var(--text-primary)' }}>
               Reportes Disponibles
             </h2>
+            <p className="text-lg" style={{ color: 'var(--text-secondary)' }}>
+              Selecciona el reporte que necesitas generar
+            </p>
           </div>
-          
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {reports.map((report) => {
               const Icon = report.icon;
               const isCurrentlyGenerating = isGenerating === report.id;
-              
+
+              // Determinar el tipo de archivo que se descarga
+              const getFileType = (id: string) => {
+                if (id === 'clients-history') return 'XLSX';
+                if (id === 'quotes-summary') return 'XLSX';
+                if (id === 'financial-analysis') return 'XLSX';
+                return 'XLSX';
+              };
+
+              const getFileTypeColor = (id: string) => {
+                return id.includes('summary') || id.includes('financial') ? 'var(--success-text)' : 'var(--info-text)';
+              };
+
               return (
-                <div 
+                <div
                   key={report.id}
-                  className="group rounded-2xl shadow-lg hover:shadow-2xl border overflow-hidden transition-all duration-300 hover:-translate-y-1"
-                  style={{ 
+                  className="group relative rounded-2xl border-2 hover:border-orange-300 transition-all duration-300 overflow-hidden"
+                  style={{
                     backgroundColor: 'var(--bg-primary)',
-                    borderColor: 'var(--border-subtle)'
+                    borderColor: 'var(--border-subtle)',
+                    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
                   }}
                 >
-                  <div className="p-8">
-                    <div className="flex items-start justify-between mb-6">
-                      <div 
-                        className="p-4 rounded-xl border shadow-md"
-                        style={{ 
-                          background: `linear-gradient(135deg, ${report.gradientFrom}, ${report.gradientTo})`,
-                          borderColor: 'var(--border-subtle)',
-                          color: 'white'
+                  {/* Badge de tipo de archivo */}
+                  <div
+                    className="absolute top-4 right-4 px-2 py-1 rounded-full text-xs font-semibold"
+                    style={{
+                      backgroundColor: getFileTypeColor(report.id) === 'var(--success-text)' ? 'var(--success-bg)' : 'var(--info-bg)',
+                      color: getFileTypeColor(report.id)
+                    }}
+                  >
+                    {getFileType(report.id)}
+                  </div>
+
+                  <div className="p-6">
+                    <div className="flex items-center gap-4 mb-4">
+                      <div
+                        className="p-3 rounded-lg flex-shrink-0"
+                        style={{
+                          background: report.type === 'users' ? 'var(--blue-gradient)' :
+                                     report.type === 'quotes' ? 'var(--green-gradient)' :
+                                     report.type === 'financial' ? 'var(--purple-gradient)' :
+                                     'var(--orange-gradient)'
                         }}
                       >
-                        <Icon className="w-8 h-8" />
+                        <Icon className="w-6 h-6 text-white" />
                       </div>
-                      <div className="text-right">
-                        <div className="text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>
-                          Último reporte
-                        </div>
-                        <div className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
-                          {formatDate(report.lastGenerated)}
-                        </div>
-                        <div 
-                          className="text-xs px-2 py-1 rounded-full mt-2"
-                          style={{ 
-                            backgroundColor: 'var(--bg-secondary)',
-                            color: 'var(--text-secondary)'
+                      <div className="flex-1">
+                        <h3 className="text-xl font-semibold mb-1" style={{ color: 'var(--text-primary)' }}>
+                          {report.name}
+                        </h3>
+                        <span
+                          className="inline-block px-2 py-1 text-xs font-medium rounded-full"
+                          style={{
+                            backgroundColor: report.type === 'users' ? 'var(--info-bg)' :
+                                           report.type === 'quotes' ? 'var(--success-bg)' :
+                                           report.type === 'financial' ? 'var(--warning-bg)' : 'var(--neutral-bg)',
+                            color: report.type === 'users' ? 'var(--info-text)' :
+                                  report.type === 'quotes' ? 'var(--success-text)' :
+                                  report.type === 'financial' ? 'var(--warning-text)' : 'var(--neutral-text)'
                           }}
                         >
-                          {report.size}
-                        </div>
+                          {report.type === 'users' ? 'Clientes' :
+                           report.type === 'quotes' ? 'Cotizaciones' :
+                           report.type === 'financial' ? 'Financiero' : 'Sistema'}
+                        </span>
                       </div>
                     </div>
-                    
-                    <h3 className="text-xl font-bold mb-3 transition-colors" style={{ color: 'var(--text-primary)' }}>
-                      {report.name}
-                    </h3>
-                    
+
                     <p className="text-sm leading-relaxed mb-6" style={{ color: 'var(--text-secondary)' }}>
                       {report.description}
                     </p>
-                    
-                    <div className="flex gap-3">
+
+                    <div className="flex items-center justify-between">
+                      <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+                        Tamaño aproximado: <span className="font-medium">{report.size}</span>
+                      </div>
+
                       <button
-                        onClick={() => handleGenerateReport(report.id)}
                         disabled={isCurrentlyGenerating}
+                        onClick={() => !isCurrentlyGenerating && handleGenerateReport(report.id)}
                         className={`
-                          flex-1 px-6 py-3 rounded-xl font-medium transition-all duration-200 flex items-center justify-center gap-2 shadow-lg text-white
-                          ${isCurrentlyGenerating ? 'opacity-50 cursor-not-allowed' : 'hover:shadow-xl'}
+                          px-4 py-2 rounded-lg font-medium transition-all duration-200 flex items-center gap-2
+                          ${isCurrentlyGenerating
+                            ? 'cursor-not-allowed'
+                            : 'shadow-md hover:shadow-lg'
+                          }
                         `}
-                        style={{ 
-                          background: isCurrentlyGenerating 
-                            ? 'var(--bg-tertiary)' 
-                            : 'linear-gradient(135deg, #6366F1, #8B5CF6)'
+                        style={{
+                          backgroundColor: isCurrentlyGenerating ? 'var(--bg-secondary)' : 'var(--accent-primary)',
+                          color: isCurrentlyGenerating ? 'var(--text-muted)' : 'white'
+                        }}
+                        onMouseEnter={(e) => {
+                          if (!isCurrentlyGenerating) {
+                            e.currentTarget.style.backgroundColor = 'var(--accent-hover)';
+                          }
+                        }}
+                        onMouseLeave={(e) => {
+                          if (!isCurrentlyGenerating) {
+                            e.currentTarget.style.backgroundColor = 'var(--accent-primary)';
+                          }
                         }}
                       >
                         {isCurrentlyGenerating ? (
                           <>
-                            <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                            <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
                             Generando...
                           </>
                         ) : (
                           <>
-                            <FiDownload className="w-5 h-5" />
-                            Generar Reporte
+                            <FiDownload className="w-4 h-4" />
+                            Descargar
                           </>
                         )}
                       </button>
@@ -539,93 +461,72 @@ export function ReportsManagement() {
             })}
           </div>
         </div>
+      </div>
 
-        {/* Historial de reportes mejorado */}
-        <div 
-          className="rounded-2xl shadow-xl border overflow-hidden"
-          style={{ 
-            backgroundColor: 'var(--bg-primary)',
-            borderColor: 'var(--border-subtle)'
-          }}
-        >
-          <div 
-            className="px-8 py-6 border-b"
-            style={{ 
-              backgroundColor: 'var(--bg-secondary)',
-              borderColor: 'var(--border)'
+      {/* Popup elegante */}
+      {showPopup && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div
+            className="max-w-md w-full rounded-2xl shadow-2xl border-2 overflow-hidden animate-in fade-in-0 zoom-in-95 duration-200"
+            style={{
+              backgroundColor: 'var(--bg-primary)',
+              borderColor: popupType === 'success' ? 'var(--success)' : 'var(--danger)'
             }}
           >
-            <h2 className="text-2xl font-bold flex items-center gap-3" style={{ color: 'var(--text-primary)' }}>
-              <div 
-                className="p-2 rounded-lg"
-                style={{ background: 'linear-gradient(135deg, #F59E0B, #D97706)' }}
+            <div
+              className="px-6 py-4 flex items-center gap-3"
+              style={{
+                backgroundColor: popupType === 'success' ? 'var(--success-bg)' : 'var(--danger-bg)'
+              }}
+            >
+              <div
+                className="p-2 rounded-full flex-shrink-0"
+                style={{
+                  backgroundColor: popupType === 'success' ? 'var(--success)' : 'var(--danger)'
+                }}
               >
-                <FiCalendar className="w-6 h-6 text-white" />
+                {popupType === 'success' ? (
+                  <FiCheck className="w-5 h-5 text-white" />
+                ) : (
+                  <FiX className="w-5 h-5 text-white" />
+                )}
               </div>
-              Historial de Reportes
-            </h2>
-            <p className="mt-2" style={{ color: 'var(--text-secondary)' }}>
-              Reportes generados recientemente
-            </p>
-          </div>
-          
-          <div className="p-8">
-            <div className="space-y-4">
-              {[
-                { name: 'Reporte Financiero Marzo 2024', date: '15/03/2024 14:30', size: '2.1 MB', format: 'PDF', gradient: 'linear-gradient(135deg, #8B5CF6, #7C3AED)' },
-                { name: 'Historial de Clientes Febrero 2024', date: '01/03/2024 09:15', size: '1.8 MB', format: 'Excel', gradient: 'linear-gradient(135deg, #3B82F6, #1D4ED8)' },
-                { name: 'Cotizaciones Q1 2024', date: '28/02/2024 16:45', size: '3.2 MB', format: 'PDF', gradient: 'linear-gradient(135deg, #10B981, #047857)' },
-              ].map((item, index) => (
-                <div 
-                  key={index}
-                  className="group flex items-center justify-between p-6 rounded-xl hover:shadow-md transition-all duration-200 border"
-                  style={{ 
-                    backgroundColor: 'var(--bg-secondary)',
-                    borderColor: 'var(--border-subtle)'
+              <div className="flex-1">
+                <h3
+                  className="font-semibold text-lg"
+                  style={{
+                    color: popupType === 'success' ? 'var(--success-text)' : 'var(--danger-text)'
                   }}
                 >
-                  <div className="flex items-center gap-4">
-                    <div 
-                      className="p-3 rounded-xl"
-                      style={{ background: item.gradient }}
-                    >
-                      <FiFileText className="w-5 h-5 text-white" />
-                    </div>
-                    <div>
-                      <div className="font-semibold text-lg transition-colors" style={{ color: 'var(--text-primary)' }}>
-                        {item.name}
-                      </div>
-                      <div className="text-sm flex items-center gap-2 mt-1" style={{ color: 'var(--text-secondary)' }}>
-                        <span>{item.date}</span>
-                        <span>•</span>
-                        <span className="font-medium">{item.size}</span>
-                        <span>•</span>
-                        <span 
-                          className="px-2 py-1 rounded text-xs font-medium"
-                          style={{ 
-                            backgroundColor: 'var(--bg-tertiary)',
-                            color: 'var(--text-secondary)'
-                          }}
-                        >
-                          {item.format}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <button 
-                    className="px-4 py-2 text-white font-medium rounded-lg transition-all duration-200 flex items-center gap-2 shadow-lg hover:shadow-xl opacity-0 group-hover:opacity-100"
-                    style={{ background: 'linear-gradient(135deg, #6366F1, #8B5CF6)' }}
-                  >
-                    <FiDownload className="w-4 h-4" />
-                    Descargar
-                  </button>
-                </div>
-              ))}
+                  {popupType === 'success' ? '¡Éxito!' : 'Error'}
+                </h3>
+              </div>
+              <button
+                onClick={() => setShowPopup(false)}
+                className="p-1 rounded-full hover:bg-black hover:bg-opacity-10 transition-colors"
+              >
+                <FiX className="w-5 h-5" style={{ color: 'var(--text-secondary)' }} />
+              </button>
+            </div>
+
+            <div className="px-6 pb-6">
+              <p className="text-sm leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
+                {popupMessage}
+              </p>
+              <button
+                onClick={() => setShowPopup(false)}
+                className="mt-4 w-full px-4 py-2 rounded-lg font-medium transition-colors"
+                style={{
+                  backgroundColor: popupType === 'success' ? 'var(--success)' : 'var(--danger)',
+                  color: 'white'
+                }}
+              >
+                Entendido
+              </button>
             </div>
           </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

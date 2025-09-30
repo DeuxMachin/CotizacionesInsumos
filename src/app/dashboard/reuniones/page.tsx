@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   FiUsers,
@@ -12,10 +13,39 @@ import {
   FiX,
   FiCalendar,
   FiUser,
+  FiPlay,
+  FiCheckCircle,
   FiRefreshCw
 } from "react-icons/fi";
 import { useAuth } from "@/contexts/AuthContext";
 import { useAuthHeaders } from "@/hooks/useAuthHeaders";
+
+interface LocationData {
+  lat?: number;
+  lng?: number;
+  address?: string;
+}
+
+interface ApiReunionData {
+  id: number;
+  obraId?: number;
+  obra_id?: number;
+  userId?: string;
+  user_id?: string;
+  userName?: string;
+  user_name?: string;
+  userRole?: string;
+  obraNombre?: string;
+  obra_nombre?: string;
+  tipo?: string;
+  startTime?: string;
+  start_time?: string;
+  endTime?: string;
+  end_time?: string;
+  status?: string;
+  location?: string | LocationData;
+  notas?: string;
+}
 
 interface ReunionData {
   id: number;
@@ -31,32 +61,6 @@ interface ReunionData {
   location?: {
     lat: number;
     lng: number;
-    address?: string;
-  };
-  notas?: string;
-}
-
-interface RawReunionData {
-  id: number;
-  obraId?: number;
-  obra_id?: number;
-  userId?: string;
-  user_id?: string;
-  userName?: string;
-  user_name?: string;
-  userRole?: string;
-  obraNombre?: string;
-  obra_nombre?: string;
-  tipo: string;
-  startTime?: string | Date;
-  start_time?: string | Date;
-  endTime?: string | Date;
-  end_time?: string | Date;
-  status: string;
-  location?: {
-    lat: number;
-    lng: number;
-    accuracy?: number;
     address?: string;
   };
   notas?: string;
@@ -79,6 +83,8 @@ export default function ReunionesDashboard() {
   const [viewMode, setViewMode] = useState<'active' | 'history'>('active');
   const [showFilters, setShowFilters] = useState(false);
 
+  const isOwner = user?.role === 'dueño';
+
   // Función para cargar reuniones
   const loadReuniones = useCallback(async (isBackgroundUpdate = false) => {
     try {
@@ -97,7 +103,7 @@ export default function ReunionesDashboard() {
         const data = await response.json();
 
         // Transformar los datos
-        const transformedData = data.map((reunion: RawReunionData) => {
+        const transformedData = data.map((reunion: ApiReunionData) => {
           // Validar y convertir fechas (API nueva usa camelCase)
           const startTime = reunion.startTime ? new Date(reunion.startTime) : (reunion.start_time ? new Date(reunion.start_time) : new Date());
           const endTime = reunion.endTime ? new Date(reunion.endTime) : (reunion.end_time ? new Date(reunion.end_time) : undefined);

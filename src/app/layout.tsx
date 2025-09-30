@@ -1,12 +1,13 @@
 // app/layout.tsx
-export const metadata = { title: "Panel Administrativo - Cotizaciones" };
-
 import "./globals.css";
 import { Inter, JetBrains_Mono, Lexend } from "next/font/google";
 import { ThemeProvider } from "next-themes";
 import Script from "next/script";
 import { AuthInitializer } from "@/components/AuthInitializer";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { Footer } from "@/components/Footer";
+
+export const metadata = { title: "Panel Administrativo - Cotizaciones" };
 
 // Fuente principal para texto general - muy profesional y legible
 const inter = Inter({ 
@@ -57,7 +58,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           }}
         />
       </head>
-      <body className="antialiased">
+      <body className="antialiased min-h-screen flex flex-col">
         <AuthProvider>
           <AuthInitializer />
           <ThemeProvider
@@ -67,7 +68,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             disableTransitionOnChange
             storageKey="theme"
           >
-            {children}
+            <div className="flex-1 flex flex-col">
+              {children}
+            </div>
+            <Footer />
           </ThemeProvider>
         </AuthProvider>
       </body>

@@ -8,7 +8,7 @@ import { useAuth } from '@/contexts/AuthContext';
 interface ReunionPopupProps {
   isOpen: boolean;
   onClose: () => void;
-  onStart: (location?: LocationData) => void;
+  onStart: (location?: LocationData | null) => void;
   obraName: string;
   isLoading?: boolean;
 }
@@ -24,6 +24,7 @@ export function ReunionPopup({ isOpen, onClose, onStart, obraName, isLoading }: 
     if (isOpen) {
       setLocation(null);
       setLocationError(null);
+      // No obtener ubicación automáticamente al abrir el popup
     }
   }, [isOpen]);
 
@@ -33,13 +34,13 @@ export function ReunionPopup({ isOpen, onClose, onStart, obraName, isLoading }: 
     if (!currentLocation) {
       try {
         currentLocation = await getCurrentLocation();
-      } catch (error) {
+      } catch {
         // Silently fail - la reunión se puede iniciar sin ubicación
-        console.log('No se pudo obtener ubicación para la reunión:', error);
+        console.log('No se pudo obtener ubicación para la reunión');
       }
     }
     
-    onStart(currentLocation || undefined);
+    onStart(currentLocation);
   };
 
   if (!isOpen) return null;

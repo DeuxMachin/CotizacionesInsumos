@@ -7,7 +7,6 @@ import { useAdminStats, useSimpleUserCount } from '@/hooks/useSupabase';
 import UnifiedAuditLog from "@/components/UnifiedAuditLog";
 
 // Lazy load components
-const DatabaseManagement = lazy(() => import("./DatabaseManagement"));
 const ReportsManagement = lazy(() => import("./ReportsManagement"));
 
 const ComponentWrapper = ({ children }: { children: React.ReactNode }) => (
@@ -57,15 +56,6 @@ const adminFeatures: AdminFeature[] = [
     category: 'core'
   },
   {
-    id: 'database',
-    title: 'Base de Datos',
-    description: 'Gestión y optimización de la base de datos',
-    icon: FiDatabase,
-    gradientFrom: '#10B981',
-    gradientTo: '#047857',
-    category: 'management'
-  },
-  {
     id: 'reports',
     title: 'Reportes y Analíticas',
     description: 'Generación de reportes y análisis de datos',
@@ -107,8 +97,6 @@ export function AdminPanel() {
         return <UsersManagementPage />;
       case 'audit-log':
         return <UnifiedAuditLog mode="admin" />;
-      case 'database':
-        return <ComponentWrapper><DatabaseManagement /></ComponentWrapper>;
       case 'reports':
         return <ComponentWrapper><ReportsManagement /></ComponentWrapper>;
       default:
@@ -453,7 +441,7 @@ export function AdminPanel() {
                           <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
                             {feature.description}
                           </p>
-                          {(feature.id === 'users' || feature.id === 'audit-log') && (
+                          {(feature.id === 'users' || feature.id === 'audit-log' || feature.id === 'reports') && (
                             <span 
                               className="inline-block mt-2 px-2 py-1 text-xs font-medium rounded"
                               style={{ 

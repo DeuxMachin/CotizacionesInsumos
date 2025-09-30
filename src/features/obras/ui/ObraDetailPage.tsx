@@ -431,13 +431,13 @@ export function ObraDetailPage({
   };
 
   // Handlers para reuniones
-  const handleStartReunion = async (location?: LocationData) => {
+  const handleStartReunion = async (location?: LocationData | null) => {
     if (!user) return;
 
     try {
       setIsStartingReunion(true);
       console.log('▶️ Iniciando reunión en obra:', obra.nombreEmpresa);
-      await checkin(obra.id, location);
+      await checkin(obra.id, location ?? undefined);
       console.log('✅ Reunión iniciada, verificando estado...');
       Toast.success('Reunión iniciada');
       
