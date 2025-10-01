@@ -1,4 +1,4 @@
-"use client";
+  "use client";
 
 import { createContext, useContext, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
@@ -33,11 +33,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     // Inicializar autenticación verificando la sesión
     const initializeAuth = async () => {
-  log.debug('[Auth] Inicializando autenticación...')
+      log.debug('[Auth] Inicializando autenticación...')
       try {
         const response = await fetch('/api/auth/me', {
           method: 'GET',
-          credentials: 'include'
+          credentials: 'include',
+          cache: 'no-store' // Evitar cache en producción
         });
 
         if (response.ok) {
@@ -47,20 +48,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             // role mapping boundary: backend / DB exposes 'rol'; UI consumes unified 'role'
             const role = apiUser.role || apiUser.rol;
             const name = apiUser.name || (apiUser.nombre && apiUser.apellido ? `${apiUser.nombre} ${apiUser.apellido}` : apiUser.nombre) || undefined;
-            setUser({
+            const newUser = {
               id: apiUser.id,
               email: apiUser.email,
               name,
               role,
               isAdmin: ['admin', 'dueño', 'dueno'].includes(role?.toLowerCase() || '')
-            });
+            };
+            setUser(newUser);
             setLastActivity(Date.now());
+            log.debug('[Auth] Usuario autenticado:', newUser.email);
+          } else {
+            log.debug('[Auth] Sin sesión activa');
           }
+        } else {
+          log.debug('[Auth] Sin sesión activa (respuesta no ok)');
         }
       } catch (error) {
         log.error('Error inicializando autenticación:', error);
       } finally {
-        log.debug('[Auth] Inicialización completada. user?', !!user)
+        log.debug('[Auth] Inicialización completada')
         setLoading(false);
       }
     };

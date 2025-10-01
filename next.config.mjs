@@ -42,8 +42,8 @@ const nextConfig = {
             value: process.env.NODE_ENV === 'production'
               ? [
                   "default-src 'self'",
-                  // Evitar inline/eval en prod; permitir Next.js runtime con nonce/crossorigin
-                  "script-src 'self'",
+                  // Permitir scripts inline necesarios para Next.js hidratación
+                  "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
                   "style-src 'self' 'unsafe-inline'",
                   "img-src 'self' data: https:",
                   "font-src 'self' data:",
