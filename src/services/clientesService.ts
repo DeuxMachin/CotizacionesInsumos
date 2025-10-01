@@ -50,6 +50,9 @@ export class ClientesService {
 
   // Buscar clientes por término
   static async search(searchTerm: string) {
+    // Normalizar el término de búsqueda para RUT (eliminar puntos, guiones y espacios)
+    const normalizedSearchTerm = searchTerm.replace(/[.\-\s]/g, '');
+    
     const { data, error } = await supabase
       .from('clientes')
       .select(`
@@ -62,7 +65,7 @@ export class ClientesService {
           id, snapshot_date, pagado, pendiente, vencido, dinero_cotizado
         )
       `)
-      .or(`nombre_razon_social.ilike.%${searchTerm}%,nombre_fantasia.ilike.%${searchTerm}%,rut.ilike.%${searchTerm}%`)
+      .or(`nombre_razon_social.ilike.%${searchTerm}%,nombre_fantasia.ilike.%${searchTerm}%,rut.ilike.%${normalizedSearchTerm}%`)
       .order('nombre_razon_social')
 
     if (error) throw error
@@ -208,10 +211,12 @@ export class ClientesService {
 
   // Verificar si RUT ya existe
   static async checkRutExists(rut: string, excludeId?: number) {
+    // Normalizar el RUT (eliminar puntos, guiones y espacios)
+    const normalizedRut = rut.replace(/[.\-\s]/g, '');
+    
     let query = supabase
       .from('clientes')
-      .select('id')
-      .eq('rut', rut)
+      .select('id, rut')
 
     if (excludeId) {
       query = query.neq('id', excludeId)
@@ -220,7 +225,13 @@ export class ClientesService {
     const { data, error } = await query
 
     if (error) throw error
-    return data.length > 0
+    
+    // Buscar coincidencia normalizando todos los RUTs de la base de datos
+    const rutExists = data?.some(cliente => 
+      cliente.rut.replace(/[.\-\s]/g, '') === normalizedRut
+    ) ?? false;
+    
+    return rutExists
   }
 
   // Obtener todos los tipos de cliente

@@ -3,7 +3,7 @@ import { sendGmailTest } from '@/services/gmailService';
 import { generatePDF } from '@/shared/lib/pdf/generator';
 import { verifyToken, type JWTPayload } from '@/lib/auth/tokens';
 import { AuditLogger } from '@/services/auditLogger';
-import type { Quote } from '@/core/domain/quote/Quote';
+import type { Quote, QuoteItem } from '@/core/domain/quote/Quote';
 
 interface AuthenticatedUser {
   id: string;
@@ -101,8 +101,31 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Enriquecer items con ficha_técnica si faltara (antes de generar PDF)
+    const items = Array.isArray(quote.items) ? quote.items : [];
+    const productIds = Array.from(new Set(items.map(it => it?.productId).filter(v => v != null))) as number[];
+    let enrichedQuote = quote;
+    try {
+      if (productIds.length > 0) {
+        const { supabase } = await import('@/lib/supabase');
+        const { data: productos } = await supabase
+          .from('productos')
+          .select('id, ficha_tecnica')
+          .in('id', productIds);
+        const fichaMap = new Map<number, string | undefined>((productos || []).map((p: { id: number; ficha_tecnica: string | null }) => [p.id, p.ficha_tecnica || undefined]));
+        const newItems = items.map(it => {
+          if (it.fichaTecnica || !it.productId) return it;
+          const ficha = fichaMap.get(Number(it.productId));
+          return ficha ? { ...it, fichaTecnica: ficha } : it;
+        });
+        enrichedQuote = { ...quote, items: newItems };
+      }
+    } catch (err) {
+      console.warn('Error enriqueciendo fichas técnicas:', err);
+    }
+
     // Generar PDF de la cotización
-  const pdfBuffer = await generatePDF(quote, undefined, { condensed: true, docType: 'cotizacion' });
+  const pdfBuffer = await generatePDF(enrichedQuote, undefined, { condensed: true, docType: 'cotizacion' });
     
     // Convertir buffer a base64 para el adjunto
     const pdfBase64 = Buffer.from(pdfBuffer).toString('base64');
