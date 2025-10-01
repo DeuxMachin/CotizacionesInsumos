@@ -11,7 +11,9 @@ import {
   FiFileText,
   FiAlertCircle,
   FiCheck,
-  FiTool
+  FiTool,
+  FiMapPin,
+  FiCheckCircle
 } from "react-icons/fi";
 import { Modal } from "@/shared/ui/Modal";
 import { ClientesService } from "@/services/clientesService";
@@ -66,6 +68,24 @@ export function CreateObraModal({
   const [direccionObra, setDireccionObra] = useState('');
   const [comuna, setComuna] = useState('');
   const [ciudad, setCiudad] = useState('');
+  const [region, setRegion] = useState('');
+  
+  // Estados para geocoding
+  const [direccionQuery, setDireccionQuery] = useState('');
+  const [direccionResults, setDireccionResults] = useState<Array<{
+    place_id: string;
+    description: string;
+    structured_formatting: {
+      main_text: string;
+      secondary_text: string;
+    };
+    lat: number;
+    lng: number;
+    address: Record<string, unknown>;
+  }>>([]);
+  const [searchingDirecciones, setSearchingDirecciones] = useState(false);
+  const [showDireccionDropdown, setShowDireccionDropdown] = useState(false);
+  const direccionSearchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [fechaInicio, setFechaInicio] = useState('');
   const [fechaEstimadaFin, setFechaEstimadaFin] = useState('');
   const [valorEstimado, setValorEstimado] = useState('');
@@ -134,6 +154,21 @@ export function CreateObraModal({
     })();
   }, [isOpen]);
 
+  // Cerrar dropdowns al hacer clic fuera
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      if (!target.closest('.direccion-autocomplete')) {
+        setShowDireccionDropdown(false);
+      }
+    };
+
+    if (showDireccionDropdown) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [showDireccionDropdown]);
+
   // Buscar cliente con debounce
   const onClienteQueryChange = (value: string) => {
     setClienteQuery(value);
@@ -155,6 +190,51 @@ export function CreateObraModal({
         setSearchingClientes(false);
       }
     }, 250);
+  };
+
+  // Buscar direcciones con geocoding
+  const onDireccionQueryChange = (value: string) => {
+    setDireccionQuery(value);
+    setShowDireccionDropdown(true);
+    if (direccionSearchTimeoutRef.current) clearTimeout(direccionSearchTimeoutRef.current);
+    
+    direccionSearchTimeoutRef.current = setTimeout(async () => {
+      const term = value.trim();
+      if (term.length < 3) {
+        setDireccionResults([]);
+        return;
+      }
+      
+      setSearchingDirecciones(true);
+      try {
+        const response = await fetch(`/api/geocoding?action=search&q=${encodeURIComponent(term)}`);
+        if (response.ok) {
+          const data = await response.json();
+          setDireccionResults(data.results || []);
+        }
+      } catch (e) {
+        console.error('Error buscando direcciones:', e);
+      } finally {
+        setSearchingDirecciones(false);
+      }
+    }, 400);
+  };
+
+  // Seleccionar una dirección del geocoding
+  const onDireccionSelect = (result: typeof direccionResults[0]) => {
+    setDireccionQuery(result.description);
+    setDireccionObra(result.structured_formatting.main_text);
+    
+    // Extraer información del address
+    const addr = result.address;
+    const cityValue = (addr['city'] as string) || (addr['town'] as string) || (addr['village'] as string) || '';
+    const comunaValue = (addr['municipality'] as string) || (addr['city_district'] as string) || (addr['county'] as string) || '';
+    const regionValue = (addr['state'] as string) || (addr['region'] as string) || '';
+    
+    setCiudad(cityValue);
+    setComuna(comunaValue);
+    setRegion(regionValue);
+    setShowDireccionDropdown(false);
   };
 
   const onClienteSelect = (cli: Database['public']['Tables']['clientes']['Row']) => {
@@ -302,9 +382,13 @@ export function CreateObraModal({
   const resetForm = () => {
     setNombreEmpresa('');
     setDescripcion('');
-  setDireccionObra('');
-  setComuna('');
-  setCiudad('');
+    setDireccionObra('');
+    setComuna('');
+    setCiudad('');
+    setRegion('');
+    setDireccionQuery('');
+    setDireccionResults([]);
+    setShowDireccionDropdown(false);
     setFechaInicio('');
     setFechaEstimadaFin('');
     setValorEstimado('');
@@ -318,11 +402,11 @@ export function CreateObraModal({
     setConstructoraTelefono('');
     setConstructoraEmail('');
     setConstructoraDireccion('');
-  setClienteId(undefined);
-  setClienteQuery('');
-  setClienteResults([]);
-  setShowClienteDropdown(false);
-  setTipoObraId(undefined);
+    setClienteId(undefined);
+    setClienteQuery('');
+    setClienteResults([]);
+    setShowClienteDropdown(false);
+    setTipoObraId(undefined);
   setTamanoObraId(undefined);
   setContacts(REQUIRED_CARGOS.map((cargo) => ({ cargo, nombre: '', telefono: '', email: '' })));
   // sin whatsapp separado
@@ -559,28 +643,89 @@ export function CreateObraModal({
                   )}
                 </div>
 
-                {/* Dirección de la Obra */}
-                <div>
+                {/* Dirección de la Obra con Geocoding */}
+                <div className="relative direccion-autocomplete">
                   <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>
                     Dirección de la Obra *
                   </label>
-                  <input
-                    type="text"
-                    value={direccionObra}
-                    onChange={(e) => setDireccionObra(e.target.value)}
-                    placeholder="Dirección completa de la obra"
-                    className="w-full px-3 py-2 rounded-lg border focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    style={{ 
-                      backgroundColor: 'var(--input-bg)',
-                      borderColor: errors.direccionObra ? 'var(--danger-border)' : 'var(--input-border)',
-                      color: 'var(--text-primary)'
-                    }}
-                  />
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={direccionQuery}
+                      onChange={(e) => onDireccionQueryChange(e.target.value)}
+                      onFocus={() => direccionQuery.length >= 3 && setShowDireccionDropdown(true)}
+                      placeholder="Buscar dirección (ej: Av. Providencia 123, Santiago)"
+                      className="w-full px-3 py-2 rounded-lg border focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      style={{ 
+                        backgroundColor: 'var(--input-bg)',
+                        borderColor: errors.direccionObra ? 'var(--danger-border)' : 'var(--input-border)',
+                        color: 'var(--text-primary)'
+                      }}
+                    />
+                    {searchingDirecciones && (
+                      <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-2 border-blue-500 border-t-transparent"></div>
+                      </div>
+                    )}
+                  </div>
+                  
+                  {/* Dropdown de resultados de geocoding */}
+                  {showDireccionDropdown && direccionResults.length > 0 && (
+                    <div 
+                      className="absolute z-50 w-full mt-1 rounded-lg shadow-lg border max-h-60 overflow-y-auto"
+                      style={{ backgroundColor: 'var(--card-bg)', borderColor: 'var(--border)' }}
+                    >
+                      {direccionResults.map((result) => (
+                        <button
+                          key={result.place_id}
+                          type="button"
+                          onClick={() => onDireccionSelect(result)}
+                          className="w-full text-left px-3 py-2 hover:bg-opacity-80 transition-colors border-b last:border-b-0"
+                          style={{ 
+                            backgroundColor: 'var(--card-bg)',
+                            borderColor: 'var(--border)',
+                            color: 'var(--text-primary)'
+                          }}
+                          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--hover-bg)'}
+                          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--card-bg)'}
+                        >
+                          <div className="flex items-start gap-2">
+                            <FiMapPin className="w-4 h-4 mt-1 flex-shrink-0" style={{ color: 'var(--accent-primary)' }} />
+                            <div className="flex-1 min-w-0">
+                              <div className="font-medium truncate">{result.structured_formatting.main_text}</div>
+                              <div className="text-xs truncate" style={{ color: 'var(--text-secondary)' }}>
+                                {result.structured_formatting.secondary_text}
+                              </div>
+                            </div>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
                   {errors.direccionObra && (
                     <span className="text-xs mt-1 flex items-center gap-1" style={{ color: 'var(--danger-text)' }}>
                       <FiAlertCircle className="w-3 h-3" />
                       {errors.direccionObra}
                     </span>
+                  )}
+                  
+                  {/* Mostrar dirección seleccionada */}
+                  {direccionObra && (
+                    <div className="mt-2 p-2 rounded-lg text-xs" style={{ backgroundColor: 'var(--success-bg)', color: 'var(--success-text)' }}>
+                      <div className="flex items-start gap-2">
+                        <FiCheckCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                        <div>
+                          <div className="font-medium">Dirección seleccionada:</div>
+                          <div>{direccionObra}</div>
+                          {(comuna || ciudad || region) && (
+                            <div className="text-xs opacity-75 mt-1">
+                              {[comuna, ciudad, region].filter(Boolean).join(', ')}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
                   )}
                 </div>
 

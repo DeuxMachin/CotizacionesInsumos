@@ -152,7 +152,7 @@ function normalizeRut(rut: string): string {
 
 export function useQuotes(): UseQuotesReturn {
   const { user } = useAuth();
-  const isAdmin = user?.role === 'admin';
+  const isAdmin = ['admin', 'dueño', 'dueno'].includes(user?.role?.toLowerCase() || '');
   
   // Estado local
   const [allQuotes, setAllQuotes] = useState<Quote[]>([]);

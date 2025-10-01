@@ -173,9 +173,9 @@ export function Sidebar() {
               </span>
               <div className="flex items-center gap-2">
                 <span className="text-xs text-theme-secondary truncate">{user?.email || "usuario@mail.com"}</span>
-                {user?.role?.toLowerCase() === 'admin' && (
+                {['admin', 'dueño', 'dueno'].includes(user?.role?.toLowerCase() || '') && (
                   <span className="px-1.5 py-0.5 text-xs rounded bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300">
-                    Admin
+                    {user?.role?.toLowerCase() === 'admin' ? 'Admin' : 'Dueño'}
                   </span>
                 )}
               </div>

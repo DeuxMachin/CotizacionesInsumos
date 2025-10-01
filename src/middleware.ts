@@ -38,7 +38,8 @@ export async function middleware(request: NextRequest) {
 
   // Redirect root to appropriate dashboard if authenticated
   if (isRootPage && isAuthenticated) {
-    url.pathname = role === 'admin' ? '/admin' : '/dashboard';
+    const isAdminOrOwner = ['admin', 'dueño', 'dueno'].includes(role?.toLowerCase() || '');
+    url.pathname = isAdminOrOwner ? '/admin' : '/dashboard';
     return NextResponse.redirect(url);
   }
 
@@ -48,7 +49,8 @@ export async function middleware(request: NextRequest) {
   }
 
   if (isLoginPage && isAuthenticated) {
-    url.pathname = role === 'admin' ? '/admin' : '/dashboard';
+    const isAdminOrOwner = ['admin', 'dueño', 'dueno'].includes(role?.toLowerCase() || '');
+    url.pathname = isAdminOrOwner ? '/admin' : '/dashboard';
     return NextResponse.redirect(url);
   }
 

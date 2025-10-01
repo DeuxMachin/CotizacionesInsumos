@@ -70,7 +70,8 @@ export function useActionAuthorization() {
   };
 
   const isOwnerOrAdmin = (ownerId?: string): boolean => {
-    return user?.role?.toLowerCase() === 'admin' || user?.id === ownerId;
+    const isAdminOrOwner = ['admin', 'dueño', 'dueno'].includes(user?.role?.toLowerCase() || '');
+    return isAdminOrOwner || user?.id === ownerId;
   };
 
   const logUnauthorizedAction = (resource: Resource, action: Action) => {

@@ -72,8 +72,8 @@ export function ProtectedComponent({
   const effectiveRole = user?.role || '';
   const { hasAnyPermission, hasAllPermissions } = usePermissions(effectiveRole);
 
-  // Si requiere admin y no es admin, no mostrar
-  if (requireAdmin && effectiveRole.toLowerCase() !== 'admin') {
+  // Si requiere admin y no es admin o dueño, no mostrar
+  if (requireAdmin && !['admin', 'dueño', 'dueno'].includes(effectiveRole.toLowerCase())) {
     return fallback;
   }
 
@@ -124,7 +124,7 @@ export function useProtectedAction() {
   };
 
   const isAdmin = (): boolean => {
-  return effectiveRole.toLowerCase() === 'admin';
+    return ['admin', 'dueño', 'dueno'].includes(effectiveRole.toLowerCase());
   };
 
   const canEditResource = (resource: Resource): boolean => {

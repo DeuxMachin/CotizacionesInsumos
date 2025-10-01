@@ -209,13 +209,15 @@ export default function StockPage() {
 
   // Handlers Categorías
   const openCreateCategory = () => {
-  if (user?.role !== 'admin') { Toast.error('Solo administradores'); return; }
+    const isAdminOrOwner = ['admin', 'dueño', 'dueno'].includes(user?.role?.toLowerCase() || '');
+    if (!isAdminOrOwner) { Toast.error('Solo administradores y dueños'); return; }
     setShowCreateCategoryModal(true);
     setShowCategoryMenu(false);
   };
 
   const openEditCategory = () => {
-  if (user?.role !== 'admin') { Toast.error('Solo administradores'); return; }
+    const isAdminOrOwner = ['admin', 'dueño', 'dueno'].includes(user?.role?.toLowerCase() || '');
+    if (!isAdminOrOwner) { Toast.error('Solo administradores y dueños'); return; }
     // Preseleccionar la categoría actualmente filtrada si es válida
     const currentId = selectedCategory !== 'todas' ? Number(selectedCategory) : null;
     setEditingCategoryId(currentId);
@@ -226,7 +228,8 @@ export default function StockPage() {
   };
 
   const openDeleteCategory = () => {
-  if (user?.role !== 'admin') { Toast.error('Solo administradores'); return; }
+    const isAdminOrOwner = ['admin', 'dueño', 'dueno'].includes(user?.role?.toLowerCase() || '');
+    if (!isAdminOrOwner) { Toast.error('Solo administradores y dueños'); return; }
     const currentId = selectedCategory !== 'todas' ? Number(selectedCategory) : null;
     setDeletingCategoryId(currentId);
     setDeleteConfirmText("");
@@ -235,7 +238,8 @@ export default function StockPage() {
   };
 
   const handleCreateCategory = async () => {
-  if (user?.role !== 'admin') { Toast.error('Solo administradores'); return; }
+    const isAdminOrOwner = ['admin', 'dueño', 'dueno'].includes(user?.role?.toLowerCase() || '');
+    if (!isAdminOrOwner) { Toast.error('Solo administradores y dueños'); return; }
     const name = newCategoryName.trim();
     if (!name) { Toast.error('El nombre no puede estar vacío'); return; }
     setCreatingCategory(true);
@@ -255,7 +259,8 @@ export default function StockPage() {
   };
 
   const handleUpdateCategory = async () => {
-  if (user?.role !== 'admin') { Toast.error('Solo administradores'); return; }
+    const isAdminOrOwner = ['admin', 'dueño', 'dueno'].includes(user?.role?.toLowerCase() || '');
+    if (!isAdminOrOwner) { Toast.error('Solo administradores y dueños'); return; }
     if (!editingCategoryId) { Toast.error('Selecciona una categoría'); return; }
     const name = editCategoryName.trim();
     if (!name) { Toast.error('El nombre no puede estar vacío'); return; }
@@ -276,7 +281,8 @@ export default function StockPage() {
   };
 
   const handleDeleteCategory = async () => {
-  if (user?.role !== 'admin') { Toast.error('Solo administradores'); return; }
+    const isAdminOrOwner = ['admin', 'dueño', 'dueno'].includes(user?.role?.toLowerCase() || '');
+    if (!isAdminOrOwner) { Toast.error('Solo administradores y dueños'); return; }
     if (!deletingCategoryId) { Toast.error('Selecciona una categoría'); return; }
     const sel = categories.find(c => c.id === deletingCategoryId);
     if (!sel) { Toast.error('Categoría inválida'); return; }
@@ -305,9 +311,10 @@ export default function StockPage() {
   const handleSaveProduct = async (updatedProduct: Partial<InventoryItem>) => {
     if (!editingProduct) return;
 
-    // Verificar permisos de administrador
-  if (!user?.role || user.role !== 'admin') {
-      Toast.error('Acceso denegado: Solo los administradores pueden editar productos. Contacta a un administrador si necesitas realizar cambios.');
+    // Verificar permisos de administrador o dueño
+    const isAdminOrOwner = ['admin', 'dueño', 'dueno'].includes(user?.role?.toLowerCase() || '');
+    if (!isAdminOrOwner) {
+      Toast.error('Acceso denegado: Solo los administradores y dueños pueden editar productos. Contacta a un administrador si necesitas realizar cambios.');
       return;
     }
 
@@ -743,7 +750,8 @@ export default function StockPage() {
                   <button onClick={() => { setConfirmDeleteProductId(null); setDeleteProductConfirmText(''); }} className="px-4 py-2 rounded-lg" style={{ backgroundColor: 'var(--button-secondary-bg)', color: 'var(--text-primary)' }} disabled={deletingProduct}>Cancelar</button>
                   <button
                     onClick={async () => {
-                      if (user?.role !== 'admin') { Toast.error('Solo administradores'); return; }
+                      const isAdminOrOwner = ['admin', 'dueño', 'dueno'].includes(user?.role?.toLowerCase() || '');
+                      if (!isAdminOrOwner) { Toast.error('Solo administradores y dueños'); return; }
                       if (confirmDeleteProductId === null) return;
                       if (deleteProductConfirmText.trim().toLowerCase() !== 'borrar') { Toast.error('Escribe Borrar para confirmar'); return; }
                       try {
