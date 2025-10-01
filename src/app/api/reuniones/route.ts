@@ -41,9 +41,9 @@ export async function GET(request: NextRequest) {
       .eq('tipo', 'reunion')
       .order('inicio_at', { ascending: false });
 
-    // Permissions: owners see all, others see only their own
+    // Permissions: owners and admins see all, others see only their own
     // But for obra-specific queries, allow seeing all meetings in that obra
-    if (payload.rol !== 'dueño' && payload.rol !== 'dueno' && !obraId) {
+    if (!['admin', 'dueño', 'dueno'].includes(payload.rol?.toLowerCase() || '') && !obraId) {
       query = query.eq('vendedor_id', payload.sub);
     }
 
