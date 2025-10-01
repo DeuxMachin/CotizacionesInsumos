@@ -9,8 +9,8 @@ export async function GET(request: NextRequest) {
     const userId = searchParams.get('user_id')
     const eventType = searchParams.get('event_type')
 
-    // Obtener contexto del usuario actual
-    const userContext = await getUserContext(request)
+  // Obtener contexto del usuario actual (derivado ahora 100% del JWT)
+  const userContext = await getUserContext(request)
     
     if (!userContext) {
       return NextResponse.json({

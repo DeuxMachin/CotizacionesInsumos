@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { ReportPeriod } from '@/app/dashboard/reportes/page';
 import { reportesService, ReportData } from '@/services/reportesService';
+import { supabase } from '@/lib/supabase';
 
 interface MonthlySalesChartProps {
   period: ReportPeriod;
@@ -56,17 +57,89 @@ export function MonthlySalesChart({ period }: MonthlySalesChartProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Cargar datos reales
+  // Cargar datos reales directamente desde Supabase
   useEffect(() => {
     const loadSalesData = async () => {
       try {
         setLoading(true);
         setError(null);
-        const data = await reportesService.getReportData(period);
-        setSalesData(data.ventasMensuales);
+
+        // Determinar el rango de fechas según el período seleccionado
+        const now = new Date();
+        const startDate = new Date();
+        
+        switch (period) {
+          case 'Último mes':
+            startDate.setMonth(now.getMonth() - 1);
+            break;
+          case 'Últimos 3 meses':
+            startDate.setMonth(now.getMonth() - 3);
+            break;
+          case 'Últimos 6 meses':
+            startDate.setMonth(now.getMonth() - 6);
+            break;
+          case 'Último año':
+            startDate.setFullYear(now.getFullYear() - 1);
+            break;
+          default:
+            startDate.setMonth(now.getMonth() - 6);
+        }
+
+        // Consultar directamente las ventas desde Supabase
+
+        // Usar la columna correcta 'total' en vez de 'total_final'
+        const { data: notasVenta, error: notasError } = await supabase
+          .from('notas_venta')
+          .select('created_at, total')
+          .gte('created_at', startDate.toISOString())
+          .order('created_at', { ascending: true });
+
+        if (notasError) throw new Error(`Error al obtener datos: ${notasError.message}`);
+
+        // Convertir los datos al formato esperado
+        // Para períodos largos, agrupamos por día (últimos 30 días)
+        const dailySales: MonthlySalesData[] = [];
+        const salesByDay: Record<string, number> = {};
+
+        // Inicializar los últimos 30 días con ventas en cero
+        for (let i = 30; i >= 0; i--) {
+          const date = new Date();
+          date.setDate(date.getDate() - i);
+          const dayKey = date.toISOString().split('T')[0];
+          salesByDay[dayKey] = 0;
+        }
+
+        // Sumar las ventas por día
+        (notasVenta || []).forEach(nota => {
+          const dateStr = new Date(nota.created_at).toISOString().split('T')[0];
+          if (salesByDay[dateStr] !== undefined) {
+            salesByDay[dateStr] += nota.total || 0;
+          }
+        });
+
+        // Convertir a array para el gráfico
+        let day = 1;
+        Object.entries(salesByDay).forEach(([date, sales]) => {
+          const dayPart = date.split('-')[2]; // Extraer solo el día
+          dailySales.push({
+            day,
+            sales,
+            label: `D${dayPart}`
+          });
+          day++;
+        });
+
+        if (dailySales.length > 0) {
+          setSalesData(dailySales);
+        } else {
+          // Si no hay datos, usar datos mock como fallback
+          setSalesData(mockMonthlySalesData);
+        }
       } catch (err) {
+        console.error('Error cargando datos de ventas:', err);
         setError(err instanceof Error ? err.message : 'Error al cargar datos');
-        setSalesData(mockMonthlySalesData); // Fallback a datos mock
+        // Fallback a datos mock si hay error
+        setSalesData(mockMonthlySalesData);
       } finally {
         setLoading(false);
       }

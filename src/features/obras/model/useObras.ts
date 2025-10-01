@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo, useCallback, useEffect } from "react";
-import { useAuth } from "@/features/auth/model/useAuth";
+import { useAuth } from "@/contexts/AuthContext";
 import { getObrasService } from "../services";
 import type { EstadoObra, EtapaObra, FiltroObras, EstadisticasObras, Obra } from "../types/obras";
 
@@ -22,7 +22,7 @@ export function useObras() {
   const service = useMemo(() => getObrasService(), []);
 
   // Obtener obras según el rol del usuario
-  const isAdmin = user?.rol === 'admin';
+  const isAdmin = user?.role === 'admin';
 
   useEffect(() => {
     let active = true;
@@ -182,7 +182,7 @@ export function useObras() {
     }
   }, []);
 
-  const eliminarObra = useCallback(async (id: string) => {
+  const eliminarObra = useCallback(async (id: number) => {
     setLoading(true);
     try {
       const ok = await service.eliminarObra(id);
@@ -263,6 +263,6 @@ export function useObras() {
     // Utilidades
   isAdmin,
     userId: user?.id,
-  userName: [user?.nombre, user?.apellido].filter(Boolean).join(' ') || (user?.email ?? 'Usuario')
+  userName: user?.name || user?.email || 'Usuario'
   };
 }

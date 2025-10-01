@@ -34,6 +34,9 @@ interface CotizacionExportRow {
   'Producto SKU': string;
   'Producto Nombre': string;
   'Producto Unidad': string;
+  'Producto Tipo': string;
+  'Producto Moneda': string;
+  'Producto Afecto IVA': string;
   'Cantidad': number;
   'Precio Unitario': number;
   'Descuento %': number;
@@ -104,7 +107,7 @@ export async function GET(request: NextRequest) {
 
       // Para cada cotización, agregar una fila por cada item
       items.forEach((item: CotizacionItemRow & { productos?: ProductoRow }, index: number) => {
-        const producto = item.productos;
+        const producto = item.productos as ProductoRow | undefined;
 
         exportData.push({
           'ID Cotización': cotizacion.folio || `COT-${cotizacion.id}`,
@@ -124,6 +127,9 @@ export async function GET(request: NextRequest) {
           'Producto SKU': producto?.sku || '',
           'Producto Nombre': producto?.nombre || item.descripcion || '',
           'Producto Unidad': item.unidad || producto?.unidad || '',
+          'Producto Tipo': producto?.tipo_id ? String(producto.tipo_id) : '',
+          'Producto Moneda': producto?.moneda || '',
+          'Producto Afecto IVA': producto?.afecto_iva ? 'Sí' : 'No',
           'Cantidad': item.cantidad,
           'Precio Unitario': item.precio_unitario_neto,
           'Descuento %': item.descuento_pct || 0,
@@ -163,6 +169,9 @@ export async function GET(request: NextRequest) {
           'Producto SKU': '',
           'Producto Nombre': '',
           'Producto Unidad': '',
+          'Producto Tipo': '',
+          'Producto Moneda': '',
+          'Producto Afecto IVA': '',
           'Cantidad': 0,
           'Precio Unitario': 0,
           'Descuento %': 0,
@@ -206,6 +215,9 @@ export async function GET(request: NextRequest) {
       { wch: 15 }, // Producto SKU
       { wch: 30 }, // Producto Nombre
       { wch: 10 }, // Producto Unidad
+      { wch: 12 }, // Producto Tipo
+      { wch: 10 }, // Producto Moneda
+  { wch: 14 }, // Producto Afecto IVA
       { wch: 10 }, // Cantidad
       { wch: 15 }, // Precio Unitario
       { wch: 10 }, // Descuento %

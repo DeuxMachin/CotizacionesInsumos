@@ -40,6 +40,23 @@ export class CotizacionesService {
     return data
   }
 
+  // Obtener cotizaciones por obra ID
+  static async getByObraId(obraId: number) {
+    const { data, error } = await supabase
+      .from('cotizaciones')
+      .select(`
+        *,
+        cliente_principal:clientes!cliente_principal_id(id, nombre_razon_social, rut),
+        obra:obras(id, nombre),
+        creador:usuarios!vendedor_id(id, nombre, apellido)
+      `)
+      .eq('obra_id', obraId)
+      .order('created_at', { ascending: false })
+
+    if (error) throw error
+    return data
+  }
+
   // Crear nueva cotización
   static async create(cotizacion: CotizacionInsert, userInfo?: { id: string; email: string; name?: string }) {
     const { data, error } = await supabase
@@ -53,6 +70,47 @@ export class CotizacionesService {
 
     if (error) throw error
 
+    // Actualizar dinero_cotizado en cliente_saldos
+    if (data?.cliente_principal_id) {
+      const clienteId = data.cliente_principal_id as number;
+      const monto = (data.total_final ?? data.total_neto ?? 0) as number;
+      console.log('🔄 Actualizando saldo para cotización:', { clienteId, monto, total_final: data.total_final, total_neto: data.total_neto });
+      if (monto > 0) {
+        // Obtener el saldo más reciente
+        const { data: saldoActual } = await supabase
+          .from('cliente_saldos')
+          .select('id, dinero_cotizado')
+          .eq('cliente_id', clienteId)
+          .order('snapshot_date', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        console.log('Saldo actual:', saldoActual);
+        if (saldoActual) {
+          const nuevoDineroCotizado = (saldoActual.dinero_cotizado || 0) + monto;
+          console.log('Actualizando saldo existente:', { id: saldoActual.id, nuevoDineroCotizado });
+          await supabase
+            .from('cliente_saldos')
+            .update({ dinero_cotizado: nuevoDineroCotizado })
+            .eq('id', saldoActual.id);
+        } else {
+          console.log('Insertando nuevo saldo:', { clienteId, monto });
+          await supabase
+            .from('cliente_saldos')
+            .insert({
+              cliente_id: clienteId,
+              snapshot_date: new Date().toISOString().split('T')[0],
+              pagado: 0,
+              pendiente: 0,
+              vencido: 0,
+              dinero_cotizado: monto
+            });
+        }
+      } else {
+        console.log('Monto es 0, no se actualiza saldo');
+      }
+    }
+
     // Registrar en audit log si se proporciona información del usuario
     if (userInfo && data) {
       const clienteInfo = data.cliente_principal ? {
@@ -65,7 +123,8 @@ export class CotizacionesService {
         userInfo.email,
         data.id,
         data.folio || `#${data.id}`,
-        clienteInfo
+        clienteInfo,
+        userInfo.name
       )
     }
 
@@ -74,6 +133,15 @@ export class CotizacionesService {
 
   // Actualizar cotización
   static async update(id: number, cotizacion: CotizacionUpdate, userInfo?: { id: string; email: string; name?: string }) {
+    // Obtener la cotización actual antes de actualizar para calcular cambios en saldos
+    const { data: oldQuote, error: oldError } = await supabase
+      .from('cotizaciones')
+      .select('cliente_principal_id, total_final, total_neto, estado')
+      .eq('id', id)
+      .single();
+
+    if (oldError) throw oldError;
+
     const { data, error } = await supabase
       .from('cotizaciones')
       .update(cotizacion)
@@ -85,6 +153,42 @@ export class CotizacionesService {
       .single()
 
     if (error) throw error
+
+    // Ajustar dinero_cotizado si cambió el total y la cotización no está aceptada
+    if (data && oldQuote && oldQuote.estado !== 'aceptada' && data.estado !== 'aceptada') {
+      const oldTotal = oldQuote.total_final ?? oldQuote.total_neto ?? 0;
+      const newTotal = data.total_final ?? data.total_neto ?? 0;
+      const difference = newTotal - oldTotal;
+
+      if (difference !== 0 && data.cliente_principal_id) {
+        const { data: saldoActual } = await supabase
+          .from('cliente_saldos')
+          .select('id, dinero_cotizado')
+          .eq('cliente_id', data.cliente_principal_id)
+          .order('snapshot_date', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (saldoActual) {
+          const nuevoDineroCotizado = (saldoActual.dinero_cotizado || 0) + difference;
+          await supabase
+            .from('cliente_saldos')
+            .update({ dinero_cotizado: Math.max(0, nuevoDineroCotizado) })
+            .eq('id', saldoActual.id);
+        } else if (newTotal > 0) {
+          await supabase
+            .from('cliente_saldos')
+            .insert({
+              cliente_id: data.cliente_principal_id,
+              snapshot_date: new Date().toISOString().split('T')[0],
+              pagado: 0,
+              pendiente: 0,
+              vencido: 0,
+              dinero_cotizado: newTotal
+            });
+        }
+      }
+    }
 
     // Registrar en audit log si se proporciona información del usuario
     if (userInfo && data) {
@@ -147,7 +251,8 @@ export class CotizacionesService {
         data.id,
         data.folio || `#${data.id}`,
         oldStatus,
-        estado
+        estado,
+        userInfo.name
       )
     }
 

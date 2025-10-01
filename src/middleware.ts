@@ -1,55 +1,34 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import { verifyToken, type JWTPayload } from '@/lib/auth/tokens';
 
-function parseAuthCookie(raw?: string) {
+export async function middleware(request: NextRequest) {
+  const jwtCookie = request.cookies.get('auth-token');
+  let payload: { sub: string; email?: string; nombre?: string; apellido?: string; rol?: string; exp?: number; type?: string } | null = null;
   let isAuthenticated = false;
   let role: string | undefined;
-  let sessionId: string | undefined;
-  let createdAt: number | undefined;
-  
-  if (!raw) return { isAuthenticated, role, sessionId, createdAt };
-  
-  try {
-    // Algunos navegadores codifican el valor de la cookie
-    const decoded = decodeURIComponent(raw);
-    const parsed = JSON.parse(decoded);
-    
-    // Aceptar dos formatos: { state: { isAuthenticated, user } } o { isAuthenticated, user }
-    if (parsed?.state) {
-      isAuthenticated = !!parsed.state.isAuthenticated;
-      role = parsed.state.user?.role;
-      sessionId = parsed.state.sessionId;
-      createdAt = parsed.state.createdAt;
-    } else {
-      isAuthenticated = !!parsed.isAuthenticated;
-      role = parsed.user?.role;
-      sessionId = parsed.sessionId;
-      createdAt = parsed.createdAt;
+  if (jwtCookie?.value) {
+    try {
+      payload = await verifyToken(jwtCookie.value);
+      const now = Math.floor(Date.now() / 1000);
+      if (payload.exp && payload.exp > now) {
+        isAuthenticated = true;
+        role = payload.rol;
+      }
+    } catch (e) {
+      // token inválido -> permanece no autenticado
     }
-    
-    // Verificar expiración de sesión (24 horas)
-    if (createdAt && Date.now() - createdAt > 24 * 60 * 60 * 1000) {
-      isAuthenticated = false;
-      role = undefined;
-      sessionId = undefined;
-    }
-    
-  } catch {
-    // Si no es JSON válido, tratar valores simples como '1' o 'true'
-    isAuthenticated = raw === '1' || raw === 'true';
   }
-  
-  return { isAuthenticated, role, sessionId, createdAt };
-}
 
-export function middleware(request: NextRequest) {
-  const authCookie = request.cookies.get('auth-storage');
-  const { isAuthenticated, role } = parseAuthCookie(authCookie?.value);
+  // Logs diagnósticos (se pueden quitar en producción)
+  if (process.env.NODE_ENV !== 'production') {
+    console.log('[middleware] path=', request.nextUrl.pathname, 'auth=', isAuthenticated, 'role=', role);
+  }
 
   const url = request.nextUrl.clone();
   const isLoginPage = url.pathname === '/login';
   const isRootPage = url.pathname === '/';
-  const isProtectedRoute = url.pathname.startsWith('/dashboard') || url.pathname.startsWith('/admin');
+  const isProtectedRoute = url.pathname.startsWith('/dashboard') || url.pathname.startsWith('/admin') || url.pathname.startsWith('/pagina/dashboard');
 
   // Redirect root path to login if not authenticated
   if (isRootPage && !isAuthenticated) {
@@ -73,7 +52,14 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  return NextResponse.next();
+  const res = NextResponse.next();
+  // Prevent caching on login page to avoid back-button cached views
+  if (isLoginPage) {
+    res.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate');
+    res.headers.set('Pragma', 'no-cache');
+    res.headers.set('Expires', '0');
+  }
+  return res;
 }
 
 export const config = {

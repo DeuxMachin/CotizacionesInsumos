@@ -2,7 +2,7 @@
 
 import { useSection } from "../model/useSection";
 import type { Section } from "../model/useSection";
-import { useAuth } from "@/features/auth/model/useAuth";
+import { useAuth } from "@/contexts/AuthContext";
 import { useNavigationItems, NAVIGATION_ICONS } from "../model/navigationItems";
 import { FiX } from "react-icons/fi";
 import { Logo } from "@/shared/ui/Logo";
@@ -12,7 +12,7 @@ import { usePathname, useRouter } from "next/navigation";
 export function Sidebar() {
   const { sidebarOpen, setSidebarOpen } = useSection();
   const { user } = useAuth();
-  const { navigationItems } = useNavigationItems(user?.rol || '');
+  const { navigationItems } = useNavigationItems(user?.role || '');
   const pathname = usePathname();
   const router = useRouter();
 
@@ -22,6 +22,7 @@ export function Sidebar() {
     if (path.startsWith('/dashboard/cotizaciones')) return 'cotizaciones';
     if (path.startsWith('/dashboard/clientes')) return 'clientes';
     if (path.startsWith('/dashboard/obras')) return 'obras';
+    if (path.startsWith('/dashboard/reuniones')) return 'reuniones';
     if (path.startsWith('/dashboard/posibles-targets')) return 'posibles-targets';
     if (path.startsWith('/dashboard/stock')) return 'stock';
     if (path.startsWith('/dashboard/reportes')) return 'reportes';
@@ -66,7 +67,7 @@ export function Sidebar() {
             <Logo height={22} className="shrink-0 sm:h-7" />
             <div className="flex flex-col min-w-0">
               <span className="font-bold text-theme-primary text-sm truncate">
-                {user?.rol?.toLowerCase() === 'admin' ? 'Panel Admin' : 'Sistema'}
+                {(['admin', 'dueño', 'dueno'].includes(user?.role?.toLowerCase() || '')) ? 'Panel Admin' : 'Sistema'}
               </span>
               <span className="text-xs text-theme-secondary truncate">v1.0</span>
             </div>
@@ -168,11 +169,11 @@ export function Sidebar() {
             </div>
             <div className="flex flex-col min-w-0">
               <span className="font-medium text-theme-primary text-sm truncate">
-                {user?.nombre || user?.email?.split('@')[0] || "Usuario"}
+                {user?.name || user?.email?.split('@')[0] || "Usuario"}
               </span>
               <div className="flex items-center gap-2">
                 <span className="text-xs text-theme-secondary truncate">{user?.email || "usuario@mail.com"}</span>
-                {user?.rol?.toLowerCase() === 'admin' && (
+                {user?.role?.toLowerCase() === 'admin' && (
                   <span className="px-1.5 py-0.5 text-xs rounded bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300">
                     Admin
                   </span>

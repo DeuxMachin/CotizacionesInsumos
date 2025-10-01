@@ -2,22 +2,9 @@
 
 import dynamic from "next/dynamic";
 
-const QuickActions = dynamic(() => import("@/features/dashboard/ui/QuickActions").then(m => m.QuickActions), {
-  ssr: false,
-  loading: () => <div className="rounded-xl p-6 animate-pulse" style={{ backgroundColor: 'var(--bg-primary)', border: '1px solid var(--border-subtle)' }}>
-    <div className="mb-4">
-      <div className="h-5 w-32 bg-gray-200 dark:bg-gray-700 rounded mb-2"></div>
-      <div className="h-3 w-48 bg-gray-200 dark:bg-gray-700 rounded"></div>
-    </div>
-    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-      {[1, 2, 3, 4].map((i) => (
-        <div key={i} className="h-20 rounded-lg bg-gray-200 dark:bg-gray-700"></div>
-      ))}
-    </div>
-  </div>
-});
+import { QuickActions } from "@/features/dashboard/ui/QuickActions";
 
-const RecentActivity = dynamic(() => import("@/features/dashboard/ui/RecentActivity").then(m => m.RecentActivity), {
+const UnifiedAuditLog = dynamic(() => import("@/components/UnifiedAuditLog"), {
   ssr: false,
   loading: () => <div className="rounded-xl p-6 animate-pulse" style={{ backgroundColor: 'var(--bg-primary)', border: '1px solid var(--border-subtle)' }}>
     <div className="mb-4">
@@ -78,7 +65,7 @@ export default function DashboardPage() {
       {/* Grid de contenido secundario */}
       <div className="grid gap-3 sm:gap-4 lg:gap-6 xl:grid-cols-2">
         {/* Actividad reciente */}
-        <RecentActivity />
+        <UnifiedAuditLog mode="dashboard" limit={5} />
 
         {/* Gráfico de ventas mensuales */}
         <div className="rounded-xl" style={{ overflow: 'hidden' }}>

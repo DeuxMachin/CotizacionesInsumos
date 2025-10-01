@@ -3,8 +3,8 @@
 import { create } from "zustand";
 import { supabase } from '@/lib/supabase';
 import type { Database } from '@/lib/supabase';
-import { useAuth } from '@/features/auth/model/useAuth';
-import type { PosibleTarget, CreateTargetData, UpdateTargetData } from "./types";
+import { getAuthUserId } from '@/lib/auth-user-id';
+import type { PosibleTarget, CreateTargetData, UpdateTargetData, TargetEvento } from "./types";
 
 interface TargetsStore {
   targets: PosibleTarget[];
@@ -16,6 +16,7 @@ interface TargetsStore {
   deleteTarget: (id: number) => Promise<void>;
   claimTarget: (id: number) => Promise<void>;
   releaseTarget: (id: number) => Promise<void>;
+  fetchTargetEvents: (targetId: number) => Promise<TargetEvento[]>;
 }
 
 // (mapDbToTarget eliminado por ahora; se hace mapping inline en fetchTargets)
@@ -120,8 +121,8 @@ export const useTargets = create<TargetsStore>((set, get) => ({
   createTarget: async (data: CreateTargetData) => {
     set({ loading: true, error: null });
     try {
-      // Obtener usuario actual (se asume hay un session en cookie o similar)
-  const userId = useAuth.getState().user?.id;
+    // Obtener usuario actual via sincronización global desde AuthContext
+  const userId = getAuthUserId();
   if (!userId) throw new Error('Usuario no autenticado');
 
       // Resolver tipo (si se envía nombre)
@@ -278,8 +279,12 @@ export const useTargets = create<TargetsStore>((set, get) => ({
       if (data.ciudad !== undefined) payload.ciudad = data.ciudad;
       if (data.region !== undefined) payload.region = data.region;
       if (data.comuna !== undefined) payload.comuna = data.comuna;
-      if (data.prioridad) payload.prioridad = data.prioridad;
+  if (data.prioridad) payload.prioridad = data.prioridad;
       if (data.estado) payload.estado = data.estado;
+  if (data.clienteId !== undefined) {
+    // Database update type uses snake_case for some columns; assign via a narrowed cast to avoid `any`
+    (payload as unknown as { cliente_id?: number }).cliente_id = data.clienteId; // align with DB column
+  }
 
       if (Object.keys(payload).length) {
         const { error: upError } = await supabase
@@ -287,6 +292,15 @@ export const useTargets = create<TargetsStore>((set, get) => ({
           .update(payload)
           .eq('id', id);
         if (upError) throw upError;
+      }
+
+      // Insertar evento de cambio de estado si cambió
+      if (data.estado) {
+        await supabase.from('target_eventos').insert({
+          target_id: id,
+          tipo: 'estado_cambio',
+          detalle: `Estado cambiado a ${data.estado}`
+        });
       }
 
       // contacto
@@ -360,8 +374,43 @@ export const useTargets = create<TargetsStore>((set, get) => ({
         });
       }
 
-      // refrescar local
-      await get().fetchTargets();
+      // refrescar local inmediatamente con los datos actualizados
+      const currentTargets = get().targets;
+      const targetIndex = currentTargets.findIndex(t => t.id === id);
+      if (targetIndex !== -1) {
+        const updatedTarget: PosibleTarget = {
+          ...currentTargets[targetIndex],
+          titulo: data.titulo || currentTargets[targetIndex].titulo,
+          descripcion: data.descripcion || currentTargets[targetIndex].descripcion,
+          ubicacion: {
+            ...currentTargets[targetIndex].ubicacion,
+            direccion: data.direccion || currentTargets[targetIndex].ubicacion.direccion,
+            lat: data.lat ?? currentTargets[targetIndex].ubicacion.lat,
+            lng: data.lng ?? currentTargets[targetIndex].ubicacion.lng,
+            ciudad: data.ciudad || currentTargets[targetIndex].ubicacion.ciudad,
+            region: data.region || currentTargets[targetIndex].ubicacion.region,
+            comuna: data.comuna || currentTargets[targetIndex].ubicacion.comuna,
+          },
+          contacto: {
+            ...currentTargets[targetIndex].contacto,
+            nombre: data.contactoNombre || currentTargets[targetIndex].contacto.nombre,
+            telefono: data.contactoTelefono || currentTargets[targetIndex].contacto.telefono,
+            email: data.contactoEmail || currentTargets[targetIndex].contacto.email,
+            empresa: data.contactoEmpresa || currentTargets[targetIndex].contacto.empresa,
+          },
+          prioridad: data.prioridad || currentTargets[targetIndex].prioridad,
+          estado: data.estado || currentTargets[targetIndex].estado,
+          tipoObra: data.tipoObra || currentTargets[targetIndex].tipoObra,
+          fechaEstimadaInicio: data.fechaEstimadaInicio || currentTargets[targetIndex].fechaEstimadaInicio,
+          observaciones: data.observaciones || currentTargets[targetIndex].observaciones,
+        };
+        const newTargets = [...currentTargets];
+        newTargets[targetIndex] = updatedTarget;
+        set({ targets: newTargets });
+      }
+
+      // También refrescar desde DB en background para asegurar consistencia
+      get().fetchTargets().catch(console.error);
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : 'Error al actualizar target';
       set({ error: msg, loading: false });
@@ -388,7 +437,7 @@ export const useTargets = create<TargetsStore>((set, get) => ({
   claimTarget: async (id: number) => {
     set({ loading: true, error: null });
     try {
-  const userId = useAuth.getState().user?.id;
+  const userId = getAuthUserId();
   if (!userId) throw new Error('Usuario no autenticado');
 
       // actualizar asignado y estado (si estaba pendiente => contactado)
@@ -401,12 +450,27 @@ export const useTargets = create<TargetsStore>((set, get) => ({
         .eq('id', id);
       if (upError) throw upError;
 
+      // Update local state immediately
+      const updatedTarget = { ...current, asignado_a: userId, estado: newEstado };
+      set(state => ({
+        targets: state.targets.map(t => t.id === id ? (updatedTarget as PosibleTarget) : t)
+      }));
+
       // crear evento de contacto si no existía
       if (!current?.fechaContacto) {
         await supabase.from('target_eventos').insert({
           target_id: id,
           tipo: 'contacto',
           detalle: 'Primer contacto'
+        });
+      }
+
+      // Insertar evento de cambio de estado si cambió
+      if (newEstado !== current?.estado) {
+        await supabase.from('target_eventos').insert({
+          target_id: id,
+          tipo: 'estado_cambio',
+          detalle: `Estado cambiado a ${newEstado} por claim`
         });
       }
 
@@ -428,6 +492,23 @@ export const useTargets = create<TargetsStore>((set, get) => ({
         .update({ asignado_a: null })
         .eq('id', id);
       if (upError) throw upError;
+
+      // Update local state immediately
+      const current = get().targets.find(t => t.id === id);
+      if (current) {
+        const updatedTarget = { ...current, asignado_a: null };
+        set(state => ({
+          targets: state.targets.map(t => t.id === id ? (updatedTarget as PosibleTarget) : t)
+        }));
+      }
+
+      // Insertar evento de liberación
+      await supabase.from('target_eventos').insert({
+        target_id: id,
+        tipo: 'liberado',
+        detalle: 'Target liberado'
+      });
+
       await get().fetchTargets();
     } catch (error: unknown) {
       const msg = error instanceof Error ? error.message : 'Error al liberar target';
@@ -435,6 +516,22 @@ export const useTargets = create<TargetsStore>((set, get) => ({
       throw error as Error;
     } finally {
       set({ loading: false });
+    }
+  },
+
+  fetchTargetEvents: async (targetId: number): Promise<TargetEvento[]> => {
+    try {
+      const { data, error } = await supabase
+        .from('target_eventos')
+        .select('*')
+        .eq('target_id', targetId)
+        .order('fecha_evento', { ascending: true });
+
+      if (error) throw error;
+      return data || [];
+    } catch (error: unknown) {
+      console.error('Error fetching target events:', error);
+      return [];
     }
   }
 }));

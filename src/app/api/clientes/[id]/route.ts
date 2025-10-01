@@ -67,7 +67,14 @@ export async function PUT(
       }
     }
 
-  const cliente = await ClientesService.update(id, body)
+    // Obtener información del usuario desde headers para audit log
+    const userInfo = {
+      id: request.headers.get('x-user-id') || 'unknown',
+      email: request.headers.get('x-user-email') || 'unknown@domain.com',
+      name: request.headers.get('x-user-name') || 'Usuario'
+    };
+
+    const cliente = await ClientesService.update(id, body, userInfo)
 
     return NextResponse.json({
       success: true,
@@ -97,7 +104,14 @@ export async function DELETE(
       }, { status: 400 })
     }
 
-    const cliente = await ClientesService.delete(id)
+    // Obtener información del usuario desde headers para audit log
+    const userInfo = {
+      id: request.headers.get('x-user-id') || 'unknown',
+      email: request.headers.get('x-user-email') || 'unknown@domain.com',
+      name: request.headers.get('x-user-name') || 'Usuario'
+    };
+
+    const cliente = await ClientesService.delete(id, userInfo)
 
     return NextResponse.json({
       success: true,

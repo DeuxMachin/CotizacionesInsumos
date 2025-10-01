@@ -15,7 +15,7 @@ export type Database = {
           email: string
           nombre: string | null
           apellido: string | null
-          rol: 'admin' | 'vendedor' | 'cliente'
+          rol: 'dueño'  | 'admin' | 'vendedor' | 'cliente'
           activo: boolean
           created_at: string
           password_hash: string
@@ -39,12 +39,46 @@ export type Database = {
           email?: string
           nombre?: string | null
           apellido?: string | null
-          rol?: 'admin' | 'vendedor' | 'cliente'
+          rol?: 'admin' | 'vendedor' | 'cliente' | 'dueño'
           activo?: boolean
           created_at?: string
           password_hash?: string
           last_login_at?: string | null
           password_updated_at?: string | null
+        }
+      }
+      bodegas: {
+        Row: {
+          id: number
+          nombre: string
+          ubicacion: string | null
+        }
+        Insert: {
+          id?: number
+          nombre: string
+          ubicacion?: string | null
+        }
+        Update: {
+          id?: number
+          nombre?: string
+          ubicacion?: string | null
+        }
+      }
+      categorias_productos: {
+        Row: {
+          id: number
+          nombre: string
+          descripcion: string | null
+        }
+        Insert: {
+          id?: number
+          nombre: string
+          descripcion?: string | null
+        }
+        Update: {
+          id?: number
+          nombre?: string
+          descripcion?: string | null
         }
       }
       clientes: {
@@ -69,6 +103,7 @@ export type Database = {
           descuento_cliente_pct: number
           estado: string
           created_at: string
+          cliente_tipo_id: number | null
         }
         Insert: {
           id?: number
@@ -91,6 +126,7 @@ export type Database = {
           descuento_cliente_pct?: number
           estado?: string
           created_at?: string
+          cliente_tipo_id?: number | null
         }
         Update: {
           id?: number
@@ -113,6 +149,7 @@ export type Database = {
           descuento_cliente_pct?: number
           estado?: string
           created_at?: string
+          cliente_tipo_id?: number | null
         }
       }
       cotizaciones: {
@@ -333,12 +370,18 @@ export type Database = {
           nombre: string
           descripcion: string | null
           unidad: string
-          codigo_barra: string | null
-          precio_compra: number | null
-          precio_venta_neto: number | null
+  
           estado: string
           activo: boolean
           created_at: string
+          tipo_id: number | null
+          afecto_iva: boolean
+          moneda: string | null
+          costo_unitario: number | null
+          precio_neto: number | null
+          precio_venta: number | null
+          control_stock: boolean
+          ficha_tecnica: string | null
         }
         Insert: {
           id?: number
@@ -346,12 +389,18 @@ export type Database = {
           nombre: string
           descripcion?: string | null
           unidad?: string
-          codigo_barra?: string | null
-          precio_compra?: number | null
-          precio_venta_neto?: number | null
+
           estado?: string
           activo?: boolean
           created_at?: string
+          tipo_id?: number | null
+          afecto_iva?: boolean
+          moneda?: string | null
+          costo_unitario?: number | null
+          precio_neto?: number | null
+          precio_venta?: number | null
+          control_stock?: boolean
+          ficha_tecnica?: string | null
         }
         Update: {
           id?: number
@@ -359,45 +408,35 @@ export type Database = {
           nombre?: string
           descripcion?: string | null
           unidad?: string
-          codigo_barra?: string | null
-          precio_compra?: number | null
-          precio_venta_neto?: number | null
+
           estado?: string
           activo?: boolean
           created_at?: string
+          tipo_id?: number | null
+          afecto_iva?: boolean
+          moneda?: string | null
+          costo_unitario?: number | null
+          precio_neto?: number | null
+          precio_venta?: number | null
+          control_stock?: boolean
+          ficha_tecnica?: string | null
         }
       }
-      categorias_productos: {
+      producto_tipos: {
         Row: {
           id: number
           nombre: string
-          descripcion: string | null
         }
         Insert: {
           id?: number
           nombre: string
-          descripcion?: string | null
         }
         Update: {
           id?: number
           nombre?: string
-          descripcion?: string | null
         }
       }
-      producto_categorias: {
-        Row: {
-          producto_id: number
-          categoria_id: number
-        }
-        Insert: {
-          producto_id: number
-          categoria_id: number
-        }
-        Update: {
-          producto_id?: number
-          categoria_id?: number
-        }
-      }
+
       obras: {
         Row: {
           id: number
@@ -409,14 +448,16 @@ export type Database = {
           vendedor_id: string | null
           tipo_obra_id: number | null
           tamano_obra_id: number | null
-          estado?: string | null
-          etapa_actual?: string | null
+          target_id?: number | null
+          estado: string
+          etapa_actual: string | null
           descripcion?: string | null
           fecha_inicio?: string | null
           fecha_estimada_fin?: string | null
           fecha_ultimo_contacto?: string | null
           valor_estimado?: number | null
           material_vendido?: number | null
+          pendiente?: number | null
           proximo_seguimiento?: string | null
           notas?: string | null
           created_at?: string | null
@@ -432,7 +473,8 @@ export type Database = {
           vendedor_id?: string | null
           tipo_obra_id?: number | null
           tamano_obra_id?: number | null
-          estado?: string | null
+          target_id?: number | null
+          estado?: string
           etapa_actual?: string | null
           descripcion?: string | null
           fecha_inicio?: string | null
@@ -440,6 +482,7 @@ export type Database = {
           fecha_ultimo_contacto?: string | null
           valor_estimado?: number | null
           material_vendido?: number | null
+          pendiente?: number | null
           proximo_seguimiento?: string | null
           notas?: string | null
           created_at?: string | null
@@ -455,7 +498,8 @@ export type Database = {
           vendedor_id?: string | null
           tipo_obra_id?: number | null
           tamano_obra_id?: number | null
-          estado?: string | null
+          target_id?: number | null
+          estado?: string
           etapa_actual?: string | null
           descripcion?: string | null
           fecha_inicio?: string | null
@@ -463,6 +507,7 @@ export type Database = {
           fecha_ultimo_contacto?: string | null
           valor_estimado?: number | null
           material_vendido?: number | null
+          pendiente?: number | null
           proximo_seguimiento?: string | null
           notas?: string | null
           created_at?: string | null
@@ -733,6 +778,7 @@ export type Database = {
         Row: {
           id: number
           folio: string | null
+          Numero_Serie: string | null
           cotizacion_id: number | null
           vendedor_id: string
           cliente_principal_id: number | null
@@ -769,6 +815,7 @@ export type Database = {
         Insert: {
           id?: number
           folio?: string | null
+          Numero_Serie?: string | null
           cotizacion_id?: number | null
           vendedor_id: string
           cliente_principal_id?: number | null
@@ -805,6 +852,7 @@ export type Database = {
         Update: {
           id?: number
           folio?: string | null
+          Numero_Serie?: string | null
           cotizacion_id?: number | null
           vendedor_id?: string
           cliente_principal_id?: number | null
@@ -888,18 +936,6 @@ export type Database = {
         }
       }
       ,
-      bodegas: {
-        Row: { id: number; nombre: string; ubicacion: string | null }
-        Insert: { id?: number; nombre: string; ubicacion?: string | null }
-        Update: { id?: number; nombre?: string; ubicacion?: string | null }
-      }
-      ,
-      producto_stock: {
-        Row: { bodega_id: number; producto_id: number; ubicacion: string | null; stock_actual: number; total_valorizado: number }
-        Insert: { bodega_id: number; producto_id: number; ubicacion?: string | null; stock_actual?: number; total_valorizado?: number }
-        Update: { bodega_id?: number; producto_id?: number; ubicacion?: string | null; stock_actual?: number; total_valorizado?: number }
-      }
-      ,
       condiciones_pago: {
         Row: { id: number; nombre: string; dias: number | null; descripcion: string | null; activa: boolean; created_at: string; updated_at: string }
         Insert: { id?: number; nombre: string; dias?: number | null; descripcion?: string | null; activa?: boolean; created_at?: string; updated_at?: string }
@@ -919,15 +955,33 @@ export type Database = {
       }
       ,
       cliente_saldos: {
-        Row: { id: number; cliente_id: number; snapshot_date: string; pagado: number; pendiente: number; vencido: number; created_at: string }
-        Insert: { id?: number; cliente_id: number; snapshot_date?: string; pagado?: number; pendiente?: number; vencido?: number; created_at?: string }
-        Update: { id?: number; cliente_id?: number; snapshot_date?: string; pagado?: number; pendiente?: number; vencido?: number; created_at?: string }
+        Row: { id: number; cliente_id: number; snapshot_date: string; pagado: number; pendiente: number; vencido: number; dinero_cotizado: number; created_at: string }
+        Insert: { id?: number; cliente_id: number; snapshot_date?: string; pagado?: number; pendiente?: number; vencido?: number; dinero_cotizado?: number; created_at?: string }
+        Update: { id?: number; cliente_id?: number; snapshot_date?: string; pagado?: number; pendiente?: number; vencido?: number; dinero_cotizado?: number; created_at?: string }
       }
       ,
       cliente_tipos: {
         Row: { id: number; nombre: string; descripcion: string | null }
         Insert: { id?: number; nombre: string; descripcion?: string | null }
         Update: { id?: number; nombre?: string; descripcion?: string | null }
+      }
+      ,
+      cxc_aplicaciones: {
+        Row: { pago_id: number; documento_id: number; monto_aplicado: number; created_at: string }
+        Insert: { pago_id: number; documento_id: number; monto_aplicado: number; created_at?: string }
+        Update: { pago_id?: number; documento_id?: number; monto_aplicado?: number; created_at?: string }
+      }
+      ,
+      cxc_documentos: {
+        Row: { id: number; cliente_id: number; nota_venta_id: number | null; doc_tipo: string; moneda: string | null; monto_total: number; saldo_pendiente: number; fecha_emision: string; fecha_vencimiento: string | null; estado: string; observacion: string | null; created_at: string; updated_at: string }
+        Insert: { id?: number; cliente_id: number; nota_venta_id?: number | null; doc_tipo: string; moneda?: string | null; monto_total: number; saldo_pendiente: number; fecha_emision?: string; fecha_vencimiento?: string | null; estado?: string; observacion?: string | null; created_at?: string; updated_at?: string }
+        Update: { id?: number; cliente_id?: number; nota_venta_id?: number | null; doc_tipo?: string; moneda?: string | null; monto_total?: number; saldo_pendiente?: number; fecha_emision?: string; fecha_vencimiento?: string | null; estado?: string; observacion?: string | null; created_at?: string; updated_at?: string }
+      }
+      ,
+      cxc_pagos: {
+        Row: { id: number; cliente_id: number; fecha_pago: string; monto_total: number; moneda: string | null; metodo_pago: string | null; referencia: string | null; observacion: string | null; created_by: string | null; created_at: string }
+        Insert: { id?: number; cliente_id: number; fecha_pago?: string; monto_total: number; moneda?: string | null; metodo_pago?: string | null; referencia?: string | null; observacion?: string | null; created_by?: string | null; created_at?: string }
+        Update: { id?: number; cliente_id?: number; fecha_pago?: string; monto_total?: number; moneda?: string | null; metodo_pago?: string | null; referencia?: string | null; observacion?: string | null; created_by?: string | null; created_at?: string }
       }
       ,
       audit_log: {
@@ -966,6 +1020,60 @@ export type Database = {
           ip_address?: string | null
           user_agent?: string | null
           created_at?: string
+        }
+      }
+      ,
+      obra_visitas: {
+        Row: {
+          id: number
+          obra_id: number
+          vendedor_id: string
+          tipo: string
+          motivo: string | null
+          inicio_at: string
+          fin_at: string | null
+          estado: string
+          lat: number | null
+          lng: number | null
+          accuracy_m: number | null
+          ubicacion_text: string | null
+          notas: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: number
+          obra_id: number
+          vendedor_id: string
+          tipo?: string
+          motivo?: string | null
+          inicio_at?: string
+          fin_at?: string | null
+          estado?: string
+          lat?: number | null
+          lng?: number | null
+          accuracy_m?: number | null
+          ubicacion_text?: string | null
+          notas?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: number
+          obra_id?: number
+          vendedor_id?: string
+          tipo?: string
+          motivo?: string | null
+          inicio_at?: string
+          fin_at?: string | null
+          estado?: string
+          lat?: number | null
+          lng?: number | null
+          accuracy_m?: number | null
+          ubicacion_text?: string | null
+          notas?: string | null
+          created_at?: string
+          updated_at?: string
         }
       }
     }

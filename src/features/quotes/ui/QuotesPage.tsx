@@ -23,8 +23,7 @@ import {
   FiShoppingCart,
   FiDownload
 } from 'react-icons/fi';
-import { NotasVentaService } from '@/services/notasVentaService';
-import { supabase } from '@/lib/supabase';
+
 import { useQuotes } from '../model/useQuotes';
 import { Quote, QuoteStatus } from '@/core/domain/quote/Quote';
 
@@ -45,7 +44,6 @@ interface QuoteCardProps {
   canEdit: (quote: Quote) => boolean;
   canDelete: (quote: Quote) => boolean;
   onConvert: (q: Quote) => void;
-  convertingId: string | null;
 }
 
 interface QuotesTableProps {
@@ -60,7 +58,6 @@ interface QuotesTableProps {
   canEdit: (quote: Quote) => boolean;
   canDelete: (quote: Quote) => boolean;
   onConvert: (q: Quote) => void;
-  convertingId: string | null;
 }
 
 export function QuotesPage() {
@@ -84,7 +81,6 @@ export function QuotesPage() {
     canEdit,
     canDelete,
     userId,
-    userName,
     isAdmin
     
   } = useQuotes();
@@ -93,7 +89,6 @@ export function QuotesPage() {
   const [selectedStates, setSelectedStates] = useState<QuoteStatus[]>([]);
   const [showFilters, setShowFilters] = useState(false);
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
-  const [convertingId, setConvertingId] = useState<string | null>(null);
 
   // Aplicar filtros
   React.useMemo(() => {
@@ -183,51 +178,16 @@ export function QuotesPage() {
   const handleChangeStatus = async (id: string, status: QuoteStatus) => {
     const success = await cambiarEstado(id, status);
     if (success) {
-      // Podrías mostrar un toast de éxito aquí
+      // Si se acepta la cotización, mostrar mensaje pero no redirigir automáticamente
+      if (status === 'aceptada') {
+        Toast.success('Cotización aceptada exitosamente');
+      }
     }
   };
 
   const handleConvert = async (quote: Quote) => {
-    if (!confirm('¿Pasar esta cotización a Nota de Venta (borrador)?')) return;
-    setConvertingId(quote.id);
-    try {
-      // Obtener id numérico real de cotización por folio (quote.id es folio)
-      const cotizacionNumericId = await NotasVentaService.getCotizacionNumericIdByFolio(quote.id);
-      
-      // Asegurarnos de obtener el ID numérico del cliente
-      let clientePrincipalId = null;
-      try {
-        if (quote.cliente && quote.cliente.rut) {
-          // Consulta para obtener el ID del cliente a partir del RUT
-          const { data: clienteData } = await supabase
-            .from('clientes')
-            .select('id')
-            .eq('rut', quote.cliente.rut)
-            .single();
-          
-          if (clienteData) {
-            clientePrincipalId = clienteData.id;
-            console.log(`Cliente encontrado con ID: ${clientePrincipalId}`);
-          } else {
-            console.warn(`No se encontró el cliente con RUT: ${quote.cliente.rut}`);
-          }
-        }
-      } catch (err) {
-        console.error("Error al buscar el ID del cliente:", err);
-      }
-      
-
-      
-      // No redirigimos; forzamos refresco de datos (estrategia simple: reload)
-      // Ideal: invalidar cache en hook useQuotes.
-      window.location.reload();
-    } catch (e: unknown) {
-      console.error('Error convirtiendo cotización a nota de venta', e);
-      const msg = e instanceof Error ? e.message : 'desconocido';
-      alert('Error al convertir: ' + msg);
-    } finally {
-      setConvertingId(null);
-    }
+    console.log('Convirtiendo cotización:', quote.id);
+    router.push(`/dashboard/notas-venta/convertir?quoteId=${encodeURIComponent(quote.id)}`);
   };
 
   const handleClearFilters = () => {
@@ -258,7 +218,7 @@ export function QuotesPage() {
       <div className="flex flex-col gap-4">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold flex items-center gap-3" style={{ color: 'var(--text-primary)' }}>
+            <h1 className="text-2xl sm:text-3xl font-bold flex items-center gap-3" style={{ color: 'var(--text-primary)' }}>
               <FiFileText className="w-8 h-8" style={{ color: 'var(--accent-primary)' }} />
               Cotizaciones
             </h1>
@@ -266,13 +226,22 @@ export function QuotesPage() {
               Gestiona las cotizaciones de productos de construcción
             </p>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3">
+            <button
+              onClick={() => router.push('/dashboard/notas-venta')}
+              className="btn-secondary flex items-center justify-center gap-2 px-3 py-2 text-sm sm:text-base"
+            >
+              <FiShoppingCart className="w-4 h-4" />
+              <span className="hidden xs:inline">Ver notas de venta</span>
+              <span className="xs:hidden">Notas</span>
+            </button>
+          <div className="flex flex-wrap items-center gap-2">
             <button
               onClick={() => setShowFilters(!showFilters)}
-              className="btn-secondary flex items-center gap-2 relative"
+              className="btn-secondary flex items-center gap-2 relative px-3 py-2"
             >
               <FiFilter className="w-4 h-4" />
-              Filtros
+              <span className="hidden sm:inline">Filtros</span>
               {filtrosActivos > 0 && (
                 <span 
                   className="absolute -top-1 -right-1 w-5 h-5 text-xs rounded-full flex items-center justify-center text-white font-medium"
@@ -295,18 +264,21 @@ export function QuotesPage() {
             </button>
             <button
               onClick={handleExport}
-              className="btn-secondary flex items-center gap-2"
+              className="btn-secondary flex items-center gap-2 px-3 py-2"
             >
               <FiDownload className="w-4 h-4" />
-              Exportar Excel
+              <span className="hidden sm:inline">Exportar Excel</span>
+              <span className="sm:hidden">Excel</span>
             </button>
             <button
               onClick={() => router.push('/dashboard/cotizaciones/nueva')}
-              className="btn-primary flex items-center gap-2"
+              className="btn-primary flex items-center gap-2 px-3 py-2"
             >
               <FiPlus className="w-4 h-4" />
-              Nueva Cotización
+              <span className="hidden xs:inline">Nueva Cotización</span>
+              <span className="xs:hidden">Nueva</span>
             </button>
+          </div>
           </div>
         </div>
 
@@ -541,7 +513,6 @@ export function QuotesPage() {
               canEdit={canEdit}
               canDelete={canDelete}
         onConvert={handleConvert}
-        convertingId={convertingId}
             />
           ))}
         </div>
@@ -558,7 +529,6 @@ export function QuotesPage() {
           canEdit={canEdit}
           canDelete={canDelete}
       onConvert={handleConvert}
-      convertingId={convertingId}
         />
       )}
 
@@ -665,8 +635,7 @@ function QuoteCard({
   getStatusColor, 
   canEdit, 
   canDelete,
-  onConvert,
-  convertingId
+  onConvert
 }: QuoteCardProps) {
   const statusColor = getStatusColor(quote.estado);
   const [showActions, setShowActions] = useState(false);
@@ -769,20 +738,17 @@ function QuoteCard({
             >
               <FiEye className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />
             </button>
-            {quote.estado !== 'aceptada' && (
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onConvert(quote);
-                }}
-                disabled={convertingId === quote.id}
-                className="p-2 rounded-lg hover:bg-gray-100 transition-colors disabled:opacity-50"
-                title="Pasar a Venta"
-              >
-                <FiShoppingCart className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />
-              </button>
-            )}
-            {canEdit(quote) && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onConvert(quote);
+              }}
+              className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
+              title="Convertir a nota de venta"
+            >
+              <FiShoppingCart className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />
+            </button>
+            {canEdit(quote) && quote.estado !== 'aceptada' && (
               <button
                 onClick={(e) => {
                   e.stopPropagation();
@@ -794,30 +760,45 @@ function QuoteCard({
                 <FiEdit2 className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />
               </button>
             )}
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onDuplicate(quote.id);
-              }}
-              className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
-              title="Duplicar"
-            >
-              <FiCopy className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />
-            </button>
+            {quote.estado !== 'aceptada' && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDuplicate(quote.id);
+                }}
+                className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
+                title="Duplicar"
+              >
+                <FiCopy className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />
+              </button>
+            )}
           </div>
           <div className="flex items-center gap-2">
             {quote.estado === 'borrador' && (
               <button
                 onClick={(e) => {
                   e.stopPropagation();
-                  onChangeStatus(quote.id, 'enviada');
+                  onChangeStatus(quote.id, 'aceptada');
                 }}
-                className="px-3 py-1 text-xs rounded bg-blue-500 text-white hover:bg-blue-600"
+                className="px-3 py-1 text-xs rounded bg-green-500 text-white hover:bg-green-600"
+                title="Aceptar cotización"
               >
-                Enviar
+                Aceptar
               </button>
             )}
-            {canDelete(quote) && (
+            {quote.estado === 'enviada' && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onChangeStatus(quote.id, 'aceptada');
+                }}
+                className="px-3 py-1 text-xs rounded bg-green-500 text-white hover:bg-green-600"
+                title="Aceptar cotización"
+              >
+                Aceptar
+              </button>
+            )}
+            {canDelete(quote) && quote.estado !== 'aceptada' && (
               <button
                 onClick={(e) => {
                   e.stopPropagation();
@@ -848,8 +829,7 @@ function QuotesTable({
   getStatusColor, 
   canEdit, 
   canDelete,
-  onConvert,
-  convertingId
+  onConvert
 }: QuotesTableProps) {
   return (
     <div 
@@ -937,17 +917,16 @@ function QuotesTable({
                       >
                         <FiEye className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />
                       </button>
-                      {quote.estado !== 'aceptada' && (
-                        <button
-                          onClick={() => onConvert(quote)}
-                          disabled={convertingId === quote.id}
-                          className="p-1 rounded hover:bg-gray-100 disabled:opacity-50"
-                          title="Pasar a Venta"
-                        >
-                          <FiShoppingCart className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />
-                        </button>
-                      )}
-                      {canEdit(quote) && (
+                      <button
+                        onClick={() => onConvert(quote)}
+                        className="p-1 rounded hover:bg-gray-100"
+                        title="Convertir a nota de venta"
+                        disabled={quote.estado === 'aceptada'}
+                        style={quote.estado === 'aceptada' ? { opacity: 0.5, cursor: 'not-allowed' } : {}}
+                      >
+                        <FiShoppingCart className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />
+                      </button>
+                      {canEdit(quote) && quote.estado !== 'aceptada' && (
                         <button
                           onClick={() => onEdit(quote)}
                           className="p-1 rounded hover:bg-gray-100"
@@ -956,14 +935,25 @@ function QuotesTable({
                           <FiEdit2 className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />
                         </button>
                       )}
-                      <button
-                        onClick={() => onDuplicate(quote.id)}
-                        className="p-1 rounded hover:bg-gray-100"
-                        title="Duplicar"
-                      >
-                        <FiCopy className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />
-                      </button>
-                      {canDelete(quote) && (
+                      {quote.estado !== 'aceptada' && (
+                        <button
+                          onClick={() => onDuplicate(quote.id)}
+                          className="p-1 rounded hover:bg-gray-100"
+                          title="Duplicar"
+                        >
+                          <FiCopy className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />
+                        </button>
+                      )}
+                      {(quote.estado === 'borrador' || quote.estado === 'enviada') && (
+                        <button
+                          onClick={() => onChangeStatus(quote.id, 'aceptada')}
+                          className="px-2 py-1 text-xs rounded bg-green-500 text-white hover:bg-green-600"
+                          title="Aceptar cotización y convertir a venta"
+                        >
+                          Aceptar
+                        </button>
+                      )}
+                      {canDelete(quote) && quote.estado !== 'aceptada' && (
                         <button
                           onClick={() => onDelete(quote.id)}
                           className="p-1 rounded hover:bg-red-100"

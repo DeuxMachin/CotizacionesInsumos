@@ -1,6 +1,6 @@
 "use client";
 
-import { useAuth } from "@/features/auth/model/useAuth";
+import { useAuth } from "@/contexts/AuthContext";
 import { usePermissions, type Resource, type Action } from "@/features/auth/model/permissions";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
@@ -21,7 +21,8 @@ export function ProtectedRoute({
   requireAdmin = false 
 }: ProtectedRouteProps) {
   const { user, isAuthenticated } = useAuth();
-  const { hasPermission } = usePermissions(user?.rol || '');
+  const effectiveRole = user?.role || '';
+  const { hasPermission } = usePermissions(effectiveRole);
   const router = useRouter();
   
   useEffect(() => {
@@ -37,8 +38,8 @@ export function ProtectedRoute({
     return null;
   }
 
-  // Si requiere admin y no es admin, mostrar fallback
-  if (requireAdmin && user?.rol?.toLowerCase() !== 'admin') {
+  // Si requiere admin y no es admin o dueño, mostrar fallback
+  if (requireAdmin && !['admin', 'dueño', 'dueno'].includes(effectiveRole.toLowerCase())) {
     return fallback || <UnauthorizedView />;
   }
 
@@ -68,10 +69,11 @@ export function ProtectedComponent({
   fallback = null 
 }: ProtectedComponentProps) {
   const { user } = useAuth();
-  const { hasAnyPermission, hasAllPermissions } = usePermissions(user?.rol || '');
+  const effectiveRole = user?.role || '';
+  const { hasAnyPermission, hasAllPermissions } = usePermissions(effectiveRole);
 
   // Si requiere admin y no es admin, no mostrar
-  if (requireAdmin && user?.rol?.toLowerCase() !== 'admin') {
+  if (requireAdmin && effectiveRole.toLowerCase() !== 'admin') {
     return fallback;
   }
 
@@ -110,7 +112,8 @@ function UnauthorizedView() {
 // Hook para verificación rápida de permisos en componentes
 export function useProtectedAction() {
   const { user } = useAuth();
-  const { hasPermission, canWrite, canRead, canManage } = usePermissions(user?.rol || '');
+  const effectiveRole = user?.role || '';
+  const { hasPermission, canWrite, canRead, canManage } = usePermissions(effectiveRole);
 
   const canPerform = (resource: Resource, action: Action): boolean => {
     return hasPermission(resource, action);
@@ -121,7 +124,7 @@ export function useProtectedAction() {
   };
 
   const isAdmin = (): boolean => {
-    return user?.rol?.toLowerCase() === 'admin';
+  return effectiveRole.toLowerCase() === 'admin';
   };
 
   const canEditResource = (resource: Resource): boolean => {

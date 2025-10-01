@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback } from 'react';
+import React from 'react';
 import { 
   FiArrowLeft, 
   FiDownload, 
@@ -20,39 +20,49 @@ import {
   FiCreditCard,
   FiAlertCircle
 } from 'react-icons/fi';
-import { useParams, useRouter } from 'next/navigation';
+import { FiShoppingCart } from 'react-icons/fi';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useQuotes } from '@/features/quotes/model/useQuotes';
-import { NotasVentaService, SalesNoteRecord, SalesNoteItemRow } from '@/services/notasVentaService';
-import type { QuoteItem } from '@/core/domain/quote/Quote';
-import { FiCheckCircle, FiShoppingCart } from 'react-icons/fi';
-import { ProductsForm } from '@/features/quotes/ui/components/ProductsForm';
 import { downloadFileFromResponse } from '@/lib/download';
+import { NotasVentaService, SalesNoteRecord } from '@/services/notasVentaService';
 
 export default function QuoteDetailPage() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { getQuoteById, formatMoney, getStatusColor, loading, eliminarCotizacion } = useQuotes();
   
   const quoteFolio = params.id as string; // folio (ej: COT000002)
   const quote = getQuoteById ? getQuoteById(quoteFolio) : null;
-  
-  // Estados principales
-  const [notaVenta, setNotaVenta] = React.useState<SalesNoteRecord | null>(null);
-  const [nvItems, setNvItems] = React.useState<SalesNoteItemRow[]>([]);
-  const [, setNvLoading] = React.useState(false);
-  const [nvAddDraft, setNvAddDraft] = React.useState({ descripcion:'', unidad:'Unidad', cantidad:1, precio:0, descuento:0 });
-  const [nvSaving, setNvSaving] = React.useState(false);
-  const [nvError, setNvError] = React.useState<string | null>(null);
-  
-  // Estados para modal de selección de productos previo a conversión
-  const [showProductsModal, setShowProductsModal] = React.useState(false);
-  const [selectedItems, setSelectedItems] = React.useState<QuoteItem[]>([]);
-  const [, setIsSelectingProducts] = React.useState(false);
 
-  // Estados para conversión a nota de venta
-  const [creatingSale, setCreatingSale] = React.useState(false);
-  const [saleError, setSaleError] = React.useState<string | null>(null);
+  // Estado para exportar PDF
   const [exporting, setExporting] = React.useState(false);
+  // Estado para la nota de venta correspondiente (si existe)
+  const [relatedSalesNote, setRelatedSalesNote] = React.useState<SalesNoteRecord | null>(null);
+
+  // Buscar nota de venta correspondiente cuando la cotización esté aceptada
+  React.useEffect(() => {
+    const findRelatedSalesNote = async () => {
+      if (quote && quote.estado === 'aceptada') {
+        try {
+          const numericId = await NotasVentaService.getCotizacionNumericIdByFolio(quote.id);
+          if (numericId) {
+            const salesNote = await NotasVentaService.getByCotizacionId(numericId);
+            setRelatedSalesNote(salesNote);
+          }
+        } catch (error) {
+          console.error('Error buscando nota de venta relacionada:', error);
+        }
+      }
+    };
+    findRelatedSalesNote();
+  }, [quote]);
+
+  // Navegar a la nueva página de conversión (sin modal)
+  const handleConvert = React.useCallback(() => {
+    if (!quote) return;
+    router.push(`/dashboard/notas-venta/convertir?quoteId=${encodeURIComponent(quote.id)}`);
+  }, [quote, router]);
 
   // ===== HOOKS CALLBACK ANTES DE RETURNS CONDICIONALES =====
   const handleDeleteQuote = React.useCallback(async () => {
@@ -65,70 +75,6 @@ export default function QuoteDetailPage() {
       alert('No se pudo eliminar la cotización');
     }
   }, [quote, eliminarCotizacion, router]);
-  
-  // Cargar nota de venta
-  const loadNotaVenta = React.useCallback(async () => {
-    if (!quote) return;
-    setNvLoading(true);
-    try {
-      const cotizacionNumericId = await NotasVentaService.getCotizacionNumericIdByFolio(quote.id);
-      if (!cotizacionNumericId) { setNvLoading(false); return; }
-      const nv = await NotasVentaService.getByCotizacionId(cotizacionNumericId);
-      if (nv) {
-        setNotaVenta(nv);
-        const its = await NotasVentaService.getItems(nv.id);
-        setNvItems(its);
-      }
-  } catch (e: unknown) { setNvError(e instanceof Error ? e.message : 'Error cargando nota de venta'); }
-    finally { setNvLoading(false); }
-  }, [quote]);
-
-  // Abrir selección de productos
-  const handleOpenProductSelection = useCallback(() => {
-    if (!quote) return;
-    // Inicializa con los items actuales
-    setSelectedItems([...quote.items]);
-    setShowProductsModal(true);
-  }, [quote]);
-  
-  // Cancelar selección de productos
-  const handleCancelProductSelection = useCallback(() => {
-    setShowProductsModal(false);
-    setSelectedItems([]);
-  }, []);
-  
-  // Guardar nota de venta
-  const handleSaveNotaVenta = useCallback(async () => {
-    if (!quote || !selectedItems.length) return;
-    setCreatingSale(true);
-    setSaleError(null);
-    setIsSelectingProducts(true);
-    
-    try {
-      const cotizacionNumericId = await NotasVentaService.getCotizacionNumericIdByFolio(quote.id);
-      await NotasVentaService.convertFromQuote(quote, {
-        formaPago: quote.condicionesComerciales?.formaPago,
-        cotizacionDbId: cotizacionNumericId || undefined,
-        itemsOverride: selectedItems,
-        finalizarInmediatamente: true // La nota queda confirmada/aceptada de inmediato
-      });
-      
-      setShowProductsModal(false);
-      await loadNotaVenta(); // Recargar datos de la nota
-      
-    } catch (e: unknown) {
-      console.error('Error creando nota de venta', e);
-      const msg = e instanceof Error ? e.message : 'Error desconocido';
-      setSaleError(msg);
-      alert('Error al crear nota de venta: ' + msg);
-    } finally {
-      setCreatingSale(false);
-      setIsSelectingProducts(false);
-    }
-  }, [quote, selectedItems, loadNotaVenta]);
-
-  // Efecto para cargar la nota de venta al inicio
-  React.useEffect(() => { loadNotaVenta(); }, [loadNotaVenta]);
   
   // ===== RETURNS CONDICIONALES =====
   if (loading) {
@@ -216,64 +162,7 @@ export default function QuoteDetailPage() {
     // Funcionalidad de edición será implementada después
     alert('Funcionalidad de edición en desarrollo');
   };
-
-  // (Las funciones handleOpenProductSelection, handleCancelProductSelection y handleSaveNotaVenta se movieron arriba)
   
-  // (loadNotaVenta y useEffect ya movidos arriba)
-
-  const recalcNotaVentaTotals = (base: SalesNoteRecord, items: SalesNoteItemRow[]) => {
-    const subtotal = items.reduce((s,it)=> s + (it.cantidad * it.precio_unitario_neto),0);
-    const descLineas = items.reduce((s,it)=> s + (it.descuento_monto || 0),0);
-    const descGlobal = base.descuento_global_monto || 0;
-    const descuento_total = descLineas + descGlobal;
-    const subtotal_neto_post_desc = subtotal - descuento_total;
-    const iva_monto = Math.round(subtotal_neto_post_desc * (base.iva_pct||19)/100);
-    const total = subtotal_neto_post_desc + iva_monto;
-    return { subtotal, descuento_lineas_monto: descLineas, descuento_total, subtotal_neto_post_desc, iva_monto, total };
-  };
-
-  const handleAddNvItem = async () => {
-    if (!notaVenta || notaVenta.estado !== 'borrador') return;
-    if (!nvAddDraft.descripcion) return;
-    setNvSaving(true); setNvError(null);
-    try {
-      const bruto = nvAddDraft.cantidad * nvAddDraft.precio;
-      const descMonto = Math.round(bruto * (nvAddDraft.descuento/100));
-      const subtotal_neto = bruto - descMonto;
-      const inserted = await NotasVentaService.addItem(notaVenta.id, {
-        descripcion: nvAddDraft.descripcion,
-        unidad: nvAddDraft.unidad,
-        cantidad: nvAddDraft.cantidad,
-        precio_unitario_neto: nvAddDraft.precio,
-        descuento_pct: nvAddDraft.descuento,
-        descuento_monto: descMonto,
-        subtotal_neto,
-        total_neto: subtotal_neto
-      });
-      const updatedItems = [...nvItems, inserted];
-      setNvItems(updatedItems);
-      const patch = recalcNotaVentaTotals(notaVenta, updatedItems);
-      const updated = await NotasVentaService.update(notaVenta.id, patch);
-      setNotaVenta(updated);
-      setNvAddDraft({ descripcion:'', unidad:'Unidad', cantidad:1, precio:0, descuento:0 });
-  } catch(e: unknown){ setNvError(e instanceof Error ? e.message : 'Error agregando ítem'); }
-    finally { setNvSaving(false); }
-  };
-
-  const handleRemoveNvItem = async (itemId: number) => {
-    if (!notaVenta || notaVenta.estado !== 'borrador') return;
-    if (!confirm('Eliminar ítem?')) return;
-    setNvSaving(true); setNvError(null);
-    try {
-      await NotasVentaService.removeItem(itemId);
-      const remaining = nvItems.filter(i=> i.id!==itemId);
-      setNvItems(remaining);
-      const patch = recalcNotaVentaTotals(notaVenta, remaining);
-      const updated = await NotasVentaService.update(notaVenta.id, patch);
-      setNotaVenta(updated);
-  } catch(e: unknown){ setNvError(e instanceof Error ? e.message : 'Error eliminando ítem'); }
-    finally { setNvSaving(false); }
-  };
 
   return (
     <div className="space-y-6 animate-fadeIn">
@@ -284,14 +173,22 @@ export default function QuoteDetailPage() {
       >
         <div className="flex items-center gap-3 sm:gap-4 flex-wrap">
           <button
-            onClick={() => router.push('/dashboard/cotizaciones')}
+            onClick={() => {
+              const from = searchParams.get('from');
+              const clientId = searchParams.get('client_id');
+              if (from === 'client' && clientId) {
+                router.push(`/dashboard/clientes/${clientId}`);
+              } else {
+                router.push('/dashboard/cotizaciones');
+              }
+            }}
             className="p-2 rounded-lg transition-colors flex-shrink-0"
             style={{ 
               backgroundColor: 'var(--bg-secondary)', 
               color: 'var(--text-secondary)',
               border: '1px solid var(--border)'
             }}
-            aria-label="Volver a cotizaciones"
+            aria-label="Volver"
           >
             <FiArrowLeft className="w-5 h-5" />
           </button>
@@ -303,23 +200,26 @@ export default function QuoteDetailPage() {
           </div>
           <div className="min-w-0">
             <h1 className="text-xl sm:text-2xl md:text-3xl font-bold truncate" style={{ color: 'var(--text-primary)' }}>
-              {notaVenta 
-                ? `Nota de Venta ${notaVenta.folio || 'NV' + quote.numero.substring(3)}` 
-                : quote.estado === 'aceptada' 
-                  ? `Nota de Venta ${quote.numero.replace('COT', 'NV')}` 
-                  : `Cotización ${quote.numero}`
-              }
+              {`Cotización ${quote.numero}`}
             </h1>
             <div className="flex items-center flex-wrap gap-2 sm:gap-3 mt-1">
               <span 
                 className={`px-2 sm:px-3 py-1 text-xs sm:text-sm font-medium rounded-full whitespace-nowrap status-badge-${quote.estado}`}
                 style={{ backgroundColor: statusColor.bg, color: statusColor.text }}
               >
-                {quote.estado === 'aceptada' && notaVenta ? 'Confirmada' : quote.estado.charAt(0).toUpperCase() + quote.estado.slice(1)}
-                {notaVenta && quote.estado === 'aceptada' && (
-                  <span className="ml-1 inline-flex items-center">• Finalizada</span>
-                )}
+                {quote.estado.charAt(0).toUpperCase() + quote.estado.slice(1)}
               </span>
+              {quote.estado === 'aceptada' && (
+                <button
+                  onClick={() => relatedSalesNote && router.push(`/dashboard/notas-venta/${relatedSalesNote.id}`)}
+                  className="px-2 sm:px-3 py-1 text-xs sm:text-sm font-medium rounded-full whitespace-nowrap flex items-center gap-1 hover:opacity-80 transition-opacity"
+                  style={{ backgroundColor: 'var(--success-bg)', color: 'var(--success-text)', border: 'none', cursor: relatedSalesNote ? 'pointer' : 'default' }}
+                  disabled={!relatedSalesNote}
+                >
+                  <FiShoppingCart className="w-3 h-3" />
+                  {relatedSalesNote ? `Ver Nota de Venta ${relatedSalesNote.folio || `#${relatedSalesNote.id}`}` : 'Convertida a Venta'}
+                </button>
+              )}
               {daysUntilExpiration !== null && (
                 <span className="flex items-center gap-1 text-xs sm:text-sm whitespace-nowrap" style={{ color: 'var(--text-secondary)' }}>
                   <FiClock className="w-3 sm:w-4 h-3 sm:h-4" />
@@ -338,17 +238,15 @@ export default function QuoteDetailPage() {
           </div>
         </div>
         <div className="flex items-center gap-2 self-end sm:self-auto mt-2 sm:mt-0 flex-wrap">
-          {!notaVenta && (
-            <button
-              onClick={handleOpenProductSelection}
-              disabled={creatingSale}
-              className="btn-primary flex items-center gap-1 sm:gap-2 px-2 sm:px-4 py-1 sm:py-2 text-sm"
-              style={creatingSale ? { opacity: .7, cursor:'wait' } : {}}
-            >
-              <FiShoppingCart className="w-3 sm:w-4 h-3 sm:h-4" />
-              <span className="hidden xs:inline">Pasar a Venta</span>
-            </button>
-          )}
+          <button
+            onClick={handleConvert}
+            disabled={quote?.estado === 'aceptada'}
+            className="btn-primary flex items-center gap-1 sm:gap-2 px-2 sm:px-4 py-1 sm:py-2 text-sm"
+            style={quote?.estado === 'aceptada' ? { opacity: 0.5, cursor: 'not-allowed' } : {}}
+          >
+            <FiShoppingCart className="w-3 sm:w-4 h-3 sm:h-4" />
+            <span className="hidden xs:inline">Pasar a Venta</span>
+          </button>
           <button
             onClick={handleExport}
             disabled={exporting}
@@ -360,22 +258,27 @@ export default function QuoteDetailPage() {
           </button>
           <button
             onClick={handleEdit}
+            disabled={quote?.estado === 'aceptada'}
             className="btn-primary flex items-center gap-1 sm:gap-2 px-2 sm:px-4 py-1 sm:py-2 text-sm"
+            style={quote?.estado === 'aceptada' ? { opacity: 0.5, cursor: 'not-allowed' } : {}}
           >
             <FiEdit2 className="w-3 sm:w-4 h-3 sm:h-4" />
             <span className="hidden xs:inline">Editar</span>
           </button>
           <button
             onClick={handleDeleteQuote}
+            disabled={quote?.estado === 'aceptada'}
             className="flex items-center gap-1 sm:gap-2 px-2 sm:px-4 py-1 sm:py-2 text-sm rounded-lg"
-            style={{ background: 'var(--danger-bg)', color: 'var(--danger-text)' }}
+            style={{
+              background: quote?.estado === 'aceptada' ? 'var(--bg-secondary)' : 'var(--danger-bg)',
+              color: quote?.estado === 'aceptada' ? 'var(--text-secondary)' : 'var(--danger-text)',
+              cursor: quote?.estado === 'aceptada' ? 'not-allowed' : 'pointer'
+            }}
           >
             <FiAlertCircle className="w-3 sm:w-4 h-3 sm:h-4" />
             <span className="hidden xs:inline">Eliminar</span>
           </button>
-          {saleError && (
-            <span className="text-xs text-red-500 w-full">{saleError}</span>
-          )}
+          {/* Errores de venta eliminados junto con el flujo modal */}
         </div>
       </div>
 
@@ -472,63 +375,9 @@ export default function QuoteDetailPage() {
           >
             <h3 className="text-lg font-semibold mb-4 flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
               <FiPackage className="w-5 h-5" style={{ color: 'var(--accent-primary)' }} />
-              {notaVenta ? 'Ítems Nota de Venta' : 'Detalle de Productos'} ({notaVenta ? nvItems.length : (quote.items?.length || 0)} ítems)
-              {notaVenta && <span className="ml-2 text-xs px-2 py-1 rounded-full" style={{ backgroundColor: 'var(--success-bg)', color: 'var(--success-text)' }}>
-                {notaVenta.estado === 'confirmada' ? 'No Editable' : 'Borrador'}
-              </span>}
+              Detalle de Productos ({(quote.items?.length || 0)} ítems)
             </h3>
-            {notaVenta && notaVenta.estado==='borrador' && (
-              <div className="grid grid-cols-2 md:grid-cols-7 gap-2 mb-6 text-xs md:text-sm">
-                <input placeholder="Descripción" value={nvAddDraft.descripcion} onChange={e=>setNvAddDraft({...nvAddDraft, descripcion:e.target.value})} className="px-2 py-1 rounded border col-span-2 md:col-span-2" style={{borderColor:'var(--border)'}} />
-                <input placeholder="Unidad" value={nvAddDraft.unidad} onChange={e=>setNvAddDraft({...nvAddDraft, unidad:e.target.value})} className="px-2 py-1 rounded border" style={{borderColor:'var(--border)'}} />
-                <input type="number" min={1} value={nvAddDraft.cantidad} onChange={e=>setNvAddDraft({...nvAddDraft, cantidad: parseFloat(e.target.value)||1})} className="px-2 py-1 rounded border" style={{borderColor:'var(--border)'}} />
-                <input type="number" min={0} value={nvAddDraft.precio} onChange={e=>setNvAddDraft({...nvAddDraft, precio: parseFloat(e.target.value)||0})} className="px-2 py-1 rounded border" style={{borderColor:'var(--border)'}} />
-                <input type="number" min={0} max={100} value={nvAddDraft.descuento} onChange={e=>setNvAddDraft({...nvAddDraft, descuento: parseFloat(e.target.value)||0})} className="px-2 py-1 rounded border" style={{borderColor:'var(--border)'}} />
-                <button onClick={handleAddNvItem} disabled={nvSaving || !nvAddDraft.descripcion} className="btn-primary col-span-2 md:col-span-1" style={nvSaving?{opacity:.7}:{}}>Agregar</button>
-              </div>
-            )}
-            {notaVenta ? (
-              nvItems.length > 0 ? (
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead>
-                      <tr className="border-b text-left" style={{ borderColor: 'var(--border)' }}>
-                        <th className="pb-3 font-medium" style={{ color: 'var(--text-secondary)' }}>Descripción</th>
-                        <th className="pb-3 font-medium text-right" style={{ color: 'var(--text-secondary)' }}>Cant</th>
-                        <th className="pb-3 font-medium text-right hidden md:table-cell" style={{ color: 'var(--text-secondary)' }}>P.Unit</th>
-                        <th className="pb-3 font-medium text-right hidden md:table-cell" style={{ color: 'var(--text-secondary)' }}>Desc</th>
-                        <th className="pb-3 font-medium text-right" style={{ color: 'var(--text-secondary)' }}>Subtotal</th>
-                        {notaVenta.estado==='borrador' && <th className="pb-3" />}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {nvItems.map((it, index) => (
-                        <tr key={it.id || index} className={index !== nvItems.length - 1 ? 'border-b' : ''} style={{ borderColor: 'var(--border)' }}>
-                          <td className="py-3 sm:py-4">
-                            <span className="font-medium" style={{ color: 'var(--text-primary)' }}>{it.descripcion}</span>
-                            <span className="text-xs block sm:hidden mt-1" style={{ color: 'var(--text-secondary)' }}>
-                              {it.unidad} | {formatMoney(it.precio_unitario_neto)}{it.descuento_pct?` | -${it.descuento_pct}%`:''}
-                            </span>
-                          </td>
-                          <td className="py-3 sm:py-4 text-right" style={{ color: 'var(--text-primary)' }}>{it.cantidad}</td>
-                          <td className="py-3 sm:py-4 text-right hidden md:table-cell" style={{ color: 'var(--text-secondary)' }}>{formatMoney(it.precio_unitario_neto)}</td>
-                          <td className="py-3 sm:py-4 text-right hidden md:table-cell" style={{ color: it.descuento_pct? 'var(--success-text)':'var(--text-muted)' }}>{it.descuento_pct? it.descuento_pct+'%':'-'}</td>
-                          <td className="py-3 sm:py-4 text-right font-medium" style={{ color: 'var(--text-primary)' }}>{formatMoney(it.subtotal_neto)}</td>
-                          {notaVenta.estado==='borrador' && (
-                            <td className="py-3 sm:py-4 text-right">
-                              <button onClick={()=>handleRemoveNvItem(it.id)} className="text-xs text-red-500 hover:underline">Eliminar</button>
-                            </td>
-                          )}
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              ) : (
-                <div className="flex items-center justify-center py-8"><p style={{ color: 'var(--text-secondary)' }}>No hay ítems en la nota de venta</p></div>
-              )
-            ) : (
-              quote.items && quote.items.length > 0 ? (
+            {quote.items && quote.items.length > 0 ? (
               <div className="overflow-x-auto">
                 <table className="w-full">
                   <thead>
@@ -588,8 +437,7 @@ export default function QuoteDetailPage() {
               </div>
             ) : (
               <div className="flex items-center justify-center py-8"><p style={{ color: 'var(--text-secondary)' }}>No hay productos agregados a esta cotización</p></div>
-            ))}
-            {nvError && <p className="text-sm text-red-500 mt-4">{nvError}</p>}
+            )}
           </div>
 
           {/* Información de Despacho */}
@@ -655,29 +503,13 @@ export default function QuoteDetailPage() {
           >
             <h3 className="text-lg font-semibold mb-4 flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
               <FiDollarSign className="w-5 h-5" style={{ color: 'var(--accent-primary)' }} />
-              {notaVenta ? 'Resumen Nota de Venta' : 'Resumen Financiero'}
+              Resumen Financiero
             </h3>
             <div className="space-y-3 sm:space-y-4">
-              {notaVenta ? (
-                <>
-                  <div className="flex justify-between items-center py-1 sm:py-2"><span style={{ color:'var(--text-secondary)' }}>Subtotal:</span><span className="font-medium" style={{ color:'var(--text-primary)' }}>{formatMoney(notaVenta.subtotal)}</span></div>
-                  {notaVenta.descuento_lineas_monto>0 && <div className="flex justify-between items-center py-1 sm:py-2"><span style={{ color:'var(--text-secondary)' }}>Desc. Líneas:</span><span style={{ color:'var(--success-text)' }}> -{formatMoney(notaVenta.descuento_lineas_monto)}</span></div>}
-                  {notaVenta.descuento_global_monto>0 && <div className="flex justify-between items-center py-1 sm:py-2"><span style={{ color:'var(--text-secondary)' }}>Desc. Global:</span><span style={{ color:'var(--success-text)' }}> -{formatMoney(notaVenta.descuento_global_monto)}</span></div>}
-                  <div className="flex justify-between items-center py-1 sm:py-2"><span style={{ color:'var(--text-secondary)' }}>Subtotal Neto:</span><span style={{ color:'var(--text-primary)' }}>{formatMoney(notaVenta.subtotal_neto_post_desc)}</span></div>
-                  <div className="flex justify-between items-center py-1 sm:py-2"><span style={{ color:'var(--text-secondary)' }}>IVA ({notaVenta.iva_pct}%):</span><span style={{ color:'var(--text-primary)' }}>{formatMoney(notaVenta.iva_monto)}</span></div>
-                  <div className="border-t pt-3 sm:pt-4 flex justify-between items-center" style={{ borderColor:'var(--border)' }}>
-                    <span className="text-lg sm:text-xl font-semibold" style={{ color:'var(--text-primary)' }}>Total:</span>
-                    <span className="text-xl sm:text-2xl font-bold" style={{ color:'var(--accent-primary)' }}>{formatMoney(notaVenta.total)}</span>
-                  </div>
-                </>
-              ) : (
-                <>
-                  <div className="flex justify-between items-center py-1 sm:py-2"><span style={{ color: 'var(--text-secondary)' }}>Subtotal:</span><span className="font-medium text-base sm:text-lg" style={{ color: 'var(--text-primary)' }}>{formatMoney(quote.subtotal)}</span></div>
-                  {quote.descuentoTotal > 0 && (<div className="flex justify-between items-center py-1 sm:py-2"><span style={{ color: 'var(--text-secondary)' }}>Descuento:</span><span className="font-medium text-base sm:text-lg" style={{ color: 'var(--success-text)' }}> -{formatMoney(quote.descuentoTotal)}</span></div>)}
-                  <div className="flex justify-between items-center py-1 sm:py-2"><span style={{ color: 'var(--text-secondary)' }}>IVA (19%):</span><span className="font-medium text-base sm:text-lg" style={{ color: 'var(--text-primary)' }}>{formatMoney(quote.iva)}</span></div>
-                  <div className="border-t pt-3 sm:pt-4 flex justify-between items-center" style={{ borderColor: 'var(--border)' }}><span className="text-lg sm:text-xl font-semibold" style={{ color: 'var(--text-primary)' }}>Total:</span><span className="text-xl sm:text-2xl font-bold" style={{ color: 'var(--accent-primary)' }}>{formatMoney(quote.total)}</span></div>
-                </>
-              )}
+              <div className="flex justify-between items-center py-1 sm:py-2"><span style={{ color: 'var(--text-secondary)' }}>Subtotal:</span><span className="font-medium text-base sm:text-lg" style={{ color: 'var(--text-primary)' }}>{formatMoney(quote.subtotal)}</span></div>
+              {quote.descuentoTotal > 0 && (<div className="flex justify-between items-center py-1 sm:py-2"><span style={{ color: 'var(--text-secondary)' }}>Descuento:</span><span className="font-medium text-base sm:text-lg" style={{ color: 'var(--success-text)' }}> -{formatMoney(quote.descuentoTotal)}</span></div>)}
+              <div className="flex justify-between items-center py-1 sm:py-2"><span style={{ color: 'var(--text-secondary)' }}>IVA (19%):</span><span className="font-medium text-base sm:text-lg" style={{ color: 'var(--text-primary)' }}>{formatMoney(quote.iva)}</span></div>
+              <div className="border-t pt-3 sm:pt-4 flex justify-between items-center" style={{ borderColor: 'var(--border)' }}><span className="text-lg sm:text-xl font-semibold" style={{ color: 'var(--text-primary)' }}>Total:</span><span className="text-xl sm:text-2xl font-bold" style={{ color: 'var(--accent-primary)' }}>{formatMoney(quote.total)}</span></div>
             </div>
           </div>
 
@@ -854,65 +686,6 @@ export default function QuoteDetailPage() {
           )}
         </div>
       </div>
-
-      {/* Modal de selección de productos para nota de venta */}
-      {showProductsModal && (
-        <div className="fixed inset-0 flex items-center justify-center p-4 z-50" style={{ backgroundColor: 'rgba(0,0,0,0.7)' }}>
-          <div className="rounded-lg w-full max-w-6xl max-h-[90vh] overflow-y-auto" style={{ backgroundColor: 'var(--card-bg)' }}>
-            <div className="p-6 flex justify-between items-center sticky top-0 z-10" style={{ 
-              backgroundColor: 'var(--card-bg)',
-              borderBottom: '1px solid var(--border)'
-            }}>
-              <div>
-                <h2 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>
-                  Crear Nota de Venta
-                </h2>
-                <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-                  Seleccione los productos finales para la nota de venta
-                </p>
-              </div>
-              <div className="flex gap-3">
-                <button
-                  onClick={handleCancelProductSelection}
-                  className="btn-secondary px-4 py-2"
-                  disabled={creatingSale}
-                >
-                  Cancelar
-                </button>
-                <button
-                  onClick={handleSaveNotaVenta}
-                  className="btn-primary flex items-center gap-2 px-4 py-2"
-                  disabled={creatingSale || !selectedItems.length}
-                >
-                  {creatingSale ? (
-                    <>
-                      <div className="animate-spin rounded-full h-4 w-4 border-2" style={{ 
-                        borderTopColor: 'transparent',
-                        borderLeftColor: 'var(--button-text)',
-                        borderRightColor: 'var(--button-text)',
-                        borderBottomColor: 'var(--button-text)'
-                      }} />
-                      Procesando...
-                    </>
-                  ) : (
-                    <>
-                      <FiCheckCircle className="w-4 h-4" />
-                      Guardar Nota de Venta
-                    </>
-                  )}
-                </button>
-              </div>
-            </div>
-            
-            <div className="p-6" style={{ backgroundColor: 'var(--bg-primary)' }}>
-              <ProductsForm
-                items={selectedItems}
-                onChange={setSelectedItems}
-              />
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

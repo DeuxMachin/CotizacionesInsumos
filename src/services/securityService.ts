@@ -2,10 +2,15 @@
 import { SecurityLogger } from './securityLogger';
 
 export class SecurityService {
-  private static readonly MAX_ATTEMPTS = 5;
+  private static readonly MAX_ATTEMPTS = 6;
   private static readonly LOCKOUT_DURATION = 15 * 60 * 1000; // 15 minutos en milisegundos
   private static readonly STORAGE_KEY = 'login_attempts';
   private static readonly LOG_KEY = 'security_logs';
+
+  // Normalizar email para uso como clave
+  private static normalizeEmail(email: string): string {
+    return (email || '').trim().toLowerCase();
+  }
 
   // Logging de eventos de seguridad
   private static logSecurityEvent(event: string, details: Record<string, unknown>) {
@@ -51,7 +56,8 @@ export class SecurityService {
       if (!stored) return { count: 0, lastAttempt: 0 };
       
       const attempts = JSON.parse(stored);
-      return attempts[email] || { count: 0, lastAttempt: 0 };
+      const key = this.normalizeEmail(email);
+      return attempts[key] || { count: 0, lastAttempt: 0 };
     } catch {
       return { count: 0, lastAttempt: 0 };
     }
@@ -62,8 +68,9 @@ export class SecurityService {
     try {
       const stored = localStorage.getItem(this.STORAGE_KEY);
       const attempts = stored ? JSON.parse(stored) : {};
-      
-      attempts[email] = { count, lastAttempt };
+
+      const key = this.normalizeEmail(email);
+      attempts[key] = { count, lastAttempt };
       localStorage.setItem(this.STORAGE_KEY, JSON.stringify(attempts));
     } catch (error) {
       console.error('Error guardando intentos de login:', error);
@@ -91,7 +98,7 @@ export class SecurityService {
   }
 
   // Registrar un intento de login fallido
-  static registerFailedAttempt(email: string) {
+  static registerFailedAttempt(email: string): number {
     const attempts = this.getAttempts(email);
     const newCount = attempts.count + 1;
     this.setAttempts(email, newCount, Date.now());
@@ -106,6 +113,7 @@ export class SecurityService {
         attemptCount: newCount
       });
     }
+    return newCount;
   }
 
   // Resetear intentos después de login exitoso
@@ -152,5 +160,11 @@ export class SecurityService {
     } catch (error) {
       console.error('Error limpiando intentos antiguos:', error);
     }
+  }
+
+  // Obtener el conteo actual de intentos para un email normalizado
+  static getAttemptCount(email: string): number {
+    const attempts = this.getAttempts(email);
+    return attempts.count || 0;
   }
 }

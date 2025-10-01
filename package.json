@@ -6,19 +6,23 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint --max-warnings=0"
+    "lint": "next lint --max-warnings=0",
+    "postinstall": "puppeteer browsers install chrome"
   },
   "dependencies": {
     "@react-pdf/renderer": "^4.2.0",
     "@sparticuz/chromium": "^138.0.2",
     "@supabase/auth-helpers-nextjs": "^0.10.0",
     "@supabase/supabase-js": "^2.57.2",
+    "@tailwindcss/line-clamp": "^0.4.4",
     "@types/bcryptjs": "^2.4.6",
     "@types/nodemailer": "^7.0.1",
     "@vercel/speed-insights": "^1.2.0",
     "bcryptjs": "^3.0.2",
     "classnames": "^2.5.1",
     "handlebars": "^4.7.8",
+    "jose": "^6.1.0",
+    "jsonwebtoken": "^9.0.2",
     "next": "15.4.6",
     "next-themes": "^0.4.6",
     "nodemailer": "^7.0.6",
@@ -30,6 +34,7 @@
     "resend": "^6.0.3",
     "sharp": "^0.34.3",
     "xlsx": "^0.18.5",
+    "zod": "^4.1.9",
     "zustand": "^5.0.7"
   },
   "devDependencies": {

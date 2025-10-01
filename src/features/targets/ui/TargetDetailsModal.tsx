@@ -1,16 +1,39 @@
 "use client";
 
 import { Modal } from "@/shared/ui/Modal";
-import { FiMapPin, FiPhone, FiMail, FiUser, FiCalendar, FiClock, FiMap, FiExternalLink, FiEdit3, FiMessageSquare, FiHome, FiFlag } from "react-icons/fi";
-import type { PosibleTarget } from "../model/types";
+import { useState, useEffect } from "react";
+import { ConvertToObraModal } from "./ConvertToObraModal";
+import EditTargetModal from "./EditTargetModal";
+import { StatusChangeModal } from "./StatusChangeModal";
+import { FiMapPin, FiPhone, FiMail, FiUser, FiCalendar, FiClock, FiMap, FiExternalLink, FiEdit3, FiMessageSquare, FiHome, FiFlag, FiSettings } from "react-icons/fi";
+import type { PosibleTarget, TargetEvento } from "../model/types";
+import { useTargets } from "../model/useTargets";
 
 interface TargetDetailsModalProps {
   target: PosibleTarget;
   isOpen: boolean;
   onClose: () => void;
+  onTargetUpdated?: () => void;
 }
 
-export function TargetDetailsModal({ target, isOpen, onClose }: TargetDetailsModalProps) {
+export function TargetDetailsModal({ target, isOpen, onClose, onTargetUpdated }: TargetDetailsModalProps) {
+  const [showConvertModal, setShowConvertModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [showStatusModal, setShowStatusModal] = useState(false);
+  const [events, setEvents] = useState<TargetEvento[]>([]);
+  const [refreshKey, setRefreshKey] = useState(0);
+  const { fetchTargetEvents } = useTargets();
+
+  const handleTargetUpdated = () => {
+    setRefreshKey(prev => prev + 1);
+    onTargetUpdated?.();
+  };
+
+  useEffect(() => {
+    if (isOpen && target.id) {
+      fetchTargetEvents(target.id).then(setEvents);
+    }
+  }, [isOpen, target.id, refreshKey, fetchTargetEvents]);
   const getEstadoClass = (estado: string) => {
     switch (estado) {
       case 'pendiente': return 'badge-base badge-pendiente';
@@ -31,6 +54,28 @@ export function TargetDetailsModal({ target, isOpen, onClose }: TargetDetailsMod
     }
   };
 
+  const getEventColor = (tipo: string) => {
+    switch (tipo) {
+      case 'contacto': return 'var(--info-text)';
+      case 'estado_cambio': return 'var(--warning-text)';
+      case 'estimado_inicio': return 'var(--success-text)';
+      case 'nota': return 'var(--text-muted)';
+      case 'liberado': return 'var(--danger-text)';
+      default: return 'var(--accent-primary)';
+    }
+  };
+
+  const getEventLabel = (tipo: string) => {
+    switch (tipo) {
+      case 'contacto': return 'Contacto';
+      case 'estado_cambio': return 'Cambio de Estado';
+      case 'estimado_inicio': return 'Inicio Estimado';
+      case 'nota': return 'Nota';
+      case 'liberado': return 'Liberado';
+      default: return tipo;
+    }
+  };
+
   const openInMaps = () => {
     const url = target.ubicacion.googleMapsUrl || 
       `https://www.google.com/maps?q=${target.ubicacion.lat},${target.ubicacion.lng}`;
@@ -47,15 +92,15 @@ export function TargetDetailsModal({ target, isOpen, onClose }: TargetDetailsMod
 
   return (
     <Modal open={isOpen} onClose={onClose}>
-      <div className="w-full max-h-[90vh] overflow-y-auto custom-scrollbar">
+      <div className="w-full max-w-4xl mx-auto max-h-[85vh] overflow-y-auto custom-scrollbar">
         {/* Header Principal */}
-        <div className="p-4 sm:p-6" style={{ borderBottom: '1px solid var(--border)' }}>
-          <div className="flex flex-col gap-4">
+        <div className="p-3 sm:p-4" style={{ borderBottom: '1px solid var(--border)' }}>
+          <div className="flex flex-col gap-2">
             <div className="flex-1">
               <h1 className="text-xl sm:text-2xl font-bold mb-2" style={{ color: 'var(--text-primary)' }}>
                 {target.titulo}
               </h1>
-              <p className="text-sm sm:text-base mb-3" style={{ color: 'var(--text-secondary)' }}>
+              <p className="text-sm sm:text-base mb-2" style={{ color: 'var(--text-secondary)' }}>
                 {target.descripcion}
               </p>
               <div className="flex flex-wrap items-center gap-2">
@@ -83,13 +128,13 @@ export function TargetDetailsModal({ target, isOpen, onClose }: TargetDetailsMod
             
             {/* Información de Gestión - Más compacta */}
             <div 
-              className="p-3 rounded-lg"
+              className="p-2 rounded-lg"
               style={{ 
                 backgroundColor: 'var(--bg-secondary)',
                 border: '1px solid var(--border)'
               }}
             >
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs sm:text-sm">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs sm:text-sm">
                 <div>
                   <span style={{ color: 'var(--text-secondary)' }}>Creado:</span>
                   <p style={{ color: 'var(--text-primary)' }} className="font-medium">
@@ -118,7 +163,7 @@ export function TargetDetailsModal({ target, isOpen, onClose }: TargetDetailsMod
         </div>
 
         {/* Contenido Principal - Grid Responsivo */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 p-4 sm:p-6">
+  <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4 p-3 sm:p-4">
           
           {/* Columna Izquierda - Ubicación */}
           <div className="space-y-4">
@@ -161,7 +206,7 @@ export function TargetDetailsModal({ target, isOpen, onClose }: TargetDetailsMod
                 
                 {/* Mini mapa más pequeño */}
                 <div 
-                  className="h-32 sm:h-40 rounded-lg flex items-center justify-center relative overflow-hidden cursor-pointer"
+                  className="h-24 sm:h-32 rounded-lg flex items-center justify-center relative overflow-hidden cursor-pointer"
                   style={{ backgroundColor: 'var(--bg-secondary)' }}
                   onClick={openInMaps}
                 >
@@ -197,7 +242,7 @@ export function TargetDetailsModal({ target, isOpen, onClose }: TargetDetailsMod
             {/* Observaciones si existen */}
             {target.observaciones && (
               <div 
-                className="rounded-lg p-4"
+                className="rounded-lg p-3"
                 style={{ 
                   backgroundColor: 'var(--card-bg)',
                   border: '1px solid var(--border)'
@@ -219,7 +264,7 @@ export function TargetDetailsModal({ target, isOpen, onClose }: TargetDetailsMod
             
             {/* Información de Contacto */}
             <div 
-              className="rounded-lg p-4"
+              className="rounded-lg p-3"
               style={{ 
                 backgroundColor: 'var(--card-bg)',
                 border: '1px solid var(--border)'
@@ -302,62 +347,37 @@ export function TargetDetailsModal({ target, isOpen, onClose }: TargetDetailsMod
               </h3>
               
               <div className="space-y-3">
-                {/* Fecha de creación */}
-                <div className="flex items-center gap-3">
-                  <div 
-                    className="w-2 h-2 rounded-full flex-shrink-0"
-                    style={{ backgroundColor: 'var(--accent-primary)' }}
-                  />
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
-                        Target Creado
-                      </span>
-                      <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                        {formatDate(target.fechaCreacion)}
-                      </span>
-                    </div>
+                {events.length === 0 ? (
+                  <div className="text-center py-4">
+                    <FiCalendar className="w-6 h-6 mx-auto mb-2" style={{ color: 'var(--text-muted)' }} />
+                    <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+                      No hay eventos registrados
+                    </p>
                   </div>
-                </div>
-
-                {/* Fecha de contacto si existe */}
-                {target.fechaContacto && (
-                  <div className="flex items-center gap-3">
-                    <div 
-                      className="w-2 h-2 rounded-full flex-shrink-0"
-                      style={{ backgroundColor: 'var(--info-text)' }}
-                    />
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
-                          Primer Contacto
-                        </span>
-                        <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                          {formatDate(target.fechaContacto)}
-                        </span>
+                ) : (
+                  events.map((event) => (
+                    <div key={event.id} className="flex items-center gap-3">
+                      <div 
+                        className="w-2 h-2 rounded-full flex-shrink-0"
+                        style={{ backgroundColor: getEventColor(event.tipo) }}
+                      />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
+                            {getEventLabel(event.tipo)}
+                          </span>
+                          <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                            {formatDate(event.fecha_evento)}
+                          </span>
+                        </div>
+                        {event.detalle && (
+                          <p className="text-xs mt-1" style={{ color: 'var(--text-secondary)' }}>
+                            {event.detalle}
+                          </p>
+                        )}
                       </div>
                     </div>
-                  </div>
-                )}
-
-                {/* Fecha estimada de inicio */}
-                {target.fechaEstimadaInicio && (
-                  <div className="flex items-center gap-3">
-                    <div 
-                      className="w-2 h-2 rounded-full flex-shrink-0"
-                      style={{ backgroundColor: 'var(--warning-text)' }}
-                    />
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
-                          Inicio Estimado
-                        </span>
-                        <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                          {formatDate(target.fechaEstimadaInicio)}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
+                  ))
                 )}
               </div>
             </div>
@@ -367,7 +387,7 @@ export function TargetDetailsModal({ target, isOpen, onClose }: TargetDetailsMod
 
         {/* Footer con Acciones - Más compacto */}
         <div 
-          className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 sm:p-6"
+          className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 p-3 sm:p-4"
           style={{ borderTop: '1px solid var(--border)' }}
         >
           <div className="flex items-center gap-2">
@@ -377,17 +397,86 @@ export function TargetDetailsModal({ target, isOpen, onClose }: TargetDetailsMod
             </span>
           </div>
           
-          <div className="flex items-center gap-2 flex-wrap">
-            <button className="btn-secondary text-sm flex items-center gap-1 px-3 py-2">
-              <FiEdit3 className="w-3 h-3" />
-              Editar
-            </button>
-            <button className="btn-primary text-sm flex items-center gap-1 px-3 py-2">
+            <div className="flex items-center gap-2 flex-wrap">
+            {target.estado !== 'cerrado' && (
+              <button 
+                className="btn-secondary text-sm flex items-center gap-1 px-2 py-1"
+                onClick={() => setShowStatusModal(true)}
+              >
+                <FiSettings className="w-3 h-3" />
+                Cambiar Estado
+              </button>
+            )}
+            {target.estado !== 'cerrado' && (
+              <button 
+                className="btn-secondary text-sm flex items-center gap-1 px-2 py-1"
+                onClick={() => setShowEditModal(true)}
+              >
+                <FiEdit3 className="w-3 h-3" />
+                Editar
+              </button>
+            )}
+            <button 
+              className="btn-primary text-sm flex items-center gap-1 px-2 py-1"
+              onClick={() => {
+                if (target.contacto.email) {
+                  window.location.href = `mailto:${target.contacto.email}`;
+                }
+              }}
+              disabled={!target.contacto.email}
+            >
               <FiPhone className="w-3 h-3" />
               Contactar
             </button>
+            {target.estado !== 'cerrado' && (
+              <button
+                className="btn-primary text-sm flex items-center gap-1 px-2 py-1"
+                onClick={() => setShowConvertModal(true)}
+                title="Crear una nueva obra a partir de este target potencial"
+              >
+                <FiHome className="w-3 h-3" />
+                Crear Obra
+              </button>
+            )}
           </div>
         </div>
+
+        {/* Placeholder del panel de conversión (se implementará en siguiente paso) */}
+        {showConvertModal && (
+          <ConvertToObraModal
+            isOpen={showConvertModal}
+            onClose={() => setShowConvertModal(false)}
+            targetId={target.id}
+            defaultDireccion={{ direccion: target.ubicacion.direccion, comuna: target.ubicacion.comuna ?? undefined, ciudad: target.ubicacion.ciudad ?? undefined }}
+            onConverted={() => setShowConvertModal(false)}
+          />
+        )}
+
+        {/* Edit Modal */}
+        {showEditModal && (
+          <EditTargetModal
+            isOpen={showEditModal}
+            onClose={() => setShowEditModal(false)}
+            target={target}
+            onUpdated={() => {
+              setShowEditModal(false);
+              handleTargetUpdated();
+            }}
+          />
+        )}
+
+        {/* Status Change Modal */}
+        {showStatusModal && (
+          <StatusChangeModal
+            isOpen={showStatusModal}
+            onClose={() => setShowStatusModal(false)}
+            target={target}
+            onStatusUpdated={() => {
+              setShowStatusModal(false);
+              handleTargetUpdated();
+            }}
+          />
+        )}
       </div>
     </Modal>
   );

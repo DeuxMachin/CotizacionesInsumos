@@ -10,20 +10,21 @@ export interface Product {
   nombre: string;
   descripcion: string | null;
   unidad: string;
+  // Mantenemos el nombre usado en UI, mapeado desde precio_neto/precio_venta
   precio_venta_neto: number | null;
   activo: boolean;
-  categorias: { id: number; nombre: string }[];
+  // Nuevos campos relevantes
+  moneda: string | null;
+  afecto_iva: boolean;
+  tipo_id: number | null;
+  tipo?: { id: number; nombre: string } | null;
 }
 
-export interface ProductCategory {
-  id: number;
-  nombre: string;
-  descripcion: string | null;
-}
+export interface ProductType { id: number; nombre: string }
 
 interface UseProductsReturn {
   products: Product[];
-  categories: ProductCategory[];
+  types: ProductType[];
   loading: boolean;
   error: string | null;
   refresh: () => Promise<void>;
@@ -31,7 +32,7 @@ interface UseProductsReturn {
 
 export function useProducts(): UseProductsReturn {
   const [products, setProducts] = useState<Product[]>([]);
-  const [categories, setCategories] = useState<ProductCategory[]>([]);
+  const [types, setTypes] = useState<ProductType[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -39,23 +40,30 @@ export function useProducts(): UseProductsReturn {
     setLoading(true);
     setError(null);
     try {
-      const [{ data: catData, error: catErr }, { data: prodData, error: prodErr }] = await Promise.all([
-        supabase.from('categorias_productos').select('*').order('nombre'),
-        supabase.from('productos').select('*, producto_categorias(categoria_id, categorias_productos:categorias_productos(id,nombre,descripcion))').eq('activo', true).order('nombre')
+      // Cargamos tipos y productos por separado para evitar dependencias de FKs en el select anidado
+      const [{ data: tiposData, error: tiposErr }, { data: prodData, error: prodErr }] = await Promise.all([
+        supabase.from('producto_tipos').select('id,nombre').order('nombre'),
+        supabase.from('productos').select('*').eq('activo', true).order('nombre')
       ]);
-      if (catErr) throw catErr;
+      if (tiposErr) throw tiposErr;
       if (prodErr) throw prodErr;
-      setCategories((catData || []).map(c => ({ id: c.id, nombre: c.nombre, descripcion: c.descripcion })));
-      type ProductoWithCategorias = Database['public']['Tables']['productos']['Row'] & { producto_categorias?: { categoria_id: number; categorias_productos?: { id: number; nombre: string; descripcion: string | null } | null }[] };
-      const mapped: Product[] = (prodData as unknown as ProductoWithCategorias[] | null || []).map((p) => ({
+      const tiposMap = new Map<number, ProductType>();
+      (tiposData || []).forEach((t) => tiposMap.set(t.id, { id: t.id, nombre: t.nombre }));
+      setTypes(Array.from(tiposMap.values()));
+
+      type ProductoRow = Database['public']['Tables']['productos']['Row'];
+      const mapped: Product[] = ((prodData || []) as ProductoRow[]).map((p) => ({
         id: p.id,
         sku: p.sku,
         nombre: p.nombre,
         descripcion: p.descripcion,
         unidad: p.unidad,
-        precio_venta_neto: p.precio_venta_neto,
+        precio_venta_neto: p.precio_neto ?? p.precio_venta ?? null,
         activo: p.activo,
-        categorias: (p.producto_categorias || []).map((pc) => ({ id: pc.categoria_id, nombre: pc.categorias_productos?.nombre || '' }))
+        moneda: p.moneda || null,
+        afecto_iva: Boolean(p.afecto_iva),
+        tipo_id: p.tipo_id,
+        tipo: p.tipo_id ? tiposMap.get(p.tipo_id) || null : null,
       }));
       setProducts(mapped);
     } catch (e: unknown) {
@@ -68,5 +76,5 @@ export function useProducts(): UseProductsReturn {
 
   useEffect(() => { load(); }, [load]);
 
-  return { products, categories, loading, error, refresh: load };
+  return { products, types, loading, error, refresh: load };
 }

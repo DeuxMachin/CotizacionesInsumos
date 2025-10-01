@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { FiX, FiMapPin, FiSearch, FiLoader, FiCheckCircle, FiMap, FiUser, FiCalendar, FiFileText, FiPhone, FiMail, FiHome, FiClock, FiAlertTriangle, FiChevronLeft, FiChevronRight } from "react-icons/fi";
 import { Modal } from "../../../shared/ui/Modal";
 import { useTargets } from "../model/useTargets";
@@ -36,6 +36,10 @@ export default function CreateTargetModal({ isOpen, onClose }: CreateTargetModal
   
   const [currentStep, setCurrentStep] = useState<'location' | 'basic' | 'contact' | 'additional'>('location');
   const [locationSearch, setLocationSearch] = useState('');
+  const [abortCtrl, setAbortCtrl] = useState<AbortController | null>(null);
+  const suggestionsRef = useRef<HTMLDivElement | null>(null);
+  const inputRef = useRef<HTMLInputElement | null>(null);
+  const [showSuggestions, setShowSuggestions] = useState(false);
   const [locationSuggestions, setLocationSuggestions] = useState<LocationSuggestion[]>([]);
   const [searchingLocation, setSearchingLocation] = useState(false);
   const [selectedLocation, setSelectedLocation] = useState<LocationDetails | null>(null);
@@ -47,6 +51,7 @@ export default function CreateTargetModal({ isOpen, onClose }: CreateTargetModal
     lng: 0,
     ciudad: "",
     region: "",
+    comuna: "",
     contactoNombre: "",
     contactoTelefono: "",
     contactoEmail: "",
@@ -89,93 +94,110 @@ export default function CreateTargetModal({ isOpen, onClose }: CreateTargetModal
     }
   };
 
-  // Simulación de búsqueda de Google Places API
+  // Búsqueda de ubicaciones usando API interna (Nominatim)
   const searchLocation = async (query: string) => {
     if (query.length < 3) {
       setLocationSuggestions([]);
+      setShowSuggestions(false);
       return;
     }
 
     setSearchingLocation(true);
-    
-    // Simulación de resultados - en producción usar Google Places API
-    await new Promise(resolve => setTimeout(resolve, 500));
-    
-    const mockSuggestions: LocationSuggestion[] = [
-      {
-        place_id: "1",
-        description: "Las Condes, Santiago, Chile",
-        structured_formatting: {
-          main_text: "Las Condes",
-          secondary_text: "Santiago, Chile"
-        }
-      },
-      {
-        place_id: "2", 
-        description: "Av. Las Condes 12345, Las Condes, Santiago, Chile",
-        structured_formatting: {
-          main_text: "Av. Las Condes 12345",
-          secondary_text: "Las Condes, Santiago, Chile"
-        }
-      },
-      {
-        place_id: "3",
-        description: "Providencia, Santiago, Chile", 
-        structured_formatting: {
-          main_text: "Providencia",
-          secondary_text: "Santiago, Chile"
-        }
+    try {
+      // cancel prior in-flight request
+      abortCtrl?.abort();
+      const controller = new AbortController();
+      setAbortCtrl(controller);
+      const res = await fetch(`/api/geocoding?action=search&q=${encodeURIComponent(query)}`, { signal: controller.signal });
+      if (!res.ok) throw new Error('Fallo en búsqueda');
+      const data = await res.json();
+      type RawGeoResult = { place_id?: string; description?: string; structured_formatting?: { main_text?: string; secondary_text?: string } };
+      const suggestions: LocationSuggestion[] = (data.results || []).map((r: RawGeoResult) => ({
+        place_id: r.place_id || '',
+        description: r.description || '',
+        structured_formatting: r.structured_formatting as { main_text: string; secondary_text: string } || { main_text: r.description || '', secondary_text: '' },
+      }));
+  setLocationSuggestions(suggestions);
+  setShowSuggestions(true);
+    } catch (e: unknown) {
+      if (e instanceof Error) {
+        if (e.name !== 'AbortError') console.error('searchLocation error', e);
+      } else {
+        console.error('searchLocation error (unknown):', e);
       }
-    ].filter(s => 
-      s.description.toLowerCase().includes(query.toLowerCase())
-    );
-
-    setLocationSuggestions(mockSuggestions);
-    setSearchingLocation(false);
+      setLocationSuggestions([]);
+    } finally {
+      setSearchingLocation(false);
+    }
   };
 
-  const selectLocation = async (suggestion: LocationSuggestion) => {
-    setSearchingLocation(true);
-    
-    // Simulación de obtener detalles de la ubicación - en producción usar Google Places API Details
-    await new Promise(resolve => setTimeout(resolve, 300));
-    
-    const mockLocationDetails: LocationDetails = {
-      lat: -33.4091 + (Math.random() - 0.5) * 0.1,
-      lng: -70.5459 + (Math.random() - 0.5) * 0.1,
-      formatted_address: suggestion.description,
-      address_components: [
-        {
-          long_name: suggestion.structured_formatting.main_text,
-          short_name: suggestion.structured_formatting.main_text,
-          types: ["route"]
-        },
-        {
-          long_name: "Santiago",
-          short_name: "Santiago", 
-          types: ["locality"]
-        },
-        {
-          long_name: "Región Metropolitana",
-          short_name: "RM",
-          types: ["administrative_area_level_1"]
-        }
-      ]
-    };
+  // Debounce search input
+  useEffect(() => {
+    if (!locationSearch) return;
+    const h = setTimeout(() => searchLocation(locationSearch), 350);
+    return () => clearTimeout(h);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [locationSearch]);
 
-    setSelectedLocation(mockLocationDetails);
-    setFormData(prev => ({
-      ...prev,
-      direccion: mockLocationDetails.formatted_address,
-      lat: mockLocationDetails.lat,
-      lng: mockLocationDetails.lng,
-      ciudad: mockLocationDetails.address_components.find(c => c.types.includes("locality"))?.long_name || "Santiago",
-      region: mockLocationDetails.address_components.find(c => c.types.includes("administrative_area_level_1"))?.long_name || "Región Metropolitana"
-    }));
-    
-    setLocationSearch("");
-    setLocationSuggestions([]);
-    setSearchingLocation(false);
+  // Close suggestions on outside click
+  useEffect(() => {
+    const onDocClick = (e: MouseEvent) => {
+      if (
+        suggestionsRef.current &&
+        !suggestionsRef.current.contains(e.target as Node) &&
+        inputRef.current &&
+        !inputRef.current.contains(e.target as Node)
+      ) {
+        setShowSuggestions(false);
+        abortCtrl?.abort();
+      }
+    };
+    document.addEventListener('mousedown', onDocClick);
+    return () => document.removeEventListener('mousedown', onDocClick);
+  }, [abortCtrl]);
+
+  const selectLocation = async (suggestion: LocationSuggestion) => {
+    // Since search already returns lat/lng via API, we can re-query search to find the selected item by description
+    setSearchingLocation(true);
+    try {
+      const res = await fetch(`/api/geocoding?action=search&q=${encodeURIComponent(suggestion.description)}`);
+      if (!res.ok) throw new Error('Fallo al obtener detalles');
+  const data = await res.json();
+  type RawGeoResult = { lat?: string | number; lon?: string | number; lng?: string | number; description?: string; address?: Record<string, unknown>; place_id?: string };
+  const match = (data.results || []).find((r: RawGeoResult) => r.description === suggestion.description) || (data.results || [])[0] as RawGeoResult;
+      if (!match) throw new Error('Sin resultados');
+
+      const details: LocationDetails = {
+        lat: Number(match.lat),
+        lng: Number(match.lng),
+        formatted_address: match.description,
+        address_components: (match.address && Object.keys(match.address).length)
+          ? [
+              // We'll normalize at reverse step; here we at least derive locality/region if present
+              ...(typeof match.address['road'] === 'string' ? [{ long_name: match.address['road'] as string, short_name: match.address['road'] as string, types: ['route'] as string[] }] : []),
+              ...(typeof match.address['city'] === 'string' ? [{ long_name: match.address['city'] as string, short_name: match.address['city'] as string, types: ['locality'] as string[] }] : []),
+              ...(typeof match.address['state'] === 'string' ? [{ long_name: match.address['state'] as string, short_name: match.address['state'] as string, types: ['administrative_area_level_1'] as string[] }] : []),
+            ]
+          : [],
+      };
+
+      setSelectedLocation(details);
+      setFormData(prev => ({
+        ...prev,
+        direccion: details.formatted_address,
+        lat: details.lat,
+        lng: details.lng,
+        ciudad: details.address_components.find(c => c.types.includes('locality'))?.long_name || '',
+        region: details.address_components.find(c => c.types.includes('administrative_area_level_1'))?.long_name || '',
+        comuna: (match.address?.municipality || match.address?.city_district || match.address?.county || match.address?.suburb || '')
+      }));
+      setLocationSearch('');
+      setLocationSuggestions([]);
+    } catch (e) {
+      console.error('selectLocation error', e);
+    } finally {
+      setSearchingLocation(false);
+    }
   };
 
   const getCurrentLocation = () => {
@@ -188,41 +210,32 @@ export default function CreateTargetModal({ isOpen, onClose }: CreateTargetModal
     navigator.geolocation.getCurrentPosition(
       async (position) => {
         const { latitude, longitude } = position.coords;
-        
-        // Simulación de reverse geocoding
-        await new Promise(resolve => setTimeout(resolve, 500));
-        
-        const mockAddress = `Ubicación actual (${latitude.toFixed(4)}, ${longitude.toFixed(4)})`;
-        
-        const locationDetails: LocationDetails = {
-          lat: latitude,
-          lng: longitude,
-          formatted_address: mockAddress,
-          address_components: [
-            {
-              long_name: "Santiago",
-              short_name: "Santiago",
-              types: ["locality"]
-            },
-            {
-              long_name: "Región Metropolitana", 
-              short_name: "RM",
-              types: ["administrative_area_level_1"]
-            }
-          ]
-        };
-
-        setSelectedLocation(locationDetails);
-        setFormData(prev => ({
-          ...prev,
-          direccion: mockAddress,
-          lat: latitude,
-          lng: longitude,
-          ciudad: "Santiago",
-          region: "Región Metropolitana"
-        }));
-        
-        setSearchingLocation(false);
+        try {
+          const res = await fetch(`/api/geocoding?action=reverse&lat=${latitude}&lng=${longitude}`);
+          if (!res.ok) throw new Error('Fallo geocoding');
+          const data = await res.json();
+          const locationDetails: LocationDetails = {
+            lat: latitude,
+            lng: longitude,
+            formatted_address: data.formatted_address || `(${latitude}, ${longitude})`,
+            address_components: data.address_components || [],
+          };
+          setSelectedLocation(locationDetails);
+          setFormData(prev => ({
+            ...prev,
+            direccion: locationDetails.formatted_address,
+            lat: latitude,
+            lng: longitude,
+            ciudad: data.ciudad || locationDetails.address_components.find((c) => c.types.includes('locality'))?.long_name || '',
+            region: data.region || locationDetails.address_components.find((c) => c.types.includes('administrative_area_level_1'))?.long_name || '',
+            comuna: data.comuna || ''
+          }));
+        } catch (e) {
+          console.error('reverse geocoding error', e);
+          setFormData(prev => ({ ...prev, lat: latitude, lng: longitude }));
+        } finally {
+          setSearchingLocation(false);
+        }
       },
       (error) => {
         console.error("Error obteniendo ubicación:", error);
@@ -257,7 +270,7 @@ export default function CreateTargetModal({ isOpen, onClose }: CreateTargetModal
         lng: formData.lng,
         ciudad: formData.ciudad,
         region: formData.region,
-        comuna: undefined,
+  comuna: formData.comuna,
         contactoNombre: formData.contactoNombre,
         contactoTelefono: formData.contactoTelefono,
         contactoEmail: formData.contactoEmail,
@@ -279,6 +292,7 @@ export default function CreateTargetModal({ isOpen, onClose }: CreateTargetModal
         lng: 0,
         ciudad: "",
         region: "",
+        comuna: "",
         contactoNombre: "",
         contactoTelefono: "",
         contactoEmail: "",
@@ -415,25 +429,37 @@ export default function CreateTargetModal({ isOpen, onClose }: CreateTargetModal
                       type="text"
                       placeholder="Buscar dirección, comuna, calle o punto de referencia..."
                       value={locationSearch}
-                      onChange={(e) => {
-                        setLocationSearch(e.target.value);
-                        searchLocation(e.target.value);
-                      }}
+                      onChange={(e) => setLocationSearch(e.target.value)}
+                      ref={inputRef}
                       className="form-input pl-10 sm:pl-12 pr-10 sm:pr-12 py-3 sm:py-4 text-base sm:text-lg w-full min-h-[48px] sm:min-h-[56px]"
                     />
-                    {searchingLocation && (
+                    {/* Right adornment: loader or clear button */}
+                    {searchingLocation ? (
                       <FiLoader className="absolute right-3 sm:right-4 top-1/2 transform -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 animate-spin" style={{ color: 'var(--accent-primary)' }} />
+                    ) : (
+                      locationSearch && (
+                        <button
+                          type="button"
+                          aria-label="Limpiar búsqueda"
+                          className="absolute right-3 sm:right-4 top-1/2 -translate-y-1/2 text-sm"
+                          onClick={() => { setLocationSearch(''); setLocationSuggestions([]); setShowSuggestions(false); abortCtrl?.abort(); }}
+                          style={{ color: 'var(--text-muted)' }}
+                        >
+                          ×
+                        </button>
+                      )
                     )}
                   </div>
 
                   {/* Sugerencias de ubicación mejoradas */}
-                  {locationSuggestions.length > 0 && (
+                  {showSuggestions && locationSuggestions.length > 0 && (
                     <div 
                       className="absolute top-full left-0 right-0 z-20 mt-2 rounded-xl shadow-2xl max-h-48 sm:max-h-64 lg:max-h-80 overflow-y-auto"
                       style={{ 
                         backgroundColor: 'var(--card-bg)',
                         border: '1px solid var(--border)'
                       }}
+                      ref={suggestionsRef}
                     >
                       {locationSuggestions.map((suggestion) => (
                         <button

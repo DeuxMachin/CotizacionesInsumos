@@ -1,13 +1,16 @@
 "use client";
 import { QuoteStatus } from "@/core/domain/quote/Quote";
 
-// Definir clases completas para cada estado
-const statusClasses: Record<QuoteStatus, string> = {
-  borrador: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300",
-  enviada: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300",
-  aceptada: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300",
-  rechazada: "bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300",
-  expirada: "bg-gray-100 text-gray-700 dark:bg-gray-900/30 dark:text-gray-300"
+// Definir colores usando variables CSS del tema
+const getStatusColors = (status: QuoteStatus) => {
+  const colorMap: Record<QuoteStatus, { bg: string; text: string }> = {
+    borrador: { bg: 'var(--warning-bg)', text: 'var(--warning-text)' },
+    enviada: { bg: 'var(--info-bg)', text: 'var(--info-text)' },
+    aceptada: { bg: 'var(--success-bg)', text: 'var(--success-text)' },
+    rechazada: { bg: 'var(--danger-bg)', text: 'var(--danger-text)' },
+    expirada: { bg: 'var(--neutral-bg)', text: 'var(--neutral-text)' }
+  };
+  return colorMap[status] || colorMap.borrador;
 };
 
 const statusLabels: Record<QuoteStatus, string> = {
@@ -19,9 +22,11 @@ const statusLabels: Record<QuoteStatus, string> = {
 };
 
 export function Badge({ status }: { status: QuoteStatus }) {
+  const colors = getStatusColors(status);
   return (
     <span
-      className={`inline-block px-2.5 py-1 text-xs font-semibold rounded-2xl transition-colors ${statusClasses[status]}`}
+      className="inline-block px-2.5 py-1 text-xs font-semibold rounded-2xl transition-colors"
+      style={{ backgroundColor: colors.bg, color: colors.text }}
     >
       {statusLabels[status]}
     </span>

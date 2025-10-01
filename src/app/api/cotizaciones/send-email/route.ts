@@ -1,9 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { sendGmailTest } from '@/services/gmailService';
 import { generatePDF } from '@/shared/lib/pdf/generator';
-import { getCurrentUserSimple } from '@/lib/auth-simple';
+import { verifyToken, type JWTPayload } from '@/lib/auth/tokens';
 import { AuditLogger } from '@/services/auditLogger';
 import type { Quote } from '@/core/domain/quote/Quote';
+
+interface AuthenticatedUser {
+  id: string;
+  email: string;
+  nombre: string;
+  apellido: string;
+  rol: string;
+  fullName: string;
+}
 
 interface SendQuoteEmailRequest {
   quoteId?: string;
@@ -18,8 +27,30 @@ export async function POST(request: NextRequest) {
     const body: SendQuoteEmailRequest = await request.json();
     const { quoteId, quoteData, recipientEmail, recipientName, message } = body;
 
-    // Obtener información del usuario autenticado
-    const user = await getCurrentUserSimple(request);
+    // Obtener información del usuario autenticado desde JWT y headers
+    const token = request.cookies.get('auth-token')?.value;
+    let user: { id: string; email: string; nombre?: string; apellido?: string; rol?: string; fullName?: string } | null = null;
+    if (token) {
+      try {
+        const decoded: { sub: string; email?: string; nombre?: string; apellido?: string; rol?: string; type?: string } = await verifyToken(token);
+        
+        // Obtener información adicional desde headers (enviados por el frontend)
+        const userNameFromHeader = request.headers.get('x-user-name');
+        const userEmailFromHeader = request.headers.get('x-user-email');
+        
+        user = {
+          id: decoded.sub,
+          email: decoded.email || userEmailFromHeader || '',
+          nombre: decoded.nombre,
+          apellido: decoded.apellido,
+          rol: decoded.rol,
+          // Usar el nombre completo desde header si está disponible
+          fullName: userNameFromHeader || undefined
+        };
+      } catch {
+        // token inválido -> user queda null
+      }
+    }
 
     console.log('🔍 Sending quote email with user info:', { user, recipientEmail });
 
@@ -71,7 +102,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Generar PDF de la cotización
-    const pdfBuffer = await generatePDF(quote, undefined, { condensed: true });
+  const pdfBuffer = await generatePDF(quote, undefined, { condensed: true, docType: 'cotizacion' });
     
     // Convertir buffer a base64 para el adjunto
     const pdfBase64 = Buffer.from(pdfBuffer).toString('base64');
@@ -137,10 +168,15 @@ export async function POST(request: NextRequest) {
 
     // Registrar en audit log que se envió la cotización
     if (user) {
+      // Prioridad: 1) nombre completo del header, 2) nombre + apellido del JWT, 3) solo nombre del JWT, 4) email como fallback
+      const userName = user.fullName || 
+                      (user.nombre && user.apellido ? `${user.nombre} ${user.apellido}` : user.nombre) || 
+                      user.email.split('@')[0];
+      
       await AuditLogger.logEvent({
         usuario_id: user.id,
         evento: 'cotizacion_enviada',
-        descripcion: `Envió cotización #${quoteNumber} por email a ${recipientEmail}`,
+        descripcion: `${userName} envió cotización #${quoteNumber} por email a ${recipientEmail}`,
         detalles: {
           folio: quoteNumber,
           destinatario: recipientEmail,
@@ -148,6 +184,7 @@ export async function POST(request: NextRequest) {
           mensaje_personalizado: message || null,
           email_id: result.data?.messageId,
           user_email: user.email,
+          user_name: userName,
           cliente: {
             nombre: clientName,
             razon_social: quote.cliente.razonSocial
@@ -187,8 +224,8 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// Función mock para obtener cotización - reemplaza con tu lógica real
-async function getQuoteById(id: string): Promise<Quote | null> {
+
+async function getQuoteById(_id: string): Promise<Quote | null> {
   // IMPORTANTE: Reemplaza esto con tu lógica real de base de datos
   // Por ahora retornamos null para indicar que no está implementado
   console.warn('getQuoteById not implemented - using quoteData from request instead');

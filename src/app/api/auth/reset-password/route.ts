@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabase'
 import bcrypt from 'bcryptjs'
 import crypto from 'crypto'
+import { validatePassword } from '@/lib/auth/passwordPolicy'
 
 // Lista de contraseñas comunes filtradas
 const COMMON_PASSWORDS = [
@@ -24,28 +25,10 @@ export async function POST(request: NextRequest) {
       }, { status: 400 })
     }
 
-    // Validar nueva contraseña
-    if (newPassword.length < 6) {
-      return NextResponse.json({
-        success: false,
-        error: 'La contraseña debe tener al menos 6 caracteres'
-      }, { status: 400 })
-    }
-
-    if (newPassword.length > 128) {
-      return NextResponse.json({
-        success: false,
-        error: 'La contraseña no puede exceder los 128 caracteres'
-      }, { status: 400 })
-    }
-
-    // Verificar si es una contraseña filtrada común
-    const lowerPassword = newPassword.toLowerCase();
-    if (COMMON_PASSWORDS.includes(lowerPassword)) {
-      return NextResponse.json({
-        success: false,
-        error: 'Esta contraseña es muy común. Por favor elija una más segura.'
-      }, { status: 400 })
+    // Validar nueva contraseña con política centralizada
+    const policy = validatePassword(newPassword);
+    if (!policy.valid) {
+      return NextResponse.json({ success: false, error: policy.error || 'Contraseña inválida' }, { status: 400 });
     }
 
     // Generar hash del token
@@ -81,11 +64,12 @@ export async function POST(request: NextRequest) {
     const saltRounds = 12
     const passwordHash = await bcrypt.hash(newPassword, saltRounds)
 
-    // Actualizar contraseña del usuario
+    // Actualizar contraseña y reactivar cuenta si estaba desactivada
     const { error: updateError } = await supabase
       .from('usuarios')
       .update({
         password_hash: passwordHash,
+        activo: true,
         updated_at: new Date().toISOString()
       })
       .eq('id', resetToken.user_id)

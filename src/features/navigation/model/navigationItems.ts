@@ -23,6 +23,7 @@ export const NAVIGATION_ICONS = {
   cotizaciones: FiFileText,
   clientes: FiUsers,
   obras: FiTool,
+  reuniones: FiUsers,
   'posibles-targets': FiMapPin,
   stock: FiPackage,
   reportes: FiBarChart2,
@@ -61,6 +62,14 @@ export const ALL_NAVIGATION_ITEMS: NavigationItem[] = [
     iconName: "obras",
     label: "Obras",
     description: "Gestión de obras en construcción",
+    resource: "obras",
+    requiredActions: ["read"],
+  },
+  {
+    key: "reuniones",
+    iconName: "reuniones",
+    label: "Reuniones",
+    description: "Control de reuniones en obra",
     resource: "obras",
     requiredActions: ["read"],
   },
@@ -118,8 +127,8 @@ export function useNavigationItems(userRole: string) {
       // Verificar si el usuario tiene permisos para ver este elemento
       const hasRequiredPermissions = hasAnyPermission(item.resource, item.requiredActions);
 
-      // Si es adminOnly, verificar que sea admin
-      if (item.adminOnly && userRole.toLowerCase() !== 'admin') {
+      // Si es adminOnly, verificar que sea admin o dueño
+      if (item.adminOnly && !['admin', 'dueño', 'dueno'].includes(userRole.toLowerCase())) {
         return false;
       }
 
@@ -141,7 +150,7 @@ export function useNavigationItems(userRole: string) {
       const item = ALL_NAVIGATION_ITEMS.find(nav => nav.key === section);
       if (!item) return false;
 
-      if (item.adminOnly && userRole.toLowerCase() !== 'admin') {
+      if (item.adminOnly && !['admin', 'dueño', 'dueno'].includes(userRole.toLowerCase())) {
         return false;
       }
 

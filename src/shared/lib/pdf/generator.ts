@@ -18,6 +18,8 @@ export interface PDFGenerationOptions {
   preferCSSPageSize?: boolean;
   /** Usa la plantilla condensada de una sola página (recomendado) */
   condensed?: boolean;
+  /** Tipo de documento para el rótulo: controla si muestra COTIZACIÓN o NOTA DE VENTA */
+  docType?: 'cotizacion' | 'nota-venta';
 }
 
 const DEFAULT_PDF_OPTIONS: PDFGenerationOptions = {
@@ -61,17 +63,17 @@ const COMPANY_STATIC_INFO = {
 /**
  * Genera el HTML para la cotización. Si condensed=true usa la plantilla de una sola página.
  */
-export function generateQuoteHTML(quote: Quote, _backgroundImagePath?: string  ): string {
+export function generateQuoteHTML(quote: Quote, _backgroundImagePath?: string, options?: PDFGenerationOptions): string {
   // Legacy absolute template removed; always use condensed template for now.
   const quoteNumber = quote.numero || `COT-${Date.now()}`;
   const quoteDate = quote.fechaCreacion ? new Date(quote.fechaCreacion) : new Date();
-  return generateCondensedHTML(quote, quoteNumber, quoteDate);
+  return generateCondensedHTML(quote, quoteNumber, quoteDate, options);
 }
 
 /**
  * Nueva plantilla condensada: todo cabe en una página A4.
  */
-function generateCondensedHTML(quote: Quote, quoteNumber: string, quoteDate: Date): string {
+function generateCondensedHTML(quote: Quote, quoteNumber: string, quoteDate: Date, options?: PDFGenerationOptions): string {
   const { cliente, items, condicionesComerciales, notas, despacho } = quote;
 
 
@@ -107,6 +109,13 @@ function generateCondensedHTML(quote: Quote, quoteNumber: string, quoteDate: Dat
   if (condicionesComerciales?.garantia) termsLines.push(`Garantía: ${condicionesComerciales.garantia}`);
 
   const notesLines = notas ? formatMultilineText(notas, 110).slice(0, 6) : [];
+
+  // Determinar etiqueta de documento (COTIZACIÓN vs NOTA DE VENTA) por heurística
+  const explicit = options?.docType;
+  const inferredIsQuote = (quote.id || quoteNumber || '').toUpperCase().includes('COT');
+  const docLabel = explicit === 'cotizacion' ? 'COTIZACIÓN'
+                  : explicit === 'nota-venta' ? 'NOTA DE VENTA'
+                  : (inferredIsQuote ? 'COTIZACIÓN' : 'NOTA DE VENTA');
 
   return `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8" />
     <title>Cotización ${quoteNumber}</title>
@@ -154,7 +163,7 @@ function generateCondensedHTML(quote: Quote, quoteNumber: string, quoteDate: Dat
           <div>Teléfono(s): ${COMPANY_STATIC_INFO.telefonos}</div>
         </div>
         <div class="doc-type">
-          <div>NOTA DE VENTA</div>
+          <div>${docLabel}</div>
           <div class="doc-number">N° ${quoteNumber}</div>
         </div>
       </div>
@@ -196,7 +205,8 @@ function generateCondensedHTML(quote: Quote, quoteNumber: string, quoteDate: Dat
           <thead>
             <tr>
               <th style="width:14%;">Código</th>
-              <th style="width:42%;">Descripción</th>
+              <th style="width:38%;">Descripción</th>
+              <th style="width:4%;"></th>
               <th style="width:7%;text-align:center;">Cant.</th>
               <th style="width:11%;text-align:right;">Precio</th>
               <th style="width:8%;text-align:center;">Dscto(%)</th>
@@ -205,15 +215,26 @@ function generateCondensedHTML(quote: Quote, quoteNumber: string, quoteDate: Dat
             </tr>
           </thead>
           <tbody>
-            ${shownItems.map(it=>`<tr style="height:${rowHeight}px;">`+
+            ${shownItems.map(it =>
+              `<tr style="height:${rowHeight}px;">`+
                 `<td>${it.codigo||''}</td>`+
                 `<td>${it.descripcion}</td>`+
-                `<td style=\"text-align:center;\">${it.cantidad}</td>`+
-                `<td style=\"text-align:right;\">${formatCLP(it.precioUnitario)}</td>`+
-                `<td style=\"text-align:center;\">${it.descuento?it.descuento:'-'}</td>`+
-                `<td style=\"text-align:center;\">AFECTO</td>`+
-                `<td style=\"text-align:right;\">${formatCLP(it.subtotal)}</td>`+
-              `</tr>`).join('')}
+                `<td style="text-align:center;">${it.fichaTecnica
+                  ? (
+                    '<a href="'+it.fichaTecnica+'" target="_blank" rel="noopener noreferrer" aria-label="Ficha técnica" style="display:inline-block;width:12px;height:12px;vertical-align:middle;color:#ff5600;">'
+                    + '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>'
+                    + '</a>'
+                  )
+                  : ''}
+                </td>`+
+                `<td style="text-align:center;">${it.cantidad}</td>`+
+                `<td style="text-align:right;">${formatCLP(it.precioUnitario)}</td>`+
+                `<td style="text-align:center;">${it.descuento?it.descuento:'-'}</td>`+
+                // Nota: QuoteItem no expone afecto_iva aún; si en el futuro se agrega, usar it.afectoIva ? 'AFECTO' : 'EXENTO'
+                `<td style="text-align:center;">AFECTO</td>`+
+                `<td style="text-align:right;">${formatCLP(it.subtotal)}</td>`+
+              `</tr>`
+            ).join('')}
           </tbody>
         </table>
         ${omitted>0?`<div class=\"omitted\">Se omitieron ${omitted} ítems por límite de una página.</div>`:''}
@@ -246,38 +267,55 @@ export async function generatePDF(
   backgroundImagePath?: string,
   options: PDFGenerationOptions = DEFAULT_PDF_OPTIONS
 ): Promise<Buffer> {
-  const html = generateQuoteHTML(quote, backgroundImagePath);
+  const html = generateQuoteHTML(quote, backgroundImagePath, options);
   
-  let browser;
+  let browser: Awaited<ReturnType<typeof puppeteer.launch>> | null = null;
   try {
-    // Configuración para producción vs desarrollo
-    const isProduction = process.env.NODE_ENV === 'production';
-    
-    if (isProduction) {
+
+  
+
+    // Preferimos headless por defecto
+    const commonArgs = ['--no-sandbox', '--disable-setuid-sandbox', '--disable-web-security', '--hide-scrollbars'];
+
+    // 1) Chrome canal
+    if (!browser) {
       try {
-        // Usar @sparticuz/chromium para serverless
+        browser = await puppeteer.launch({
+          headless: true,
+          channel: 'chrome',
+          args: commonArgs,
+        });
+      } catch {}
+    }
+
+    // 2) Chromium descargado por puppeteer
+    if (!browser) {
+      try {
+        browser = await puppeteer.launch({
+          headless: true,
+          args: commonArgs,
+        });
+      } catch {}
+    }
+
+    // 3) Serverless: @sparticuz/chromium
+    if (!browser) {
+      try {
         const chromium = await import('@sparticuz/chromium');
         const executablePath = await chromium.default.executablePath();
-        
         browser = await puppeteer.launch({
-          args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-web-security', '--hide-scrollbars'],
-          defaultViewport: { width: 1920, height: 1080 },
-          executablePath,
           headless: true,
+          args: commonArgs,
+          executablePath,
+          defaultViewport: { width: 1920, height: 1080 },
         });
       } catch (e) {
-        console.warn('Failed to use @sparticuz/chromium, falling back to local puppeteer', e);
-        browser = await puppeteer.launch({
-          headless: true,
-          args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-web-security']
-        });
+        console.warn('Falling back failed for @sparticuz/chromium as well:', e);
       }
-    } else {
-      // Usar Puppeteer local para desarrollo
-      browser = await puppeteer.launch({
-        headless: true,
-        args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-web-security']
-      });
+    }
+
+    if (!browser) {
+      throw new Error('No se pudo iniciar un navegador para generar el PDF. Verifique instalación de Puppeteer/Chrome.');
     }
     
     const page = await browser.newPage();
@@ -334,14 +372,14 @@ export async function generatePDF(
   ...(options.condensed === false ? { width: `${A4_WIDTH_PX}px`, height: `${A4_HEIGHT_PX}px` } : {})
     });
     
-    return Buffer.from(pdfBuffer);
+  return Buffer.from(pdfBuffer);
     
   } catch (error) {
     console.error('Error generating PDF:', error);
     throw error;
   } finally {
     if (browser) {
-      await browser.close();
+      try { await browser.close(); } catch {}
     }
   }
 }

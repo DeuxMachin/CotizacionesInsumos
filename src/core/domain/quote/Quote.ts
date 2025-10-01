@@ -42,6 +42,7 @@ export interface QuoteItem {
   precioUnitario: number;
   descuento?: number;
   subtotal: number;
+  fichaTecnica?: string; // URL de la ficha técnica del producto
 }
 
 // Condiciones comerciales
@@ -106,6 +107,9 @@ export interface Quote {
   
   /** Notas adicionales */
   notas?: string;
+  
+  /** ID de la obra asociada (opcional) */
+  obraId?: number;
   
   /** Fecha de expiración de la oferta */
   fechaExpiracion?: string;

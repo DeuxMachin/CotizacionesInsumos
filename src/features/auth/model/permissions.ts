@@ -29,8 +29,8 @@ export interface Permission {
 
 // Definición de roles y sus permisos
 export const ROLE_PERMISSIONS: Record<string, Permission[]> = {
-  admin: [
-    // Acceso total a todo
+  dueño: [
+    // Acceso total a todo, máximo privilegio
     { resource: 'dashboard', actions: ['read', 'manage'] },
     { resource: 'quotes', actions: ['create', 'read', 'update', 'delete', 'export', 'import'] },
     { resource: 'clients', actions: ['create', 'read', 'update', 'delete', 'export', 'import'] },
@@ -40,6 +40,32 @@ export const ROLE_PERMISSIONS: Record<string, Permission[]> = {
     { resource: 'reports', actions: ['read', 'export', 'manage'] },
     { resource: 'admin', actions: ['read', 'manage'] },
     { resource: 'users', actions: ['create', 'read', 'update', 'delete'] },
+    { resource: 'settings', actions: ['read', 'update', 'manage'] },
+  ],
+  dueno: [
+    // Alias por si se guarda sin ñ
+    { resource: 'dashboard', actions: ['read', 'manage'] },
+    { resource: 'quotes', actions: ['create', 'read', 'update', 'delete', 'export', 'import'] },
+    { resource: 'clients', actions: ['create', 'read', 'update', 'delete', 'export', 'import'] },
+    { resource: 'obras', actions: ['create', 'read', 'update', 'delete', 'manage', 'export'] },
+    { resource: 'targets', actions: ['create', 'read', 'update', 'delete', 'manage'] },
+    { resource: 'stock', actions: ['create', 'read', 'update', 'delete', 'manage'] },
+    { resource: 'reports', actions: ['read', 'export', 'manage'] },
+    { resource: 'admin', actions: ['read', 'manage'] },
+    { resource: 'users', actions: ['create', 'read', 'update', 'delete'] },
+    { resource: 'settings', actions: ['read', 'update', 'manage'] },
+  ],
+  admin: [
+    // Acceso total excepto crear usuarios admin/dueño
+    { resource: 'dashboard', actions: ['read', 'manage'] },
+    { resource: 'quotes', actions: ['create', 'read', 'update', 'delete', 'export', 'import'] },
+    { resource: 'clients', actions: ['create', 'read', 'update', 'delete', 'export', 'import'] },
+    { resource: 'obras', actions: ['create', 'read', 'update', 'delete', 'manage', 'export'] },
+    { resource: 'targets', actions: ['create', 'read', 'update', 'delete', 'manage'] },
+    { resource: 'stock', actions: ['create', 'read', 'update', 'delete', 'manage'] },
+    { resource: 'reports', actions: ['read', 'export', 'manage'] },
+    { resource: 'admin', actions: ['read', 'manage'] },
+    { resource: 'users', actions: ['read', 'update', 'delete'] }, // Sin 'create' para restringir creación de admins
     { resource: 'settings', actions: ['read', 'update', 'manage'] },
   ],
   

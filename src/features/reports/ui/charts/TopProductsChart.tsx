@@ -1,11 +1,12 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { ReportPeriod } from "@/app/dashboard/reportes/page";
-import { reportesService, ReportData } from "@/services/reportesService";
+import { ReportPeriod, ReportType } from "@/app/dashboard/reportes/page";
+import { supabase } from "@/lib/supabase";
 
 interface TopProductsChartProps {
   period: ReportPeriod;
+  reportType: ReportType;
 }
 
 interface ProductData {
@@ -15,6 +16,12 @@ interface ProductData {
   revenue: string;
   color: string;
   percentage: number;
+}
+
+interface ItemRecord {
+  cantidad: number;
+  total_neto: number;
+  productos: { nombre: string } | { nombre: string }[];
 }
 
 // Datos mock para productos más vendidos
@@ -61,7 +68,7 @@ const mockProductsData: ProductData[] = [
   }
 ];
 
-export function TopProductsChart({ period }: TopProductsChartProps) {
+export function TopProductsChart({ period, reportType }: TopProductsChartProps) {
   const [topProducts, setTopProducts] = useState<ProductData[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -71,18 +78,72 @@ export function TopProductsChart({ period }: TopProductsChartProps) {
       try {
         setLoading(true);
         setError(null);
-        const data = await reportesService.getReportData(period);
-        
-        // Convertir datos reales a formato ProductData
-        const products: ProductData[] = data.topProductos.map((producto, index) => ({
+        // Rango de fechas según periodo
+        const now = new Date();
+        const startDate = new Date();
+        switch (period) {
+          case 'Última semana': startDate.setDate(now.getDate() - 6); break;
+          case 'Último mes': startDate.setDate(now.getDate() - 29); break;
+          case 'Últimos 3 meses': startDate.setDate(now.getDate() - 89); break;
+          case 'Últimos 6 meses': startDate.setDate(now.getDate() - 179); break;
+          case 'Último año': startDate.setDate(now.getDate() - 364); break;
+          default: startDate.setDate(now.getDate() - 179);
+        }
+
+        // Traer items según tipo
+        let items: ItemRecord[] = [];
+        if (reportType === 'cotizaciones') {
+          const { data, error: itemsError } = await supabase
+            .from('cotizacion_items')
+            .select(`
+              cantidad,
+              total_neto,
+              productos ( id, nombre ),
+              cotizaciones!inner (created_at)
+            `)
+            .gte('cotizaciones.created_at', startDate.toISOString())
+            .lte('cotizaciones.created_at', now.toISOString());
+          if (itemsError) throw new Error(itemsError.message);
+          items = data || [];
+        } else {
+          const { data, error: itemsError } = await supabase
+            .from('nota_venta_items')
+            .select(`
+              cantidad,
+              total_neto,
+              productos ( id, nombre ),
+              notas_venta:notas_venta!nota_venta_items_nota_venta_id_fkey (fecha_emision)
+            `)
+            .gte('notas_venta.fecha_emision', startDate.toISOString())
+            .lte('notas_venta.fecha_emision', now.toISOString());
+          if (itemsError) throw new Error(itemsError.message);
+          items = data || [];
+        }
+
+        // Agrupar por producto
+        type Agg = { ingresos: number; cantidad: number; nombre: string };
+        const map = new Map<string, Agg>();
+        (items || []).forEach((it: ItemRecord) => {
+          const nombre = (Array.isArray(it.productos) ? (it.productos[0] as { nombre: string })?.nombre : (it.productos as { nombre: string })?.nombre) || 'Producto';
+          const key = nombre;
+          const curr = map.get(key) || { ingresos: 0, cantidad: 0, nombre };
+          curr.ingresos += it.total_neto || 0;
+          curr.cantidad += it.cantidad || 0;
+          map.set(key, curr);
+        });
+
+        // Ordenar por cantidad (ventas), no por ingresos
+        const arr = Array.from(map.values()).sort((a, b) => b.cantidad - a.cantidad).slice(0, 5);
+        const maxCantidad = arr.length ? Math.max(...arr.map(a => a.cantidad)) : 1;
+        const products: ProductData[] = arr.map((p, index) => ({
           rank: index + 1,
-          name: producto.nombre,
-          sales: producto.cantidad,
-          revenue: reportesService.formatCurrency(producto.ingresos),
+          name: p.nombre,
+          sales: p.cantidad,
+          revenue: new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(p.ingresos),
           color: getProductColor(index),
-          percentage: Math.max(20, Math.min(100, (producto.ingresos / Math.max(...data.topProductos.map(p => p.ingresos))) * 100))
+          percentage: index === 0 ? 100 : Math.max(15, (p.cantidad / maxCantidad) * 100)
         }));
-        
+
         setTopProducts(products);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Error al cargar datos');
@@ -93,7 +154,7 @@ export function TopProductsChart({ period }: TopProductsChartProps) {
     };
 
     loadTopProducts();
-  }, [period]);
+  }, [period, reportType]);
 
   // Función para asignar colores a los productos
   const getProductColor = (index: number): string => {
@@ -133,117 +194,128 @@ export function TopProductsChart({ period }: TopProductsChartProps) {
   }
 
   const productsToShow = topProducts.length > 0 ? topProducts : mockProductsData;
+  
+  // Calcular totales dinámicos
+  const totalIngresos = productsToShow.reduce((sum, product) => {
+    const amount = parseInt(product.revenue.replace(/[$.]/g, '').replace(',', '')) || 0;
+    return sum + amount;
+  }, 0);
+  
+  const totalProductos = 83; // Este valor podría venir del endpoint
+  const contribucionPorcentaje = 73; // Este valor podría calcularse dinámicamente
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       {productsToShow.map((product, index) => (
         <div 
           key={product.rank}
-          className="group relative"
+          className="group relative p-2 sm:p-3 rounded-lg transition-colors hover:bg-opacity-50"
+          style={{ backgroundColor: 'var(--bg-secondary)' }}
         >
           {/* Header del producto */}
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center gap-3">
+          <div className="flex items-center justify-between mb-2 sm:mb-3">
+            <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
               <div 
-                className="flex items-center justify-center w-6 h-6 rounded-full text-white text-xs font-bold flex-shrink-0"
+                className="flex items-center justify-center w-7 h-7 sm:w-8 sm:h-8 rounded-full text-white text-xs sm:text-sm font-bold flex-shrink-0 shadow-sm"
                 style={{ backgroundColor: product.color }}
               >
                 #{product.rank}
               </div>
               <div className="min-w-0 flex-1">
-                <h4 className="font-medium text-sm truncate" style={{ color: 'var(--text-primary)' }}>
+                <h4 className="font-semibold text-xs sm:text-sm truncate mb-1" style={{ color: 'var(--text-primary)' }}>
                   {product.name}
                 </h4>
-                <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
+                <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
                   {product.sales} ventas
                 </p>
               </div>
             </div>
-            <div className="text-right flex-shrink-0">
-              <p className="font-bold text-sm" style={{ color: 'var(--text-primary)' }}>
+            <div className="text-right flex-shrink-0 ml-2 sm:ml-4">
+              <p className="font-bold text-sm sm:text-base" style={{ color: 'var(--text-primary)' }}>
                 {product.revenue}
               </p>
+              <div className="mt-1">
+                <span 
+                  className="text-xs font-medium px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full"
+                  style={{ 
+                    backgroundColor: product.color + '20',
+                    color: product.color
+                  }}
+                >
+                  {Math.round(product.percentage)}%
+                </span>
+              </div>
             </div>
           </div>
 
-          {/* Barra de progreso animada */}
+          {/* Barra de progreso mejorada */}
           <div className="relative">
             <div 
-              className="h-3 rounded-full overflow-hidden"
-              style={{ backgroundColor: 'var(--bg-tertiary)' }}
+              className="h-2 rounded-full overflow-hidden"
+              style={{ backgroundColor: 'var(--border-subtle)' }}
             >
               <div 
                 className="h-full transition-all duration-1000 ease-out rounded-full relative"
                 style={{ 
                   backgroundColor: product.color,
-                  width: `${product.percentage}%`
+                  width: `${product.percentage}%`,
+                  boxShadow: `0 0 10px ${product.color}40`
                 }}
               >
-                {/* Efecto de brillo */}
+                {/* Efecto de brillo animado */}
                 <div 
-                  className="absolute inset-0 bg-white bg-opacity-20 rounded-full"
-                  style={{
-                    background: `linear-gradient(45deg, transparent 30%, rgba(255,255,255,0.2) 50%, transparent 70%)`
-                  }}
+                  className="absolute inset-0 bg-gradient-to-r from-transparent via-white to-transparent opacity-30 rounded-full animate-pulse"
                 />
               </div>
-            </div>
-            
-            {/* Porcentaje flotante */}
-            <div 
-              className="absolute right-2 top-0.5 text-xs font-medium text-white"
-              style={{ textShadow: '0 1px 2px rgba(0,0,0,0.5)' }}
-            >
-              {product.percentage}%
             </div>
           </div>
         </div>
       ))}
 
       {/* Resumen total con diseño mejorado */}
-      <div className="mt-6 pt-4 border-t" style={{ borderColor: 'var(--border-subtle)' }}>
-        <div 
-          className="p-4 rounded-lg"
-          style={{ backgroundColor: 'var(--bg-secondary)' }}
-        >
-          <div className="grid grid-cols-2 gap-4 text-center">
-            <div>
-              <p className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>
-                83
-              </p>
-              <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
-                Productos activos
-              </p>
-            </div>
-            <div>
-              <p className="text-lg font-bold text-green-600 dark:text-green-400">
-                $99,475
-              </p>
-              <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
-                Ingresos Top 5
-              </p>
-            </div>
+      <div className="mt-6 pt-4">
+        <div className="grid grid-cols-2 gap-6 mb-4">
+          <div className="text-center">
+            <p className="text-2xl font-bold mb-1" style={{ color: 'var(--text-primary)' }}>
+              {totalProductos}
+            </p>
+            <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+              Productos activos
+            </p>
           </div>
-          
-          {/* Barra de contribución total */}
-          <div className="mt-4">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>
-                Contribución al total
-              </span>
-              <span className="text-xs font-medium" style={{ color: 'var(--text-primary)' }}>
-                73%
-              </span>
-            </div>
+          <div className="text-center">
+            <p className="text-2xl font-bold mb-1" 
+               style={{ color: 'var(--success-text)' }}>
+              {new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(totalIngresos)}
+            </p>
+            <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+              Ingresos Top 5
+            </p>
+          </div>
+        </div>
+        
+        {/* Barra de contribución total */}
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
+              Contribución al total
+            </span>
+            <span className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>
+              {contribucionPorcentaje}%
+            </span>
+          </div>
+          <div 
+            className="h-3 rounded-full overflow-hidden"
+            style={{ backgroundColor: 'var(--border-subtle)' }}
+          >
             <div 
-              className="h-2 rounded-full"
-              style={{ backgroundColor: 'var(--bg-tertiary)' }}
-            >
-              <div 
-                className="h-full bg-gradient-to-r from-purple-500 to-blue-500 rounded-full transition-all duration-700"
-                style={{ width: '73%' }}
-              />
-            </div>
+              className="h-full rounded-full transition-all duration-1000 ease-out"
+              style={{ 
+                background: 'linear-gradient(90deg, #8b5cf6 0%, #06b6d4 100%)',
+                width: `${contribucionPorcentaje}%`,
+                boxShadow: '0 0 15px rgba(139, 92, 246, 0.3)'
+              }}
+            />
           </div>
         </div>
       </div>

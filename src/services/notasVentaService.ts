@@ -19,6 +19,7 @@ export interface SalesNoteItemInput {
 
 export interface SalesNoteInput {
   folio?: string | null;
+  Numero_Serie?: string | null;
   cotizacion_id?: number | null;
   vendedor_id?: string | null;
   cliente_principal_id?: number | null;
@@ -47,7 +48,7 @@ export interface SalesNoteInput {
   ciudad_despacho?: string | null;
   costo_despacho?: number | null;
   fecha_estimada_entrega?: string | null;
-  estado?: 'borrador' | 'confirmada' | 'anulada';
+  estado?: 'creada' | 'confirmada';
 }
 
 export interface SalesNoteRecord extends SalesNoteInput {
@@ -62,11 +63,12 @@ export interface SalesNoteRecord extends SalesNoteInput {
 // Precise row types from Supabase schema
 export type SalesNoteRow = Database['public']['Tables']['notas_venta']['Row'];
 export type SalesNoteItemRow = Database['public']['Tables']['nota_venta_items']['Row'];
+type ProductJoin = { id: number; nombre: string; ficha_tecnica: string | null };
 
 export class NotasVentaService {
   // Columnas reales según DDL (evita usar columnas antiguas como forma_pago)
   private static readonly SELECT_COLS = [
-    'id','folio','cotizacion_id','vendedor_id','cliente_principal_id','obra_id',
+    'id','folio','Numero_Serie','cotizacion_id','vendedor_id','cliente_principal_id','obra_id',
     'cliente_rut','cliente_razon_social','cliente_giro','cliente_direccion','cliente_comuna','cliente_ciudad',
     'fecha_emision','estado','confirmed_at','forma_pago_final','plazo_pago','observaciones_comerciales',
     'direccion_despacho','comuna_despacho','ciudad_despacho','costo_despacho','fecha_estimada_entrega',
@@ -74,21 +76,37 @@ export class NotasVentaService {
     'iva_pct','iva_monto','total','hash_documento','created_at','updated_at'
   ].join(',');
   static async generateFolio() {
-    // Similar a cotizaciones pero prefijo NV
-    const { data, error } = await supabase
-      .from('notas_venta')
-      .select('folio')
-      .not('folio', 'is', null)
-      .order('id', { ascending: false })
-      .limit(1);
-    if (error) throw error;
-    if (!data || data.length === 0 || !data[0].folio) return 'NV-0001';
-    const match = data[0].folio.match(/NV-(\d+)/);
-    if (match) {
-      const next = parseInt(match[1]) + 1;
-      return `NV-${next.toString().padStart(4,'0')}`;
+    // Usar la tabla document_series para generar el numero_serie
+    const currentYear = new Date().getFullYear();
+
+    // Buscar la serie activa para notas de venta
+    const { data: series, error: seriesError } = await supabase
+      .from('document_series')
+      .select('*')
+      .eq('doc_tipo', 'nota_venta')
+      .eq('anio', currentYear)
+      .eq('activo', true)
+      .single();
+
+    if (seriesError || !series) {
+      throw new Error(`No se encontró una serie de documentos activa para notas de venta del año ${currentYear}`);
     }
-    return 'NV-0001';
+
+    // Incrementar el último número
+    const nextNumber = series.ultimo_numero + 1;
+    const numeroSerie = `${series.prefijo}${nextNumber.toString().padStart(series.largo, '0')}`;
+
+    // Actualizar el último número en la base de datos
+    const { error: updateError } = await supabase
+      .from('document_series')
+      .update({ ultimo_numero: nextNumber })
+      .eq('id', series.id);
+
+    if (updateError) {
+      throw new Error(`Error al actualizar el contador de serie de documentos: ${updateError.message}`);
+    }
+
+    return numeroSerie;
   }
 
   /** Elimina una nota de venta y todos sus ítems */
@@ -121,23 +139,30 @@ export class NotasVentaService {
   }
 
   static async create(nota: SalesNoteInput, items: SalesNoteItemInput[]) {
+    console.debug('[NotasVentaService.create] salesNote input:', nota);
     // Inserta cabecera
     // Solo columnas existentes en la tabla notas_venta (según DDL entregado)
     const allowedKeys: (keyof SalesNoteInput | 'folio')[] = [
-      'folio','cotizacion_id','vendedor_id','cliente_principal_id','obra_id','cliente_rut','cliente_razon_social','cliente_giro','cliente_direccion','cliente_comuna','cliente_ciudad','forma_pago_final','plazo_pago','observaciones_comerciales','direccion_despacho','comuna_despacho','ciudad_despacho','costo_despacho','fecha_estimada_entrega','subtotal','descuento_lineas_monto','descuento_global_monto','descuento_total','subtotal_neto_post_desc','iva_pct','iva_monto','total','estado'
+      'folio','Numero_Serie','cotizacion_id','vendedor_id','cliente_principal_id','obra_id','cliente_rut','cliente_razon_social','cliente_giro','cliente_direccion','cliente_comuna','cliente_ciudad','forma_pago_final','plazo_pago','observaciones_comerciales','direccion_despacho','comuna_despacho','ciudad_despacho','costo_despacho','fecha_estimada_entrega','subtotal','descuento_lineas_monto','descuento_global_monto','descuento_total','subtotal_neto_post_desc','iva_pct','iva_monto','total','estado'
     ];
-    const base: Partial<SalesNoteInput> & { folio: string | null } = { ...nota, folio: nota.folio || await this.generateFolio() };
+    const base: Partial<SalesNoteInput> & { folio: string | null } = {
+      ...nota,
+      folio: nota.folio || (nota.Numero_Serie ? `NV-${nota.Numero_Serie}` : `NV-${Date.now()}`)
+    };
     const insertPayload: Record<string, unknown> = {};
     for (const k of allowedKeys) {
       if (base[k] !== undefined) insertPayload[k] = base[k];
     }
-    if (!insertPayload.vendedor_id) throw new Error('vendedor_id requerido para crear nota de venta');
+    if (!insertPayload.vendedor_id) {
+      console.error('[NotasVentaService.create] vendedor_id faltante. salesNote:', nota);
+      throw new Error('vendedor_id requerido para crear nota de venta. Verifica que la cotización tenga un vendedor asignado.');
+    }
     if (!insertPayload.estado) insertPayload.estado = 'borrador';
     console.debug('[NotasVentaService.create] insertPayload', insertPayload);
     const { data: notaInsert, error: notaError } = await supabase
       .from('notas_venta')
       .insert(insertPayload)
-      .select(this.SELECT_COLS)
+      .select('id, folio, Numero_Serie, cotizacion_id, vendedor_id, cliente_principal_id, estado, created_at')
       .single();
     if (notaError) {
       console.error('[NotasVentaService.create] Error insert notas_venta', notaError);
@@ -181,6 +206,101 @@ export class NotasVentaService {
         throw new Error(errMsg);
       }
     }
+    // Actualizar saldos del cliente al crear nota de venta (mueve de cotizado a pendiente)
+    try {
+      const clienteId = (notaInsert as unknown as SalesNoteRow).cliente_principal_id as number | null;
+      const total = (notaInsert as unknown as SalesNoteRow).total as number;
+      const notaVentaId = (notaInsert as unknown as SalesNoteRow).id as number;
+      console.log('[NotasVentaService.create] Procesando CxC:', { clienteId, total, notaVentaId });
+
+      if (clienteId && total && total > 0) {
+        // Crear documento CxC para la nota de venta
+        const cxcData = {
+          cliente_id: clienteId,
+          nota_venta_id: notaVentaId,
+          doc_tipo: 'nota_venta',
+          moneda: 'CLP', // Asumiendo CLP por defecto, ajustar si es necesario
+          monto_total: total,
+          saldo_pendiente: total,
+          fecha_emision: new Date().toISOString().split('T')[0],
+          estado: 'pendiente'
+        };
+        console.log('[NotasVentaService.create] Creando documento CxC:', cxcData);
+
+        const { error: cxcError } = await supabase
+          .from('cxc_documentos')
+          .insert(cxcData);
+        if (cxcError) {
+          console.error('[NotasVentaService.create] Error creando documento CxC', cxcError);
+          throw new Error(`Fallo al crear documento CxC: ${cxcError.message}`);
+        }
+
+        console.log('[NotasVentaService.create] Documento CxC creado exitosamente');
+
+        // Actualizar dinero_cotizado en cliente_saldos
+        const { data: saldoActual } = await supabase
+          .from('cliente_saldos')
+          .select('id, dinero_cotizado, pendiente, pagado')
+          .eq('cliente_id', clienteId)
+          .order('snapshot_date', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        console.log('[NotasVentaService.create] Saldo actual del cliente:', saldoActual);
+
+        if (saldoActual) {
+          const nuevoCotizado = Math.max(0, (saldoActual.dinero_cotizado || 0) - total);
+          const nuevoPendiente = (saldoActual.pendiente || 0) + total;
+          console.log('[NotasVentaService.create] Actualizando saldo existente:', {
+            id: saldoActual.id,
+            dineroCotizadoActual: saldoActual.dinero_cotizado,
+            nuevoCotizado,
+            pendienteActual: saldoActual.pendiente,
+            nuevoPendiente,
+            pagadoActual: saldoActual.pagado
+          });
+
+          const { error: saldoError } = await supabase
+            .from('cliente_saldos')
+            .update({
+              dinero_cotizado: nuevoCotizado,
+              pendiente: nuevoPendiente
+              // pagado no se toca aquí, solo se actualiza con pagos
+            })
+            .eq('id', saldoActual.id);
+          if (saldoError) {
+            console.error('[NotasVentaService.create] Error actualizando cliente_saldos', saldoError);
+            throw new Error(`Fallo al actualizar saldos del cliente: ${saldoError.message}`);
+          } else {
+            console.log('[NotasVentaService.create] cliente_saldos actualizado exitosamente:', { id: saldoActual.id, pendiente: nuevoPendiente });
+          }
+        } else {
+          // Si no existe registro en cliente_saldos, crear uno con pagado = 0
+          const nuevoSaldo = {
+            cliente_id: clienteId,
+            snapshot_date: new Date().toISOString().split('T')[0],
+            pagado: 0, // Pagos acumulados, inicia en 0
+            pendiente: total, // El monto de la venta pasa a pendiente
+            vencido: 0,
+            dinero_cotizado: 0 // Ya no está cotizado
+          };
+          console.log('[NotasVentaService.create] Creando nuevo registro en cliente_saldos:', nuevoSaldo);
+
+          const { error: saldoError } = await supabase
+            .from('cliente_saldos')
+            .insert(nuevoSaldo);
+          if (saldoError) {
+            console.error('[NotasVentaService.create] Error creando registro en cliente_saldos', saldoError);
+            throw new Error(`Fallo al crear registro de saldos del cliente: ${saldoError.message}`);
+          } else {
+            console.log('[NotasVentaService.create] cliente_saldos creado exitosamente:', nuevoSaldo);
+          }
+        }
+      }
+    } catch (e) {
+      console.error('[NotasVentaService.create] Error en integración CxC', e);
+      throw e; // Re-throw to fail the creation if CxC fails
+    }
     return notaInsert as unknown as SalesNoteRecord;
   }
 
@@ -197,11 +317,18 @@ export class NotasVentaService {
   static async getItems(notaVentaId: number) {
   const { data, error } = await supabase
       .from('nota_venta_items')
-      .select('*')
+      .select(`
+        *,
+        productos (
+          id,
+          nombre,
+          ficha_tecnica
+        )
+      `)
       .eq('nota_venta_id', notaVentaId)
       .order('id', { ascending: true });
     if (error) throw error;
-  return data as SalesNoteItemRow[];
+  return data as (SalesNoteItemRow & { productos?: ProductJoin })[];
   }
 
   static async addItem(notaVentaId: number, item: SalesNoteItemInput) {
@@ -266,6 +393,16 @@ export class NotasVentaService {
     return data as unknown as SalesNoteRecord | null;
   }
 
+  static async getByObraId(obraId: number): Promise<SalesNoteRecord[]> {
+    const { data, error } = await supabase
+      .from('notas_venta')
+      .select(this.SELECT_COLS)
+      .eq('obra_id', obraId)
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+    return data as unknown as SalesNoteRecord[];
+  }
+
   static async update(notaVentaId: number, patch: Partial<SalesNoteInput>) {
     const { data, error } = await supabase
       .from('notas_venta')
@@ -305,6 +442,8 @@ export class NotasVentaService {
       clienteDireccion?: string | null;
       clienteComuna?: string | null;
       clienteCiudad?: string | null;
+      folio?: string; // Manual folio
+      numeroSerie?: string; // Manual numero serie
     } = {}
   ) {
     const itemsSource = options.itemsOverride ?? quote.items;
@@ -325,6 +464,8 @@ export class NotasVentaService {
     const total = subtotalNetoPostDesc + ivaMonto;
 
     const salesNote: SalesNoteInput = {
+      folio: options.folio || null, // Use manual folio if provided, else null for auto-generate
+      Numero_Serie: options.numeroSerie || null, // Use manual numero serie if provided
       cotizacion_id: options.cotizacionDbId ?? null,
       vendedor_id: options.vendedorId ?? quote.vendedorId ?? null,
       cliente_principal_id: options.clientePrincipalId ?? null,
@@ -351,7 +492,7 @@ export class NotasVentaService {
       direccion_despacho: quote.despacho?.direccion || null,
       comuna_despacho: quote.despacho?.comuna || null,
       ciudad_despacho: quote.despacho?.ciudad || null,
-      estado: options.finalizarInmediatamente ? 'confirmada' : 'borrador',
+      estado: options.finalizarInmediatamente ? 'confirmada' : 'creada',
       observaciones_comerciales: quote.condicionesComerciales?.observaciones || null,
     };
 
@@ -375,6 +516,28 @@ export class NotasVentaService {
     });
 
     return this.create(salesNote, items);
+  }
+
+  /** Obtiene todas las notas de venta ordenadas por fecha de creación descendente */
+  static async getAll(): Promise<SalesNoteRecord[]> {
+    const { data, error } = await supabase
+      .from('notas_venta')
+      .select(this.SELECT_COLS)
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+    return data as unknown as SalesNoteRecord[];
+  }
+
+  static async getByClient(clienteId: number): Promise<SalesNoteRecord[]> {
+    const { data, error } = await supabase
+      .from('notas_venta')
+      .select(this.SELECT_COLS)
+      .eq('cliente_principal_id', clienteId)
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+    return data as unknown as SalesNoteRecord[];
   }
 }
 

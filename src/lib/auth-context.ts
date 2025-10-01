@@ -1,6 +1,8 @@
 import { NextRequest } from 'next/server'
 import { supabase } from '@/lib/supabase'
-import { getCurrentUserSimple } from '@/lib/auth-simple'
+// Eliminamos dependencia del fallback antiguo basado en headers para evitar
+// la suplantación automática de un usuario admin por defecto.
+import { verifyToken, type JWTPayload } from '@/lib/auth/tokens'
 
 export interface UserContext {
   id: string
@@ -15,22 +17,41 @@ export interface UserContext {
  */
 export async function getUserContext(request: NextRequest): Promise<UserContext | null> {
   try {
-    // Obtener usuario desde headers/sesión
-    const user = await getCurrentUserSimple(request)
-    
-    if (!user) {
+    // Extraer JWT desde cookie HttpOnly
+    const token = request.cookies.get('auth-token')?.value
+    if (!token) {
+      return null
+    }
+    let decoded: { sub: string; email?: string; nombre?: string; apellido?: string; rol?: string; type?: string }
+    try {
+      decoded = await verifyToken(token)
+    } catch {
       return null
     }
 
-    // Verificar si el usuario es administrador
-    const isAdmin = await checkIfUserIsAdmin(user.email, user.id)
+    const user = {
+      id: decoded.sub as string,
+      email: decoded.email as string,
+      nombre: decoded.nombre as string | undefined,
+      apellido: decoded.apellido as string | undefined,
+      rol: (decoded.rol as string | undefined)
+    }
+    console.log('🔍 getUserContext - User from JWT:', user)
 
-    return {
+    // Verificar si el usuario es administrador
+  const isAdmin = await checkIfUserIsAdmin(user.email, user.id)
+    
+    console.log('🔍 getUserContext - Admin check result:', { email: user.email, isAdmin })
+
+    const context = {
       id: user.id,
       email: user.email,
       isAdmin,
       isAuthenticated: true
     }
+    
+    console.log('✅ getUserContext - Final context:', context)
+    return context
   } catch (error) {
     console.error('❌ Error getting user context:', error)
     return null
@@ -38,10 +59,14 @@ export async function getUserContext(request: NextRequest): Promise<UserContext 
 }
 
 /**
- * Verifica si un usuario es administrador consultando la base de datos
+ * Verifica si un usuario es administrador o dueño consultando la base de datos
  */
 export async function checkIfUserIsAdmin(email: string, userId?: string): Promise<boolean> {
   try {
+    // Para el usuario por defecto del sistema, verificar email específico
+    // Ya no forzamos admin por email estático; validamos siempre contra BD.
+    // (Podríamos mantener un super-admin config, pero se elimina fallback inseguro.)
+
     // Consultar la tabla usuarios para verificar el rol
     const { data: userData, error } = await supabase
       .from('usuarios')
@@ -51,18 +76,22 @@ export async function checkIfUserIsAdmin(email: string, userId?: string): Promis
       .single()
     
     if (error || !userData) {
-      return false
+  console.log('⚠️ Usuario no encontrado o inactivo en BD')
+  return false
     }
 
-    return userData.rol === 'admin'
+    console.log('✅ Usuario verificado en BD:', { email, rol: userData.rol })
+  return ['admin', 'dueño', 'dueno'].includes(userData.rol?.toLowerCase())
   } catch (error) {
     console.error('❌ Error checking admin status:', error)
-    return false
+    // Fallback: si hay error pero es el email admin por defecto
+  return false
   }
 }
 
 /**
  * Verifica si el usuario actual puede ver todos los logs de auditoría
+ * (administradores y dueños)
  */
 export async function canViewAllAuditLogs(request: NextRequest): Promise<boolean> {
   const userContext = await getUserContext(request)
@@ -80,7 +109,7 @@ export async function getUserIdForAuditFilter(request: NextRequest): Promise<str
   }
   
   if (userContext.isAdmin) {
-    // Los admins pueden ver todos los logs
+    // Los admins y dueños pueden ver todos los logs
     return null
   }
   

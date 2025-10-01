@@ -3,9 +3,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from 'next/navigation';
 import { type ClientExtended, type ClientStatus, mapRowToClientExtended } from "../model/clientsExtended";
-import type { ClienteRow } from '../model/clients';
+import type { ClienteRowWithType } from '../model/clients';
 import { Toast } from "@/shared/ui/Toast";
-import { useAuth } from "@/features/auth/model/useAuth";
+import { useAuth } from "@/contexts/AuthContext";
 import { useActionAuthorization } from "@/middleware/AuthorizationMiddleware";
 import { ClientFiltersPanel } from "./ClientFiltersPanel";
 import { downloadFileFromResponse } from "@/lib/download";
@@ -37,6 +37,7 @@ interface ClientCardProps {
   formatMoney: (amount: number) => string;
   onEliminar: (clientId: number) => void;
   onVerDetalle: (client: ClientExtended) => void;
+  onEditar: (client: ClientExtended) => void;
   financial?: { movimientos: number; porCobrar: number };
 }
 
@@ -46,6 +47,7 @@ interface ClientsTableProps {
   formatMoney: (amount: number) => string;
   onEliminar: (clientId: number) => void;
   onVerDetalle: (client: ClientExtended) => void;
+  onEditar: (client: ClientExtended) => void;
   financialMap: Record<number, { movimientos: number; porCobrar: number }>;
 }
 
@@ -78,6 +80,8 @@ export function ClientsPage() {
   interface QuoteRow { cliente_principal_id?: number | null; total_final?: number | null; total_neto?: number | null; estado?: string | null; }
   const [quotesAgg, setQuotesAgg] = useState<Record<number, QuoteAgg>>({});
   const [, setQuotesLoading] = useState(false);
+    const [salesNotesTotal, setSalesNotesTotal] = useState(0); // Total vendido (fn_total_ventas_nv o fallback)
+  const [ventasMethod, setVentasMethod] = useState<'rpc' | 'fallback' | 'error' | null>(null);
 
   // Fetch de clientes
   useEffect(() => {
@@ -85,11 +89,16 @@ export function ClientsPage() {
     async function load() {
       try {
         setLoading(true); setError(null);
-        const url = searchTerm.length > 1 ? `/api/clientes?search=${encodeURIComponent(searchTerm)}` : '/api/clientes';
+        // Si el término de búsqueda parece un RUT (contiene puntos o guión) o es numérico
+        // recuperamos todo y filtramos client-side para poder ignorar los puntos
+        const isRutLike = /[.\-]/.test(searchTerm) || /^\d+$/.test(searchTerm);
+        const url = searchTerm.length > 1 && !isRutLike
+          ? `/api/clientes?search=${encodeURIComponent(searchTerm)}`
+          : '/api/clientes';
         const res = await fetch(url, { signal: controller.signal });
         if (!res.ok) throw new Error('Error al cargar clientes');
         const body = await res.json();
-  const rows = (body.data || []) as ClienteRow[];
+  const rows = (body.data || []) as ClienteRowWithType[];
   setClients(rows.map(r => mapRowToClientExtended(r)));
       } catch (e: unknown) {
         if (e instanceof DOMException && e.name === 'AbortError') return;
@@ -129,14 +138,88 @@ export function ClientsPage() {
     loadQuotes();
     return () => { cancelled = true; };
   }, []);
+
+  // Cargar total vendido desde función Postgres (RPC) o fallback
+  useEffect(() => {
+    let cancelled = false;
+    async function loadTotalVendido() {
+      try {
+        const res = await fetch('/api/reportes/ventas/total');
+        if (res.ok) {
+          const body = await res.json();
+          if (body?.success) {
+            const total = body?.data?.total ?? 0;
+            const method = body?.data?.methodUsed || 'rpc';
+            if (!cancelled) {
+              setSalesNotesTotal(Number(total) || 0);
+              setVentasMethod(method);
+            }
+            return;
+          }
+        }
+        // Si llega aquí, el endpoint falló o no fue exitoso
+        console.warn('Endpoint /api/reportes/ventas/total falló, usando fallback');
+      } catch (e) {
+        console.warn('Error en endpoint principal, usando fallback:', e instanceof Error ? e.message : 'Error desconocido');
+      }
+
+      // Fallback: usar endpoint existente de reportes
+      try {
+        const resNv = await fetch('/api/reportes?period=Último año');
+        if (resNv.ok) {
+          const body = await resNv.json();
+          const total = body?.kpis?.totalVentas?.value ?? 0;
+          if (!cancelled) {
+            setSalesNotesTotal(Number(total) || 0);
+            setVentasMethod('fallback');
+          }
+        } else {
+          console.warn('Fallback también falló');
+          if (!cancelled) setVentasMethod('error');
+        }
+      } catch (inner) {
+        console.warn('Fallback secundario falló:', inner instanceof Error ? inner.message : 'Error desconocido');
+        if (!cancelled) setVentasMethod('error');
+      }
+    }
+    loadTotalVendido();
+    return () => { cancelled = true; };
+  }, []);
   
   const pageSize = 9; // 3 filas x 3 columnas
-  const isAdmin = user?.rol?.toLowerCase() === 'admin';
+  const isAdmin = ['admin', 'dueño', 'dueno'].includes(user?.role?.toLowerCase() || '');
 
   // Filtros y datos procesados
   const data = useMemo(() => {
     let out = [...clients];
-    
+
+    // Normalizador de RUT que ignora puntos (mantiene guión)
+    const normalizeRutDotsOnly = (v: string) => (v || '').replace(/\./g, '').toUpperCase();
+
+    // Filtro por búsqueda (local), incluyendo comparación de RUT ignorando puntos
+    if (searchTerm.trim()) {
+      const q = searchTerm.trim().toLowerCase();
+      const qRutNoDots = normalizeRutDotsOnly(searchTerm);
+      out = out.filter((c) => {
+        const razon = (c.razonSocial || '').toLowerCase();
+        const giro = (c.giro || '').toLowerCase();
+        const dir = (c.direccion || '').toLowerCase();
+        const comuna = (c.comuna || '').toLowerCase();
+        const region = (c.region || '').toLowerCase();
+        const contacto = (c.contactoNombre || '').toLowerCase();
+        const contactoEmail = (c.contactoEmail || '').toLowerCase();
+        const rut = c.rut || '';
+        const rutNoDots = normalizeRutDotsOnly(rut);
+        // Coincidencia por texto general o por RUT ignorando puntos
+        return (
+          razon.includes(q) || giro.includes(q) || dir.includes(q) ||
+          comuna.includes(q) || region.includes(q) || contacto.includes(q) ||
+          contactoEmail.includes(q) ||
+          (qRutNoDots.length > 1 && rutNoDots.includes(qRutNoDots))
+        );
+      });
+    }
+
     // Aplicar filtro de estado
     if (selectedStates.length > 0) {
       out = out.filter((c) => selectedStates.includes(c.status));
@@ -147,7 +230,7 @@ export function ClientsPage() {
       out = out.filter((c) => selectedRegions.includes(c.region));
     }
     return out;
-  }, [clients, selectedStates, selectedRegions]);
+  }, [clients, selectedStates, selectedRegions, searchTerm]);
 
   // Estadísticas
   const stats = useMemo(() => {
@@ -155,34 +238,54 @@ export function ClientsPage() {
     const vigentes = clients.filter(c => c.status === 'vigente').length;
     const morosos = clients.filter(c => c.status === 'moroso').length;
     const inactivos = clients.filter(c => c.status === 'inactivo').length;
-    // Financiero: usamos agregados de cotizaciones.
-    // Asunción temporal: totalFacturado = suma de cotizaciones en estado 'aprobada'
-    // PorCobrar = suma de cotizaciones en estado 'enviada' + 'borrador' (potenciales) + 'aprobada' aún no convertidas (sin tabla de pagos todavía)
-    let totalFacturado = 0;
+    
+    // Financiero: usar cliente_saldos para datos reales
     let totalPorCobrar = 0;
-    Object.values(quotesAgg).forEach(v => {
-      const aprobada = v.estadoTotals['aprobada'] || 0;
-      totalFacturado += aprobada;
-      const enviada = v.estadoTotals['enviada'] || 0;
-      const borrador = v.estadoTotals['borrador'] || 0;
-      const aprobadaPend = aprobada; // hasta tener pagos se suma también a por cobrar
-      totalPorCobrar += enviada + borrador + aprobadaPend;
+    
+    // Sumar valores de cliente_saldos para todos los clientes
+    clients.forEach(client => {
+      const saldos = client.cliente_saldos || [];
+      const saldoMasReciente = saldos
+        .slice()
+        .sort((a, b) => new Date(b.snapshot_date).getTime() - new Date(a.snapshot_date).getTime())[0];
+      
+      if (saldoMasReciente) {
+        // Por cobrar = pendiente (solo lo que está pendiente de pago)
+        totalPorCobrar += saldoMasReciente.pendiente || 0;
+      }
     });
-    return { total, vigentes, morosos, inactivos, totalFacturado, totalPorCobrar };
-  }, [clients, quotesAgg]);
+    
+    return { total, vigentes, morosos, inactivos, totalVendido: salesNotesTotal, totalPorCobrar };
+  }, [clients, salesNotesTotal]);
 
   // Mapa financiero por cliente para reutilizar en tarjetas y tabla
   const financialByClient = useMemo(() => {
+    // Preferir valores de cliente_saldos si existen, sino usar agregados de cotizaciones
     const m: Record<number, { movimientos: number; porCobrar: number }> = {};
-    for (const [cidStr, v] of Object.entries(quotesAgg)) {
-      const cid = Number(cidStr);
-      const et = v.estadoTotals;
-      const movimientos = v.total;
-      const porCobrar = (et['borrador'] || 0) + (et['enviada'] || 0) + (et['aprobada'] || 0);
-      m[cid] = { movimientos, porCobrar };
+    for (const c of clients) {
+      const saldos = c.cliente_saldos || [];
+      const saldo = saldos
+        .slice()
+        .sort((a, b) => new Date(b.snapshot_date).getTime() - new Date(a.snapshot_date).getTime())[0];
+      if (saldo && (saldo.pagado > 0 || saldo.pendiente > 0 || saldo.vencido > 0 || (saldo.dinero_cotizado || 0) > 0)) {
+        // Usar saldos
+        const movimientos = (saldo.pagado || 0) + (saldo.pendiente || 0) + (saldo.dinero_cotizado || 0) + (saldo.vencido || 0);
+        const porCobrar = saldo.pendiente || 0; // Solo pendiente
+        m[c.id] = { movimientos, porCobrar };
+      } else {
+        // Fallback a agregados de cotizaciones
+        const v = quotesAgg[c.id];
+        if (v) {
+          const movimientos = v.total;
+          const porCobrar = 0; // No usar cotizaciones para por cobrar
+          m[c.id] = { movimientos, porCobrar };
+        } else {
+          m[c.id] = { movimientos: 0, porCobrar: 0 };
+        }
+      }
     }
     return m;
-  }, [quotesAgg]);
+  }, [clients, quotesAgg]);
 
   // Paginación
   const totalPages = Math.max(1, Math.ceil(data.length / pageSize));
@@ -234,6 +337,10 @@ export function ClientsPage() {
 
   const handleVerDetalle = (client: ClientExtended) => {
     router.push(`/dashboard/clientes/${client.id}`);
+  };
+
+  const handleEditar = (client: ClientExtended) => {
+    router.push(`/dashboard/clientes/${client.id}?edit=true`);
   };
 
   const handleExport = async () => {
@@ -538,10 +645,10 @@ export function ClientsPage() {
             </div>
             <div>
               <div className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>
-                {formatCLP(stats.totalFacturado)}
+                {formatCLP(stats.totalVendido)}
               </div>
               <div className="text-xs" style={{ color: 'var(--text-secondary)' }}>
-                Total Facturado
+                Total Vendido
               </div>
             </div>
           </div>
@@ -584,6 +691,7 @@ export function ClientsPage() {
               formatMoney={formatCLP}
               onEliminar={handleEliminar}
               onVerDetalle={handleVerDetalle}
+              onEditar={handleEditar}
               financial={financialByClient[client.id]}
             />
           ))}
@@ -596,6 +704,7 @@ export function ClientsPage() {
             formatMoney={formatCLP}
             onEliminar={handleEliminar}
             onVerDetalle={handleVerDetalle}
+            onEditar={handleEditar}
             financialMap={financialByClient}
           />
         )
@@ -701,11 +810,11 @@ export function ClientsPage() {
 }
 
 // Componente para tarjeta individual de cliente
-function ClientCard({ client, getStatusColor, formatMoney, onEliminar, onVerDetalle, financial }: ClientCardProps) {
+function ClientCard({ client, getStatusColor, formatMoney, onEliminar, onVerDetalle, onEditar, financial }: ClientCardProps) {
   const { canEdit, canDelete } = useActionAuthorization();
   const statusColor = getStatusColor(client.status);
   const totalMovimientos = financial?.movimientos ?? (client.paid + client.pending + client.partial + client.overdue);
-  const totalPorCobrar = financial?.porCobrar ?? (client.pending + client.partial + client.overdue);
+  const totalPorCobrar = financial?.porCobrar ?? client.pending;
   
   return (
     <div
@@ -822,7 +931,7 @@ function ClientCard({ client, getStatusColor, formatMoney, onEliminar, onVerDeta
               <button
                 onClick={(e) => {
                   e.stopPropagation();
-                  Toast.info(`Editando ${client.razonSocial}`);
+                  onEditar(client);
                 }}
                 className="p-1 rounded transition-colors"
                 style={{ color: 'var(--text-secondary)' }}
@@ -859,7 +968,7 @@ function ClientCard({ client, getStatusColor, formatMoney, onEliminar, onVerDeta
 }
 
 // Componente para vista de tabla
-function ClientsTable({ clients, getStatusColor, formatMoney, onEliminar, onVerDetalle, financialMap }: ClientsTableProps) {
+function ClientsTable({ clients, getStatusColor, formatMoney, onEliminar, onVerDetalle, onEditar, financialMap }: ClientsTableProps) {
   const { canEdit, canDelete } = useActionAuthorization();
   
   return (
@@ -896,7 +1005,7 @@ function ClientsTable({ clients, getStatusColor, formatMoney, onEliminar, onVerD
               const statusColor = getStatusColor(client.status);
               const fin = financialMap[client.id];
               const totalMovimientos = fin?.movimientos ?? (client.paid + client.pending + client.partial + client.overdue);
-              const totalPorCobrar = fin?.porCobrar ?? (client.pending + client.partial + client.overdue);
+              const totalPorCobrar = fin?.porCobrar ?? client.pending;
               
               return (
                 <tr 
@@ -970,7 +1079,7 @@ function ClientsTable({ clients, getStatusColor, formatMoney, onEliminar, onVerD
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
-                            Toast.info(`Editando ${client.razonSocial}`);
+                            onEditar(client);
                           }}
                           className="p-1 rounded transition-colors"
                           style={{ color: 'var(--text-secondary)' }}

@@ -1,14 +1,26 @@
 "use client";
 
 import { ReportPeriod } from "@/app/dashboard/reportes/page";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
+import { supabase } from "@/lib/supabase";
 
 interface SalesTrendChartProps {
   period: ReportPeriod;
 }
 
-// Datos mock mejorados para el gráfico de líneas
-const mockSalesData = [
+interface SalesDataPoint {
+  month: string;
+  value: number;
+  label: string;
+}
+
+interface CotizacionRecord {
+  created_at: string;
+  total_final: number;
+}
+
+// Datos mock mejorados para el gráfico de líneas (fallback)
+const mockSalesData: SalesDataPoint[] = [
   { month: "Ene", value: 45000, label: "Enero" },
   { month: "Feb", value: 52000, label: "Febrero" },
   { month: "Mar", value: 48000, label: "Marzo" },
@@ -19,10 +31,71 @@ const mockSalesData = [
 
 export function SalesTrendChart({ period }: SalesTrendChartProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [salesData, setSalesData] = useState<SalesDataPoint[]>(mockSalesData);
+  const [loading, setLoading] = useState(true);
+
+  // Cargar datos reales (cotizaciones agregadas por mes)
+  useEffect(() => {
+    const loadSalesData = async () => {
+      try {
+        setLoading(true);
+        const now = new Date();
+        const startDate = new Date();
+        switch (period) {
+          case 'Última semana': startDate.setDate(now.getDate() - 6); break;
+          case 'Último mes': startDate.setDate(now.getDate() - 29); break;
+          case 'Últimos 3 meses': startDate.setDate(now.getDate() - 89); break;
+          case 'Últimos 6 meses': startDate.setDate(now.getDate() - 179); break;
+          case 'Último año': startDate.setDate(now.getDate() - 364); break;
+          default: startDate.setDate(now.getDate() - 179);
+        }
+
+        const { data, error } = await supabase
+          .from('cotizaciones')
+          .select('created_at, total_final')
+          .gte('created_at', startDate.toISOString())
+          .lte('created_at', now.toISOString());
+        if (error) throw new Error(error.message);
+
+        // Agregar por mes (últimos 6 marcadores)
+        const monthFormat = new Intl.DateTimeFormat('es-CL', { month: 'short' });
+        const monthMap = new Map<string, number>(); // key: YYYY-MM, value: total
+
+        (data as CotizacionRecord[] || []).forEach((row) => {
+          const d = new Date(row.created_at);
+          const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+          monthMap.set(key, (monthMap.get(key) || 0) + (row.total_final || 0));
+        });
+
+        // Construir serie en orden cronológico de los últimos 6 meses
+        const points: SalesDataPoint[] = [];
+        const monthsBack = 6;
+        for (let i = monthsBack - 1; i >= 0; i--) {
+          const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+          const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+          const value = monthMap.get(key) || 0;
+          points.push({
+            month: monthFormat.format(d).replace('.', ''),
+            value,
+            label: d.toLocaleString('es-CL', { month: 'long', year: 'numeric' })
+          });
+        }
+
+        setSalesData(points.length > 0 ? points : mockSalesData);
+      } catch (err) {
+        console.error('Error cargando datos de tendencias:', err);
+        setSalesData(mockSalesData);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadSalesData();
+  }, [period]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
-    if (!canvas) return;
+    if (!canvas || loading) return;
 
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
@@ -43,12 +116,12 @@ export function SalesTrendChart({ period }: SalesTrendChartProps) {
     const chartHeight = rect.height - padding * 2;
 
     // Encontrar valores máximo y mínimo
-    const maxValue = Math.max(...mockSalesData.map(d => d.value));
-    const minValue = Math.min(...mockSalesData.map(d => d.value)) * 0.9; // Un poco más bajo para mejor visualización
+    const maxValue = Math.max(...salesData.map(d => d.value));
+    const minValue = Math.min(...salesData.map(d => d.value)) * 0.9; // Un poco más bajo para mejor visualización
     const valueRange = maxValue - minValue;
 
     // Función para obtener coordenadas
-    const getX = (index: number) => padding + (chartWidth / (mockSalesData.length - 1)) * index;
+    const getX = (index: number) => padding + (chartWidth / (salesData.length - 1)) * index;
     const getY = (value: number) => padding + chartHeight - ((value - minValue) / valueRange) * chartHeight;
 
     // Dibujar líneas de cuadrícula más elegantes
@@ -66,7 +139,7 @@ export function SalesTrendChart({ period }: SalesTrendChartProps) {
     }
 
     // Líneas verticales
-    mockSalesData.forEach((_, index) => {
+    salesData.forEach((_, index) => {
       const x = getX(index);
       ctx.beginPath();
       ctx.moveTo(x, padding);
@@ -84,13 +157,13 @@ export function SalesTrendChart({ period }: SalesTrendChartProps) {
 
     // Dibujar área bajo la curva con curvas suaves
     ctx.beginPath();
-    ctx.moveTo(getX(0), getY(mockSalesData[0].value));
+    ctx.moveTo(getX(0), getY(salesData[0].value));
     
-    for (let i = 1; i < mockSalesData.length; i++) {
+    for (let i = 1; i < salesData.length; i++) {
       const currentX = getX(i);
-      const currentY = getY(mockSalesData[i].value);
+      const currentY = getY(salesData[i].value);
       const prevX = getX(i - 1);
-      const prevY = getY(mockSalesData[i - 1].value);
+      const prevY = getY(salesData[i - 1].value);
       
       // Control points para curva suave
       const cp1x = prevX + (currentX - prevX) / 3;
@@ -102,7 +175,7 @@ export function SalesTrendChart({ period }: SalesTrendChartProps) {
     }
 
     // Completar el área
-    ctx.lineTo(getX(mockSalesData.length - 1), padding + chartHeight);
+    ctx.lineTo(getX(salesData.length - 1), padding + chartHeight);
     ctx.lineTo(getX(0), padding + chartHeight);
     ctx.closePath();
     ctx.fillStyle = gradient;
@@ -110,13 +183,13 @@ export function SalesTrendChart({ period }: SalesTrendChartProps) {
 
     // Dibujar la línea principal
     ctx.beginPath();
-    ctx.moveTo(getX(0), getY(mockSalesData[0].value));
+    ctx.moveTo(getX(0), getY(salesData[0].value));
     
-    for (let i = 1; i < mockSalesData.length; i++) {
+    for (let i = 1; i < salesData.length; i++) {
       const currentX = getX(i);
-      const currentY = getY(mockSalesData[i].value);
+      const currentY = getY(salesData[i].value);
       const prevX = getX(i - 1);
-      const prevY = getY(mockSalesData[i - 1].value);
+      const prevY = getY(salesData[i - 1].value);
       
       const cp1x = prevX + (currentX - prevX) / 3;
       const cp1y = prevY;
@@ -133,7 +206,7 @@ export function SalesTrendChart({ period }: SalesTrendChartProps) {
     ctx.stroke();
 
     // Dibujar puntos con efecto glow
-    mockSalesData.forEach((point, index) => {
+    salesData.forEach((point, index) => {
       const x = getX(index);
       const y = getY(point.value);
       
@@ -161,7 +234,7 @@ export function SalesTrendChart({ period }: SalesTrendChartProps) {
     ctx.font = 'bold 11px system-ui, -apple-system, sans-serif';
     ctx.textAlign = 'center';
     
-    mockSalesData.forEach((point, index) => {
+    salesData.forEach((point, index) => {
       const x = getX(index);
       ctx.fillText(point.month, x, rect.height - 15);
     });
@@ -177,7 +250,7 @@ export function SalesTrendChart({ period }: SalesTrendChartProps) {
       ctx.fillText(`$${(value / 1000).toFixed(0)}k`, padding - 10, y + 3);
     }
 
-  }, [period]);
+  }, [period, salesData, loading]);
 
   return (
     <div className="relative">
@@ -193,11 +266,11 @@ export function SalesTrendChart({ period }: SalesTrendChartProps) {
           <div className="flex items-center gap-2">
             <div className="w-3 h-3 rounded-full bg-purple-500 shadow-sm"></div>
             <span className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
-              Ventas mensuales
+              Cotizaciones mensuales
             </span>
           </div>
           <div className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
-            Tendencia: <span className="text-green-600">↗ +22%</span>
+            Tendencia: <span className="text-green-600">↗</span>
           </div>
         </div>
         

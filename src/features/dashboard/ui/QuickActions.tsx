@@ -1,8 +1,6 @@
 "use client";
 import { FiPlusCircle, FiUserPlus, FiBox, FiTrendingUp } from "react-icons/fi";
-import { useSection } from "@/features/navigation/model/useSection";
-
-
+import { useRouter } from "next/navigation";
 import { Toast } from "@/shared/ui/Toast";
 
 // Acciones rápidas inspiradas en el HTML de referencia
@@ -34,22 +32,24 @@ const quickActions = [
 ];
 
 export function QuickActions() {
-  const { setSection } = useSection();
+  const router = useRouter();
 
   const handleActionClick = (action: string) => {
-  switch (action) {
+    switch (action) {
       case "create-quote":
-    // TODO: open new quote modal or navigate
+        router.push("/dashboard/cotizaciones/nueva");
         break;
       case "go-clients":
-        setSection("clientes");
+        router.push("/dashboard/clientes");
         break;
       case "go-catalog":
-  setSection("stock");
+        router.push("/dashboard/stock");
         break;
       case "go-reports":
-        setSection("reportes");
+        router.push("/dashboard/reportes");
         break;
+      default:
+        console.log("Funcionalidad en desarrollo");
     }
   };
 
@@ -103,28 +103,7 @@ export function QuickActions() {
         ))}
       </div>
 
-      {/* Chips secundarios - responsive */}
-      <div className="mt-3 sm:mt-4 flex flex-wrap gap-1.5 sm:gap-2">
-
-        <button
-          onClick={() => Toast?.info?.("Importación próximamente")}
-          className="px-2 py-1 sm:px-3 sm:py-1.5 rounded-full text-theme-secondary hover:bg-theme-accent text-xs sm:text-sm transition-colors"
-          style={{ border: '1px solid var(--border-subtle)' }}
-          onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--accent-primary)'; }}
-          onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--border-subtle)'; }}
-        >
-          Importar CSV
-        </button>
-        <button
-          onClick={() => Toast?.info?.("Atajos: N nueva cotización, / buscar, G ir a sección")}
-          className="px-2 py-1 sm:px-3 sm:py-1.5 rounded-full text-theme-secondary hover:bg-theme-accent text-xs sm:text-sm hidden sm:inline-flex transition-colors"
-          style={{ border: '1px solid var(--border-subtle)' }}
-          onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--accent-primary)'; }}
-          onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--border-subtle)'; }}
-        >
-          Atajos del teclado
-        </button>
-      </div>
+   
       
     </div>
   );

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter, useParams } from 'next/navigation';
 import { 
   FiArrowLeft, 
   FiSave, 
@@ -10,7 +10,7 @@ import {
   FiTruck, 
   FiPackage, 
   FiDollarSign,
-  FiInfo,
+
   FiAlertCircle,
   FiCheck,
   FiTool
@@ -19,6 +19,7 @@ import { useQuotes } from '../model/useQuotes';
 import { useObras } from '@/features/obras/model/useObras';
 import { Quote, QuoteStatus, ClientInfo, QuoteItem, DeliveryInfo, CommercialTerms } from '@/core/domain/quote/Quote';
 import { Obra } from '@/features/obras/types/obras';
+import { useAuthHeaders } from '@/hooks/useAuthHeaders';
 import dynamic from 'next/dynamic';
 
 // Cargar componentes de formulario dinámicamente en cliente para evitar referencias
@@ -26,10 +27,9 @@ import dynamic from 'next/dynamic';
 const ClientForm = dynamic(() => import('@/features/quotes/ui/components/ClientFormNew').then(m => m.ClientForm), { ssr: false });
 const ProductsForm = dynamic(() => import('@/features/quotes/ui/components/ProductsForm').then(m => m.ProductsForm), { ssr: false });
 const DeliveryForm = dynamic(() => import('@/features/quotes/ui/components/DeliveryForm').then(m => m.DeliveryForm), { ssr: false });
-const CommercialTermsForm = dynamic(() => import('@/features/quotes/ui/components/CommercialTermsForm').then(m => m.CommercialTermsForm), { ssr: false });
 const QuoteSummary = dynamic(() => import('@/features/quotes/ui/components/QuoteSummary').then(m => m.QuoteSummary), { ssr: false });
 
-type FormStep = 'client' | 'products' | 'delivery' | 'terms' | 'summary';
+type FormStep = 'client' | 'products' | 'delivery' | 'summary';
 
 interface FormData {
   cliente: Partial<ClientInfo>;
@@ -41,20 +41,20 @@ interface FormData {
 }
 
 const STEPS = [
-  { id: 'client', label: 'Cliente', icon: FiUser, required: true },
-  { id: 'products', label: 'Productos', icon: FiPackage, required: true },
-  { id: 'delivery', label: 'Despacho', icon: FiTruck, required: false },
-  { id: 'terms', label: 'Condiciones', icon: FiInfo, required: false },
-  { id: 'summary', label: 'Resumen', icon: FiDollarSign, required: true }
+  { id: 'client', label: 'Cliente', description: 'Selecciona o ingresa los datos del cliente', icon: FiUser, required: true },
+  { id: 'products', label: 'Productos', description: 'Agrega los productos y servicios a cotizar', icon: FiPackage, required: true },
+  { id: 'delivery', label: 'Despacho', description: 'Configura la dirección y costo de envío (opcional)', icon: FiTruck, required: false },
+  { id: 'summary', label: 'Resumen', description: 'Revisa y confirma la cotización completa', icon: FiDollarSign, required: true }
 ];
 
 export function NewQuoteFromObraPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const obraId = searchParams.get('obraId');
+  const params = useParams();
+  const obraId = params.id as string;
   
   const { crearCotizacion, formatMoney } = useQuotes();
   const { obtenerObra } = useObras();
+  const { createHeaders } = useAuthHeaders();
   
   const [obra, setObra] = useState<Obra | null>(null);
   const [loadingObra, setLoadingObra] = useState(true);
@@ -63,13 +63,21 @@ export function NewQuoteFromObraPage() {
     cliente: {},
     items: [],
     despacho: {},
-    condicionesComerciales: {},
+    condicionesComerciales: {
+      validezOferta: 30, // 30 días por defecto
+      formaPago: 'Transferencia bancaria',
+      tiempoEntrega: '7 días hábiles',
+      garantia: '1 año'
+    },
     estado: 'borrador'
   });
   
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string[]>>({});
   const [visitedSteps, setVisitedSteps] = useState<Set<FormStep>>(new Set(['client']));
+  const [showSendModal, setShowSendModal] = useState(false);
+  const [contactEmails, setContactEmails] = useState<Record<string, string>>({});
+  const [sending, setSending] = useState(false);
 
   // Cargar datos de la obra y precompletar el formulario
   useEffect(() => {
@@ -167,8 +175,6 @@ export function NewQuoteFromObraPage() {
         return formData.items.length > 0;
       case 'delivery':
         return true;
-      case 'terms':
-        return true;
       case 'summary':
         return isStepValid('client') && isStepValid('products');
       default:
@@ -214,6 +220,82 @@ export function NewQuoteFromObraPage() {
     }
   };
 
+  const handleSendQuote = () => {
+    if (obra?.contactos) {
+      const emails: Record<string, string> = {};
+      obra.contactos.forEach((contacto, index) => {
+        emails[`contacto_${index}`] = contacto.email || '';
+      });
+      setContactEmails(emails);
+    }
+    setShowSendModal(true);
+  };
+
+  const handleConfirmSend = async () => {
+    if (sending) return;
+    setSending(true);
+    try {
+      // Guardar cotización como enviada
+      const success = await handleSave('enviada');
+      if (!success) return;
+
+      // Enviar emails a contactos válidos
+      const emailsToSend = Object.values(contactEmails).filter(email => email && /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email));
+      
+      let sentCount = 0;
+      for (const email of emailsToSend) {
+        try {
+          const response = await fetch('/api/cotizaciones/send-email', {
+            method: 'POST',
+            headers: createHeaders(),
+            body: JSON.stringify({
+              quoteData: {
+                cliente: formData.cliente,
+                items: formData.items,
+                despacho: formData.despacho,
+                condicionesComerciales: formData.condicionesComerciales,
+                estado: 'enviada',
+                vendedorId: 'USER001',
+                vendedorNombre: 'Usuario Actual',
+                subtotal: calculateTotals().subtotal,
+                descuentoTotal: calculateTotals().descuentoTotal,
+                iva: calculateTotals().iva,
+                total: calculateTotals().total,
+                notas: formData.notas,
+                fechaExpiracion: formData.condicionesComerciales.validezOferta ? 
+                  new Date(Date.now() + formData.condicionesComerciales.validezOferta * 24 * 60 * 60 * 1000).toISOString().split('T')[0] : 
+                  undefined
+              },
+              recipientEmail: email,
+              recipientName: obra?.contactos?.find(c => c.email === email)?.nombre || 'Contacto',
+              message: `Adjunto encontrarás la cotización solicitada para la obra ${obra?.nombreEmpresa}. Si tienes alguna pregunta, no dudes en contactarnos.`
+            }),
+          });
+          const result = await response.json();
+          if (result.success) {
+            sentCount++;
+          }
+        } catch (error) {
+          console.error(`Error sending to ${email}:`, error);
+        }
+      }
+
+      alert(`Cotización enviada a ${sentCount} de ${emailsToSend.length} contacto(s)`);
+
+      // Mostrar popup
+      alert('Cotización hecha');
+
+      // Volver a la obra
+      router.push(`/dashboard/obras/${obraId}`);
+    } catch (error) {
+      console.error('Error sending quote:', error);
+      alert('Error al enviar la cotización');
+    } finally {
+      setSending(false);
+      setShowSendModal(false);
+    }
+  };
+
   const calculateTotals = () => {
     const subtotal = formData.items.reduce((sum, item) => sum + item.subtotal, 0);
     const descuentoTotal = formData.items.reduce((sum, item) => sum + (item.descuento || 0) * item.precioUnitario * item.cantidad / 100, 0);
@@ -247,6 +329,7 @@ export function NewQuoteFromObraPage() {
         descuentoTotal,
         iva,
         total,
+        obraId: Number(obraId),
         notas: formData.notas ? `${formData.notas}\n\nCotización generada para obra: ${obra?.nombreEmpresa}` : `Cotización generada para obra: ${obra?.nombreEmpresa}`,
         fechaExpiracion: formData.condicionesComerciales.validezOferta ? 
           new Date(Date.now() + formData.condicionesComerciales.validezOferta * 24 * 60 * 60 * 1000).toISOString().split('T')[0] : 
@@ -255,13 +338,15 @@ export function NewQuoteFromObraPage() {
 
       const success = await crearCotizacion(newQuote);
       if (success) {
-        router.push('/dashboard/cotizaciones');
+        return true;
       } else {
         alert('Error al crear la cotización');
+        return false;
       }
     } catch (error) {
       console.error('Error creating quote:', error);
       alert('Error al crear la cotización');
+      return false;
     } finally {
       setLoading(false);
     }
@@ -313,16 +398,6 @@ export function NewQuoteFromObraPage() {
             errors={errors.delivery}
           />
         );
-      case 'terms':
-        return (
-          <CommercialTermsForm
-            data={formData.condicionesComerciales}
-            onChange={(data: Partial<CommercialTerms>) => updateFormData('condicionesComerciales', data)}
-            errors={errors.terms}
-            onNotesChange={(notas: string) => updateFormData('notas', notas)}
-            notes={formData.notas}
-          />
-        );
       case 'summary':
         return (
           <QuoteSummary
@@ -330,6 +405,8 @@ export function NewQuoteFromObraPage() {
             totals={calculateTotals()}
             formatMoney={formatMoney}
             errors={errors.summary}
+            onChangeGlobalDiscountPct={(pct:number)=> setFormData(prev=>({...prev, descuentoGlobalPct:pct}))}
+            onChangeCommercialTerms={(terms: Partial<CommercialTerms>) => updateFormData('condicionesComerciales', terms)}
           />
         );
       default:
@@ -395,15 +472,17 @@ export function NewQuoteFromObraPage() {
                 <span className="inline sm:hidden">Guardar</span>
               </button>
               
-              <button
-                onClick={() => handleSave('enviada')}
-                disabled={loading || !isStepValid('summary')}
-                className="btn-primary flex items-center gap-2 px-3 py-2 text-sm"
-              >
-                <FiSend className="w-4 h-4" />
-                <span className="hidden sm:inline">Enviar Cotización</span>
-                <span className="inline sm:hidden">Enviar</span>
-              </button>
+              {currentStep === 'summary' && (
+                <button
+                  onClick={handleSendQuote}
+                  disabled={loading || !isStepValid('summary')}
+                  className="btn-primary flex items-center gap-2 px-3 py-2 text-sm"
+                >
+                  <FiSend className="w-4 h-4" />
+                  <span className="hidden sm:inline">Enviar Cotización</span>
+                  <span className="inline sm:hidden">Enviar</span>
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -465,6 +544,9 @@ export function NewQuoteFromObraPage() {
                               </span>
                             )}
                           </div>
+                          <p className="text-xs mt-1" style={{ color: 'var(--text-secondary)' }}>
+                            {step.description}
+                          </p>
                           {hasErrors && (
                             <p className="text-xs mt-1" style={{ color: 'var(--danger)' }}>
                               {errors[step.id]?.length} error(es)
@@ -585,17 +667,69 @@ export function NewQuoteFromObraPage() {
               </div>
 
               <button
-                onClick={handleNext}
-                disabled={currentStep === 'summary'}
+                onClick={currentStep === 'summary' ? handleSendQuote : handleNext}
+                disabled={currentStep === 'summary' ? (loading || !isStepValid('summary')) : false}
                 className="btn-primary flex items-center gap-2 w-full sm:w-auto"
               >
-                Siguiente
-                <FiArrowLeft className="w-4 h-4 rotate-180" />
+                {currentStep === 'summary' ? (
+                  <>
+                    <FiSend className="w-4 h-4" />
+                    Enviar Cotización
+                  </>
+                ) : (
+                  <>
+                    Siguiente
+                    <FiArrowLeft className="w-4 h-4 rotate-180" />
+                  </>
+                )}
               </button>
             </div>
           </div>
         </div>
       </div>
+
+      {/* Modal de envío de cotización */}
+      {showSendModal && obra && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <h3 className="text-lg font-semibold mb-4">Enviar Cotización</h3>
+            <p className="text-sm text-gray-600 mb-4">
+              Confirma los correos electrónicos de los contactos de la obra para enviar la cotización.
+            </p>
+            <div className="space-y-3 mb-6">
+              {(obra.contactos || []).map((contacto, index) => (
+                <div key={index}>
+                  <label className="block text-sm font-medium mb-1">
+                    {contacto.cargo}: {contacto.nombre}
+                  </label>
+                  <input
+                    type="email"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                    value={contactEmails[`contacto_${index}`] || ''}
+                    onChange={(e) => setContactEmails(prev => ({ ...prev, [`contacto_${index}`]: e.target.value }))}
+                    placeholder="correo@ejemplo.com"
+                  />
+                </div>
+              ))}
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowSendModal(false)}
+                className="flex-1 px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleConfirmSend}
+                disabled={sending}
+                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
+              >
+                {sending ? 'Enviando...' : 'Enviar'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

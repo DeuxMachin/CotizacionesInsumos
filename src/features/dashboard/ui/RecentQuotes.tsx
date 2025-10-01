@@ -3,11 +3,11 @@
 import React from "react";
 import { FiEye, FiDownload } from "react-icons/fi";
 import { Badge } from "@/shared/ui/Badge";
-import { quotesData } from "@/features/quotes/model/mock";
+// import { quotesData } from "@/features/quotes/model/mock";
 import type { Quote } from "@/core/domain/quote/Quote";
 
 export function RecentQuotes() {
-  const recent: Quote[] = quotesData.slice(0, 3);
+  const recent: Quote[] = []; // quotesData.slice(0, 3);
 
   return (
     <div className="space-y-4">

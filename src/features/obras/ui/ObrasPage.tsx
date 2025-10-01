@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { 
   FiTool, 
   FiHome, 
@@ -20,9 +21,13 @@ import {
   FiTrendingUp,
   FiChevronLeft,
   FiChevronRight,
-  FiX
+  FiX,
+  FiInfo,
+  FiUsers
 } from "react-icons/fi";
 import { useObras } from "../model/useObras";
+import { useReuniones } from "@/hooks/useReuniones";
+import { useAuth } from "@/contexts/AuthContext";
 import type { 
   Obra, 
   EstadoObra, 
@@ -31,8 +36,10 @@ import type {
   ObraCardProps,
   ObrasTableProps,
   GetEstadoColor,
-  GetEtapaColor
+  GetEtapaColor,
+  ReunionObra
 } from "../types/obras";
+import { getProgressByStage } from "../types/obras";
 import dynamic from "next/dynamic";
 const CreateObraModal = dynamic(() => import("./CreateObraModal").then(m => m.CreateObraModal), {
   loading: () => <div className="p-6">Cargando formulario…</div>,
@@ -60,12 +67,25 @@ export function ObrasPage() {
     userName
   } = useObras();
 
+  const { user } = useAuth();
+  const { reuniones, getActiveReunion } = useReuniones();
+
+  // Crear mapa de reuniones activas por obra
+  const activeReuniones = useMemo(() => {
+    const map: Record<number, ReunionObra | null> = {};
+    obras.forEach(obra => {
+      map[obra.id] = reuniones.find(r => r.obraId === obra.id && r.status === 'abierta') || null;
+    });
+    return map;
+  }, [obras, reuniones]);
+
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedEstados, setSelectedEstados] = useState<EstadoObra[]>([]);
   const [selectedEtapas, setSelectedEtapas] = useState<EtapaObra[]>([]);
   const [showFilters, setShowFilters] = useState(false);
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [showHelp, setShowHelp] = useState(false);
 
   // Aplicar filtros
   useMemo(() => {
@@ -133,7 +153,7 @@ export function ObrasPage() {
   };
 
   // Manejar acciones de obra
-  const handleEliminar = async (obraId: string) => {
+  const handleEliminar = async (obraId: number) => {
     if (confirm('¿Estás seguro de que deseas eliminar esta obra?')) {
       const success = await eliminarObra(obraId);
       if (success) {
@@ -222,6 +242,15 @@ export function ObrasPage() {
           </div>
           <div className="flex items-center gap-3">
             <button
+              onClick={() => setShowHelp(v => !v)}
+              className="btn-secondary flex items-center gap-2"
+              aria-expanded={showHelp}
+              aria-controls="obras-help-panel"
+            >
+              <FiInfo className="w-4 h-4" />
+              {showHelp ? 'Ocultar guía' : 'Ver guía'}
+            </button>
+            <button
               onClick={() => setShowFilters(!showFilters)}
               className="btn-secondary flex items-center gap-2 relative"
             >
@@ -246,6 +275,33 @@ export function ObrasPage() {
           </div>
         </div>
 
+        {/* Panel de ayuda para usuarios poco familiarizados */}
+        {showHelp && (
+          <div id="obras-help-panel" className="p-4 rounded-lg" style={{ backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border)' }}>
+            <p className="mb-2" style={{ color: 'var(--text-primary)' }}><strong>¿Qué puedo hacer aquí?</strong></p>
+            <ul className="list-disc pl-5 space-y-1 text-sm" style={{ color: 'var(--text-secondary)' }}>
+              <li>Buscar obras por nombre, constructora o dirección usando la barra de búsqueda.</li>
+              <li>Usar <em>Filtros</em> para ver solo obras en cierto estado o etapa.</li>
+              <li>Crear una nueva obra con el botón <em>Nueva Obra</em>.</li>
+              <li>Haz clic en una obra para ver sus detalles.</li>
+            </ul>
+            <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div className="p-3 rounded" style={{ backgroundColor: 'var(--card-bg)', border: '1px solid var(--border)' }}>
+                <p className="text-sm font-semibold mb-1" style={{ color: 'var(--text-primary)' }}>Estados</p>
+                <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+                  Planificación, Activa, Pausada, Finalizada, Cancelada, Sin contacto.
+                </p>
+              </div>
+              <div className="p-3 rounded" style={{ backgroundColor: 'var(--card-bg)', border: '1px solid var(--border)' }}>
+                <p className="text-sm font-semibold mb-1" style={{ color: 'var(--text-primary)' }}>Etapas</p>
+                <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+                  Fundación, Estructura, Albañilería, Instalaciones, Terminaciones, Entrega.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Búsqueda */}
         <div className="flex flex-col sm:flex-row gap-4">
           <div className="flex-1 relative">
@@ -265,11 +321,14 @@ export function ObrasPage() {
                 color: 'var(--text-primary)'
               }}
             />
+            <div className="mt-1 text-xs" style={{ color: 'var(--text-muted)' }}>
+              Consejo: escribe al menos 3 letras para mejores resultados.
+            </div>
           </div>
           <div className="flex items-center gap-2">
             <button
               onClick={() => setViewMode('grid')}
-              className={`p-2 rounded-md transition-colors ${viewMode === 'grid' ? 'bg-orange-500 text-white' : ''}`}
+              className={`px-3 py-2 rounded-md transition-colors flex items-center gap-2 ${viewMode === 'grid' ? 'bg-orange-500 text-white' : ''}`}
               style={viewMode !== 'grid' ? { color: 'var(--text-secondary)' } : {}}
             >
               <div className="w-4 h-4 grid grid-cols-2 gap-0.5">
@@ -278,10 +337,11 @@ export function ObrasPage() {
                 <div className="bg-current rounded-sm"></div>
                 <div className="bg-current rounded-sm"></div>
               </div>
+              <span className="text-sm">Tarjetas</span>
             </button>
             <button
               onClick={() => setViewMode('table')}
-              className={`p-2 rounded-md transition-colors ${viewMode === 'table' ? 'bg-orange-500 text-white' : ''}`}
+              className={`px-3 py-2 rounded-md transition-colors flex items-center gap-2 ${viewMode === 'table' ? 'bg-orange-500 text-white' : ''}`}
               style={viewMode !== 'table' ? { color: 'var(--text-secondary)' } : {}}
             >
               <div className="w-4 h-4 flex flex-col gap-0.5">
@@ -289,6 +349,7 @@ export function ObrasPage() {
                 <div className="bg-current h-1 rounded-sm"></div>
                 <div className="bg-current h-1 rounded-sm"></div>
               </div>
+              <span className="text-sm">Tabla</span>
             </button>
           </div>
         </div>
@@ -477,17 +538,21 @@ export function ObrasPage() {
       {/* Lista de obras - Vista Grid */}
       {viewMode === 'grid' ? (
         <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-          {obras.map((obra) => (
-            <ObraCard 
-              key={obra.id} 
-              obra={obra} 
-              getEstadoColor={getEstadoColor}
-              getEtapaColor={getEtapaColor}
-              formatMoney={formatMoney}
-              onEliminar={handleEliminar}
-              onVerDetalle={handleVerDetalle}
-            />
-          ))}
+          {obras.map((obra) => {
+            const activeReunion = reuniones.find(r => r.obraId === obra.id && r.status === 'abierta');
+            return (
+              <ObraCard 
+                key={obra.id} 
+                obra={obra} 
+                getEstadoColor={getEstadoColor}
+                getEtapaColor={getEtapaColor}
+                formatMoney={formatMoney}
+                onEliminar={handleEliminar}
+                onVerDetalle={handleVerDetalle}
+                activeReunion={activeReunion}
+              />
+            );
+          })}
         </div>
       ) : (
         <ObrasTable 
@@ -496,6 +561,7 @@ export function ObrasPage() {
           formatMoney={formatMoney}
           onEliminar={handleEliminar}
           onVerDetalle={handleVerDetalle}
+          activeReuniones={activeReuniones}
         />
       )}
 
@@ -613,17 +679,27 @@ export function ObrasPage() {
 }
 
 // Componente para tarjeta individual de obra
-function ObraCard({ obra, getEstadoColor, getEtapaColor, formatMoney, onEliminar, onVerDetalle }: ObraCardProps) {
+function ObraCard({ obra, getEstadoColor, getEtapaColor, formatMoney, onEliminar, activeReunion }: ObraCardProps) {
   const estadoColor = getEstadoColor(obra.estado);
-  
+  const router = useRouter();
+
+  const goToDetalle = () => router.push(`/dashboard/obras/${obra.id}`);
+  const progress = getProgressByStage(obra.etapaActual);
+  const onKey = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      goToDetalle();
+    }
+  };
+
   return (
     <div
-      onClick={() => onVerDetalle(obra)}
-      className="rounded-xl shadow-sm hover:shadow-md transition-all cursor-pointer"
-      style={{ 
-        backgroundColor: 'var(--card-bg)',
-        border: '1px solid var(--border)'
-      }}
+      role="link"
+      tabIndex={0}
+      onClick={goToDetalle}
+      onKeyDown={onKey}
+      className="block rounded-xl shadow-sm hover:shadow-md transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 cursor-pointer"
+      style={{ backgroundColor: 'var(--card-bg)', border: '1px solid var(--border)' }}
     >
       <div className="p-6">
         {/* Header con título y estado */}
@@ -631,12 +707,24 @@ function ObraCard({ obra, getEstadoColor, getEtapaColor, formatMoney, onEliminar
           <h3 className="text-lg font-semibold line-clamp-2" style={{ color: 'var(--text-primary)' }}>
             {obra.nombreEmpresa}
           </h3>
-          <span 
-            className="px-2 py-1 text-xs font-medium rounded-full whitespace-nowrap"
-            style={{ backgroundColor: estadoColor.bg, color: estadoColor.text }}
-          >
-            {obra.estado.replace('_', ' ')}
-          </span>
+          <div className="flex items-center gap-2">
+            {activeReunion && (
+              <span 
+                className="px-2 py-1 text-xs font-medium rounded-full whitespace-nowrap flex items-center gap-1"
+                style={{ backgroundColor: '#fef3c7', color: '#92400e' }}
+                title={`Reunión activa desde ${activeReunion.startTime.toLocaleTimeString()}`}
+              >
+                <FiUsers className="w-3 h-3" />
+                En reunión
+              </span>
+            )}
+            <span 
+              className="px-2 py-1 text-xs font-medium rounded-full whitespace-nowrap"
+              style={{ backgroundColor: estadoColor.bg, color: estadoColor.text }}
+            >
+              {obra.estado.replace('_', ' ')}
+            </span>
+          </div>
         </div>
 
         {/* Constructora */}
@@ -674,19 +762,15 @@ function ObraCard({ obra, getEstadoColor, getEtapaColor, formatMoney, onEliminar
         </div>
 
         {/* Etapa actual */}
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            <div 
-              className="w-3 h-3 rounded-full"
-              style={{ backgroundColor: getEtapaColor(obra.etapaActual).bg }}
-            />
-            <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
-              {obra.etapaActual}
-            </span>
+        {/* Progreso de la obra */}
+        <div className="mb-4">
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>Progreso</span>
+            <span className="text-xs font-semibold" style={{ color: 'var(--success-text)' }}>{progress}%</span>
           </div>
-          <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
-            {obra.etapasCompletadas.length} etapas completadas
-          </span>
+          <div className="w-full h-2 rounded-full" aria-label="Progreso de la obra" role="progressbar" aria-valuenow={progress} aria-valuemin={0} aria-valuemax={100} style={{ backgroundColor: 'var(--bg-secondary)' }}>
+            <div className="h-2 rounded-full transition-all duration-300" style={{ width: `${progress}%`, background: 'linear-gradient(90deg, #22c55e, #16a34a)' }} />
+          </div>
         </div>
 
         {/* Valores */}
@@ -720,41 +804,43 @@ function ObraCard({ obra, getEstadoColor, getEtapaColor, formatMoney, onEliminar
           </div>
         </div>
 
-        {/* Acciones */}
+        {/* Acciones (card - compacto y elegante) */}
         <div className="flex items-center justify-between mt-4 pt-4 border-t" style={{ borderColor: 'var(--border)' }}>
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-2">
             <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onVerDetalle(obra);
-              }}
-              className="p-1 rounded transition-colors"
+              type="button"
+              onClick={(e) => { e.stopPropagation(); goToDetalle(); }}
+              className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm transition-colors"
               style={{ color: 'var(--text-secondary)' }}
-              onMouseEnter={(e) => e.currentTarget.style.color = 'var(--accent-primary)'}
-              onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-secondary)'}
               title="Ver detalles"
             >
               <FiEye className="w-4 h-4" />
+              <span className="hidden sm:inline">Ver</span>
             </button>
+
             <button
-              onClick={(e) => e.stopPropagation()}
-              className="p-1 rounded transition-colors"
-              style={{ color: 'var(--text-secondary)' }}
-              onMouseEnter={(e) => e.currentTarget.style.color = 'var(--accent-primary)'}
-              onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-secondary)'}
+              onClick={(e) => { e.stopPropagation(); router.push(`/dashboard/obras/${obra.id}?edit=1`); }}
+              className="inline-flex items-center gap-2 px-2 py-1.5 rounded-full text-sm border"
+              style={{ backgroundColor: 'transparent', borderColor: 'var(--border)', color: 'var(--text-primary)' }}
               title="Editar"
             >
               <FiEdit3 className="w-4 h-4" />
+              <span className="hidden sm:inline">Editar</span>
             </button>
+
             <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onEliminar(obra.id);
-              }}
-              className="p-1 rounded transition-colors"
-              style={{ color: 'var(--text-secondary)' }}
-              onMouseEnter={(e) => e.currentTarget.style.color = 'var(--danger)'}
-              onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-secondary)'}
+              onClick={(e) => { e.stopPropagation(); router.push(`/dashboard/obras/${obra.id}/nueva-cotizacion`); }}
+              className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-semibold text-white"
+              style={{ backgroundColor: 'var(--accent-primary)' }}
+              title="Crear cotización para esta obra"
+            >
+              <FiDollarSign className="w-4 h-4" />
+              <span className="hidden sm:inline">Cotizar</span>
+            </button>
+
+            <button
+              onClick={(e) => { e.stopPropagation(); onEliminar(obra.id); }}
+              className="inline-flex items-center gap-2 px-2 py-1.5 rounded-full text-sm text-[var(--text-secondary)] hover:text-[var(--danger)]"
               title="Eliminar"
             >
               <FiTrash2 className="w-4 h-4" />
@@ -770,14 +856,14 @@ function ObraCard({ obra, getEstadoColor, getEtapaColor, formatMoney, onEliminar
 }
 
 // Componente para vista de tabla (simplificado)
-function ObrasTable({ obras, getEstadoColor, formatMoney, onEliminar, onVerDetalle }: ObrasTableProps) {
+function ObrasTable({ obras, getEstadoColor, formatMoney, onEliminar, onVerDetalle, activeReuniones }: ObrasTableProps) {
   return (
     <div 
       className="rounded-lg overflow-hidden"
       style={{ backgroundColor: 'var(--card-bg)', border: '1px solid var(--border)' }}
     >
       <div className="overflow-x-auto w-full" style={{ WebkitOverflowScrolling: 'touch' }}>
-        <table className="w-full min-w-[900px]">
+        <table className="w-full min-w-[900px]" aria-label="Tabla de obras con opciones de ver, editar y eliminar">
           <thead style={{ backgroundColor: 'var(--bg-secondary)' }}>
             <tr>
               <th className="px-4 py-3 text-left text-sm font-medium w-1/5" style={{ color: 'var(--text-secondary)' }}>
@@ -786,8 +872,8 @@ function ObrasTable({ obras, getEstadoColor, formatMoney, onEliminar, onVerDetal
               <th className="px-4 py-3 text-left text-sm font-medium w-[12%]" style={{ color: 'var(--text-secondary)' }}>
                 Estado
               </th>
-              <th className="px-4 py-3 text-left text-sm font-medium w-[12%]" style={{ color: 'var(--text-secondary)' }}>
-                Etapa
+              <th className="px-4 py-3 text-left text-sm font-medium w-[18%]" style={{ color: 'var(--text-secondary)' }}>
+                Progreso
               </th>
               <th className="px-4 py-3 text-left text-sm font-medium w-1/4" style={{ color: 'var(--text-secondary)' }}>
                 Valor / Vendido
@@ -815,27 +901,50 @@ function ObrasTable({ obras, getEstadoColor, formatMoney, onEliminar, onVerDetal
                   onMouseLeave={(e) => e.currentTarget.style.backgroundColor = ''}
                 >
                   <td className="px-4 py-4">
-                    <div>
+                    <Link href={`/dashboard/obras/${obra.id}`} prefetch className="block">
                       <div className="font-medium" style={{ color: 'var(--text-primary)' }}>
                         {obra.nombreEmpresa}
                       </div>
                       <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>
                         {obra.constructora.nombre}
                       </div>
+                    </Link>
+                  </td>
+                  <td className="px-4 py-4">
+                    <div className="flex items-center gap-2">
+                      {activeReuniones?.[obra.id] && (
+                        <span 
+                          className="px-2 py-1 text-xs font-medium rounded-full whitespace-nowrap flex items-center gap-1"
+                          style={{ backgroundColor: '#fef3c7', color: '#92400e' }}
+                          title={`Reunión activa desde ${activeReuniones[obra.id]!.startTime.toLocaleTimeString()}`}
+                        >
+                          <FiUsers className="w-3 h-3" />
+                          En reunión
+                        </span>
+                      )}
+                      <span 
+                        className="px-2 py-1 text-xs font-medium rounded-full"
+                        style={{ backgroundColor: estadoColor.bg, color: estadoColor.text }}
+                      >
+                        {obra.estado.replace('_', ' ')}
+                      </span>
                     </div>
                   </td>
                   <td className="px-4 py-4">
-                    <span 
-                      className="px-2 py-1 text-xs font-medium rounded-full"
-                      style={{ backgroundColor: estadoColor.bg, color: estadoColor.text }}
-                    >
-                      {obra.estado.replace('_', ' ')}
-                    </span>
-                  </td>
-                  <td className="px-4 py-4">
-                    <span className="text-sm" style={{ color: 'var(--text-primary)' }}>
-                      {obra.etapaActual}
-                    </span>
+                    {(() => {
+                      const progress = getProgressByStage(obra.etapaActual);
+                      return (
+                        <div>
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-xs capitalize" style={{ color: 'var(--text-muted)' }}>{obra.etapaActual.replace('_', ' ')}</span>
+                            <span className="text-xs font-semibold" style={{ color: 'var(--success-text)' }}>{progress}%</span>
+                          </div>
+                          <div className="w-full h-2 rounded-full" aria-label="Progreso de la obra" role="progressbar" aria-valuenow={progress} aria-valuemin={0} aria-valuemax={100} style={{ backgroundColor: 'var(--bg-secondary)' }}>
+                            <div className="h-2 rounded-full" style={{ width: `${progress}%`, background: 'linear-gradient(90deg, #22c55e, #16a34a)' }} />
+                          </div>
+                        </div>
+                      );
+                    })()}
                   </td>
                   <td className="px-4 py-4">
                     <div>
@@ -854,28 +963,29 @@ function ObrasTable({ obras, getEstadoColor, formatMoney, onEliminar, onVerDetal
                   </td>
                   <td className="px-4 py-4">
                     <div className="flex items-center justify-center gap-1">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onVerDetalle(obra);
-                        }}
-                        className="p-1 rounded transition-colors"
-                        style={{ color: 'var(--text-secondary)' }}
-                        onMouseEnter={(e) => e.currentTarget.style.color = 'var(--accent-primary)'}
-                        onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-secondary)'}
-                        title="Ver detalles"
-                      >
+                      <Link href={`/dashboard/obras/${obra.id}`} prefetch className="px-2 py-1 rounded transition-colors flex items-center gap-1" style={{ color: 'var(--text-secondary)' }} title="Ver detalles">
                         <FiEye className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={(e) => e.stopPropagation()}
-                        className="p-1 rounded transition-colors"
-                        style={{ color: 'var(--text-secondary)' }}
-                        onMouseEnter={(e) => e.currentTarget.style.color = 'var(--accent-primary)'}
-                        onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-secondary)'}
+                        <span className="text-xs">Ver</span>
+                      </Link>
+                      <Link
+                        href={`/dashboard/obras/${obra.id}?edit=1`}
+                        prefetch
+                        className="px-2 py-1 min-h-[36px] rounded-md transition-colors flex items-center gap-1 text-xs"
+                        style={{ backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)', border: '1px solid var(--border)' }}
                         title="Editar"
+                        onClick={(e) => e.stopPropagation()}
                       >
                         <FiEdit3 className="w-4 h-4" />
+                        <span>Editar</span>
+                      </Link>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); window.location.href = `/dashboard/obras/${obra.id}/nueva-cotizacion`; }}
+                        className="px-2 py-1 min-h-[36px] rounded-md transition-all duration-200 flex items-center gap-1 text-xs text-white"
+                        style={{ backgroundColor: 'var(--accent-primary)' }}
+                        title="Cotizar"
+                      >
+                        <FiDollarSign className="w-4 h-4" />
+                        <span>Cotizar</span>
                       </button>
                       <button
                         onClick={(e) => {

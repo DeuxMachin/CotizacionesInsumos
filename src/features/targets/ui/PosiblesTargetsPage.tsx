@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import { FiPlus, FiMapPin, FiPhone, FiUser, FiClock, FiArrowLeft, FiArrowRight, FiMap, FiFilter } from "react-icons/fi";
+import { FiPlus, FiMapPin, FiPhone, FiUser, FiClock, FiArrowLeft, FiArrowRight, FiMap, FiFilter, FiTrash2 } from "react-icons/fi";
 import { useTargets } from "../model/useTargets";
 import { UnifiedFilters, FilterSection, FilterCheckbox } from "@/shared/ui/UnifiedFilters";
 import dynamic from "next/dynamic";
@@ -17,7 +17,7 @@ interface TargetFilters {
 }
 
 export function PosiblesTargetsPage() {
-  const { targets, loading, fetchTargets } = useTargets();
+  const { targets, loading, fetchTargets, deleteTarget } = useTargets();
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [selectedTarget, setSelectedTarget] = useState<PosibleTarget | null>(null);
   const [currentPage, setCurrentPage] = useState(0);
@@ -28,6 +28,16 @@ export function PosiblesTargetsPage() {
   useEffect(() => {
     fetchTargets();
   }, [fetchTargets]);
+
+  // Update selectedTarget when targets change
+  useEffect(() => {
+    if (selectedTarget) {
+      const updatedTarget = targets.find(t => t.id === selectedTarget.id);
+      if (updatedTarget && JSON.stringify(updatedTarget) !== JSON.stringify(selectedTarget)) {
+        setSelectedTarget(updatedTarget);
+      }
+    }
+  }, [targets]);
 
   // Filtrar targets según los filtros aplicados
   const filteredTargets = useMemo(() => {
@@ -96,6 +106,27 @@ export function PosiblesTargetsPage() {
     const url = target.ubicacion.googleMapsUrl || 
       `https://www.google.com/maps?q=${target.ubicacion.lat},${target.ubicacion.lng}`;
     window.open(url, '_blank');
+  };
+
+  const handleDeleteTarget = async (target: PosibleTarget, e: React.MouseEvent) => {
+    e.stopPropagation(); // Evitar que se abra el modal de detalles
+    
+    const confirmDelete = window.confirm(
+      `¿Estás seguro de que quieres eliminar el target "${target.titulo}"?\n\nEsta acción no se puede deshacer.`
+    );
+    
+    if (confirmDelete) {
+      try {
+        await deleteTarget(target.id);
+        // Si el target eliminado era el seleccionado, cerramos el modal
+        if (selectedTarget?.id === target.id) {
+          setSelectedTarget(null);
+        }
+      } catch (error) {
+        console.error('Error al eliminar target:', error);
+        alert('Error al eliminar el target. Por favor, inténtalo de nuevo.');
+      }
+    }
   };
 
   if (loading) {
@@ -262,19 +293,32 @@ export function PosiblesTargetsPage() {
                         )}
                       </div>
                       
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          openGoogleMaps(target);
-                        }}
-                        className="flex items-center gap-1 text-xs transition-colors"
-                        style={{ color: 'var(--accent-primary)' }}
-                        onMouseEnter={(e) => e.currentTarget.style.color = 'var(--accent-hover)'}
-                        onMouseLeave={(e) => e.currentTarget.style.color = 'var(--accent-primary)'}
-                      >
-                        <FiMap className="w-3 h-3" />
-                        Ver mapa
-                      </button>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            openGoogleMaps(target);
+                          }}
+                          className="flex items-center gap-1 text-xs transition-colors"
+                          style={{ color: 'var(--accent-primary)' }}
+                          onMouseEnter={(e) => e.currentTarget.style.color = 'var(--accent-hover)'}
+                          onMouseLeave={(e) => e.currentTarget.style.color = 'var(--accent-primary)'}
+                        >
+                          <FiMap className="w-3 h-3" />
+                          Ver mapa
+                        </button>
+                        
+                        <button
+                          onClick={(e) => handleDeleteTarget(target, e)}
+                          className="flex items-center gap-1 text-xs transition-colors"
+                          style={{ color: 'var(--danger-text)' }}
+                          onMouseEnter={(e) => e.currentTarget.style.color = 'var(--danger-hover)'}
+                          onMouseLeave={(e) => e.currentTarget.style.color = 'var(--danger-text)'}
+                        >
+                          <FiTrash2 className="w-3 h-3" />
+                          Eliminar
+                        </button>
+                      </div>
                     </div>
 
                     {/* Footer con fecha y gestión */}
@@ -357,6 +401,13 @@ export function PosiblesTargetsPage() {
           target={selectedTarget}
           isOpen={!!selectedTarget}
           onClose={() => setSelectedTarget(null)}
+          onTargetUpdated={() => {
+            // Refresh the selected target from the updated targets list
+            const updatedTarget = targets.find(t => t.id === selectedTarget.id);
+            if (updatedTarget) {
+              setSelectedTarget(updatedTarget);
+            }
+          }}
         />
       )}
 

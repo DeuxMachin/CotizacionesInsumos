@@ -36,7 +36,7 @@ export async function createQuote() {
   } catch (error) {
     // Manejar errores de validación o de servidor
     if (error instanceof z.ZodError) {
-      return { success: false, error: 'Datos de cotización inválidos', validationErrors: error.errors };
+      return { success: false, error: 'Datos de cotización inválidos', validationErrors: error.issues };
     }
     
     return { success: false, error: 'Error al crear la cotización' };
@@ -75,7 +75,7 @@ export async function updateQuote(quoteId: string) {
   } catch (error) {
     // Manejar errores de validación o de servidor
     if (error instanceof z.ZodError) {
-      return { success: false, error: 'Datos de cotización inválidos', validationErrors: error.errors };
+      return { success: false, error: 'Datos de cotización inválidos', validationErrors: error.issues };
     }
     
     return { success: false, error: 'Error al actualizar la cotización' };

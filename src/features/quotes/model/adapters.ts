@@ -7,11 +7,11 @@ type CotizacionClienteRow = Database['public']['Tables']['cotizacion_clientes'][
 type CotizacionDespachoRow = Database['public']['Tables']['cotizacion_despachos']['Row'];
 type ClienteRow = Database['public']['Tables']['clientes']['Row'];
 type UsuarioRow = Database['public']['Tables']['usuarios']['Row'];
-type ProductoRow = Database['public']['Tables']['productos']['Row'];
+
 
 export interface CotizacionAggregate {
 	cotizacion: CotizacionRow;
-	items: (CotizacionItemRow & { producto?: ProductoRow | null })[];
+	items: (CotizacionItemRow & { producto?: { id: number; sku: string | null; nombre: string; ficha_tecnica: string | null } | null })[];
 	clientes_adicionales: (CotizacionClienteRow & { cliente?: ClienteRow | null })[];
 	despacho?: CotizacionDespachoRow | null;
 	cliente_principal?: ClienteRow | null;
@@ -40,17 +40,22 @@ export function mapCotizacionToDomain(data: CotizacionAggregate): Quote {
 		comuna: ''
 	};
 
-	const quoteItems: QuoteItem[] = items.map(it => ({
-		id: it.id.toString(),
-		productId: it.producto_id || undefined,
-		codigo: it.producto_id ? (it.producto?.sku || `PROD-${it.producto_id}`) : 'ITEM',
-		descripcion: it.descripcion || it.producto?.nombre || 'Item',
-		unidad: it.unidad || 'unidad',
-		cantidad: Number(it.cantidad),
-		precioUnitario: Number(it.precio_unitario_neto),
-		descuento: it.descuento_pct ? Number(it.descuento_pct) : undefined,
-		subtotal: Number(it.total_neto) // ya viene calculado
-	}));
+	const quoteItems: QuoteItem[] = items.map((it) => {
+		const itemWithProduct: CotizacionItemRow & { producto?: { id: number; sku: string | null; nombre: string; ficha_tecnica: string | null } | null; productos?: { id: number; sku: string | null; nombre: string; ficha_tecnica: string | null } | null } = it;
+		const prod = itemWithProduct.producto ?? itemWithProduct.productos ?? null;
+		return ({
+			id: it.id.toString(),
+			productId: it.producto_id || undefined,
+			codigo: it.producto_id ? (prod?.sku || `PROD-${it.producto_id}`) : 'ITEM',
+			descripcion: it.descripcion || prod?.nombre || 'Item',
+			unidad: it.unidad || 'unidad',
+			cantidad: Number(it.cantidad),
+			precioUnitario: Number(it.precio_unitario_neto),
+			descuento: it.descuento_pct ? Number(it.descuento_pct) : undefined,
+			subtotal: Number(it.total_neto), // ya viene calculado
+			fichaTecnica: prod?.ficha_tecnica || undefined
+		});
+	});
 
 	const delivery: DeliveryInfo | undefined = despacho ? {
 		direccion: despacho.direccion,
@@ -94,6 +99,7 @@ export function mapCotizacionToDomain(data: CotizacionAggregate): Quote {
 		descuentoGlobalMonto,
 		iva,
 		total,
+		obraId: cotizacion.obra_id || undefined,
 		notas: undefined, // no existe campo directo en nueva cabecera (podría mapearse desde hash_cotizacion si se desea)
 		fechaExpiracion: cotizacion.fecha_vencimiento || undefined
 	};

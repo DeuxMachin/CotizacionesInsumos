@@ -23,6 +23,20 @@ export interface ContactoObra {
   email?: string;
 }
 
+// Contacto de obra extendido con marca de principal opcional
+export interface ObraContacto extends ContactoObra {
+  es_principal?: boolean;
+}
+
+// Cargos requeridos por cada obra (orden fijo)
+export const REQUIRED_CARGOS: readonly string[] = [
+  'Jefe de Obra',
+  'Compras',
+  'Logística',
+  'Calidad',
+  'Prevención de Riesgos',
+] as const;
+
 export interface EmpresaConstructora {
   nombre: string;
   rut: string;
@@ -33,11 +47,13 @@ export interface EmpresaConstructora {
 }
 
 export interface Obra {
-  id: string;
+  id: number;
   nombreEmpresa: string;           
   constructora: EmpresaConstructora;
   vendedorAsignado: string;        
   nombreVendedor: string;          
+  // Contactos de la obra (siempre 5 cargos fijos). Si no existe, usar { nombre: 'No existe' } para ese cargo
+  contactos?: ObraContacto[];
   
   estado: EstadoObra;
   etapaActual: EtapaObra;
@@ -53,6 +69,7 @@ export interface Obra {
   
   valorEstimado?: number;
   materialVendido: number;
+  pendiente: number;
   proximoSeguimiento?: Date;
   
   fechaCreacion: Date;
@@ -106,6 +123,57 @@ export interface ColorConfig {
 export type GetEstadoColor = (estado: EstadoObra) => ColorConfig;
 export type GetEtapaColor = (etapa: EtapaObra) => { bg: string; text: string };
 
+// Lista canónica de etapas y utilidades de progreso
+export const ETAPAS: readonly EtapaObra[] = [
+  'fundacion',
+  'estructura',
+  'albanileria',
+  'instalaciones',
+  'terminaciones',
+  'entrega',
+] as const;
+
+export const TOTAL_ETAPAS = ETAPAS.length;
+
+// Calcula el porcentaje de progreso considerando las 6 etapas en orden.
+// Regla: cada cambio de etapa avanza 1/6 (la primera etapa equivale a ~16.7%).
+export function getProgressByStage(etapaActual: EtapaObra): number {
+  const idx = ETAPAS.indexOf(etapaActual);
+  const pct = ((idx + 1) / TOTAL_ETAPAS) * 100;
+  return Math.max(0, Math.min(100, Math.round(pct)));
+}
+
+// Tipos para Reuniones en Obra (usando obra_visitas)
+export interface ReunionObra {
+  id: number; // bigint en DB
+  obraId: number; // obra_id
+  userId: string; // vendedor_id (uuid)
+  userName: string;
+  obraNombre?: string; // Nombre de la obra/empresa
+  tipo: string; // 'reunion'
+  motivo?: string;
+  startTime: Date; // inicio_at
+  endTime?: Date; // fin_at
+  status: 'abierta' | 'cerrada'; // estado
+  location?: {
+    lat: number;
+    lng: number;
+    accuracy?: number; // accuracy_m
+    address?: string; // ubicacion_text
+  };
+  notas?: string;
+}
+
+// Tipos para filtros de reuniones
+export interface FiltroReuniones {
+  obraId?: number;
+  userId?: string;
+  fechaDesde?: Date;
+  fechaHasta?: Date;
+  status?: 'abierta' | 'cerrada';
+  tipo?: string; // 'reunion'
+}
+
 // Props tipadas para componentes
 export interface ObraCardProps {
   obra: Obra;
@@ -113,8 +181,9 @@ export interface ObraCardProps {
   getEtapaColor: GetEtapaColor;
   formatMoney: (amount: number) => string;
   onVerDetalle: (obra: Obra) => void;
-  onEliminar: (obraId: string) => void;
+  onEliminar: (obraId: number) => void;
   onEstadoChange?: (obraId: string, nuevoEstado: EstadoObra) => void;
+  activeReunion?: ReunionObra | null;
 }
 
 export interface ObrasTableProps {
@@ -122,8 +191,9 @@ export interface ObrasTableProps {
   getEstadoColor: GetEstadoColor;
   formatMoney: (amount: number) => string;
   onVerDetalle: (obra: Obra) => void;
-  onEliminar: (obraId: string) => void;
+  onEliminar: (obraId: number) => void;
   onEstadoChange?: (obraId: string, nuevoEstado: EstadoObra) => void;
+  activeReuniones?: Record<number, ReunionObra | null>;
 }
 
 

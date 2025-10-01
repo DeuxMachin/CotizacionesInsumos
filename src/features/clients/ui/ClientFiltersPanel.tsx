@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from 'react';
-import { UnifiedFilters, FilterSection, FilterCheckbox, FilterDateRange, FilterSelect } from '@/shared/ui/UnifiedFilters';
+
+import { UnifiedFilters, FilterSection, FilterCheckbox } from '@/shared/ui/UnifiedFilters';
 
 // Tipos para los filtros de clientes
 export type ClientStatus = 'vigente' | 'moroso' | 'inactivo';

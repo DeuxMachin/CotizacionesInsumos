@@ -74,6 +74,7 @@ export interface UpdateTargetData {
   ciudad?: string;
   region?: string;
   comuna?: string;
+  clienteId?: number;
   contactoNombre?: string;
   contactoTelefono?: string;
   contactoEmail?: string;
@@ -86,3 +87,13 @@ export interface UpdateTargetData {
 }
 
 // (Notas eliminadas de la UI)
+
+export interface TargetEvento {
+  id: number;
+  target_id: number;
+  tipo: string;
+  detalle: string | null;
+  fecha_evento: string;
+  creado_por: string | null;
+  created_at: string;
+}

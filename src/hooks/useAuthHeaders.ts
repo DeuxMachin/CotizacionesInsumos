@@ -1,5 +1,5 @@
-import { useAuth } from '@/features/auth/model/useAuth'
-import type { AuthUser } from '@/services/authService'
+import { useAuth } from '@/contexts/AuthContext'
+import type { User as AuthUser } from '@/contexts/AuthContext'
 
 /**
  * Hook para crear headers de autenticación para requests de API
@@ -20,8 +20,13 @@ export function useAuthHeaders() {
     if (user) {
       headers['x-user-id'] = user.id
       headers['x-user-email'] = user.email
-      if (user.nombre) {
-        headers['x-user-name'] = user.nombre
+      
+      // Usar el nombre completo del usuario si está disponible
+      if (user.name) {
+        headers['x-user-name'] = user.name;
+      } else {
+        // Fallback al email sin dominio si no hay nombre
+        headers['x-user-name'] = user.email.split('@')[0];
       }
     }
 
@@ -42,8 +47,8 @@ export function createAuthHeadersFromUser(user: AuthUser | null): Record<string,
   if (user) {
     headers['x-user-id'] = user.id
     headers['x-user-email'] = user.email
-    if (user.nombre) {
-      headers['x-user-name'] = user.nombre
+    if (user.name) {
+      headers['x-user-name'] = user.name
     }
   }
 

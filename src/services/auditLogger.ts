@@ -50,13 +50,16 @@ export class AuditLogger {
   /**
    * Registra login de usuario
    */
-  static async logUserLogin(userId: string, userEmail: string, userAgent?: string): Promise<void> {
+  static async logUserLogin(userId: string, userEmail: string, userName?: string, userAgent?: string): Promise<void> {
+    const displayName = userName || userEmail.split('@')[0];
     await this.logEvent({
       usuario_id: userId,
       evento: 'user_login',
-      descripcion: `Usuario ${userEmail} inició sesión`,
+      descripcion: `${displayName} inició sesión`,
       detalles: {
         email: userEmail,
+        user_email: userEmail,
+        user_name: displayName,
         timestamp: new Date().toISOString()
       },
       user_agent: userAgent
@@ -66,13 +69,16 @@ export class AuditLogger {
   /**
    * Registra logout de usuario
    */
-  static async logUserLogout(userId: string, userEmail: string): Promise<void> {
+  static async logUserLogout(userId: string, userEmail: string, userName?: string): Promise<void> {
+    const displayName = userName || userEmail.split('@')[0];
     await this.logEvent({
       usuario_id: userId,
       evento: 'user_logout',
-      descripcion: `Usuario ${userEmail} cerró sesión`,
+      descripcion: `${displayName} cerró sesión`,
       detalles: {
-        email: userEmail
+        email: userEmail,
+        user_email: userEmail,
+        user_name: displayName
       }
     })
   }
@@ -85,17 +91,20 @@ export class AuditLogger {
     userEmail: string,
     cotizacionId: number,
     folio: string,
-    clienteInfo?: { id: number; nombre: string }
+    clienteInfo?: { id: number; nombre: string },
+    userName?: string
   ): Promise<void> {
+    const displayName = userName || userEmail.split('@')[0];
     await this.logEvent({
       usuario_id: userId,
       evento: 'cotizacion_creada',
-      descripcion: `Creó cotización ${folio}${clienteInfo ? ` para ${clienteInfo.nombre}` : ''}`,
+      descripcion: `${displayName} creó cotización ${folio}${clienteInfo ? ` para ${clienteInfo.nombre}` : ''}`,
       detalles: {
         cotizacion_id: cotizacionId,
         folio,
         cliente: clienteInfo ? { id: clienteInfo.id, nombre: clienteInfo.nombre } : undefined,
-        user_email: userEmail
+        user_email: userEmail,
+        user_name: displayName
       },
       tabla_afectada: 'cotizaciones',
       registro_id: cotizacionId.toString()
@@ -111,18 +120,21 @@ export class AuditLogger {
     cotizacionId: number,
     folio: string,
     oldStatus: string,
-    newStatus: string
+    newStatus: string,
+    userName?: string
   ): Promise<void> {
+    const displayName = userName || userEmail.split('@')[0];
     await this.logEvent({
       usuario_id: userId,
       evento: 'cotizacion_actualizada',
-      descripcion: `Cambió estado de cotización ${folio} de "${oldStatus}" a "${newStatus}"`,
+      descripcion: `${displayName} cambió estado de cotización ${folio} de "${oldStatus}" a "${newStatus}"`,
       detalles: {
         cotizacion_id: cotizacionId,
         folio,
         estado_anterior: oldStatus,
         estado_nuevo: newStatus,
-        user_email: userEmail
+        user_email: userEmail,
+        user_name: displayName
       },
       tabla_afectada: 'cotizaciones',
       registro_id: cotizacionId.toString()
@@ -137,17 +149,86 @@ export class AuditLogger {
     userEmail: string,
     clienteId: number,
     clienteNombre: string,
-    rut: string
+    rut: string,
+    userName?: string
   ): Promise<void> {
+    const displayName = userName || userEmail.split('@')[0];
     await this.logEvent({
       usuario_id: userId,
       evento: 'cliente_creado',
-      descripcion: `Creó cliente ${clienteNombre} (${rut})`,
+      descripcion: `${displayName} creó cliente ${clienteNombre} (${rut})`,
       detalles: {
         cliente_id: clienteId,
         nombre: clienteNombre,
         rut,
-        user_email: userEmail
+        user_email: userEmail,
+        user_name: displayName
+      },
+      tabla_afectada: 'clientes',
+      registro_id: clienteId.toString()
+    })
+  }
+
+  /**
+   * Registra actualización de cliente
+   */
+  static async logClienteUpdated(
+    userId: string,
+    userEmail: string,
+    clienteId: number,
+    clienteNombre: string,
+    rut: string,
+    cambios?: Record<string, { anterior: unknown; nuevo: unknown }>,
+    userName?: string
+  ): Promise<void> {
+    const displayName = userName || userEmail.split('@')[0];
+    const descripcionCambios = cambios 
+      ? Object.entries(cambios).map(([campo, { anterior, nuevo }]) => 
+          `${campo}: "${anterior}" → "${nuevo}"`
+        ).join(', ')
+      : '';
+    
+    await this.logEvent({
+      usuario_id: userId,
+      evento: 'cliente_actualizado',
+      descripcion: `${displayName} actualizó cliente ${clienteNombre} (${rut})${descripcionCambios ? ` - ${descripcionCambios}` : ''}`,
+      detalles: {
+        cliente_id: clienteId,
+        nombre: clienteNombre,
+        rut,
+        cambios,
+        user_email: userEmail,
+        user_name: displayName
+      },
+      tabla_afectada: 'clientes',
+      registro_id: clienteId.toString()
+    })
+  }
+
+  /**
+   * Registra eliminación de cliente
+   */
+  static async logClienteDeleted(
+    userId: string,
+    userEmail: string,
+    clienteId: number,
+    clienteNombre: string,
+    rut: string,
+    userName?: string
+  ): Promise<void> {
+    const displayName = userName || userEmail.split('@')[0];
+    await this.logEvent({
+      usuario_id: userId,
+      evento: 'cliente_eliminado',
+      descripcion: `${displayName} eliminó cliente ${clienteNombre} (${rut})`,
+      detalles: {
+        cliente_id: clienteId,
+        nombre: clienteNombre,
+        rut,
+        user_email: userEmail,
+        user_name: displayName,
+        estado_anterior: 'activo',
+        estado_nuevo: 'inactivo'
       },
       tabla_afectada: 'clientes',
       registro_id: clienteId.toString()
@@ -319,6 +400,141 @@ export class AuditLogger {
     } catch (error) {
       console.error('❌ AuditLogger: Unexpected error fetching activity by user and type:', error)
       return []
+    }
+  }
+
+  /**
+   * Obtiene actividades filtradas con paginación para el panel de administración
+   */
+  static async getFilteredActivities(filters: {
+    search?: string;
+    eventType?: string;
+    dateRange?: string;
+    limit: number;
+    offset: number;
+  }): Promise<AuditLogEntry[]> {
+    try {
+      console.log('🔍 AuditLogger: Obteniendo actividades filtradas:', filters)
+      
+      let query = supabase
+        .from('audit_log')
+        .select('*')
+
+      // Aplicar filtro de búsqueda en descripción
+      if (filters.search && filters.search.trim()) {
+        query = query.ilike('descripcion', `%${filters.search.trim()}%`)
+      }
+
+      // Aplicar filtro de tipo de evento
+      if (filters.eventType && filters.eventType.trim()) {
+        query = query.eq('evento', filters.eventType.trim())
+      }
+
+      // Aplicar filtro de rango de fechas
+      if (filters.dateRange && filters.dateRange.trim()) {
+        const now = new Date()
+        let startDate: Date | null = null
+
+        switch (filters.dateRange) {
+          case '1d':
+            startDate = new Date(now.getTime() - 24 * 60 * 60 * 1000)
+            break
+          case '7d':
+            startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
+            break
+          case '30d':
+            startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
+            break
+          case '90d':
+            startDate = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000)
+            break
+        }
+
+        if (startDate) {
+          query = query.gte('created_at', startDate.toISOString())
+        }
+      }
+
+      // Aplicar ordenamiento, paginación
+      const { data, error } = await query
+        .order('created_at', { ascending: false })
+        .range(filters.offset, filters.offset + filters.limit - 1)
+
+      if (error) {
+        console.error('❌ AuditLogger: Error fetching filtered activities:', error)
+        return []
+      }
+
+      console.log('✅ AuditLogger: Actividades filtradas obtenidas:', data?.length || 0, 'registros')
+      return data || []
+    } catch (error) {
+      console.error('❌ AuditLogger: Unexpected error fetching filtered activities:', error)
+      return []
+    }
+  }
+
+  /**
+   * Obtiene el conteo de actividades filtradas para paginación
+   */
+  static async getFilteredActivitiesCount(filters: {
+    search?: string;
+    eventType?: string;
+    dateRange?: string;
+  }): Promise<number> {
+    try {
+      console.log('🔍 AuditLogger: Obteniendo conteo de actividades filtradas:', filters)
+      
+      let query = supabase
+        .from('audit_log')
+        .select('id', { count: 'exact', head: true })
+
+      // Aplicar filtro de búsqueda en descripción
+      if (filters.search && filters.search.trim()) {
+        query = query.ilike('descripcion', `%${filters.search.trim()}%`)
+      }
+
+      // Aplicar filtro de tipo de evento
+      if (filters.eventType && filters.eventType.trim()) {
+        query = query.eq('evento', filters.eventType.trim())
+      }
+
+      // Aplicar filtro de rango de fechas
+      if (filters.dateRange && filters.dateRange.trim()) {
+        const now = new Date()
+        let startDate: Date | null = null
+
+        switch (filters.dateRange) {
+          case '1d':
+            startDate = new Date(now.getTime() - 24 * 60 * 60 * 1000)
+            break
+          case '7d':
+            startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
+            break
+          case '30d':
+            startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
+            break
+          case '90d':
+            startDate = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000)
+            break
+        }
+
+        if (startDate) {
+          query = query.gte('created_at', startDate.toISOString())
+        }
+      }
+
+      const { count, error } = await query
+
+      if (error) {
+        console.error('❌ AuditLogger: Error fetching filtered activities count:', error)
+        return 0
+      }
+
+      console.log('✅ AuditLogger: Conteo de actividades filtradas obtenido:', count || 0)
+      return count || 0
+    } catch (error) {
+      console.error('❌ AuditLogger: Unexpected error fetching filtered activities count:', error)
+      return 0
     }
   }
 }

@@ -33,9 +33,15 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
 
-    // Obtener información del usuario autenticado
-    const user = await getCurrentUser(request)
-    const userInfo = getUserInfoForAudit(user)
+    // Obtener información del usuario desde headers para audit log
+    const userInfo = {
+      id: request.headers.get('x-user-id') || 'unknown',
+      email: request.headers.get('x-user-email') || 'unknown@domain.com',
+      name: request.headers.get('x-user-name') || 'Usuario'
+    };
+
+    console.log('🔍 POST /api/clientes - Headers disponibles:', Object.fromEntries(request.headers.entries()));
+    console.log('🔍 POST /api/clientes - UserInfo extraída:', userInfo);
 
     // Validar que el RUT no exista
     const rutExists = await ClientesService.checkRutExists(body.rut)
