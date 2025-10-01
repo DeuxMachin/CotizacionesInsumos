@@ -127,6 +127,8 @@ function generateCondensedHTML(quote: Quote, quoteNumber: string, quoteDate: Dat
       table{width:100%;border-collapse:collapse;}
       thead th{background:#e4e8ea;font-weight:600;font-size:${fontSize-1}px;padding:3px 4px;text-align:left;border:0.5px solid #9fa3a6;}
       tbody td{border:0.5px solid #bfc3c6;padding:2px 4px;line-height:1.15;vertical-align:top;}
+      a{color:#ff5600;text-decoration:none;}
+      a:hover{text-decoration:underline;}
   .header{display:flex;align-items:flex-start;gap:5mm;}
   .emision-date{text-align:right;font-size:${fontSize-1}px;margin-top:2mm;}
   .logo-box{display:flex;align-items:flex-start;justify-content:flex-start;max-width:55mm;padding-top:2mm;}
@@ -206,7 +208,7 @@ function generateCondensedHTML(quote: Quote, quoteNumber: string, quoteDate: Dat
             <tr>
               <th style="width:14%;">Código</th>
               <th style="width:38%;">Descripción</th>
-              <th style="width:4%;"></th>
+              <th style="width:4%;text-align:center;">FT</th>
               <th style="width:7%;text-align:center;">Cant.</th>
               <th style="width:11%;text-align:right;">Precio</th>
               <th style="width:8%;text-align:center;">Dscto(%)</th>
@@ -219,13 +221,13 @@ function generateCondensedHTML(quote: Quote, quoteNumber: string, quoteDate: Dat
               `<tr style="height:${rowHeight}px;">`+
                 `<td>${it.codigo||''}</td>`+
                 `<td>${it.descripcion}</td>`+
-                `<td style="text-align:center;">${it.fichaTecnica
+                `<td style="text-align:center;vertical-align:middle;">${it.fichaTecnica
                   ? (
-                    '<a href="'+it.fichaTecnica+'" target="_blank" rel="noopener noreferrer" aria-label="Ficha técnica" style="display:inline-block;width:12px;height:12px;vertical-align:middle;color:#ff5600;">'
-                    + '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>'
+                    '<a href="'+it.fichaTecnica+'" target="_blank" rel="noopener noreferrer" aria-label="Ver ficha técnica" title="Ver ficha técnica" style="display:inline-block;width:14px;height:14px;vertical-align:middle;color:#ff5600;text-decoration:none;">'
+                    + '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>'
                     + '</a>'
                   )
-                  : ''}
+                  : '-'}
                 </td>`+
                 `<td style="text-align:center;">${it.cantidad}</td>`+
                 `<td style="text-align:right;">${formatCLP(it.precioUnitario)}</td>`+
