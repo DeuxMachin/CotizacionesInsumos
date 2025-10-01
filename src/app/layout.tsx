@@ -7,8 +7,12 @@ import { AuthInitializer } from "@/components/AuthInitializer";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { Footer } from "@/components/Footer";
 import { CookieConsent } from "@/components/CookieConsent";
+import type { Metadata } from "next";
 
-export const metadata = { title: "Panel Administrativo - Cotizaciones" };
+export const metadata: Metadata = { 
+  title: "Panel Administrativo - Cotizaciones",
+  description: "Sistema de gestión de cotizaciones"
+};
 
 // Fuente principal para texto general - muy profesional y legible
 const inter = Inter({ 

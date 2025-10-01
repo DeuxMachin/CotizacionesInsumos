@@ -16,13 +16,9 @@ export default function Error({
   }, [error]);
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4" style={{ backgroundColor: 'var(--bg-secondary)' }}>
+    <div className="min-h-screen flex items-center justify-center p-4 bg-theme-secondary">
       <div 
-        className="max-w-md w-full p-8 text-center rounded-xl"
-        style={{ 
-          backgroundColor: 'var(--bg-primary)',
-          border: '1px solid var(--border-subtle)' 
-        }}
+        className="max-w-md w-full p-8 text-center rounded-xl bg-theme-primary border border-theme-border"
       >
         {/* Icono de error */}
         <div className="w-16 h-16 rounded-full bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 flex items-center justify-center mx-auto mb-6">

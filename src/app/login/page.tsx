@@ -28,9 +28,9 @@ export default function LoginPage() {
 
   if (loading && !user) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: 'var(--bg-primary)' }}>
-        <div className="flex items-center gap-3" style={{ color: 'var(--text-primary)' }}>
-          <div className="w-6 h-6 border-2 border-current border-t-transparent rounded-full animate-spin" style={{ borderColor: 'var(--accent-primary)' }}></div>
+      <div className="min-h-screen flex items-center justify-center bg-theme-primary">
+        <div className="flex items-center gap-3 text-theme-primary">
+          <div className="w-6 h-6 border-2 border-orange-500/20 border-t-orange-500 rounded-full animate-spin"></div>
           <span>Verificando sesión...</span>
         </div>
       </div>
@@ -40,9 +40,9 @@ export default function LoginPage() {
   if (isAuthenticated) {
     // Mostrar spinner mientras se ejecuta la redirección para evitar pantalla en blanco
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: 'var(--bg-primary)' }}>
-        <div className="flex items-center gap-3" style={{ color: 'var(--text-primary)' }}>
-          <div className="w-6 h-6 border-2 border-current border-t-transparent rounded-full animate-spin" style={{ borderColor: 'var(--accent-primary)' }}></div>
+      <div className="min-h-screen flex items-center justify-center bg-theme-primary">
+        <div className="flex items-center gap-3 text-theme-primary">
+          <div className="w-6 h-6 border-2 border-orange-500/20 border-t-orange-500 rounded-full animate-spin"></div>
           <span>Redirigiendo…</span>
         </div>
       </div>
