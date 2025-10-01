@@ -27,7 +27,7 @@ export async function GET(request: NextRequest) {
         email: user.email,
         role: user.rol,
         name: user.nombre && user.apellido ? `${user.nombre} ${user.apellido}` : user.nombre || undefined,
-        isAdmin: user.rol === 'admin'
+        isAdmin: ['admin', 'dueño', 'dueno'].includes(user.rol?.toLowerCase() || '')
       }
     });
   } catch (e) {
