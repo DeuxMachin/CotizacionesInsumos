@@ -12,7 +12,8 @@ export interface NavigationItem {
   description: string;
   resource: Resource;
   requiredActions: Action[];
-  adminOnly?: boolean;
+  adminOnly?: boolean; // Para admin y dueño
+  ownerOnly?: boolean; // Solo para dueño
   badge?: string;
   comingSoon?: boolean;
 }
@@ -72,6 +73,7 @@ export const ALL_NAVIGATION_ITEMS: NavigationItem[] = [
     description: "Control de reuniones en obra",
     resource: "obras",
     requiredActions: ["read"],
+    ownerOnly: true, // Solo para dueños
   },
   {
     key: "posibles-targets",
@@ -127,6 +129,11 @@ export function useNavigationItems(userRole: string) {
       // Verificar si el usuario tiene permisos para ver este elemento
       const hasRequiredPermissions = hasAnyPermission(item.resource, item.requiredActions);
 
+      // Si es ownerOnly, verificar que sea solo dueño
+      if (item.ownerOnly && !['dueño', 'dueno'].includes(userRole.toLowerCase())) {
+        return false;
+      }
+
       // Si es adminOnly, verificar que sea admin o dueño
       if (item.adminOnly && !['admin', 'dueño', 'dueno'].includes(userRole.toLowerCase())) {
         return false;
@@ -150,6 +157,12 @@ export function useNavigationItems(userRole: string) {
       const item = ALL_NAVIGATION_ITEMS.find(nav => nav.key === section);
       if (!item) return false;
 
+      // Si es ownerOnly, verificar que sea solo dueño
+      if (item.ownerOnly && !['dueño', 'dueno'].includes(userRole.toLowerCase())) {
+        return false;
+      }
+
+      // Si es adminOnly, verificar que sea admin o dueño
       if (item.adminOnly && !['admin', 'dueño', 'dueno'].includes(userRole.toLowerCase())) {
         return false;
       }

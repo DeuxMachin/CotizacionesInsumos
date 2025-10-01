@@ -20,6 +20,6 @@ export function toAppUser(raw: unknown): AppUser {
     email: r.email as string,
     name,
     role,
-    isAdmin: role === 'admin'
+    isAdmin: ['admin', 'dueño', 'dueno'].includes(role?.toLowerCase() || '')
   };
 }

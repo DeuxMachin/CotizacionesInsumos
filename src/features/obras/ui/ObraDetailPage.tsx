@@ -209,16 +209,24 @@ export function ObraDetailPage({
     }
   }, [user, obra.id, checkActiveReunion]);
 
-  // Mostrar popup de reunión al cargar si no hay reunión activa
+  // Ref para controlar si ya se mostró el popup en esta sesión/vista
+  // Esto asegura que el popup solo aparezca UNA VEZ al entrar al detalle de la obra
+  // y no vuelva a aparecer hasta que se salga y se vuelva a entrar
+  const popupShownRef = useRef(false);
+
+  // Mostrar popup de reunión al cargar si no hay reunión activa (solo una vez por entrada)
+  // Si el usuario hace clic en "Ahora no" o cierra el popup, no volverá a aparecer
+  // hasta que salga de esta vista y vuelva a entrar al detalle de la obra
   useEffect(() => {
-    if (user && obra.id && !checkingReunionStatus && !currentActiveReunion) {
+    if (user && obra.id && !checkingReunionStatus && !currentActiveReunion && !popupShownRef.current) {
       // Solo mostrar para roles que pueden iniciar reuniones
       const allowedRoles = ['vendedor', 'admin', 'dueño', 'dueno'];
       if (allowedRoles.includes(user.role || '')) {
-        // Pequeño delay para que la página cargue primero
+        // Pequeño delay para que la página cargue primero (reducido para mejor UX)
         const timer = setTimeout(() => {
           setIsReunionPopupOpen(true);
-        }, 1000);
+          popupShownRef.current = true; // Marcar que ya se mostró en esta sesión
+        }, 300); // Reducido de 1000ms a 300ms
         return () => clearTimeout(timer);
       }
     }

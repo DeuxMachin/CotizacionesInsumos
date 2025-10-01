@@ -22,7 +22,7 @@ export function useObras() {
   const service = useMemo(() => getObrasService(), []);
 
   // Obtener obras según el rol del usuario
-  const isAdmin = user?.role === 'admin';
+  const isAdmin = ['admin', 'dueño', 'dueno'].includes(user?.role?.toLowerCase() || '');
 
   useEffect(() => {
     let active = true;
