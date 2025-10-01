@@ -119,9 +119,9 @@ export function ClientInfoForm({
             type="text"
             value={data.rut}
             onChange={(e) => handleRutChange(e.target.value)}
-            placeholder="12.345.678-9"
+            placeholder="77.352.551-5"
             className={`form-input ${rutError ? 'border-red-500' : ''}`}
-            maxLength={12}
+            maxLength={14}
           />
           {showRutHelp && (
             <div 
@@ -132,8 +132,8 @@ export function ClientInfoForm({
                 color: 'var(--info-text)'
               }}
             >
-              <strong>Formato RUT:</strong> Ingresa el RUT sin puntos ni guión, el sistema lo formateará automáticamente. 
-              Ejemplo: 123456789 se convertirá en 12.345.678-9
+              <strong>Formato RUT:</strong> Puedes ingresar RUT de empresa o persona. Escribe sin puntos ni guión; el sistema lo formateará automáticamente.
+              Ejemplo: 773525515 se convertirá en 77.352.551-5
             </div>
           )}
           {rutError && (

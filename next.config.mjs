@@ -39,7 +39,20 @@ const nextConfig = {
           // Content Security Policy básica
           {
             key: 'Content-Security-Policy',
-            value: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https:;"
+            value: process.env.NODE_ENV === 'production'
+              ? [
+                  "default-src 'self'",
+                  // Evitar inline/eval en prod; permitir Next.js runtime con nonce/crossorigin
+                  "script-src 'self'",
+                  "style-src 'self' 'unsafe-inline'",
+                  "img-src 'self' data: https:",
+                  "font-src 'self' data:",
+                  "connect-src 'self' https:",
+                  "frame-ancestors 'none'",
+                  "base-uri 'self'",
+                  "form-action 'self'"
+                ].join('; ')
+              : "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https:;"
           }
         ],
       },

@@ -6,6 +6,9 @@ export async function POST() {
       success: true,
       message: 'Logout exitoso'
     })
+    response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate');
+    response.headers.set('Pragma', 'no-cache');
+    response.headers.set('Expires', '0');
 
     // Borrar cookies (access + refresh)
     const base = {
@@ -15,8 +18,9 @@ export async function POST() {
       maxAge: 0,
       path: '/'
     }
-    response.cookies.set('auth-token', '', base)
-    response.cookies.set('refresh-token', '', base)
+  response.cookies.set('auth-token', '', base)
+  response.cookies.set('refresh-token', '', base)
+  response.cookies.set('rf-ua', '', { ...base, httpOnly: false })
 
     return response
   } catch (error) {

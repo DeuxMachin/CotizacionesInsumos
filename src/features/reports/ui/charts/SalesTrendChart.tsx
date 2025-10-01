@@ -2,7 +2,7 @@
 
 import { ReportPeriod } from "@/app/dashboard/reportes/page";
 import { useEffect, useRef, useState } from "react";
-import { reportesService } from "@/services/reportesService";
+import { supabase } from "@/lib/supabase";
 
 interface SalesTrendChartProps {
   period: ReportPeriod;
@@ -12,6 +12,11 @@ interface SalesDataPoint {
   month: string;
   value: number;
   label: string;
+}
+
+interface CotizacionRecord {
+  created_at: string;
+  total_final: number;
 }
 
 // Datos mock mejorados para el gráfico de líneas (fallback)
@@ -29,34 +34,57 @@ export function SalesTrendChart({ period }: SalesTrendChartProps) {
   const [salesData, setSalesData] = useState<SalesDataPoint[]>(mockSalesData);
   const [loading, setLoading] = useState(true);
 
-  // Cargar datos reales
+  // Cargar datos reales (cotizaciones agregadas por mes)
   useEffect(() => {
     const loadSalesData = async () => {
       try {
         setLoading(true);
-        const data = await reportesService.getReportData(period);
-        
-        // Convertir datos diarios a mensuales para el gráfico de tendencias
-        // Tomar datos por semanas para simplificar
-        const weeklyData: SalesDataPoint[] = [];
-        const dailyData = data.ventasMensuales;
-        
-        for (let i = 0; i < dailyData.length; i += 5) {
-          const weekData = dailyData.slice(i, i + 5);
-          const weekTotal = weekData.reduce((sum, day) => sum + day.sales, 0);
-          const weekNumber = Math.floor(i / 5) + 1;
-          
-          weeklyData.push({
-            month: `S${weekNumber}`,
-            value: weekTotal,
-            label: `Semana ${weekNumber}`
+        const now = new Date();
+        const startDate = new Date();
+        switch (period) {
+          case 'Última semana': startDate.setDate(now.getDate() - 6); break;
+          case 'Último mes': startDate.setDate(now.getDate() - 29); break;
+          case 'Últimos 3 meses': startDate.setDate(now.getDate() - 89); break;
+          case 'Últimos 6 meses': startDate.setDate(now.getDate() - 179); break;
+          case 'Último año': startDate.setDate(now.getDate() - 364); break;
+          default: startDate.setDate(now.getDate() - 179);
+        }
+
+        const { data, error } = await supabase
+          .from('cotizaciones')
+          .select('created_at, total_final')
+          .gte('created_at', startDate.toISOString())
+          .lte('created_at', now.toISOString());
+        if (error) throw new Error(error.message);
+
+        // Agregar por mes (últimos 6 marcadores)
+        const monthFormat = new Intl.DateTimeFormat('es-CL', { month: 'short' });
+        const monthMap = new Map<string, number>(); // key: YYYY-MM, value: total
+
+        (data as CotizacionRecord[] || []).forEach((row) => {
+          const d = new Date(row.created_at);
+          const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+          monthMap.set(key, (monthMap.get(key) || 0) + (row.total_final || 0));
+        });
+
+        // Construir serie en orden cronológico de los últimos 6 meses
+        const points: SalesDataPoint[] = [];
+        const monthsBack = 6;
+        for (let i = monthsBack - 1; i >= 0; i--) {
+          const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+          const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+          const value = monthMap.get(key) || 0;
+          points.push({
+            month: monthFormat.format(d).replace('.', ''),
+            value,
+            label: d.toLocaleString('es-CL', { month: 'long', year: 'numeric' })
           });
         }
-        
-        setSalesData(weeklyData.length > 0 ? weeklyData : mockSalesData);
+
+        setSalesData(points.length > 0 ? points : mockSalesData);
       } catch (err) {
         console.error('Error cargando datos de tendencias:', err);
-        setSalesData(mockSalesData); // Fallback a datos mock
+        setSalesData(mockSalesData);
       } finally {
         setLoading(false);
       }
@@ -238,11 +266,11 @@ export function SalesTrendChart({ period }: SalesTrendChartProps) {
           <div className="flex items-center gap-2">
             <div className="w-3 h-3 rounded-full bg-purple-500 shadow-sm"></div>
             <span className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
-              Ventas mensuales
+              Cotizaciones mensuales
             </span>
           </div>
           <div className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
-            Tendencia: <span className="text-green-600">↗ +22%</span>
+            Tendencia: <span className="text-green-600">↗</span>
           </div>
         </div>
         

@@ -1,11 +1,12 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { ReportPeriod } from "@/app/dashboard/reportes/page";
-import { reportesService, ReportData } from "@/services/reportesService";
+import { ReportPeriod, ReportType } from "@/app/dashboard/reportes/page";
+import { supabase } from "@/lib/supabase";
 
 interface TopProductsChartProps {
   period: ReportPeriod;
+  reportType: ReportType;
 }
 
 interface ProductData {
@@ -15,6 +16,12 @@ interface ProductData {
   revenue: string;
   color: string;
   percentage: number;
+}
+
+interface ItemRecord {
+  cantidad: number;
+  total_neto: number;
+  productos: { nombre: string } | { nombre: string }[];
 }
 
 // Datos mock para productos más vendidos
@@ -61,7 +68,7 @@ const mockProductsData: ProductData[] = [
   }
 ];
 
-export function TopProductsChart({ period }: TopProductsChartProps) {
+export function TopProductsChart({ period, reportType }: TopProductsChartProps) {
   const [topProducts, setTopProducts] = useState<ProductData[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -71,19 +78,72 @@ export function TopProductsChart({ period }: TopProductsChartProps) {
       try {
         setLoading(true);
         setError(null);
-        const data = await reportesService.getReportData(period);
-        
-        // Convertir datos reales a formato ProductData
-        const maxIngresos = Math.max(...data.topProductos.map(p => p.ingresos));
-        const products: ProductData[] = data.topProductos.map((producto, index) => ({
+        // Rango de fechas según periodo
+        const now = new Date();
+        const startDate = new Date();
+        switch (period) {
+          case 'Última semana': startDate.setDate(now.getDate() - 6); break;
+          case 'Último mes': startDate.setDate(now.getDate() - 29); break;
+          case 'Últimos 3 meses': startDate.setDate(now.getDate() - 89); break;
+          case 'Últimos 6 meses': startDate.setDate(now.getDate() - 179); break;
+          case 'Último año': startDate.setDate(now.getDate() - 364); break;
+          default: startDate.setDate(now.getDate() - 179);
+        }
+
+        // Traer items según tipo
+        let items: ItemRecord[] = [];
+        if (reportType === 'cotizaciones') {
+          const { data, error: itemsError } = await supabase
+            .from('cotizacion_items')
+            .select(`
+              cantidad,
+              total_neto,
+              productos ( id, nombre ),
+              cotizaciones!inner (created_at)
+            `)
+            .gte('cotizaciones.created_at', startDate.toISOString())
+            .lte('cotizaciones.created_at', now.toISOString());
+          if (itemsError) throw new Error(itemsError.message);
+          items = data || [];
+        } else {
+          const { data, error: itemsError } = await supabase
+            .from('nota_venta_items')
+            .select(`
+              cantidad,
+              total_neto,
+              productos ( id, nombre ),
+              notas_venta:notas_venta!nota_venta_items_nota_venta_id_fkey (fecha_emision)
+            `)
+            .gte('notas_venta.fecha_emision', startDate.toISOString())
+            .lte('notas_venta.fecha_emision', now.toISOString());
+          if (itemsError) throw new Error(itemsError.message);
+          items = data || [];
+        }
+
+        // Agrupar por producto
+        type Agg = { ingresos: number; cantidad: number; nombre: string };
+        const map = new Map<string, Agg>();
+        (items || []).forEach((it: ItemRecord) => {
+          const nombre = (Array.isArray(it.productos) ? (it.productos[0] as { nombre: string })?.nombre : (it.productos as { nombre: string })?.nombre) || 'Producto';
+          const key = nombre;
+          const curr = map.get(key) || { ingresos: 0, cantidad: 0, nombre };
+          curr.ingresos += it.total_neto || 0;
+          curr.cantidad += it.cantidad || 0;
+          map.set(key, curr);
+        });
+
+        // Ordenar por cantidad (ventas), no por ingresos
+        const arr = Array.from(map.values()).sort((a, b) => b.cantidad - a.cantidad).slice(0, 5);
+        const maxCantidad = arr.length ? Math.max(...arr.map(a => a.cantidad)) : 1;
+        const products: ProductData[] = arr.map((p, index) => ({
           rank: index + 1,
-          name: producto.nombre,
-          sales: producto.cantidad,
-          revenue: reportesService.formatCurrency(producto.ingresos),
+          name: p.nombre,
+          sales: p.cantidad,
+          revenue: new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(p.ingresos),
           color: getProductColor(index),
-          percentage: index === 0 ? 100 : Math.max(15, (producto.ingresos / maxIngresos) * 100)
+          percentage: index === 0 ? 100 : Math.max(15, (p.cantidad / maxCantidad) * 100)
         }));
-        
+
         setTopProducts(products);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Error al cargar datos');
@@ -94,7 +154,7 @@ export function TopProductsChart({ period }: TopProductsChartProps) {
     };
 
     loadTopProducts();
-  }, [period]);
+  }, [period, reportType]);
 
   // Función para asignar colores a los productos
   const getProductColor = (index: number): string => {
@@ -137,8 +197,7 @@ export function TopProductsChart({ period }: TopProductsChartProps) {
   
   // Calcular totales dinámicos
   const totalIngresos = productsToShow.reduce((sum, product) => {
-    // Extraer el número de la string de revenue (ej: "$20,808" -> 20808)
-    const amount = parseInt(product.revenue.replace(/[$,]/g, '')) || 0;
+    const amount = parseInt(product.revenue.replace(/[$.]/g, '').replace(',', '')) || 0;
     return sum + amount;
   }, 0);
   
@@ -150,20 +209,20 @@ export function TopProductsChart({ period }: TopProductsChartProps) {
       {productsToShow.map((product, index) => (
         <div 
           key={product.rank}
-          className="group relative p-3 rounded-lg transition-colors hover:bg-opacity-50"
+          className="group relative p-2 sm:p-3 rounded-lg transition-colors hover:bg-opacity-50"
           style={{ backgroundColor: 'var(--bg-secondary)' }}
         >
           {/* Header del producto */}
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-3 min-w-0 flex-1">
+          <div className="flex items-center justify-between mb-2 sm:mb-3">
+            <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
               <div 
-                className="flex items-center justify-center w-8 h-8 rounded-full text-white text-sm font-bold flex-shrink-0 shadow-sm"
+                className="flex items-center justify-center w-7 h-7 sm:w-8 sm:h-8 rounded-full text-white text-xs sm:text-sm font-bold flex-shrink-0 shadow-sm"
                 style={{ backgroundColor: product.color }}
               >
                 #{product.rank}
               </div>
               <div className="min-w-0 flex-1">
-                <h4 className="font-semibold text-sm truncate mb-1" style={{ color: 'var(--text-primary)' }}>
+                <h4 className="font-semibold text-xs sm:text-sm truncate mb-1" style={{ color: 'var(--text-primary)' }}>
                   {product.name}
                 </h4>
                 <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
@@ -171,13 +230,13 @@ export function TopProductsChart({ period }: TopProductsChartProps) {
                 </p>
               </div>
             </div>
-            <div className="text-right flex-shrink-0 ml-4">
-              <p className="font-bold text-base" style={{ color: 'var(--text-primary)' }}>
+            <div className="text-right flex-shrink-0 ml-2 sm:ml-4">
+              <p className="font-bold text-sm sm:text-base" style={{ color: 'var(--text-primary)' }}>
                 {product.revenue}
               </p>
               <div className="mt-1">
                 <span 
-                  className="text-xs font-medium px-2 py-1 rounded-full"
+                  className="text-xs font-medium px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full"
                   style={{ 
                     backgroundColor: product.color + '20',
                     color: product.color
@@ -227,7 +286,7 @@ export function TopProductsChart({ period }: TopProductsChartProps) {
           <div className="text-center">
             <p className="text-2xl font-bold mb-1" 
                style={{ color: 'var(--success-text)' }}>
-              {reportesService.formatCurrency(totalIngresos)}
+              {new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(totalIngresos)}
             </p>
             <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
               Ingresos Top 5

@@ -1,14 +1,44 @@
 "use client";
 
-import { ReportPeriod } from "@/app/dashboard/reportes/page";
+import { ReportPeriod, ReportType } from "@/app/dashboard/reportes/page";
 import { useEffect, useRef, useState } from "react";
+import { supabase } from "@/lib/supabase";
 
 interface CategoryDistributionChartProps {
   period: ReportPeriod;
+  reportType: ReportType;
 }
 
-// Datos mock para el gráfico de donut
-const mockCategoryData = [
+interface ItemRecord {
+  producto_id: number;
+  total_neto: number;
+  cantidad: number;
+}
+
+interface ProductoRecord {
+  id: number;
+  nombre: string;
+  tipo_id: number | null;
+}
+
+interface TipoRecord {
+  id: number;
+  nombre: string;
+}
+
+interface CategoryData {
+  category: string;
+  value: number;
+  color: string;
+  amount: string;
+  description: string;
+}
+
+// Colores para las categorías
+const categoryColors = ["#8b5cf6", "#06b6d4", "#10b981", "#f59e0b", "#ef4444", "#3b82f6", "#ec4899"];
+
+// Datos mock para el gráfico de donut (fallback si la API falla)
+const mockCategoryData: CategoryData[] = [
   { 
     category: "Servicios de Consultoría", 
     value: 35, 
@@ -39,10 +69,189 @@ const mockCategoryData = [
   }
 ];
 
-export function CategoryDistributionChart({ period }: CategoryDistributionChartProps) {
+export function CategoryDistributionChart({ period, reportType }: CategoryDistributionChartProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [hoveredSegment, setHoveredSegment] = useState<number | null>(null);
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+  const [categoryData, setCategoryData] = useState<CategoryData[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const dataArr = categoryData.length > 0 ? categoryData : mockCategoryData;
+  
+  // Cargar datos reales directamente desde Supabase
+  useEffect(() => {
+    const loadCategoryData = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        
+        // Determinar el rango de fechas según el período seleccionado
+        const now = new Date();
+        const startDate = new Date();
+        
+        switch (period) {
+          case 'Última semana':
+            startDate.setDate(now.getDate() - 6);
+            break;
+          case 'Último mes':
+            startDate.setDate(now.getDate() - 29);
+            break;
+          case 'Últimos 3 meses':
+            startDate.setDate(now.getDate() - 89);
+            break;
+          case 'Últimos 6 meses':
+            startDate.setDate(now.getDate() - 179);
+            break;
+          case 'Último año':
+            startDate.setDate(now.getDate() - 364);
+            break;
+          default:
+            startDate.setDate(now.getDate() - 179);
+        }
+        
+        // Obtener identificadores y items segun tipo de reporte
+        let items: ItemRecord[] = [];
+        if (reportType === 'cotizaciones') {
+          // 1) Cotizaciones dentro del periodo
+          const { data: cotizacionesData, error: cotError } = await supabase
+            .from('cotizaciones')
+            .select('id')
+            .gte('created_at', startDate.toISOString())
+            .lt('created_at', now.toISOString());
+          if (cotError) throw new Error(`Error al obtener cotizaciones: ${cotError.message}`);
+          const cotizacionIds = (cotizacionesData || []).map(c => c.id);
+          if (cotizacionIds.length === 0) {
+            setCategoryData(mockCategoryData);
+            setLoading(false);
+            return;
+          }
+          const { data: cotizacionItems, error: itemsError } = await supabase
+            .from('cotizacion_items')
+            .select('id, cantidad, total_neto, producto_id')
+            .in('cotizacion_id', cotizacionIds);
+          if (itemsError) throw new Error(`Error al obtener items: ${itemsError.message}`);
+          items = cotizacionItems || [];
+        } else {
+          // 1) Notas de venta dentro del periodo (usar fecha_emision)
+          const { data: notasData, error: notasError } = await supabase
+            .from('notas_venta')
+            .select('id')
+            .gte('fecha_emision', startDate.toISOString())
+            .lt('fecha_emision', now.toISOString());
+          if (notasError) throw new Error(`Error al obtener notas de venta: ${notasError.message}`);
+          const notasIds = (notasData || []).map(n => n.id);
+          if (notasIds.length === 0) {
+            setCategoryData(mockCategoryData);
+            setLoading(false);
+            return;
+          }
+          const { data: ventaItems, error: itemsError } = await supabase
+            .from('nota_venta_items')
+            .select('id, cantidad, total_neto, producto_id')
+            .in('nota_venta_id', notasIds);
+          if (itemsError) throw new Error(`Error al obtener items de ventas: ${itemsError.message}`);
+          items = ventaItems || [];
+        }
+
+        // 3) Obtener los productos únicos para mapear a su tipo (producto_tipos)
+  const productIds = Array.from(new Set((items || []).map((i: ItemRecord) => i.producto_id).filter(Boolean)));
+        console.log('📦 Product IDs:', productIds.length);
+
+        let productosById: Record<number, { nombre: string; tipo_id: number | null }> = {};
+        if (productIds.length > 0) {
+          const { data: productos, error: prodError } = await supabase
+            .from('productos')
+            .select('id, nombre, tipo_id')
+            .in('id', productIds as number[]);
+          if (prodError) throw new Error(`Error al obtener productos: ${prodError.message}`);
+          console.log('🏷️ Productos:', productos?.length || 0);
+          productosById = (productos || []).reduce((acc: Record<number, { nombre: string; tipo_id: number | null }>, p: ProductoRecord) => {
+            acc[p.id] = { nombre: p.nombre, tipo_id: p.tipo_id };
+            return acc;
+          }, {});
+        }
+
+        // 4) Obtener los nombres de tipos de producto
+        const tipoIds = Array.from(new Set(Object.values(productosById).map(p => p.tipo_id).filter(Boolean))) as number[];
+        console.log('🏗️ Tipo IDs:', tipoIds);
+        let tiposById: Record<number, string> = {};
+        if (tipoIds.length > 0) {
+          const { data: tipos, error: tiposError } = await supabase
+            .from('producto_tipos')
+            .select('id, nombre')
+            .in('id', tipoIds);
+          if (tiposError) throw new Error(`Error al obtener tipos: ${tiposError.message}`);
+          console.log('📂 Tipos:', tipos);
+          tiposById = (tipos || []).reduce((acc: Record<number, string>, t: TipoRecord) => {
+            acc[t.id] = t.nombre;
+            return acc;
+          }, {});
+        }
+
+        // 5) Agrupar por tipo de producto (categoría)
+        const categoriesMap: Record<string, { total: number; count: number; categoryName: string }> = {};
+        (items || []).forEach((item: ItemRecord) => {
+          const prod = productosById[item.producto_id];
+          const typeName = prod?.tipo_id ? (tiposById[prod.tipo_id] || 'Sin Categoría') : 'Sin Categoría';
+          const total = item.total_neto || 0;
+          if (!categoriesMap[typeName]) {
+            categoriesMap[typeName] = { total: 0, count: 0, categoryName: typeName };
+          }
+          categoriesMap[typeName].total += total;
+          categoriesMap[typeName].count += item.cantidad || 1;
+        });
+        
+        console.log('📊 Categories Map:', categoriesMap);
+        
+        // Convertir a array y calcular porcentajes
+        const categoriesArray = Object.values(categoriesMap).filter(cat => cat.total > 0); // Filtrar categorías vacías
+        const totalAmount = categoriesArray.reduce((sum, cat) => sum + cat.total, 0);
+        console.log('💰 Total amount:', totalAmount, 'Categories:', categoriesArray.length);
+        
+        if (totalAmount === 0 || categoriesArray.length === 0) {
+          setCategoryData(mockCategoryData);
+          setLoading(false);
+          return;
+        }
+        
+        // Formatear datos para el gráfico
+        const formattedData: CategoryData[] = categoriesArray
+          .sort((a, b) => b.total - a.total)
+          .slice(0, 5) // Mostrar solo top 5 categorías
+          .map((cat, index) => {
+            const percentage = (cat.total / totalAmount) * 100;
+            return {
+              category: cat.categoryName,
+              value: parseFloat(percentage.toFixed(2)),
+              color: categoryColors[index % categoryColors.length],
+              amount: new Intl.NumberFormat('es-CL', { 
+                style: 'currency', 
+                currency: 'CLP',
+                maximumFractionDigits: 0
+              }).format(cat.total),
+              description: `${cat.count} ${reportType === 'cotizaciones' ? 'unidades cotizadas' : 'unidades vendidas'}`
+            };
+          });
+
+        // Asegurar que los porcentajes sumen 100%
+        const totalPercentage = formattedData.reduce((sum, item) => sum + item.value, 0);
+        if (totalPercentage < 100 && formattedData.length > 0) {
+          const diff = 100 - totalPercentage;
+          formattedData[0].value = parseFloat((formattedData[0].value + diff).toFixed(2));
+        }
+
+        setCategoryData(formattedData);
+      } catch (err) {
+        console.error('Error cargando distribución de categorías:', err);
+        setError(err instanceof Error ? err.message : 'Error al cargar datos');
+        setCategoryData(mockCategoryData); // Fallback a datos mock
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    loadCategoryData();
+  }, [period, reportType]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -69,8 +278,34 @@ export function CategoryDistributionChart({ period }: CategoryDistributionChartP
 
     let currentAngle = -Math.PI / 2; // Empezar desde arriba
 
+    // Si está cargando, mostrar indicador visual
+    if (loading) {
+      ctx.font = '16px Arial';
+      ctx.fillStyle = '#6b7280';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('Cargando datos...', centerX, centerY);
+      return;
+    }
+
+    // Si hay error, mostrar mensaje
+    if (error) {
+      ctx.font = '14px Arial';
+      ctx.fillStyle = '#ef4444';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('Error al cargar datos', centerX, centerY);
+      return;
+    }
+
+  // Si no hay datos, usar mock
+  const dataToUse = categoryData.length > 0 ? categoryData : mockCategoryData;
+    
     // Dibujar cada segmento con efectos mejorados
-    mockCategoryData.forEach((segment, index) => {
+    dataToUse.forEach((segment, index) => {
+      // Saltar segmentos con valores muy pequeños o 0
+      if (segment.value <= 0.1) return;
+      
       const sliceAngle = (segment.value / 100) * 2 * Math.PI;
       const isHovered = hoveredSegment === index;
       const radius = isHovered ? outerRadius + 5 : outerRadius;
@@ -121,13 +356,14 @@ export function CategoryDistributionChart({ period }: CategoryDistributionChartP
     ctx.stroke();
 
     // Texto central mejorado
-    const totalValue = mockCategoryData.reduce((sum, item) => sum + parseFloat(item.amount.replace(/[$,]/g, '')), 0);
+    const totalValue = (categoryData.length > 0 ? categoryData : mockCategoryData)
+      .reduce((sum, item) => sum + parseFloat(item.amount.replace(/[$,]/g, '')), 0);
     
     ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--text-primary') || '#000000';
     ctx.font = 'bold 14px system-ui, -apple-system, sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText('Total Ventas', centerX, centerY - 12);
+  ctx.fillText('Total Cotizado', centerX, centerY - 12);
 
     ctx.font = 'bold 18px system-ui, -apple-system, sans-serif';
     ctx.fillStyle = '#8b5cf6';
@@ -168,8 +404,8 @@ export function CategoryDistributionChart({ period }: CategoryDistributionChartP
       let currentAngle = 0;
       let segmentIndex = -1;
 
-      for (let i = 0; i < mockCategoryData.length; i++) {
-        const sliceAngle = (mockCategoryData[i].value / 100) * 2 * Math.PI;
+      for (let i = 0; i < dataArr.length; i++) {
+        const sliceAngle = (dataArr[i].value / 100) * 2 * Math.PI;
         if (adjustedAngle >= currentAngle && adjustedAngle < currentAngle + sliceAngle) {
           segmentIndex = i;
           break;
@@ -193,31 +429,38 @@ export function CategoryDistributionChart({ period }: CategoryDistributionChartP
       <div className="flex-shrink-0 relative">
         <canvas
           ref={canvasRef}
-          className="w-64 h-64 mx-auto cursor-pointer"
-          style={{ backgroundColor: 'transparent' }}
+          className="mx-auto cursor-pointer"
+          style={{ 
+            backgroundColor: 'transparent',
+            width: window.innerWidth < 640 ? '200px' : '256px',
+            height: window.innerWidth < 640 ? '200px' : '256px'
+          }}
           onMouseMove={handleMouseMove}
           onMouseLeave={handleMouseLeave}
         />
         
         {/* Tooltip flotante */}
-        {hoveredSegment !== null && (
+        {hoveredSegment !== null && dataArr.length > 0 && dataArr[hoveredSegment] && (
           <div 
-            className="absolute z-10 bg-black/80 text-white p-2 rounded-md text-xs pointer-events-none transition-all"
+            className="absolute z-10 p-2 rounded-md text-xs pointer-events-none transition-all shadow-lg border"
             style={{ 
               left: mousePos.x + 10,
               top: mousePos.y - 10,
-              transform: 'translate(-50%, -100%)'
+              transform: 'translate(-50%, -100%)',
+              backgroundColor: 'var(--bg-primary)',
+              borderColor: 'var(--border-subtle)',
+              color: 'var(--text-primary)'
             }}
           >
-            <div className="font-semibold">{mockCategoryData[hoveredSegment].category}</div>
-            <div>{mockCategoryData[hoveredSegment].amount} ({mockCategoryData[hoveredSegment].value}%)</div>
+            <div className="font-semibold" style={{ color: 'var(--accent-text)' }}>{dataArr[hoveredSegment].category}</div>
+            <div style={{ color: 'var(--text-secondary)' }}>{dataArr[hoveredSegment].amount} ({dataArr[hoveredSegment].value}%)</div>
           </div>
         )}
       </div>
 
       {/* Leyenda mejorada */}
       <div className="flex-1 space-y-3">
-        {mockCategoryData.map((item, index) => (
+        {dataArr.map((item, index) => (
           <div 
             key={index} 
             className={`group p-4 rounded-lg transition-all duration-200 cursor-pointer ${
@@ -237,7 +480,7 @@ export function CategoryDistributionChart({ period }: CategoryDistributionChartP
                   style={{ backgroundColor: item.color }}
                 />
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-semibold truncate" style={{ color: 'var(--text-primary)' }}>
+                  <p className="text-xs sm:text-sm font-semibold truncate" style={{ color: 'var(--text-primary)' }}>
                     {item.category}
                   </p>
                   <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
@@ -245,8 +488,8 @@ export function CategoryDistributionChart({ period }: CategoryDistributionChartP
                   </p>
                 </div>
               </div>
-              <div className="text-right flex-shrink-0 ml-3">
-                <p className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>
+              <div className="text-right flex-shrink-0 ml-2 sm:ml-3">
+                <p className="text-xs sm:text-sm font-bold" style={{ color: 'var(--text-primary)' }}>
                   {item.amount}
                 </p>
                 <p className="text-xs font-medium" style={{ color: item.color }}>
@@ -299,15 +542,17 @@ export function CategoryDistributionChart({ period }: CategoryDistributionChartP
       </div>
       
       {/* Indicador de datos mock */}
-      <div className="mt-2 text-center">
-        <span className="text-xs px-2 py-1 rounded-full" 
-              style={{ 
-                backgroundColor: 'var(--warning-bg)', 
-                color: 'var(--warning-text)' 
-              }}>
-          📊 Datos de demostración - Requiere categorías de productos
-        </span>
-      </div>
+      {categoryData.length === 0 && (
+        <div className="mt-2 text-center">
+          <span className="text-xs px-2 py-1 rounded-full" 
+                style={{ 
+                  backgroundColor: 'var(--warning-bg)', 
+                  color: 'var(--warning-text)' 
+                }}>
+            📊 Datos de demostración - Requiere categorías de productos
+          </span>
+        </div>
+      )}
     </div>
   );
 }

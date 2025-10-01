@@ -1,5 +1,5 @@
 import { useAuth } from '@/contexts/AuthContext'
-import type { AuthUser } from '@/services/authService'
+import type { User as AuthUser } from '@/contexts/AuthContext'
 
 /**
  * Hook para crear headers de autenticación para requests de API
@@ -47,8 +47,8 @@ export function createAuthHeadersFromUser(user: AuthUser | null): Record<string,
   if (user) {
     headers['x-user-id'] = user.id
     headers['x-user-email'] = user.email
-    if (user.nombre) {
-      headers['x-user-name'] = user.nombre
+    if (user.name) {
+      headers['x-user-name'] = user.name
     }
   }
 

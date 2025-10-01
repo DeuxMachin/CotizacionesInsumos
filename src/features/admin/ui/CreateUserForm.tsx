@@ -6,6 +6,7 @@ import { useUsuarios } from "@/hooks/useSupabase";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/contexts/AuthContext";
 import bcrypt from "bcryptjs";
+import { isCommonPassword, validatePassword } from "@/lib/auth/passwordPolicy";
 import { FiMail, FiUser, FiShield, FiLock, FiEye, FiEyeOff, FiCheck, FiAlertCircle, FiArrowLeft, FiCheckCircle, FiXCircle } from "react-icons/fi";
 
 interface NewUserForm {
@@ -43,12 +44,7 @@ const getRoleOptions = (userRole: string) => {
   return [];
 };
 
-// Lista de contraseñas comunes prohibidas
-const commonPasswords = [
-  'password', '123456', '123456789', 'qwerty', 'abc123', 'password123',
-  'admin', 'letmein', 'welcome', 'monkey', '1234567890', 'password1',
-  'qwerty123', 'admin123', 'root', 'user', 'guest', 'test', 'demo'
-];
+// Lista de contraseñas comunes centralizada en passwordPolicy
 
 // Requisitos de contraseña
 const passwordRequirements = [
@@ -72,7 +68,7 @@ const calculatePasswordStrength = (password: string): { score: number; label: st
 
   // Penalizaciones
   if (password.length < 6) score -= 30;
-  if (commonPasswords.includes(password.toLowerCase())) score -= 50;
+  if (isCommonPassword(password)) score -= 50;
 
   if (score >= 80) return { score, label: 'Muy fuerte', color: '#10b981' };
   if (score >= 60) return { score, label: 'Fuerte', color: '#059669' };
@@ -181,8 +177,8 @@ export function CreateUserForm() {
         errorsList.push('Al menos un carácter especial');
       }
 
-      // Verificar contraseñas comunes
-      if (commonPasswords.includes(formData.password.toLowerCase())) {
+      // Verificar contraseñas comunes (política central)
+      if (isCommonPassword(formData.password)) {
         errorsList.push('Esta contraseña es muy común, elige una más segura');
       }
 
@@ -194,6 +190,12 @@ export function CreateUserForm() {
       // Verificar secuencias comunes
       if (/(.)\1{2,}/.test(formData.password)) {
         errorsList.push('Evita caracteres repetidos consecutivos');
+      }
+
+      // Validación central adicional (longitud 6-128 y común)
+      const policy = validatePassword(formData.password);
+      if (!policy.valid && policy.error) {
+        errorsList.push(policy.error);
       }
 
       if (errorsList.length > 0) {
@@ -268,7 +270,7 @@ export function CreateUserForm() {
       });
 
       // Verificaciones adicionales
-      requirements.common = !commonPasswords.includes(value.toLowerCase());
+  requirements.common = !isCommonPassword(value);
       requirements.personal = !containsPersonalInfo(value, formData.name, formData.lastName, formData.email);
       requirements.sequences = !/(.)\1{2,}/.test(value);
 

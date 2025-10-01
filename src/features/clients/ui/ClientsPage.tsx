@@ -89,7 +89,12 @@ export function ClientsPage() {
     async function load() {
       try {
         setLoading(true); setError(null);
-        const url = searchTerm.length > 1 ? `/api/clientes?search=${encodeURIComponent(searchTerm)}` : '/api/clientes';
+        // Si el término de búsqueda parece un RUT (contiene puntos o guión) o es numérico
+        // recuperamos todo y filtramos client-side para poder ignorar los puntos
+        const isRutLike = /[.\-]/.test(searchTerm) || /^\d+$/.test(searchTerm);
+        const url = searchTerm.length > 1 && !isRutLike
+          ? `/api/clientes?search=${encodeURIComponent(searchTerm)}`
+          : '/api/clientes';
         const res = await fetch(url, { signal: controller.signal });
         if (!res.ok) throw new Error('Error al cargar clientes');
         const body = await res.json();
@@ -187,7 +192,34 @@ export function ClientsPage() {
   // Filtros y datos procesados
   const data = useMemo(() => {
     let out = [...clients];
-    
+
+    // Normalizador de RUT que ignora puntos (mantiene guión)
+    const normalizeRutDotsOnly = (v: string) => (v || '').replace(/\./g, '').toUpperCase();
+
+    // Filtro por búsqueda (local), incluyendo comparación de RUT ignorando puntos
+    if (searchTerm.trim()) {
+      const q = searchTerm.trim().toLowerCase();
+      const qRutNoDots = normalizeRutDotsOnly(searchTerm);
+      out = out.filter((c) => {
+        const razon = (c.razonSocial || '').toLowerCase();
+        const giro = (c.giro || '').toLowerCase();
+        const dir = (c.direccion || '').toLowerCase();
+        const comuna = (c.comuna || '').toLowerCase();
+        const region = (c.region || '').toLowerCase();
+        const contacto = (c.contactoNombre || '').toLowerCase();
+        const contactoEmail = (c.contactoEmail || '').toLowerCase();
+        const rut = c.rut || '';
+        const rutNoDots = normalizeRutDotsOnly(rut);
+        // Coincidencia por texto general o por RUT ignorando puntos
+        return (
+          razon.includes(q) || giro.includes(q) || dir.includes(q) ||
+          comuna.includes(q) || region.includes(q) || contacto.includes(q) ||
+          contactoEmail.includes(q) ||
+          (qRutNoDots.length > 1 && rutNoDots.includes(qRutNoDots))
+        );
+      });
+    }
+
     // Aplicar filtro de estado
     if (selectedStates.length > 0) {
       out = out.filter((c) => selectedStates.includes(c.status));
@@ -198,7 +230,7 @@ export function ClientsPage() {
       out = out.filter((c) => selectedRegions.includes(c.region));
     }
     return out;
-  }, [clients, selectedStates, selectedRegions]);
+  }, [clients, selectedStates, selectedRegions, searchTerm]);
 
   // Estadísticas
   const stats = useMemo(() => {

@@ -122,7 +122,7 @@ export function UsersManagementPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6 px-3 sm:px-4">
       {/* Header */}
       <div className="flex flex-col sm:flex-row gap-3 md:gap-4 justify-between items-start">
         <div>
@@ -153,7 +153,7 @@ export function UsersManagementPage() {
       </div>
 
       {/* Estadísticas */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 md:gap-4">
+  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3 md:gap-4">
         <div 
           className="p-3 md:p-4 rounded-lg"
           style={{ backgroundColor: 'var(--card-bg)', border: '1px solid var(--border)' }}
@@ -315,42 +315,42 @@ export function UsersManagementPage() {
         className="rounded-lg overflow-hidden"
         style={{ backgroundColor: 'var(--card-bg)', border: '1px solid var(--border)' }}
       >
-        <div className="overflow-x-auto">
-          <table className="w-full">
+        <div className="overflow-x-auto w-full" style={{ WebkitOverflowScrolling: 'touch' }}>
+          <table className="w-full min-w-[680px]">
             <thead style={{ backgroundColor: 'var(--bg-secondary)' }}>
               <tr>
                 <th 
-                  className="px-2 md:px-4 py-2 md:py-3 text-left text-xs md:text-sm font-medium"
+                  className="px-1.5 sm:px-2 md:px-4 py-2 md:py-3 text-left text-xs md:text-sm font-medium"
                   style={{ color: 'var(--text-secondary)' }}
                 >
                   Usuario
                 </th>
                 <th 
-                  className="px-2 md:px-4 py-2 md:py-3 text-left text-xs md:text-sm font-medium"
+                  className="px-1.5 sm:px-2 md:px-4 py-2 md:py-3 text-left text-xs md:text-sm font-medium"
                   style={{ color: 'var(--text-secondary)' }}
                 >
                   Rol
                 </th>
                 <th 
-                  className="px-2 md:px-4 py-2 md:py-3 text-left text-xs md:text-sm font-medium hidden sm:table-cell"
+                  className="px-1.5 sm:px-2 md:px-4 py-2 md:py-3 text-left text-xs md:text-sm font-medium hidden sm:table-cell"
                   style={{ color: 'var(--text-secondary)' }}
                 >
                   Estado
                 </th>
                 <th 
-                  className="px-2 md:px-4 py-2 md:py-3 text-left text-xs md:text-sm font-medium hidden md:table-cell"
+                  className="px-1.5 sm:px-2 md:px-4 py-2 md:py-3 text-left text-xs md:text-sm font-medium hidden md:table-cell"
                   style={{ color: 'var(--text-secondary)' }}
                 >
                   Creado
                 </th>
                 <th 
-                  className="px-2 md:px-4 py-2 md:py-3 text-left text-xs md:text-sm font-medium hidden lg:table-cell"
+                  className="px-1.5 sm:px-2 md:px-4 py-2 md:py-3 text-left text-xs md:text-sm font-medium hidden lg:table-cell"
                   style={{ color: 'var(--text-secondary)' }}
                 >
                   Último Acceso
                 </th>
                 <th 
-                  className="px-2 md:px-4 py-2 md:py-3 text-left text-xs md:text-sm font-medium"
+                  className="px-1.5 sm:px-2 md:px-4 py-2 md:py-3 text-left text-xs md:text-sm font-medium"
                   style={{ color: 'var(--text-secondary)' }}
                 >
                   Acciones
@@ -367,21 +367,21 @@ export function UsersManagementPage() {
                     backgroundColor: 'var(--bg-primary)'
                   }}
                 >
-                  <td className="px-2 md:px-4 py-2 md:py-3">
-                    <div className="flex items-center gap-2 md:gap-3">
+                  <td className="px-1.5 sm:px-2 md:px-4 py-2 md:py-3">
+                    <div className="flex items-center gap-1.5 sm:gap-2 md:gap-3">
                       <div 
                         className="h-8 w-8 md:h-10 md:w-10 rounded-full flex items-center justify-center font-medium text-white shadow-md text-xs md:text-base"
                         style={{ background: 'linear-gradient(135deg, #ff5600, #e6004d)' }}
                       >
                         {user.name[0].toUpperCase()}{user.lastName[0].toUpperCase()}
                       </div>
-                      <div>
+                      <div className="min-w-0">
                         <div className="font-medium text-xs md:text-sm" style={{ color: 'var(--text-primary)' }}>
                           {user.name} {user.lastName}
                         </div>
                         <div className="text-xs flex items-center gap-1" style={{ color: 'var(--text-secondary)' }}>
                           <FiMail className="w-2.5 h-2.5 md:w-3 md:h-3" />
-                          <span className="truncate max-w-[100px] md:max-w-full">{user.email}</span>
+                          <span className="truncate max-w-[120px] sm:max-w-[180px] md:max-w-full">{user.email}</span>
                         </div>
                       </div>
                     </div>
@@ -391,15 +391,15 @@ export function UsersManagementPage() {
                       {getRoleDisplayName(user.role)}
                     </span>
                   </td>
-                  <td className="px-2 md:px-4 py-2 md:py-3 hidden sm:table-cell">
+                  <td className="px-1.5 sm:px-2 md:px-4 py-2 md:py-3 hidden sm:table-cell">
                     <span className={`badge ${user.isActive ? 'badge-green' : 'badge-gray'} text-xs`}>
                       {user.isActive ? 'Activo' : 'Inactivo'}
                     </span>
                   </td>
-                  <td className="px-2 md:px-4 py-2 md:py-3 text-xs hidden md:table-cell" style={{ color: 'var(--text-secondary)' }}>
+                  <td className="px-1.5 sm:px-2 md:px-4 py-2 md:py-3 text-xs hidden md:table-cell" style={{ color: 'var(--text-secondary)' }}>
                     {user.createdAt.toLocaleDateString()}
                   </td>
-                  <td className="px-2 md:px-4 py-2 md:py-3 text-xs hidden lg:table-cell" style={{ color: 'var(--text-secondary)' }}>
+                  <td className="px-1.5 sm:px-2 md:px-4 py-2 md:py-3 text-xs hidden lg:table-cell" style={{ color: 'var(--text-secondary)' }}>
                     {user.lastLogin ? user.lastLogin.toLocaleDateString() : 'Nunca'}
                   </td>
                   <td className="px-2 md:px-4 py-2 md:py-3">

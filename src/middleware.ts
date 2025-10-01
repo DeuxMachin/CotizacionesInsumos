@@ -28,7 +28,7 @@ export async function middleware(request: NextRequest) {
   const url = request.nextUrl.clone();
   const isLoginPage = url.pathname === '/login';
   const isRootPage = url.pathname === '/';
-  const isProtectedRoute = url.pathname.startsWith('/dashboard') || url.pathname.startsWith('/admin');
+  const isProtectedRoute = url.pathname.startsWith('/dashboard') || url.pathname.startsWith('/admin') || url.pathname.startsWith('/pagina/dashboard');
 
   // Redirect root path to login if not authenticated
   if (isRootPage && !isAuthenticated) {
@@ -52,7 +52,14 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  return NextResponse.next();
+  const res = NextResponse.next();
+  // Prevent caching on login page to avoid back-button cached views
+  if (isLoginPage) {
+    res.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate');
+    res.headers.set('Pragma', 'no-cache');
+    res.headers.set('Expires', '0');
+  }
+  return res;
 }
 
 export const config = {

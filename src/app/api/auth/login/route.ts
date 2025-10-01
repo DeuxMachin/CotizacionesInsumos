@@ -3,13 +3,12 @@ import { supabase } from '@/lib/supabase'
 import bcrypt from 'bcryptjs'
 import { AuditLogger } from '@/services/auditLogger'
 import { signAccessToken, signRefreshToken } from '@/lib/auth/tokens'
+import { getRateKey } from '@/lib/request'
+import { loginLimiter } from '@/lib/rateLimiter'
+import { isTemporarilyLocked, registerFailedAttempt, resetAttempts, remainingLockDurationMs } from '@/lib/auth/lockout'
+import { setAuthCookies } from '@/lib/cookies'
 
-// Lista de contraseñas comunes filtradas (simplificada)
-const COMMON_PASSWORDS = [
-  'password', '123456', '123456789', 'qwerty', 'abc123', 'password123',
-  'admin', 'letmein', 'welcome', 'monkey', '1234567890', 'password1',
-  'qwerty123', 'welcome123', 'admin123', 'root', 'user', 'guest'
-];
+// No validar contraseñas comunes aquí; eso corresponde a creación/cambio de contraseña.
 
 /**
  * API de Login con políticas de contraseña mejoradas según ISO 27001
@@ -22,13 +21,19 @@ const COMMON_PASSWORDS = [
  */
 export async function POST(request: NextRequest) {
   try {
-    const { email, password } = await request.json()
+    const { email, password } = await request.json() as { email?: string; password?: string }
 
     if (!email || !password) {
       return NextResponse.json({
         success: false,
         error: 'Email y contraseña son requeridos'
       }, { status: 400 })
+    }
+
+    // Rate limit per IP + email to mitigate brute force
+    const key = getRateKey(request, email.toLowerCase());
+    if (!loginLimiter.allow(key)) {
+      return NextResponse.json({ success: false, error: 'Demasiadas solicitudes, intente más tarde.' }, { status: 429 });
     }
 
     // Validar longitud de contraseña
@@ -46,14 +51,7 @@ export async function POST(request: NextRequest) {
       }, { status: 400 })
     }
 
-    // Verificar si es una contraseña filtrada común
-    const lowerPassword = password.toLowerCase();
-    if (COMMON_PASSWORDS.includes(lowerPassword)) {
-      return NextResponse.json({
-        success: false,
-        error: 'Esta contraseña es muy común. Por favor elija una más segura.'
-      }, { status: 400 })
-    }
+    // No se valida complejidad/común aquí (solo en creación/reset)
 
     // Buscar usuario en la base de datos
     const { data: user, error: userError } = await supabase
@@ -65,29 +63,66 @@ export async function POST(request: NextRequest) {
     if (userError || !user) {
       // Log intento de login con email inexistente
       console.log(`🔐 Intento de login con email inexistente: ${email}`);
+      // Registrar intento fallido
+      const result = await registerFailedAttempt(email);
+      if (result.deactivated) {
+        return NextResponse.json({ 
+          success: false, 
+          error: 'Su cuenta ha sido inhabilitada por seguridad. Para reactivarla debe restablecer su contraseña usando el enlace "Olvidé mi contraseña".',
+          deactivated: true 
+        }, { status: 423 });
+      }
+      const warning = result.windowCount >= 3 && result.windowCount < 6
+        ? 'Advertencia: múltiples intentos fallidos. Si continúa hasta 6 intentos, su cuenta será inhabilitada por seguridad.'
+        : undefined;
       return NextResponse.json({
         success: false,
-        error: 'Credenciales incorrectas. Verifique su email y contraseña.'
+        error: 'Credenciales incorrectas. Verifique su email y contraseña.',
+        warning
       }, { status: 401 })
     }
 
     // Verificar si el usuario está activo
     if (!user.activo) {
       console.log(`🔐 Intento de login con cuenta inactiva: ${email}`);
+      const result = await registerFailedAttempt(email);
+      if (result.deactivated) {
+        return NextResponse.json({ 
+          success: false, 
+          error: 'Su cuenta ha sido inhabilitada por seguridad. Para reactivarla debe restablecer su contraseña usando el enlace "Olvidé mi contraseña".',
+          deactivated: true 
+        }, { status: 423 });
+      }
       return NextResponse.json({
         success: false,
         error: 'Credenciales incorrectas. Verifique su email y contraseña.'
       }, { status: 401 })
     }
 
+    // Lockout: prevenir intentos si está temporalmente bloqueado (aplica después de verificar estado)
+    const lockStatus = isTemporarilyLocked(email);
+    if (lockStatus.locked) {
+      const ms = remainingLockDurationMs(email);
+      const minutes = ms ? Math.ceil(ms / 60_000) : 15;
+      return NextResponse.json({ success: false, error: `Demasiados intentos. Intente nuevamente en ${minutes} minutos.` }, { status: 429 });
+    }
+
     // Verificar contraseña
     const passwordMatch = await bcrypt.compare(password, user.password_hash)
 
     if (!passwordMatch) {
-      console.log(`🔐 Contraseña incorrecta para: ${email}`);
+      console.log(` Contraseña incorrecta para: ${email}`);
+      const result = await registerFailedAttempt(email);
+      if (result.deactivated) {
+        return NextResponse.json({ success: false, error: 'Para activar otra vez la cuenta debe comunicarse con un administrador o dueño.' }, { status: 423 });
+      }
+      const warning = result.windowCount >= 3 && result.windowCount < 6
+        ? 'Advertencia: múltiples intentos fallidos. Si continúa hasta 6 intentos, su cuenta será inhabilitada por seguridad.'
+        : undefined;
       return NextResponse.json({
         success: false,
-        error: 'Credenciales incorrectas. Verifique su email y contraseña.'
+        error: 'Credenciales incorrectas. Verifique su email y contraseña.',
+        warning
       }, { status: 401 })
     }
 
@@ -97,7 +132,7 @@ export async function POST(request: NextRequest) {
       .update({ last_login_at: new Date().toISOString() })
       .eq('id', user.id)
 
-    // Log login exitoso
+  // Log login exitoso
     console.log(`✅ Login exitoso para: ${email}`);
 
     // Registrar en audit log
@@ -126,26 +161,17 @@ export async function POST(request: NextRequest) {
           role: user.rol
         }
       }
-    })
+  })
+  response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate');
+  response.headers.set('Pragma', 'no-cache');
+  response.headers.set('Expires', '0');
 
     // Cookies seguras
-    const isProd = process.env.NODE_ENV === 'production';
-    response.cookies.set('auth-token', accessToken, {
-      httpOnly: true,
-      secure: isProd,
-      sameSite: 'strict',
-      maxAge: 60 * 60 * 24, // 24 horas (en lugar de 10 minutos)
-      path: '/'
-    });
-    response.cookies.set('refresh-token', refreshToken, {
-      httpOnly: true,
-      secure: isProd,
-      sameSite: 'strict',
-      maxAge: 60 * 60 * 24 * 7, // 7 días
-      path: '/'
-    });
+    setAuthCookies(response, accessToken, refreshToken, request);
 
-    return response
+  // Resetear contador de intentos fallidos al éxito
+  resetAttempts(email);
+  return response
 
   } catch (error) {
     console.error('Error en login:', error)

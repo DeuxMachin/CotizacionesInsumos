@@ -37,16 +37,132 @@ const mockClientStatusData: ClientStatusData[] = [
   }
 ];
 
+import { useEffect, useState } from "react";
+import { supabase } from "@/lib/supabase";
+import { LoadingSpinner } from "../LoadingSpinner";
+import { ErrorDisplay } from "../ErrorDisplay";
+
 export function ClientStatusReport({ period }: ClientStatusReportProps) {
-  const totalClients = mockClientStatusData.reduce((sum, item) => sum + item.count, 0);
+  const [clientStatusData, setClientStatusData] = useState<ClientStatusData[]>(mockClientStatusData);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  
+  // Cargar datos reales desde Supabase
+  useEffect(() => {
+    const loadClientStatusData = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        
+        // Determinar rango de fechas según el período
+        const now = new Date();
+        const startDate = new Date();
+        
+        switch (period) {
+          case 'Último mes':
+            startDate.setMonth(now.getMonth() - 1);
+            break;
+          case 'Últimos 3 meses':
+            startDate.setMonth(now.getMonth() - 3);
+            break;
+          case 'Últimos 6 meses':
+            startDate.setMonth(now.getMonth() - 6);
+            break;
+          case 'Último año':
+            startDate.setFullYear(now.getFullYear() - 1);
+            break;
+          default:
+            startDate.setMonth(now.getMonth() - 6);
+        }
+        
+        // Obtener datos de clientes
+        const { data: clientes, error: clientesError } = await supabase
+          .from('clientes')
+          .select('id, estado, created_at');
+        
+        if (clientesError) throw new Error(`Error al obtener clientes: ${clientesError.message}`);
+        
+        // Contar clientes por estado
+        const estadosCount: Record<string, number> = {
+          'Activos': 0,
+          'Prospectos': 0,
+          'Inactivos': 0
+        };
+        
+        (clientes || []).forEach(cliente => {
+          // Mapear estados de la BD a nuestras categorías
+          let categoria = 'Inactivos';
+          if (cliente.estado === 'vigente') {
+            categoria = 'Activos';
+          } else if (cliente.estado === 'prospecto') {
+            categoria = 'Prospectos';
+          }
+          
+          estadosCount[categoria] = (estadosCount[categoria] || 0) + 1;
+        });
+        
+        // Calcular total
+        const total = Object.values(estadosCount).reduce((sum, count) => sum + count, 0);
+        
+        // Formatear datos para mostrar
+        if (total > 0) {
+          const formattedData: ClientStatusData[] = [
+            {
+              status: 'Activos',
+              count: estadosCount['Activos'],
+              percentage: Math.round((estadosCount['Activos'] / total) * 100),
+              color: '#10b981',
+              description: 'Clientes con actividad reciente'
+            },
+            {
+              status: 'Prospectos',
+              count: estadosCount['Prospectos'],
+              percentage: Math.round((estadosCount['Prospectos'] / total) * 100),
+              color: '#06b6d4',
+              description: 'Clientes potenciales en proceso'
+            },
+            {
+              status: 'Inactivos',
+              count: estadosCount['Inactivos'],
+              percentage: Math.round((estadosCount['Inactivos'] / total) * 100),
+              color: '#6b7280',
+              description: 'Sin actividad en el período'
+            }
+          ];
+          
+          setClientStatusData(formattedData);
+        } else {
+          // Fallback a datos mock si no hay datos
+          setClientStatusData(mockClientStatusData);
+        }
+      } catch (err) {
+        console.error('Error cargando estado de clientes:', err);
+        setError(err instanceof Error ? err.message : 'Error al cargar datos');
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    loadClientStatusData();
+  }, [period]);
+  
+  if (loading) {
+    return <LoadingSpinner message="Cargando datos de clientes..." />;
+  }
+  
+  if (error) {
+    return <ErrorDisplay message={error} />;
+  }
+  
+  const totalClients = clientStatusData.reduce((sum, item) => sum + item.count, 0);
 
   return (
     <div className="space-y-6">
       {/* Lista de estados */}
       <div className="space-y-4">
-        {mockClientStatusData.map((status, index) => (
+        {clientStatusData.map((status, index) => (
           <div 
-            key={status.status}
+            key={status.status + '-' + index}
             className="space-y-3"
           >
             {/* Header del estado */}

@@ -37,7 +37,7 @@ import { ProtectedRoute } from '@/components/ProtectedRoute';
 import { useQuotes } from '@/features/quotes/model/useQuotes';
 import { useSalesNotes } from '@/features/sales-notes/hooks/useSalesNotes';
 import { useAuth } from '@/contexts/AuthContext';
-import type { AuthUser } from '@/services/authService';
+import type { User as AuthUser } from '@/contexts/AuthContext';
 import type { Obra } from '@/features/obras/types/obras';
 import type { SalesNoteRecord } from '@/services/notasVentaService';
 
@@ -50,11 +50,8 @@ function createAuthHeaders(user: AuthUser | null): HeadersInit {
   if (user) {
     headers['x-user-id'] = user.id
     headers['x-user-email'] = user.email
-    if ('name' in user && typeof user.name === 'string') {
+    if (user.name) {
       headers['x-user-name'] = user.name
-    } else if (user.nombre) {
-      const full = user.apellido ? `${user.nombre} ${user.apellido}` : user.nombre
-      headers['x-user-name'] = full
     }
   }
 
@@ -412,10 +409,9 @@ function ClientDetailPage() {
   const legacyUser: AuthUser | null = user ? {
     id: user.id,
     email: user.email,
-    nombre: user.name?.split(' ')?.[0] || '',
-    apellido: user.name?.split(' ')?.slice(1).join(' ') || '',
-    rol: (typeof user.role === 'string' ? user.role as 'cliente' | 'dueño' | 'dueno' | 'admin' | 'vendedor' : 'vendedor'),
-    activo: true
+    name: user.name || '',
+    role: user.role || 'vendedor',
+    isAdmin: user.isAdmin || false
   } : null;
   const { getQuoteById } = useQuotes();
   const { getSalesNotesByClient } = useSalesNotes();

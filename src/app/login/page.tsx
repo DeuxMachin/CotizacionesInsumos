@@ -14,6 +14,13 @@ export default function LoginPage() {
       console.log('[LoginPage] Detectado usuario autenticado, redirigiendo...', user.email)
       const redirectPath = (['admin', 'dueño', 'dueno'].includes(user.role?.toLowerCase() || '')) ? '/admin' : '/dashboard';
       router.replace(redirectPath);
+      // Fallback duro por si el enrutador no navega 
+      const t = setTimeout(() => {
+        if (window.location.pathname === '/login') {
+          window.location.assign(redirectPath);
+        }
+      }, 600);
+      return () => clearTimeout(t);
     } else {
       console.log('[LoginPage] Sin usuario autenticado todavía.')
     }
@@ -31,7 +38,15 @@ export default function LoginPage() {
   }
 
   if (isAuthenticated) {
-    return null; // Evitar parpadeo mientras redirige
+    // Mostrar spinner mientras se ejecuta la redirección para evitar pantalla en blanco
+    return (
+      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: 'var(--bg-primary)' }}>
+        <div className="flex items-center gap-3" style={{ color: 'var(--text-primary)' }}>
+          <div className="w-6 h-6 border-2 border-current border-t-transparent rounded-full animate-spin" style={{ borderColor: 'var(--accent-primary)' }}></div>
+          <span>Redirigiendo…</span>
+        </div>
+      </div>
+    );
   }
 
   return <LoginForm />;

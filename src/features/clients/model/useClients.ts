@@ -60,24 +60,27 @@ export function useClients() {
   // Función para validar RUT
   const validateRUT = useCallback((rut: string): boolean => {
     const cleanRut = rut.replace(/[.-\s]/g, '');
-    
     if (cleanRut.length < 2) return false;
-    
     const body = cleanRut.slice(0, -1);
     const dv = cleanRut.slice(-1).toUpperCase();
     
-    // Calcular dígito verificador
+    // Validar que el cuerpo del RUT sean números
+    if (!/^\d+$/.test(body)) return false;
+    
+    // Para RUTs de empresas (77.352.551-5, etc.)
+    // Cálculo de DV modo 11: dv = 0..9 o K
     let sum = 0;
     let multiplier = 2;
-    
     for (let i = body.length - 1; i >= 0; i--) {
-      sum += parseInt(body.charAt(i)) * multiplier;
+      const n = parseInt(body.charAt(i), 10);
+      sum += n * multiplier;
       multiplier = multiplier === 7 ? 2 : multiplier + 1;
     }
-    
-    const remainder = sum % 11;
-    const calculatedDV = remainder < 2 ? remainder.toString() : (11 - remainder === 10 ? 'K' : (11 - remainder).toString());
-    
+    const remainder = 11 - (sum % 11);
+    let calculatedDV: string;
+    if (remainder === 11) calculatedDV = '0';
+    else if (remainder === 10) calculatedDV = 'K';
+    else calculatedDV = String(remainder);
     return dv === calculatedDV;
   }, []);
 

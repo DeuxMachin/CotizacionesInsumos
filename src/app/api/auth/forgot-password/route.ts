@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabase'
 import crypto from 'crypto'
+import { getRateKey } from '@/lib/request'
+import { forgotPasswordLimiter } from '@/lib/rateLimiter'
 
 /**
  * API para solicitar recuperación de contraseña
@@ -8,7 +10,7 @@ import crypto from 'crypto'
  */
 export async function POST(request: NextRequest) {
   try {
-    const { email } = await request.json()
+  const { email } = await request.json() as { email?: string }
 
     if (!email) {
       return NextResponse.json({
@@ -24,6 +26,12 @@ export async function POST(request: NextRequest) {
         success: false,
         error: 'Formato de email inválido'
       }, { status: 400 })
+    }
+
+    // Rate limit por IP+email para evitar abuso
+    const key = getRateKey(request, (email || '').toLowerCase());
+    if (!forgotPasswordLimiter.allow(key)) {
+      return NextResponse.json({ success: true, message: 'Si el email existe en nuestro sistema, recibirás instrucciones para recuperar tu contraseña.' });
     }
 
     // Buscar usuario

@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { SecurityService } from "@/services/securityService";
 import { SecurityLogger } from "@/services/securityLogger";
@@ -16,8 +15,12 @@ export function LoginForm() {
   });
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
+  const [warning, setWarning] = useState("");
   const [isFormValid, setIsFormValid] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showPreLockModal, setShowPreLockModal] = useState(false);
+  const [attemptCount, setAttemptCount] = useState<number | null>(null);
+  const [showForgotPasswordModal, setShowForgotPasswordModal] = useState(false);
 
   const [isLocked, setIsLocked] = useState(false);
   const [, setLockoutTime] = useState("");
@@ -32,6 +35,16 @@ export function LoginForm() {
     const passwordValid = Boolean(formData.password.length >= 6 && formData.password.length <= 128);
     setIsFormValid(emailValid && passwordValid);
   };
+
+  // Prefill last attempted email al montar
+  useEffect(() => {
+    try {
+      const last = localStorage.getItem('last-login-email');
+      if (last) {
+        setFormData(prev => ({ ...prev, email: last }));
+      }
+    } catch {}
+  }, []);
 
   // Actualizar validación cuando cambian los campos
   useEffect(() => {
@@ -56,14 +69,44 @@ export function LoginForm() {
       setIsLocked(false);
       setLockoutTime("");
     }
-  }, [formData.email, formData.password, error, isLocked, isSubmitting]);
+  }, [formData.email, formData.password, error, isLocked, isSubmitting, validateForm]);
+
+  // Diagnóstico: log de visibilidad del modal y conteo
+  useEffect(() => {
+    if (showPreLockModal) {
+      console.log('[LoginForm] Modal de advertencia abierto. intentos =', attemptCount);
+    } else {
+      console.log('[LoginForm] Modal de advertencia cerrado. intentos =', attemptCount);
+    }
+  }, [showPreLockModal, attemptCount]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     e.stopPropagation();
 
-    setError("");
+  setError("");
+  setWarning("");
     setIsSubmitting(true);
+
+    try {
+      // Verificar si ya hay intentos fallidos previos para mostrar advertencia temprana
+      const storedAttempts = localStorage.getItem('login_attempts');
+      if (storedAttempts) {
+        let attempts: Record<string, { count: number; timestamp: number }> = {};
+        try { attempts = JSON.parse(storedAttempts); } catch {}
+        const emailKey = formData.email.trim().toLowerCase();
+        const userAttempts = attempts[emailKey];
+        
+        if (userAttempts && userAttempts.count >= 3) {
+          // Si ya tiene 3+ intentos fallidos, mostrar advertencia proactivamente
+          console.log('[LoginForm] Detectados intentos previos (localStorage):', userAttempts.count);
+          setAttemptCount(userAttempts.count);
+          setShowPreLockModal(true);
+        }
+      }
+    } catch (e) {
+      // Ignorar errores al leer localStorage
+    }
 
     // Validaciones de seguridad XSS
     if (!XSSProtection.validateEmail(formData.email)) {
@@ -114,12 +157,34 @@ export function LoginForm() {
       // Log del intento de login
       SecurityLogger.logLoginAttempt(formData.email, false);
 
-      const result = await login(formData.email.trim(), formData.password);
+  const emailTrimmed = formData.email.trim();
+  const result = await login(emailTrimmed, formData.password);
 
       if (!result.success) {
-        SecurityService.registerFailedAttempt(formData.email);
+        // Persist last attempted email
+        try { localStorage.setItem('last-login-email', emailTrimmed); } catch {}
+        if (result.error) setError(result.error);
+        if (result.warning) {
+          setWarning(result.warning);
+          // Mostrar modal de advertencia siempre que el servidor envíe warning
+          setShowPreLockModal(true);
+        }
+        
+        // Si la cuenta ha sido desactivada, mostrar modal de recuperación
+        if (result.deactivated) {
+          setShowForgotPasswordModal(true);
+        }
+        
+        // Registrar intento fallido y usar conteo actualizado del cliente
+        const clientCount = SecurityService.registerFailedAttempt(emailTrimmed);
+        setAttemptCount(clientCount);
+        // Abrir modal exactamente desde el 3er al 5to intento incluido
+        if (clientCount >= 3 && clientCount < 6) {
+          console.log('[LoginForm] Abriendo modal por intentos cliente =', clientCount);
+          setShowPreLockModal(true);
+        }
 
-        const newLockStatus = SecurityService.isAccountLocked(formData.email);
+  const newLockStatus = SecurityService.isAccountLocked(emailTrimmed);
         if (newLockStatus.locked) {
           const remainingTime = newLockStatus.remainingTime
             ? SecurityService.getRemainingLockoutTime(newLockStatus.remainingTime)
@@ -128,18 +193,27 @@ export function LoginForm() {
           setIsLocked(true);
           setLockoutTime(remainingTime);
         } else {
-          // Mensaje genérico para no revelar información
-          setError("Credenciales incorrectas. Verifique su email y contraseña.");
+          // Mensaje genérico ya puesto en result.error; si faltó, fallback
+          if (!result.error) setError("Credenciales incorrectas. Verifique su email y contraseña.");
         }
       } else {
         console.log('[LoginForm] Login result success, esperando redirección del contexto...')
         setError("");
-        SecurityService.resetAttempts(formData.email);
-        SecurityLogger.logLoginAttempt(formData.email, true);
+        setWarning("");
+  SecurityService.resetAttempts(emailTrimmed);
+  SecurityLogger.logLoginAttempt(emailTrimmed, true);
+        // Limpiar last email tras éxito
+        try { localStorage.removeItem('last-login-email'); } catch {}
       }
     } catch (err) {
       console.error("Error en login:", err);
-      SecurityService.registerFailedAttempt(formData.email);
+      const clientCount = SecurityService.registerFailedAttempt(formData.email.trim());
+      // Mostrar modal también en errores de red si cruza umbral 3-5
+      if (clientCount >= 3 && clientCount < 6) {
+        console.log('[LoginForm] Abriendo modal (catch) por intentos cliente =', clientCount);
+        setAttemptCount(clientCount);
+        setShowPreLockModal(true);
+      }
 
       if (err instanceof Error) {
         if (err.message.includes('fetch')) {
@@ -334,7 +408,7 @@ export function LoginForm() {
                   </div>
                 </div>
 
-                {/* Error o advertencia de bloqueo */}
+                {/* Error */}
                 {error && (() => {
                   return (
                     <div
@@ -363,6 +437,21 @@ export function LoginForm() {
                     </div>
                   );
                 })()}
+
+                {/* Advertencia previa a lock */}
+                {!error && warning && (
+                  <div
+                    className="px-4 py-3 rounded-xl text-sm border flex items-center gap-2"
+                    style={{
+                      backgroundColor: 'var(--warning-bg)',
+                      borderColor: 'var(--warning)',
+                      color: 'var(--warning-text)'
+                    }}
+                  >
+                    <FiShield className="w-4 h-4 flex-shrink-0" />
+                    <span className="flex-1">{warning}</span>
+                  </div>
+                )}
 
                 {/* Submit Button */}
                 <button
@@ -407,6 +496,75 @@ export function LoginForm() {
                   © 2025 Sistema de Cotizaciones – Acceso Seguro
                 </p>
               </form>
+              {/* Modal de advertencia previa a inhabilitación */}
+              {showPreLockModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+                  <div className="w-full max-w-md rounded-2xl border p-6" style={{ backgroundColor: 'var(--card-bg)', borderColor: 'var(--border-subtle)', boxShadow: 'var(--shadow-lg)' }}>
+                    <div className="flex items-start gap-3">
+                      <div className="mt-1">
+                        <FiShield className="w-6 h-6" style={{ color: 'var(--warning)' }} />
+                      </div>
+                      <div className="flex-1">
+                        <h3 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>Advertencia de seguridad</h3>
+                        <p className="mt-1 text-sm" style={{ color: 'var(--text-secondary)' }}>
+                          {attemptCount && attemptCount >= 3 && attemptCount < 6
+                            ? `Has realizado ${attemptCount} intentos fallidos. Si te equivocas ${6 - attemptCount} vez${6 - attemptCount === 1 ? '' : 'es'} más, tu cuenta será inhabilitada por seguridad y necesitarás restablecer tu contraseña para reactivarla.`
+                            : 'Has realizado varios intentos fallidos. Si alcanzas 6 intentos fallidos, tu cuenta será inhabilitada por seguridad y necesitarás restablecer tu contraseña para reactivarla. '}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="mt-5 flex justify-end gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setShowPreLockModal(false)}
+                        className="px-4 py-2 rounded border"
+                        style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)', borderColor: 'var(--border)' }}
+                      >
+                        Entendido
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+              
+              {/* Modal de recuperación de cuenta desactivada */}
+              {showForgotPasswordModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+                  <div className="w-full max-w-md rounded-2xl border p-6" style={{ backgroundColor: 'var(--card-bg)', borderColor: 'var(--border-subtle)', boxShadow: 'var(--shadow-lg)' }}>
+                    <div className="flex items-start gap-3">
+                      <div className="mt-1">
+                        <FiUserX className="w-6 h-6" style={{ color: 'var(--danger)' }} />
+                      </div>
+                      <div className="flex-1">
+                        <h3 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>Cuenta inhabilitada</h3>
+                        <p className="mt-1 text-sm" style={{ color: 'var(--text-secondary)' }}>
+                          Su cuenta ha sido inhabilitada por seguridad tras múltiples intentos fallidos. 
+                          Para reactivarla, debe restablecer su contraseña.
+                        </p>
+                      </div>
+                    </div>
+                    <div className="mt-5 flex justify-end gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setShowForgotPasswordModal(false)}
+                        className="px-4 py-2 rounded border"
+                        style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)', borderColor: 'var(--border)' }}
+                      >
+                        Cerrar
+                      </button>
+                      <a
+                        href="/recuperar-password"
+                        className="px-4 py-2 rounded text-white"
+                        style={{
+                          background: 'linear-gradient(135deg, var(--accent-primary), var(--accent-secondary))'
+                        }}
+                      >
+                        Restablecer contraseña
+                      </a>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>

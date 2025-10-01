@@ -57,7 +57,7 @@ export function TopProductsReport({  }: TopProductsReportProps) {
       {mockProductsData.map((product) => (
         <div 
           key={product.rank}
-          className="group flex items-center gap-4 p-4 rounded-lg transition-all duration-200 hover:scale-[1.01]"
+          className="group flex items-center gap-3 sm:gap-4 p-3 sm:p-4 rounded-lg transition-all duration-200 hover:scale-[1.01]"
           style={{ backgroundColor: 'var(--bg-secondary)' }}
         >
           {/* Ranking badge */}

@@ -44,12 +44,12 @@ export function FinancialKPIs({ period }: FinancialKPIsProps) {
 
   if (loading) {
     return (
-      <div className="space-y-6">
+      <div className="space-y-4 sm:space-y-6">
         <div>
-          <h3 className="text-lg font-semibold mb-4" style={{ color: 'var(--text-primary)' }}>
+          <h3 className="text-lg font-semibold mb-3 sm:mb-4" style={{ color: 'var(--text-primary)' }}>
             Resumen Financiero
           </h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 sm:gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4 xl:gap-6">
             {Array.from({ length: 4 }).map((_, i) => (
               <div key={i} className="animate-pulse">
                 <div 
@@ -68,10 +68,10 @@ export function FinancialKPIs({ period }: FinancialKPIsProps) {
           </div>
         </div>
         <div>
-          <h3 className="text-lg font-semibold mb-4" style={{ color: 'var(--text-primary)' }}>
+          <h3 className="text-lg font-semibold mb-3 sm:mb-4" style={{ color: 'var(--text-primary)' }}>
             Indicadores de Rendimiento
           </h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 sm:gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4 xl:gap-6">
             {Array.from({ length: 4 }).map((_, i) => (
               <div key={i} className="animate-pulse">
                 <div 

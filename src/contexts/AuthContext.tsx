@@ -18,7 +18,7 @@ export interface AuthContextType {
   user: User | null
   loading: boolean
   isAuthenticated: boolean
-  login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>
+  login: (email: string, password: string) => Promise<{ success: boolean; error?: string; warning?: string; deactivated?: boolean }>
   logout: () => Promise<void>
 }
 
@@ -113,7 +113,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = async (email: string, password: string) => {
   log.debug('[Auth] Iniciando login (API directa) para', email)
-    setLoading(true)
     try {
       const resp = await fetch('/api/auth/login', {
         method: 'POST',
@@ -121,22 +120,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         credentials: 'include',
         body: JSON.stringify({ email, password })
       });
-      const data = await resp.json();
+      interface ApiUser { id: string; email: string; nombre?: string; apellido?: string; rol?: string; name?: string; role?: string }
+      interface LoginApiResponse { success: boolean; error?: string; warning?: string; deactivated?: boolean; data?: { user: ApiUser } }
+      const data: LoginApiResponse = await resp.json();
       if (!resp.ok || !data.success) {
-        setLoading(false);
-        return { success: false, error: data.error || 'Credenciales inválidas' };
+        return { success: false, error: data.error || 'Credenciales inválidas', warning: data.warning, deactivated: data.deactivated };
       }
-      const u = data.data.user;
+      const u = data.data?.user as ApiUser;
+      if (!u) {
+        setLoading(false);
+        return { success: false, error: 'Respuesta inválida del servidor' };
+      }
       const role = u.role || u.rol;
       const name = u.name || (u.nombre && u.apellido ? `${u.nombre} ${u.apellido}` : u.nombre) || undefined;
       setUser({ id: u.id, email: u.email, name, role, isAdmin: ['admin', 'dueño', 'dueno'].includes(role?.toLowerCase() || '') });
-      setLastActivity(Date.now());
-      setLoading(false);
-      router.replace((['admin', 'dueño', 'dueno'].includes(role?.toLowerCase() || '')) ? '/admin' : '/dashboard');
+  setLastActivity(Date.now());
+      const target = (['admin', 'dueño', 'dueno'].includes(role?.toLowerCase() || '')) ? '/admin' : '/dashboard';
+      router.replace(target);
+      // Fallback duro por si la navegación no ocurre por alguna razón
+      setTimeout(() => {
+        try {
+          if (window.location.pathname === '/login') {
+            window.location.assign(target);
+          }
+        } catch {}
+      }, 500);
       return { success: true };
     } catch (e) {
       log.error('[Auth] Error en login:', e);
-      setLoading(false);
       return { success: false, error: 'Error de red' };
     }
   };

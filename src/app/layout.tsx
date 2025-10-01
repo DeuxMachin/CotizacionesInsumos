@@ -6,6 +6,7 @@ import Script from "next/script";
 import { AuthInitializer } from "@/components/AuthInitializer";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { Footer } from "@/components/Footer";
+import { CookieConsent } from "@/components/CookieConsent";
 
 export const metadata = { title: "Panel Administrativo - Cotizaciones" };
 
@@ -71,6 +72,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <div className="flex-1 flex flex-col">
               {children}
             </div>
+            <CookieConsent />
             <Footer />
           </ThemeProvider>
         </AuthProvider>

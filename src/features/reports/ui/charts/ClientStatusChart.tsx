@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { ReportPeriod } from "@/app/dashboard/reportes/page";
-import { reportesService, ReportData } from "@/services/reportesService";
+import { supabase } from "@/lib/supabase";
 
 interface ClientStatusChartProps {
   period: ReportPeriod;
@@ -55,35 +55,71 @@ export function ClientStatusChart({ period }: ClientStatusChartProps) {
       try {
         setLoading(true);
         setError(null);
-        const data = await reportesService.getReportData(period);
         
-        // Convertir datos reales a formato ClientStatusData
-        const total = Object.values(data.clientesPorEstado).reduce((sum, count) => sum + count, 0);
-        const statusData: ClientStatusData[] = Object.entries(data.clientesPorEstado).map(([status, count], index) => {
-          const colors = ["#10b981", "#06b6d4", "#6b7280", "#f59e0b", "#ef4444"];
-          const icons = ["✓", "◐", "○", "△", "✗"];
-          const descriptions = {
-            "activo": "Clientes con actividad reciente",
-            "prospecto": "Clientes potenciales en proceso", 
-            "inactivo": "Sin actividad en el período",
-            "pendiente": "En proceso de validación",
-            "suspendido": "Cuentas temporalmente suspendidas"
-          };
-          
-          return {
-            status: status.charAt(0).toUpperCase() + status.slice(1),
-            count,
-            percentage: total > 0 ? Math.round((count / total) * 100) : 0,
-            color: colors[index % colors.length],
-            description: descriptions[status as keyof typeof descriptions] || "Estado del cliente",
-            icon: icons[index % icons.length]
-          };
+        // Obtener todos los clientes
+        const { data: clientes, error: clientesError } = await supabase
+          .from('clientes')
+          .select('id, estado, created_at');
+        
+        if (clientesError) throw new Error(`Error al obtener clientes: ${clientesError.message}`);
+        
+        // Mapear estados a categorías fijas
+        const estadosCount: Record<string, number> = {
+          'Activos': 0,
+          'Prospectos': 0,
+          'Inactivos': 0
+        };
+        
+        (clientes || []).forEach(cliente => {
+          if (cliente.estado === 'vigente') {
+            estadosCount['Activos']++;
+          } else if (cliente.estado === 'prospecto') {
+            estadosCount['Prospectos']++;
+          } else {
+            estadosCount['Inactivos']++;
+          }
         });
         
-        setClientStatusData(statusData);
+        // Calcular total
+        const total = Object.values(estadosCount).reduce((sum, count) => sum + count, 0);
+        
+        // Formatear datos
+        if (total > 0) {
+          const formattedData: ClientStatusData[] = [
+            {
+              status: 'Activos',
+              count: estadosCount['Activos'],
+              percentage: Math.round((estadosCount['Activos'] / total) * 100),
+              color: '#10b981',
+              description: 'Clientes con actividad reciente',
+              icon: '✓'
+            },
+            {
+              status: 'Prospectos',
+              count: estadosCount['Prospectos'],
+              percentage: Math.round((estadosCount['Prospectos'] / total) * 100),
+              color: '#06b6d4',
+              description: 'Clientes potenciales en proceso',
+              icon: '◐'
+            },
+            {
+              status: 'Inactivos',
+              count: estadosCount['Inactivos'],
+              percentage: Math.round((estadosCount['Inactivos'] / total) * 100),
+              color: '#6b7280',
+              description: 'Sin actividad en el período',
+              icon: '○'
+            }
+          ];
+          
+          setClientStatusData(formattedData);
+        } else {
+          setClientStatusData(mockClientStatusData);
+        }
       } catch (err) {
+        console.error('Error cargando estado de clientes:', err);
         setError(err instanceof Error ? err.message : 'Error al cargar datos');
-        setClientStatusData(mockClientStatusData); // Fallback a datos mock
+        setClientStatusData(mockClientStatusData);
       } finally {
         setLoading(false);
       }

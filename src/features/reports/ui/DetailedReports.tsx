@@ -10,10 +10,10 @@ interface DetailedReportsProps {
 
 export function DetailedReports({ period }: DetailedReportsProps) {
   return (
-    <div className="grid lg:grid-cols-2 gap-6">
+    <div className="grid lg:grid-cols-2 gap-4 sm:gap-6">
       {/* Productos más vendidos */}
       <div 
-        className="p-6 rounded-xl border"
+        className="p-3 sm:p-6 rounded-xl border"
         style={{ 
           backgroundColor: 'var(--bg-primary)',
           borderColor: 'var(--border-subtle)'
@@ -32,7 +32,7 @@ export function DetailedReports({ period }: DetailedReportsProps) {
 
       {/* Estado de clientes */}
       <div 
-        className="p-6 rounded-xl border"
+        className="p-3 sm:p-6 rounded-xl border"
         style={{ 
           backgroundColor: 'var(--bg-primary)',
           borderColor: 'var(--border-subtle)'

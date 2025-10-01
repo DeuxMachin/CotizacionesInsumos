@@ -57,7 +57,7 @@ const mockKPIData: KPIData[] = [
 
 export function KPICards({ period }: KPICardsProps) {
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 px-1 sm:px-0">
       {mockKPIData.map((kpi) => {
         const Icon = kpi.icon;
         const isPositiveTrend = kpi.trend > 0;
@@ -66,7 +66,7 @@ export function KPICards({ period }: KPICardsProps) {
         return (
           <div
             key={kpi.id}
-            className="group p-5 rounded-xl border transition-all duration-200 hover:shadow-lg hover:scale-[1.02] cursor-default"
+            className="group p-3 sm:p-5 rounded-xl border transition-all duration-200 hover:shadow-lg hover:scale-[1.02] cursor-default"
             style={{ 
               backgroundColor: 'var(--bg-primary)',
               borderColor: 'var(--border-subtle)'

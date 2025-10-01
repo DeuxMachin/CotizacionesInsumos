@@ -387,16 +387,16 @@ export default function StockPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 px-3 sm:px-4">
       {/* Header simplificado y más amigable - responsive */}
       <div 
-        className="border-b px-4 sm:px-6 py-6 sm:py-8"
+        className="border-b px-3 sm:px-6 py-5 sm:py-8"
         style={{ 
           backgroundColor: 'var(--card-bg)', 
           borderColor: 'var(--border)' 
         }}
       >
-        <div className="max-w-7xl mx-auto flex flex-col lg:flex-row lg:items-center justify-between gap-4 sm:gap-6">
+  <div className="max-w-7xl mx-auto flex flex-col lg:flex-row lg:items-center justify-between gap-4 sm:gap-6 w-full">
           <div className="text-center lg:text-left">
             <h1 
               className="text-2xl sm:text-3xl font-bold mb-2"
@@ -487,7 +487,7 @@ export default function StockPage() {
       </div>
 
       {/* Estadísticas simplificadas - responsive */}
-  <div className="max-w-7xl mx-auto grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6 mb-6 sm:mb-8 px-4 sm:px-0">
+  <div className="max-w-7xl mx-auto grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6 mb-6 sm:mb-8 px-3 sm:px-0">
         <div 
           className="rounded-xl border-2 p-4 sm:p-6 text-center"
           style={{ 
@@ -554,7 +554,7 @@ export default function StockPage() {
 
       {/* Filtros simplificados - responsive */}
       <div 
-        className="max-w-7xl mx-auto rounded-xl border-2 p-4 sm:p-6 mb-6 mx-4 sm:mx-0"
+        className="max-w-7xl mx-auto rounded-xl border-2 p-4 sm:p-6 mb-6 mx-3 sm:mx-0"
         style={{ 
           backgroundColor: 'var(--card-bg)', 
           borderColor: 'var(--border)' 
@@ -639,7 +639,7 @@ export default function StockPage() {
       </div>
 
       {/* Información de resultados simplificada - responsive */}
-  <div className="max-w-7xl mx-auto flex flex-col sm:flex-row sm:items-center justify-between mb-4 sm:mb-6 px-4 sm:px-0">
+  <div className="max-w-7xl mx-auto flex flex-col sm:flex-row sm:items-center justify-between mb-4 sm:mb-6 px-3 sm:px-0">
         <div className="text-lg sm:text-xl font-medium mb-2 sm:mb-0" style={{ color: 'var(--text-primary)' }}>
           {searchQuery ? (
             <>Mostrando resultados para: <span className="font-bold" style={{ color: 'var(--accent-primary)' }}> &quot;{searchQuery}&quot;</span></>
@@ -803,7 +803,7 @@ export default function StockPage() {
 }
 function ProductGrid({ products, onEdit, onAskDelete, user, openRowMenuId, setOpenRowMenuId }: { products: InventoryItem[]; onEdit: (product: InventoryItem) => void; onAskDelete: (id: number) => void; user: User | null; openRowMenuId: number | null; setOpenRowMenuId: (id: number | null) => void }) {
   return (
-    <div className="max-w-7xl mx-auto grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6 px-4 sm:px-0 items-stretch">
+    <div className="max-w-7xl mx-auto grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6 px-3 sm:px-0 items-stretch w-full">
       {products.map(product => (
         <ProductCard key={product.id} product={product} onEdit={onEdit} onAskDelete={onAskDelete} user={user} openRowMenuId={openRowMenuId} setOpenRowMenuId={setOpenRowMenuId} />
       ))}

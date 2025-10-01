@@ -1,19 +1,20 @@
 "use client";
 
-import { ReportPeriod } from "@/app/dashboard/reportes/page";
+import { ReportPeriod, ReportType } from "@/app/dashboard/reportes/page";
 import { SalesTrendChart } from "./charts/SalesTrendChart";
 import { CategoryDistributionChart } from "./charts/CategoryDistributionChart";
 
 interface ChartsGridProps {
   period: ReportPeriod;
+  reportType: ReportType;
 }
 
-export function ChartsGrid({ period }: ChartsGridProps) {
+export function ChartsGrid({ period, reportType }: ChartsGridProps) {
   return (
-    <div className="grid lg:grid-cols-2 gap-6">
+    <div className="grid lg:grid-cols-2 gap-4 sm:gap-6">
       {/* Gráfico de tendencia de ventas */}
       <div 
-        className="p-6 rounded-xl border"
+        className="p-3 sm:p-6 rounded-xl border"
         style={{ 
           backgroundColor: 'var(--bg-primary)',
           borderColor: 'var(--border-subtle)'
@@ -32,7 +33,7 @@ export function ChartsGrid({ period }: ChartsGridProps) {
 
       {/* Gráfico de distribución por categoría */}
       <div 
-        className="p-6 rounded-xl border"
+        className="p-3 sm:p-6 rounded-xl border"
         style={{ 
           backgroundColor: 'var(--bg-primary)',
           borderColor: 'var(--border-subtle)'
@@ -46,7 +47,7 @@ export function ChartsGrid({ period }: ChartsGridProps) {
             Ventas por categoría de productos
           </p>
         </div>
-        <CategoryDistributionChart period={period} />
+        <CategoryDistributionChart period={period} reportType={reportType} />
       </div>
     </div>
   );

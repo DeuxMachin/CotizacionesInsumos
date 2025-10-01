@@ -20,7 +20,7 @@ export function ReportsHeader({ selectedPeriod, onPeriodChange }: ReportsHeaderP
   };
 
   return (
-    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 p-1">
+    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 px-3 sm:px-4 py-2">
       {/* Título y descripción */}
       <div className="flex items-center gap-3">
         <div className="p-3 rounded-xl" style={{ backgroundColor: 'var(--accent-bg)', color: 'var(--accent-text)' }}>

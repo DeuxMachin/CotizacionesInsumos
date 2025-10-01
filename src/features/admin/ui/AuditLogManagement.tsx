@@ -282,7 +282,7 @@ export default function AuditLogManagement() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 px-3 sm:px-4">
       {/* Encabezado */}
       <div>
         <h1 className="text-2xl font-bold mb-2" style={{ color: 'var(--text-primary)' }}>
@@ -295,13 +295,13 @@ export default function AuditLogManagement() {
 
       {/* Filtros y búsqueda */}
       <div 
-        className="rounded-xl p-6"
+        className="rounded-xl p-3 sm:p-6"
         style={{ 
           backgroundColor: 'var(--bg-primary)',
           border: '1px solid var(--border-subtle)' 
         }}
       >
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-3 sm:mb-4">
           {/* Búsqueda */}
           <div>
             <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-primary)' }}>
@@ -398,7 +398,7 @@ export default function AuditLogManagement() {
         </div>
 
         {/* Contenido */}
-        <div className="p-6">
+        <div className="p-3 sm:p-6">
           {loading ? (
             <div className="space-y-4">
               {Array.from({ length: 10 }).map((_, i) => (

@@ -44,7 +44,10 @@ export async function GET(request: NextRequest) {
             activo: user.activo
           }
         }
-      })
+  })
+  response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate');
+  response.headers.set('Pragma', 'no-cache');
+  response.headers.set('Expires', '0');
 
       // Renovar access token si le quedan menos de 2 minutos
       const exp = decoded.exp as number | undefined;
@@ -65,7 +68,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({
         success: false,
         error: 'Token inválido'
-      }, { status: 401 })
+      }, { status: 401, headers: { 'Cache-Control': 'no-store' } })
     }
   } catch (error) {
     console.error('Error en /api/auth/me:', error)
