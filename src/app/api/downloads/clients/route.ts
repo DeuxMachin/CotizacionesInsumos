@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
-import * as XLSX from 'xlsx';
+import ExcelJS from 'exceljs';
 import { AuditService } from '@/services/auditService';
 
 export async function GET(request: NextRequest) {
@@ -61,7 +61,7 @@ export async function GET(request: NextRequest) {
     if (cotizacionesError) throw cotizacionesError;
 
     // Crear workbook con múltiples hojas
-    const wb = XLSX.utils.book_new();
+    const wb = new ExcelJS.Workbook();
 
     // === HOJA 1: CLIENTES CON RESUMEN ===
     const clientesResumen = clientesData.map(cliente => {
@@ -107,8 +107,6 @@ export async function GET(request: NextRequest) {
         'Fecha Creación': new Date(cliente.created_at).toLocaleDateString('es-CL')
       };
     });
-
-    const wsClientes = XLSX.utils.json_to_sheet(clientesResumen);
 
     // === HOJA 2: RESUMEN DE COTIZACIONES POR CLIENTE ===
     const cotizacionesPorCliente = clientesData.map(cliente => {
@@ -192,8 +190,6 @@ export async function GET(request: NextRequest) {
       };
     }).filter(cliente => cliente['Total Cotizaciones'] > 0); // Solo mostrar clientes con cotizaciones
 
-    const wsCotizaciones = XLSX.utils.json_to_sheet(cotizacionesPorCliente);
-
     // === HOJA 3: ESTADÍSTICAS GENERALES ===
     const estadisticas = [{
       'Métrica': 'Total de Clientes',
@@ -226,82 +222,121 @@ export async function GET(request: NextRequest) {
       });
     });
 
-    const wsEstadisticas = XLSX.utils.json_to_sheet(estadisticas);
+    // Crear hojas de Excel
+    // Hoja 1: Clientes
+    const wsClientes = wb.addWorksheet('Clientes');
+    const clientesHeaders = Object.keys(clientesResumen[0] || {});
+    wsClientes.addRow(clientesHeaders);
+    clientesResumen.forEach(row => {
+      wsClientes.addRow(Object.values(row));
+    });
 
-    // Configurar anchos de columna para cada hoja
-    const colWidthsClientes = [
-      { wch: 8 }, // ID
-      { wch: 12 }, // RUT
-      { wch: 8 }, // Tipo
-      { wch: 15 }, // Código Interno
-      { wch: 25 }, // Razón Social
-      { wch: 20 }, // Nombre Fantasía
-      { wch: 10 }, // Tipo de Cliente ID
-      { wch: 20 }, // Tipo de Cliente
-      { wch: 25 }, // Descripción Tipo Cliente
-      { wch: 20 }, // Giro
-      { wch: 25 }, // Dirección
-      { wch: 15 }, // Ciudad
-      { wch: 15 }, // Comuna
-      { wch: 15 }, // Teléfono
-      { wch: 15 }, // Celular
-      { wch: 25 }, // Email
-      { wch: 25 }, // Email Pago
-      { wch: 20 }, // Contacto Pago
-      { wch: 15 }, // Teléfono Pago
-      { wch: 20 }, // Forma Pago
-      { wch: 12 }, // Línea Crédito
-      { wch: 10 }, // Descuento %
-      { wch: 10 }, // Estado
-      { wch: 12 }, // Total Cotizaciones
-      { wch: 15 }, // Monto Total
-      { wch: 12 }, // Borrador
-      { wch: 12 }, // Enviadas
-      { wch: 12 }, // Aceptadas
-      { wch: 12 }, // Rechazadas
-      { wch: 12 }, // Expiradas
-      { wch: 12 }  // Fecha Creación
+    // Estilizar encabezados de la hoja de clientes
+    wsClientes.getRow(1).font = { bold: true };
+    wsClientes.getRow(1).fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FF4F81BD' }
+    };
+
+    // Configurar anchos de columna para clientes
+    wsClientes.columns = [
+      { width: 8 }, // ID
+      { width: 12 }, // RUT
+      { width: 8 }, // Tipo
+      { width: 15 }, // Código Interno
+      { width: 25 }, // Razón Social
+      { width: 20 }, // Nombre Fantasía
+      { width: 20 }, // Tipo de Cliente
+      { width: 20 }, // Giro
+      { width: 25 }, // Dirección
+      { width: 15 }, // Ciudad
+      { width: 15 }, // Comuna
+      { width: 15 }, // Teléfono
+      { width: 15 }, // Celular
+      { width: 25 }, // Email
+      { width: 25 }, // Email Pago
+      { width: 20 }, // Contacto Pago
+      { width: 15 }, // Teléfono Pago
+      { width: 20 }, // Forma Pago
+      { width: 12 }, // Línea Crédito
+      { width: 10 }, // Descuento %
+      { width: 10 }, // Estado
+      { width: 12 }, // Total Cotizaciones
+      { width: 15 }, // Monto Total
+      { width: 12 }, // Borrador
+      { width: 12 }, // Enviadas
+      { width: 12 }, // Aceptadas
+      { width: 12 }, // Rechazadas
+      { width: 12 }, // Expiradas
+      { width: 12 }  // Fecha Creación
     ];
-    wsClientes['!cols'] = colWidthsClientes;
 
-    const colWidthsCotizaciones = [
-      { wch: 8 }, // ID Cliente
-      { wch: 12 }, // RUT
-      { wch: 15 }, // Código Interno
-      { wch: 25 }, // Razón Social
-      { wch: 20 }, // Nombre Fantasía
-      { wch: 20 }, // Tipo de Cliente
-      { wch: 20 }, // Giro
-      { wch: 15 }, // Ciudad
-      { wch: 15 }, // Comuna
-      { wch: 12 }, // Total Cotizaciones
-      { wch: 15 }, // Monto Total Cotizado
-      { wch: 15 }, // Promedio por Cotización
-      { wch: 12 }, // Cotizaciones Borrador
-      { wch: 12 }, // Cotizaciones Enviadas
-      { wch: 12 }, // Cotizaciones Aceptadas
-      { wch: 12 }, // Cotizaciones Rechazadas
-      { wch: 12 }, // Cotizaciones Expiradas
-      { wch: 12 }, // Fecha Primera Cotización
-      { wch: 12 }, // Fecha Última Cotización
-      { wch: 30 }, // Vendedores Involucrados
-      { wch: 10 }  // Estado Cliente
+    // Hoja 2: Resumen por Cliente
+    const wsCotizaciones = wb.addWorksheet('Resumen por Cliente');
+    const cotizacionesHeaders = Object.keys(cotizacionesPorCliente[0] || {});
+    wsCotizaciones.addRow(cotizacionesHeaders);
+    cotizacionesPorCliente.forEach(row => {
+      wsCotizaciones.addRow(Object.values(row));
+    });
+
+    // Estilizar encabezados de la hoja de cotizaciones
+    wsCotizaciones.getRow(1).font = { bold: true };
+    wsCotizaciones.getRow(1).fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FF4F81BD' }
+    };
+
+    // Configurar anchos de columna para cotizaciones
+    wsCotizaciones.columns = [
+      { width: 8 }, // ID Cliente
+      { width: 12 }, // RUT
+      { width: 15 }, // Código Interno
+      { width: 25 }, // Razón Social
+      { width: 20 }, // Nombre Fantasía
+      { width: 20 }, // Tipo de Cliente
+      { width: 20 }, // Giro
+      { width: 15 }, // Ciudad
+      { width: 15 }, // Comuna
+      { width: 12 }, // Total Cotizaciones
+      { width: 15 }, // Monto Total Cotizado
+      { width: 15 }, // Promedio por Cotización
+      { width: 12 }, // Cotizaciones Borrador
+      { width: 12 }, // Cotizaciones Enviadas
+      { width: 12 }, // Cotizaciones Aceptadas
+      { width: 12 }, // Cotizaciones Rechazadas
+      { width: 12 }, // Cotizaciones Expiradas
+      { width: 12 }, // Fecha Primera Cotización
+      { width: 12 }, // Fecha Última Cotización
+      { width: 30 }, // Vendedores Involucrados
+      { width: 10 }  // Estado Cliente
     ];
-    wsCotizaciones['!cols'] = colWidthsCotizaciones;
 
-    const colWidthsEstadisticas = [
-      { wch: 25 }, // Métrica
-      { wch: 15 }  // Valor
+    // Hoja 3: Estadísticas
+    const wsEstadisticas = wb.addWorksheet('Estadísticas');
+    const estadisticasHeaders = Object.keys(estadisticas[0] || {});
+    wsEstadisticas.addRow(estadisticasHeaders);
+    estadisticas.forEach(row => {
+      wsEstadisticas.addRow(Object.values(row));
+    });
+
+    // Estilizar encabezados de la hoja de estadísticas
+    wsEstadisticas.getRow(1).font = { bold: true };
+    wsEstadisticas.getRow(1).fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FF4F81BD' }
+    };
+
+    // Configurar anchos de columna para estadísticas
+    wsEstadisticas.columns = [
+      { width: 25 }, // Métrica
+      { width: 15 }  // Valor
     ];
-    wsEstadisticas['!cols'] = colWidthsEstadisticas;
-
-    // Agregar hojas al workbook
-    XLSX.utils.book_append_sheet(wb, wsClientes, 'Clientes');
-    XLSX.utils.book_append_sheet(wb, wsCotizaciones, 'Resumen por Cliente');
-    XLSX.utils.book_append_sheet(wb, wsEstadisticas, 'Estadísticas');
 
     // Generar el buffer del archivo
-    const buffer = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
+    const buffer = await wb.xlsx.writeBuffer();
 
   // Registrar en document_series (serie de descargas)
   const { registerDownloadSeries } = await import('@/services/documentSeriesService');

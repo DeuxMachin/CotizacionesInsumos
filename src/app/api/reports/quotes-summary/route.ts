@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
-import * as XLSX from 'xlsx';
+import ExcelJS from 'exceljs';
 
 interface VendedorStats {
   nombre: string;
@@ -99,83 +99,109 @@ export async function GET(request: NextRequest) {
       return acc;
     }, {} as MonthlyStats) || {};
 
-    // Crear workbook de Excel
-    const wb = XLSX.utils.book_new();
+    // Crear workbook de Excel con ExcelJS
+    const workbook = new ExcelJS.Workbook();
+    workbook.creator = 'Sistema de Cotizaciones';
+    workbook.created = new Date();
 
     // Hoja 1: Estadísticas Generales
-    const estadisticasGenerales = [{
-      'Métrica': 'Total de Cotizaciones',
-      'Valor': totalCotizaciones,
-      'Porcentaje': '100%'
-    }, {
-      'Métrica': 'Cotizaciones Aceptadas',
-      'Valor': cotizacionesAceptadas,
-      'Porcentaje': `${totalCotizaciones > 0 ? ((cotizacionesAceptadas / totalCotizaciones) * 100).toFixed(1) : 0}%`
-    }, {
-      'Métrica': 'Cotizaciones Enviadas',
-      'Valor': cotizacionesEnviadas,
-      'Porcentaje': `${totalCotizaciones > 0 ? ((cotizacionesEnviadas / totalCotizaciones) * 100).toFixed(1) : 0}%`
-    }, {
-      'Métrica': 'Cotizaciones en Borrador',
-      'Valor': cotizacionesBorrador,
-      'Porcentaje': `${totalCotizaciones > 0 ? ((cotizacionesBorrador / totalCotizaciones) * 100).toFixed(1) : 0}%`
-    }, {
-      'Métrica': 'Total Vendido',
-      'Valor': `$${totalVendido.toLocaleString('es-CL')}`,
-      'Porcentaje': 'N/A'
-    }];
-
-    const wsEstadisticas = XLSX.utils.json_to_sheet(estadisticasGenerales);
-    XLSX.utils.book_append_sheet(wb, wsEstadisticas, 'Estadísticas Generales');
+    const wsEstadisticas = workbook.addWorksheet('Estadísticas Generales');
+    wsEstadisticas.columns = [
+      { header: 'Métrica', key: 'metrica', width: 30 },
+      { header: 'Valor', key: 'valor', width: 20 },
+      { header: 'Porcentaje', key: 'porcentaje', width: 15 }
+    ];
+    
+    wsEstadisticas.addRows([
+      { metrica: 'Total de Cotizaciones', valor: totalCotizaciones, porcentaje: '100%' },
+      { metrica: 'Cotizaciones Aceptadas', valor: cotizacionesAceptadas, porcentaje: `${totalCotizaciones > 0 ? ((cotizacionesAceptadas / totalCotizaciones) * 100).toFixed(1) : 0}%` },
+      { metrica: 'Cotizaciones Enviadas', valor: cotizacionesEnviadas, porcentaje: `${totalCotizaciones > 0 ? ((cotizacionesEnviadas / totalCotizaciones) * 100).toFixed(1) : 0}%` },
+      { metrica: 'Cotizaciones en Borrador', valor: cotizacionesBorrador, porcentaje: `${totalCotizaciones > 0 ? ((cotizacionesBorrador / totalCotizaciones) * 100).toFixed(1) : 0}%` },
+      { metrica: 'Total Vendido', valor: `$${totalVendido.toLocaleString('es-CL')}`, porcentaje: 'N/A' }
+    ]);
+    
+    // Estilo de encabezados
+    wsEstadisticas.getRow(1).font = { bold: true };
+    wsEstadisticas.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE0E0E0' } };
 
     // Hoja 2: Rendimiento por Vendedor
-    const vendedoresData = vendedoresArray.map((vendedor: VendedorStats, index: number) => ({
-      'Posición': index + 1,
-      'Vendedor': vendedor.nombre,
-      'Total Cotizaciones': vendedor.totalCotizaciones,
-      'Cotizaciones Aceptadas': vendedor.cotizacionesAceptadas,
-      'Tasa de Éxito': vendedor.totalCotizaciones > 0 ?
-        `${((vendedor.cotizacionesAceptadas / vendedor.totalCotizaciones) * 100).toFixed(1)}%` : '0%',
-      'Total Vendido': `$${vendedor.totalVendido.toLocaleString('es-CL')}`
-    }));
-
-    const wsVendedores = XLSX.utils.json_to_sheet(vendedoresData);
-    XLSX.utils.book_append_sheet(wb, wsVendedores, 'Rendimiento Vendedores');
+    const wsVendedores = workbook.addWorksheet('Rendimiento Vendedores');
+    wsVendedores.columns = [
+      { header: 'Posición', key: 'posicion', width: 12 },
+      { header: 'Vendedor', key: 'vendedor', width: 30 },
+      { header: 'Total Cotizaciones', key: 'totalCotizaciones', width: 20 },
+      { header: 'Cotizaciones Aceptadas', key: 'aceptadas', width: 22 },
+      { header: 'Tasa de Éxito', key: 'tasa', width: 15 },
+      { header: 'Total Vendido', key: 'totalVendido', width: 20 }
+    ];
+    
+    vendedoresArray.forEach((vendedor: VendedorStats, index: number) => {
+      wsVendedores.addRow({
+        posicion: index + 1,
+        vendedor: vendedor.nombre,
+        totalCotizaciones: vendedor.totalCotizaciones,
+        aceptadas: vendedor.cotizacionesAceptadas,
+        tasa: vendedor.totalCotizaciones > 0 ? `${((vendedor.cotizacionesAceptadas / vendedor.totalCotizaciones) * 100).toFixed(1)}%` : '0%',
+        totalVendido: `$${vendedor.totalVendido.toLocaleString('es-CL')}`
+      });
+    });
+    
+    wsVendedores.getRow(1).font = { bold: true };
+    wsVendedores.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE0E0E0' } };
 
     // Hoja 3: Tendencia Mensual
-    const tendenciaMensual = Object.entries(monthlyStats)
+    const wsTendencia = workbook.addWorksheet('Tendencia Mensual');
+    wsTendencia.columns = [
+      { header: 'Mes', key: 'mes', width: 15 },
+      { header: 'Cantidad Cotizaciones', key: 'cantidad', width: 22 },
+      { header: 'Total Vendido', key: 'totalVendido', width: 20 },
+      { header: 'Promedio por Cotización', key: 'promedio', width: 25 }
+    ];
+    
+    Object.entries(monthlyStats)
       .sort(([a], [b]) => a.localeCompare(b))
-      .map(([month, stats]: [string, { total: number; count: number }]) => ({
-        'Mes': month,
-        'Cantidad Cotizaciones': stats.count,
-        'Total Vendido': `$${stats.total.toLocaleString('es-CL')}`,
-        'Promedio por Cotización': stats.count > 0 ?
-          `$${(stats.total / stats.count).toLocaleString('es-CL')}` : '$0'
-      }));
-
-    const wsTendencia = XLSX.utils.json_to_sheet(tendenciaMensual);
-    XLSX.utils.book_append_sheet(wb, wsTendencia, 'Tendencia Mensual');
+      .forEach(([month, stats]: [string, { total: number; count: number }]) => {
+        wsTendencia.addRow({
+          mes: month,
+          cantidad: stats.count,
+          totalVendido: `$${stats.total.toLocaleString('es-CL')}`,
+          promedio: stats.count > 0 ? `$${(stats.total / stats.count).toLocaleString('es-CL')}` : '$0'
+        });
+      });
+    
+    wsTendencia.getRow(1).font = { bold: true };
+    wsTendencia.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE0E0E0' } };
 
     // Hoja 4: Detalle de Cotizaciones
-    const detalleCotizaciones = cotizacionesStats?.map(cot => {
+    const wsDetalle = workbook.addWorksheet('Detalle Cotizaciones');
+    wsDetalle.columns = [
+      { header: 'ID Cotización', key: 'id', width: 15 },
+      { header: 'Estado', key: 'estado', width: 15 },
+      { header: 'Total', key: 'total', width: 20 },
+      { header: 'Vendedor', key: 'vendedor', width: 30 },
+      { header: 'Fecha Creación', key: 'fecha', width: 20 },
+      { header: 'Email Vendedor', key: 'email', width: 30 }
+    ];
+    
+    cotizacionesStats?.forEach(cot => {
       const usuario = Array.isArray(cot.usuarios) ? cot.usuarios[0] : cot.usuarios;
       const vendedorNombre = usuario ? `${usuario.nombre || ''} ${usuario.apellido || ''}`.trim() : 'Sin asignar';
-
-      return {
-        'ID Cotización': cot.id,
-        'Estado': cot.estado,
-        'Total': `$${cot.total_final?.toLocaleString('es-CL') || '0'}`,
-        'Vendedor': vendedorNombre,
-        'Fecha Creación': new Date(cot.created_at).toLocaleDateString('es-ES'),
-        'Email Vendedor': usuario?.email || ''
-      };
-    }) || [];
-
-    const wsDetalle = XLSX.utils.json_to_sheet(detalleCotizaciones);
-    XLSX.utils.book_append_sheet(wb, wsDetalle, 'Detalle Cotizaciones');
+      
+      wsDetalle.addRow({
+        id: cot.id,
+        estado: cot.estado,
+        total: `$${cot.total_final?.toLocaleString('es-CL') || '0'}`,
+        vendedor: vendedorNombre,
+        fecha: new Date(cot.created_at).toLocaleDateString('es-ES'),
+        email: usuario?.email || ''
+      });
+    });
+    
+    wsDetalle.getRow(1).font = { bold: true };
+    wsDetalle.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE0E0E0' } };
 
     // Generar buffer del archivo Excel
-    const buffer = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
+    const buffer = await workbook.xlsx.writeBuffer();
 
     // Nombre del archivo con timestamp
     const timestamp = new Date().toISOString().split('T')[0];
