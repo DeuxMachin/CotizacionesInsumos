@@ -18,6 +18,7 @@ import {
 import { NotasVentaService, SalesNoteRecord, SalesNoteItemRow } from '@/services/notasVentaService';
 import { useQuotes } from '@/features/quotes/model/useQuotes';
 import { downloadFileFromResponse } from '@/lib/download';
+import { InvoiceItemsModal } from '@/features/sales-notes/ui/InvoiceItemsModal';
 
 
 export default function SalesNoteDetailPage() {
@@ -34,6 +35,7 @@ export default function SalesNoteDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
+  const [showInvoiceModal, setShowInvoiceModal] = useState(false);
 
   // Cargar datos de la nota de venta
   const loadSalesNote = useCallback(async () => {
@@ -81,25 +83,22 @@ export default function SalesNoteDetailPage() {
     }
   }, [salesNote]);
 
-  // Función para confirmar la nota de venta
-  const handleConfirm = useCallback(async () => {
+  // Función para abrir el modal de facturación
+  const handleOpenInvoiceModal = useCallback(() => {
+    setShowInvoiceModal(true);
+  }, []);
+
+  // Función para procesar la facturación
+  const handleInvoiceConfirm = useCallback(async (itemQuantities: Record<number, number>) => {
     if (!salesNote) return;
 
-    // Primera confirmación
-    const firstConfirm = confirm('¿Está seguro de que desea confirmar esta nota de venta?');
-    if (!firstConfirm) return;
-
-    // Segunda confirmación
-    const secondConfirm = confirm('Esta acción es irreversible. ¿Confirma definitivamente la nota de venta?');
-    if (!secondConfirm) return;
-
     try {
-      await NotasVentaService.confirm(salesNote.id);
+      await NotasVentaService.updateInvoicedItems(salesNote.id, itemQuantities);
       // Recargar la página para mostrar el nuevo estado
       window.location.reload();
     } catch (e: unknown) {
-      console.error('Error confirmando nota de venta', e);
-      alert('Error al confirmar la nota de venta');
+      console.error('Error actualizando facturación', e);
+      throw e;
     }
   }, [salesNote]);
 
@@ -147,7 +146,9 @@ export default function SalesNoteDetailPage() {
     switch (estado) {
       case 'creada':
         return { bg: 'var(--warning-bg)', text: 'var(--warning-text)', icon: FiClock };
-      case 'confirmada':
+      case 'factura_parcial':
+        return { bg: '#FFF4E5', text: '#FF8C00', icon: FiAlertCircle };
+      case 'facturada':
         return { bg: 'var(--success-bg)', text: 'var(--success-text)', icon: FiCheckCircle };
       default:
         return { bg: 'var(--bg-secondary)', text: 'var(--text-secondary)', icon: FiFileText };
@@ -178,7 +179,7 @@ export default function SalesNoteDetailPage() {
                 </h1>
                 {salesNote.Numero_Serie && (
                   <p className="text-sm mt-1 truncate" style={{ color: 'var(--text-secondary)' }}>
-                    Número de Serie: <span className="font-medium" style={{ color: 'var(--text-primary)' }}>{salesNote.Numero_Serie}</span>
+                    Número de orden de compra: <span className="font-medium" style={{ color: 'var(--text-primary)' }}>{salesNote.Numero_Serie}</span>
                   </p>
                 )}
                 <div className="flex items-center mt-1">
@@ -209,9 +210,9 @@ export default function SalesNoteDetailPage() {
                 <FiDownload className="w-4 h-4 mr-2" />
                 {exporting ? 'Exportando...' : 'PDF'}
               </button>
-              {salesNote.estado === 'creada' && (
+              {(salesNote.estado === 'creada' || salesNote.estado === 'factura_parcial') && (
                 <button
-                  onClick={handleConfirm}
+                  onClick={handleOpenInvoiceModal}
                   className="px-4 py-2 rounded-lg transition-colors flex items-center font-medium"
                   style={{
                     backgroundColor: 'var(--success)',
@@ -220,7 +221,7 @@ export default function SalesNoteDetailPage() {
                   }}
                 >
                   <FiCheckCircle className="w-4 h-4 mr-2" />
-                  Confirmar Nota de Venta
+                  {salesNote.estado === 'factura_parcial' ? 'Completar Facturación' : 'Facturar Nota de Venta'}
                 </button>
               )}
             </div>
@@ -247,7 +248,7 @@ export default function SalesNoteDetailPage() {
                   </div>
                   {salesNote.Numero_Serie && (
                     <div>
-                      <p className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>Número de Serie</p>
+                      <p className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>Número de orden de compra</p>
                       <p className="font-medium" style={{ color: 'var(--text-primary)' }}>{salesNote.Numero_Serie}</p>
                     </div>
                   )}
@@ -474,6 +475,15 @@ export default function SalesNoteDetailPage() {
           </div>
         </div>
       </div>
+
+      {/* Invoice Items Modal */}
+      <InvoiceItemsModal
+        isOpen={showInvoiceModal}
+        onClose={() => setShowInvoiceModal(false)}
+        items={noteItems}
+        onConfirm={handleInvoiceConfirm}
+        formatMoney={formatMoney}
+      />
     </div>
   );
 }

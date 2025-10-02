@@ -11,9 +11,11 @@ interface SalesNotesListProps {
 export function SalesNotesList({ salesNotes, onViewNote, formatMoney }: SalesNotesListProps) {
   const getStatusColor = (estado: string) => {
     switch (estado) {
-      case 'confirmada':
+      case 'facturada':
         return { bg: 'var(--success-bg)', text: 'var(--success-text)' };
-      case 'borrador':
+      case 'factura_parcial':
+        return { bg: '#FFF4E5', text: '#FF8C00' };
+      case 'creada':
         return { bg: 'var(--warning-bg)', text: 'var(--warning-text)' };
       case 'anulada':
         return { bg: 'var(--error-bg)', text: 'var(--error-text)' };

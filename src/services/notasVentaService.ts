@@ -15,6 +15,7 @@ export interface SalesNoteItemInput {
   iva_aplicable?: boolean;      // true por defecto
   subtotal_neto: number;        // después de descuento (base imponible línea)
   total_neto: number;           // igual a subtotal_neto si IVA se calcula global
+  cantidad_facturada?: number;  // cantidad que ha sido facturada (puede ser parcial)
 }
 
 export interface SalesNoteInput {
@@ -48,7 +49,7 @@ export interface SalesNoteInput {
   ciudad_despacho?: string | null;
   costo_despacho?: number | null;
   fecha_estimada_entrega?: string | null;
-  estado?: 'creada' | 'confirmada';
+  estado?: 'creada' | 'factura_parcial' | 'facturada';
 }
 
 export interface SalesNoteRecord extends SalesNoteInput {
@@ -195,7 +196,8 @@ export class NotasVentaService {
         descuento_monto: it.descuento_monto ?? 0,
         iva_aplicable: it.iva_aplicable ?? true,
         subtotal_neto: it.subtotal_neto,
-        total_neto: it.total_neto
+        total_neto: it.total_neto,
+        cantidad_facturada: it.cantidad_facturada ?? 0
       }));
       const { error: itemsError } = await supabase
         .from('nota_venta_items')
@@ -343,7 +345,8 @@ export class NotasVentaService {
       descuento_monto: item.descuento_monto ?? Math.round(item.cantidad * item.precio_unitario_neto * ((item.descuento_pct ?? 0) / 100)),
       iva_aplicable: item.iva_aplicable ?? true,
       subtotal_neto: item.subtotal_neto,
-      total_neto: item.total_neto
+      total_neto: item.total_neto,
+      cantidad_facturada: item.cantidad_facturada ?? 0
     };
     const { data, error } = await supabase
       .from('nota_venta_items')
@@ -414,8 +417,61 @@ export class NotasVentaService {
     return data as unknown as SalesNoteRecord;
   }
 
-  static async confirm(notaVentaId: number) {
-    return this.update(notaVentaId, { estado: 'confirmada' });
+  static async invoice(notaVentaId: number) {
+    return this.update(notaVentaId, { estado: 'facturada' });
+  }
+
+  static async partialInvoice(notaVentaId: number) {
+    return this.update(notaVentaId, { estado: 'factura_parcial' });
+  }
+
+  /**
+   * Actualiza las cantidades facturadas de items específicos y determina el estado de la nota
+   * @param notaVentaId - ID de la nota de venta
+   * @param itemQuantities - Objeto con ID del item y cantidad facturada { [itemId]: cantidad }
+   */
+  static async updateInvoicedItems(notaVentaId: number, itemQuantities: Record<number, number>) {
+    // Obtener todos los items de la nota de venta
+    const allItems = await this.getItems(notaVentaId);
+    
+    // Actualizar cantidad facturada de cada item
+    for (const [itemIdStr, newQuantity] of Object.entries(itemQuantities)) {
+      const itemId = parseInt(itemIdStr);
+      const item = allItems.find(i => i.id === itemId);
+      
+      if (item) {
+        const currentFacturada = item.cantidad_facturada || 0;
+        const totalQuantity = item.cantidad;
+        
+        // La nueva cantidad debe ser mayor o igual a la actual y no mayor al total
+        const finalQuantity = Math.max(currentFacturada, Math.min(newQuantity, totalQuantity));
+        
+        await supabase
+          .from('nota_venta_items')
+          .update({ cantidad_facturada: finalQuantity })
+          .eq('id', itemId);
+      }
+    }
+
+    // Recargar items actualizados
+    const updatedItems = await this.getItems(notaVentaId);
+    
+    // Determinar si todos los items están completamente facturados
+    const allFullyInvoiced = updatedItems.every(item => 
+      (item.cantidad_facturada || 0) >= item.cantidad
+    );
+    const someInvoiced = updatedItems.some(item => 
+      (item.cantidad_facturada || 0) > 0
+    );
+
+    // Actualizar estado de la nota de venta
+    if (allFullyInvoiced) {
+      return this.invoice(notaVentaId);
+    } else if (someInvoiced) {
+      return this.partialInvoice(notaVentaId);
+    }
+    
+    return this.getById(notaVentaId);
   }
 
   /**
@@ -492,7 +548,7 @@ export class NotasVentaService {
       direccion_despacho: quote.despacho?.direccion || null,
       comuna_despacho: quote.despacho?.comuna || null,
       ciudad_despacho: quote.despacho?.ciudad || null,
-      estado: options.finalizarInmediatamente ? 'confirmada' : 'creada',
+      estado: options.finalizarInmediatamente ? 'facturada' : 'creada',
       observaciones_comerciales: quote.condicionesComerciales?.observaciones || null,
     };
 

@@ -42,8 +42,10 @@ export default function SalesNotesPage() {
 
   const getStatusColor = (estado: string) => {
     switch (estado) {
-      case 'confirmada':
+      case 'facturada':
         return { bg: 'var(--success-bg)', text: 'var(--success-text)' };
+      case 'factura_parcial':
+        return { bg: '#FFF4E5', text: '#FF8C00' };
       case 'creada':
         return { bg: 'var(--warning-bg)', text: 'var(--warning-text)' };
       default:

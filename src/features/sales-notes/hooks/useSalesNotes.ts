@@ -77,7 +77,21 @@ export function useSalesNotes() {
     try {
       setLoading(true);
       setError(null);
-      await NotasVentaService.confirm(noteId);
+      await NotasVentaService.invoice(noteId);
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : 'Error desconocido';
+      setError(msg);
+      throw e;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const updateInvoicedItems = useCallback(async (noteId: number, itemQuantities: Record<number, number>): Promise<void> => {
+    try {
+      setLoading(true);
+      setError(null);
+      await NotasVentaService.updateInvoicedItems(noteId, itemQuantities);
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : 'Error desconocido';
       setError(msg);
@@ -111,6 +125,7 @@ export function useSalesNotes() {
     getSalesNotesByClient,
     convertQuoteToSalesNote,
     confirmSalesNote,
+    updateInvoicedItems,
     clearError: () => setError(null)
   };
 }

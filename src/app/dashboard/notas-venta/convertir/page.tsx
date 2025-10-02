@@ -309,7 +309,7 @@ function ConvertQuoteContent() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>
-                  Número de Serie
+                  Número de orden de compra
                 </label>
                 <input
                   type="text"
