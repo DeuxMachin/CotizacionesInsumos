@@ -5,8 +5,9 @@ import { useAuth } from "@/contexts/AuthContext";
 import { SecurityService } from "@/services/securityService";
 import { SecurityLogger } from "@/services/securityLogger";
 import {  XSSProtection } from "@/services/csrfProtection";
-import { FiMail, FiLock, FiEye, FiEyeOff, FiArrowRight, FiShield, FiAlertCircle, FiWifi, FiUserX } from "react-icons/fi";
+import { FiMail, FiLock, FiEye, FiEyeOff, FiArrowRight, FiShield, FiAlertCircle, FiWifi, FiUserX, FiSun, FiMoon } from "react-icons/fi";
 import { Logo } from "@/shared/ui/Logo";
+import { useTheme } from "next-themes";
 
 export function LoginForm() {
   const [formData, setFormData] = useState({
@@ -24,9 +25,18 @@ export function LoginForm() {
 
   const [isLocked, setIsLocked] = useState(false);
   const [, setLockoutTime] = useState("");
+  
+  // Theme toggle
+  const { theme, setTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
 
   const { login } = useAuth();
 
+
+  // Evitar hydration mismatch para theme toggle
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Validar formulario en tiempo real
   const validateForm = () => {
@@ -240,6 +250,40 @@ export function LoginForm() {
         background: 'linear-gradient(135deg, var(--accent-bg) 0%, var(--bg-primary) 50%, var(--accent-bg) 100%)'
       }}
     >
+      {/* Botón de cambio de tema - Esquina superior derecha */}
+      <div className="absolute top-4 right-4 sm:top-6 sm:right-6 z-20">
+        {mounted ? (
+          <button
+            onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+            className="p-3 rounded-xl transition-all transform hover:scale-105 active:scale-95 border backdrop-blur-sm"
+            style={{
+              backgroundColor: 'var(--card-bg)',
+              borderColor: 'var(--border-subtle)',
+              color: 'var(--text-primary)',
+              boxShadow: 'var(--shadow)'
+            }}
+            aria-label={`Cambiar a modo ${theme === "dark" ? "claro" : "oscuro"}`}
+            title={`Cambiar a modo ${theme === "dark" ? "claro" : "oscuro"}`}
+          >
+            {theme === "dark" ? (
+              <FiSun className="w-5 h-5" />
+            ) : (
+              <FiMoon className="w-5 h-5" />
+            )}
+          </button>
+        ) : (
+          <div
+            className="p-3 rounded-xl border backdrop-blur-sm opacity-50"
+            style={{
+              backgroundColor: 'var(--card-bg)',
+              borderColor: 'var(--border-subtle)',
+            }}
+          >
+            <FiMoon className="w-5 h-5" style={{ color: 'var(--text-primary)' }} />
+          </div>
+        )}
+      </div>
+
       {/* Decoración de fondo */}
       <div className="pointer-events-none absolute inset-0">
         <div
