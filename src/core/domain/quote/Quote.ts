@@ -113,6 +113,9 @@ export interface Quote {
   
   /** Fecha de expiración de la oferta */
   fechaExpiracion?: string;
+  
+  /** Prioridad asignada por el vendedor para organizar sus cotizaciones (1 = más prioritario) */
+  prioridad?: number;
 }
 
 // Value Objects - Objetos de valor para validaciones y transformaciones

@@ -81,6 +81,9 @@ export function mapCotizacionToDomain(data: CotizacionAggregate): Quote {
 	const iva = Number(cotizacion.iva_monto);
 	const total = Number(cotizacion.total_final);
 
+	// Mapeo de prioridad - campo agregado en migración SQL
+	const cotizacionExtended = cotizacion as CotizacionRow & { prioridad_vendedor?: number | null };
+	
 	return {
 		id: cotizacion.folio || `COT-${cotizacion.id}`,
 		numero: cotizacion.folio || cotizacion.id.toString(),
@@ -101,7 +104,8 @@ export function mapCotizacionToDomain(data: CotizacionAggregate): Quote {
 		total,
 		obraId: cotizacion.obra_id || undefined,
 		notas: undefined, // no existe campo directo en nueva cabecera (podría mapearse desde hash_cotizacion si se desea)
-		fechaExpiracion: cotizacion.fecha_vencimiento || undefined
+		fechaExpiracion: cotizacion.fecha_vencimiento || undefined,
+		prioridad: cotizacionExtended.prioridad_vendedor || undefined
 	};
 }
 

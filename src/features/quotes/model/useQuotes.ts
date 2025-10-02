@@ -64,6 +64,8 @@ interface UseQuotesReturn {
   eliminarCotizacion: (id: string) => Promise<boolean>;
   duplicarCotizacion: (id: string) => Promise<boolean>;
   cambiarEstado: (id: string, nuevoEstado: QuoteStatus) => Promise<boolean>;
+  cancelarCotizacion: (id: string) => Promise<boolean>;
+  actualizarPrioridad: (id: string, prioridad: number | null) => Promise<boolean>;
   
   // Utilidades
   formatMoney: (amount: number) => string;
@@ -161,56 +163,61 @@ export function useQuotes(): UseQuotesReturn {
   const [filtros, setFiltros] = useState<QuoteFilters>({});
   const [currentPage, setCurrentPage] = useState(1);
 
+  // Función para recargar cotizaciones (reutilizable)
+  const refetchQuotes = useCallback(async () => {
+    if (!user) return;
+    try {
+      let query = supabase
+        .from('cotizaciones')
+        .select(`*,
+          cotizacion_items(*, productos(*)),
+          cotizacion_clientes(*, clientes(*)),
+          cotizacion_despachos(*),
+          clientes!cotizaciones_cliente_principal_id_fkey(*),
+          usuarios!cotizaciones_vendedor_id_fkey(*)
+        `)
+        .order('updated_at', { ascending: false });
+
+      if (!isAdmin) {
+        query = query.eq('vendedor_id', user.id);
+      }
+
+      const { data, error: dbError } = await query;
+      if (dbError) throw dbError;
+
+      // Mapear resultados
+type CotizacionRow = Database['public']['Tables']['cotizaciones']['Row'];
+type ItemRow = Database['public']['Tables']['cotizacion_items']['Row'];
+type ClienteRow = Database['public']['Tables']['clientes']['Row'];
+type UsuarioRow = Database['public']['Tables']['usuarios']['Row'];
+type DespRow = Database['public']['Tables']['cotizacion_despachos']['Row'];
+      const mapped: Quote[] = (data || []).map((row) => mapCotizacionToDomain({
+        cotizacion: row as CotizacionRow,
+        items: ((row as unknown as { cotizacion_items?: ItemRow[] }).cotizacion_items) || [],
+        clientes_adicionales: ((row as unknown as { cotizacion_clientes?: { cliente?: ClienteRow | null }[] }).cotizacion_clientes) || [],
+        despacho: ((row as unknown as { cotizacion_despachos?: DespRow[] }).cotizacion_despachos)?.[0] || null,
+        cliente_principal: (row as unknown as { clientes?: ClienteRow }).clientes,
+        vendedor: (row as unknown as { usuarios?: UsuarioRow }).usuarios
+      } as CotizacionAggregate));
+
+      setAllQuotes(mapped);
+    } catch (err) {
+      console.error('Error loading quotes:', err);
+      setError('Error al cargar las cotizaciones');
+    }
+  }, [isAdmin, user]);
+
   // Cargar cotizaciones desde Supabase
   useEffect(() => {
     const loadQuotes = async () => {
       if (!user) return;
       setLoading(true);
       setError(null);
-      try {
-        let query = supabase
-          .from('cotizaciones')
-          .select(`*,
-            cotizacion_items(*, productos(*)),
-            cotizacion_clientes(*, clientes(*)),
-            cotizacion_despachos(*),
-            clientes!cotizaciones_cliente_principal_id_fkey(*),
-            usuarios!cotizaciones_vendedor_id_fkey(*)
-          `)
-          .order('updated_at', { ascending: false });
-
-        if (!isAdmin) {
-          query = query.eq('vendedor_id', user.id);
-        }
-
-        const { data, error: dbError } = await query;
-        if (dbError) throw dbError;
-
-        // Mapear resultados
-  type CotizacionRow = Database['public']['Tables']['cotizaciones']['Row'];
-  type ItemRow = Database['public']['Tables']['cotizacion_items']['Row'];
-  type ClienteRow = Database['public']['Tables']['clientes']['Row'];
-  type UsuarioRow = Database['public']['Tables']['usuarios']['Row'];
-  type DespRow = Database['public']['Tables']['cotizacion_despachos']['Row'];
-        const mapped: Quote[] = (data || []).map((row) => mapCotizacionToDomain({
-          cotizacion: row as CotizacionRow,
-          items: ((row as unknown as { cotizacion_items?: ItemRow[] }).cotizacion_items) || [],
-          clientes_adicionales: ((row as unknown as { cotizacion_clientes?: { cliente?: ClienteRow | null }[] }).cotizacion_clientes) || [],
-          despacho: ((row as unknown as { cotizacion_despachos?: DespRow[] }).cotizacion_despachos)?.[0] || null,
-          cliente_principal: (row as unknown as { clientes?: ClienteRow }).clientes,
-          vendedor: (row as unknown as { usuarios?: UsuarioRow }).usuarios
-        } as CotizacionAggregate));
-
-        setAllQuotes(mapped);
-      } catch (err) {
-        console.error('Error loading quotes:', err);
-        setError('Error al cargar las cotizaciones');
-      } finally {
-        setLoading(false);
-      }
+      await refetchQuotes();
+      setLoading(false);
     };
     loadQuotes();
-  }, [isAdmin, user]);
+  }, [refetchQuotes, user]);
 
   // Filtrar cotizaciones
   const filteredQuotes = useMemo(() => {
@@ -506,11 +513,18 @@ export function useQuotes(): UseQuotesReturn {
         }
       }
 
-      // Refetch minimal (podría optimizarse con append)
-      const { data, error: reloadErr } = await supabase
+      // Refetch respetando permisos del usuario
+      let reloadQuery = supabase
         .from('cotizaciones')
         .select(`*, cotizacion_items(*, productos(*)), cotizacion_clientes(*, clientes(*)), cotizacion_despachos(*), clientes!cotizaciones_cliente_principal_id_fkey(*), usuarios!cotizaciones_vendedor_id_fkey(*)`)
         .order('updated_at', { ascending: false });
+      
+      // Si no es admin, solo cargar cotizaciones del vendedor
+      if (!isAdmin && user?.id) {
+        reloadQuery = reloadQuery.eq('vendedor_id', user.id);
+      }
+      
+      const { data, error: reloadErr } = await reloadQuery;
       if (reloadErr) {
         console.error('Reload cotizaciones error:', reloadErr?.message, reloadErr);
         throw reloadErr;
@@ -540,12 +554,96 @@ export function useQuotes(): UseQuotesReturn {
       // Obtener datos actuales antes de actualizar
       const { data: oldQuote, error: oldError } = await supabase
         .from('cotizaciones')
-        .select('cliente_principal_id, total_final, total_neto, estado')
+        .select('id, cliente_principal_id, total_final, total_neto, estado')
         .eq('folio', id)
         .single();
       if (oldError) throw oldError;
+      
+      const numericId = oldQuote.id;
 
-      const updates: Database['public']['Tables']['cotizaciones']['Update'] = {};
+      // Si hay items, actualizarlos
+      if (datosActualizados.items) {
+        // Eliminar items existentes
+        await supabase
+          .from('cotizacion_items')
+          .delete()
+          .eq('cotizacion_id', numericId);
+
+        // Insertar nuevos items con los nombres correctos de campos
+        const itemsToInsert = datosActualizados.items.map((item) => {
+          const descuentoPct = item.descuento || 0;
+          const montoOriginal = item.cantidad * item.precioUnitario;
+          const descuentoMonto = montoOriginal * (descuentoPct / 100);
+          
+          return {
+            cotizacion_id: numericId,
+            producto_id: item.productId || null,
+            descripcion: item.descripcion,
+            unidad: item.unidad,
+            cantidad: item.cantidad,
+            precio_unitario_neto: item.precioUnitario,
+            descuento_pct: descuentoPct,
+            descuento_monto: descuentoMonto,
+            iva_aplicable: true,
+            subtotal_neto: item.subtotal,
+            total_neto: item.subtotal
+          };
+        });
+
+        if (itemsToInsert.length > 0) {
+          const { error: itemsError } = await supabase
+            .from('cotizacion_items')
+            .insert(itemsToInsert);
+          if (itemsError) throw itemsError;
+        }
+      }
+
+      // Si hay despacho, actualizarlo
+      if (datosActualizados.despacho) {
+        // Eliminar despacho existente
+        await supabase
+          .from('cotizacion_despachos')
+          .delete()
+          .eq('cotizacion_id', numericId);
+
+        // Insertar nuevo despacho con los nombres correctos de campos
+        const { error: despachoError } = await supabase
+          .from('cotizacion_despachos')
+          .insert({
+            cotizacion_id: numericId,
+            direccion: datosActualizados.despacho.direccion,
+            complemento: null,
+            comuna_id: null,
+            region_id: null,
+            ciudad_texto: datosActualizados.despacho.ciudad || null,
+            costo: datosActualizados.despacho.costoDespacho || 0,
+            fecha_entrega: datosActualizados.despacho.fechaEstimada || null,
+            observaciones: datosActualizados.despacho.observaciones || null
+          });
+        if (despachoError) throw despachoError;
+      }
+
+      // Calcular totales si hay items
+      let calculatedSubtotal = datosActualizados.subtotal;
+      let calculatedDescuento = datosActualizados.descuentoTotal;
+      let calculatedIva = datosActualizados.iva;
+      let calculatedTotal = datosActualizados.total;
+
+      if (datosActualizados.items) {
+        calculatedSubtotal = datosActualizados.items.reduce((sum, item) => sum + item.subtotal, 0);
+        calculatedDescuento = datosActualizados.items.reduce((sum, item) => {
+          const porcentaje = Math.max(0, Math.min(100, item.descuento || 0));
+          const montoOriginal = (item.cantidad || 0) * (item.precioUnitario || 0);
+          const montoDescontado = montoOriginal * (porcentaje / 100);
+          return sum + montoDescontado;
+        }, 0);
+        calculatedIva = calculatedSubtotal * 0.19;
+        calculatedTotal = calculatedSubtotal + calculatedIva + (datosActualizados.despacho?.costoDespacho || 0);
+      }
+
+      const updates: Database['public']['Tables']['cotizaciones']['Update'] = {
+        updated_at: new Date().toISOString()
+      };
       if (datosActualizados.estado) updates.estado = datosActualizados.estado;
       if (datosActualizados.condicionesComerciales) {
         updates.validez_dias = datosActualizados.condicionesComerciales.validezOferta;
@@ -553,10 +651,10 @@ export function useQuotes(): UseQuotesReturn {
         updates.plazo_entrega_texto = datosActualizados.condicionesComerciales.tiempoEntrega;
         updates.observaciones_pago = datosActualizados.condicionesComerciales.observaciones;
       }
-      if (typeof datosActualizados.subtotal === 'number') updates.total_neto = datosActualizados.subtotal;
-      if (typeof datosActualizados.descuentoTotal === 'number') updates.total_descuento = datosActualizados.descuentoTotal;
-      if (typeof datosActualizados.iva === 'number') updates.iva_monto = datosActualizados.iva;
-      if (typeof datosActualizados.total === 'number') updates.total_final = datosActualizados.total;
+      if (typeof calculatedSubtotal === 'number') updates.total_neto = calculatedSubtotal;
+      if (typeof calculatedDescuento === 'number') updates.total_descuento = calculatedDescuento;
+      if (typeof calculatedIva === 'number') updates.iva_monto = calculatedIva;
+      if (typeof calculatedTotal === 'number') updates.total_final = calculatedTotal;
 
       const { data: updatedQuote, error: updError } = await supabase
         .from('cotizaciones')
@@ -565,6 +663,9 @@ export function useQuotes(): UseQuotesReturn {
         .select('cliente_principal_id, total_final, total_neto, estado')
         .single();
       if (updError) throw updError;
+
+      // Rehidratar datos después de actualizar
+      await refetchQuotes();
 
       // Ajustar dinero_cotizado si cambió el total y la cotización no está aceptada
       if (oldQuote && updatedQuote && oldQuote.estado !== 'aceptada' && updatedQuote.estado !== 'aceptada') {
@@ -611,6 +712,12 @@ export function useQuotes(): UseQuotesReturn {
 
   const eliminarCotizacion = async (id: string): Promise<boolean> => {
     try {
+      // Validar permisos: solo admin y dueño pueden eliminar cotizaciones
+      if (!isAdmin) {
+        console.error('Permisos insuficientes para eliminar cotización');
+        return false;
+      }
+
       // 1. Obtener id numérico real por folio y datos para ajustar saldos
       const { data: cot, error: findErr } = await supabase
         .from('cotizaciones')
@@ -675,6 +782,9 @@ export function useQuotes(): UseQuotesReturn {
       // 4. Eliminar cotización
       const { error: delError } = await supabase.from('cotizaciones').delete().eq('id', numericId);
       if (delError) throw delError;
+      
+      // Rehidratar datos después de eliminar
+      await refetchQuotes();
       return true;
     } catch (error) {
       console.error('Error deleting quote:', error);
@@ -712,6 +822,90 @@ export function useQuotes(): UseQuotesReturn {
     return actualizarCotizacion(id, { estado: nuevoEstado });
   };
 
+  const cancelarCotizacion = async (id: string): Promise<boolean> => {
+    try {
+      // Solo admin y dueño pueden cancelar cotizaciones
+      if (!isAdmin) {
+        console.error('Permisos insuficientes para cancelar cotización');
+        return false;
+      }
+
+      // Obtener la cotización para validar
+      const cotizacion = allQuotes.find(q => q.id === id);
+      if (!cotizacion) {
+        console.error('Cotización no encontrada');
+        return false;
+      }
+
+      // No se puede cancelar una cotización ya aceptada
+      if (cotizacion.estado === 'aceptada') {
+        console.error('No se puede cancelar una cotización aceptada');
+        return false;
+      }
+
+      // Cambiar estado a rechazada (cancelar cotización)
+      return await cambiarEstado(id, 'rechazada');
+    } catch (error) {
+      console.error('Error cancelando cotización:', error);
+      return false;
+    }
+  };
+
+  const actualizarPrioridad = async (id: string, prioridad: number | null): Promise<boolean> => {
+    try {
+      // Solo vendedores pueden actualizar la prioridad de sus propias cotizaciones
+      const cotizacion = allQuotes.find(q => q.id === id);
+      if (!cotizacion) {
+        console.error('Cotización no encontrada');
+        return false;
+      }
+
+      // Verificar que el usuario sea el vendedor de la cotización (no admin)
+      if (user?.id !== cotizacion.vendedorId) {
+        console.error('Solo el vendedor puede priorizar sus cotizaciones');
+        return false;
+      }
+
+      // Actualizar en la base de datos
+      const { error: updateError } = await supabase
+        .from('cotizaciones')
+        .update({ prioridad_vendedor: prioridad } as { prioridad_vendedor: number | null })
+        .eq('folio', id);
+
+      if (updateError) throw updateError;
+
+      // Recargar datos respetando los permisos del usuario
+      let query = supabase
+        .from('cotizaciones')
+        .select(`*, cotizacion_items(*, productos(*)), cotizacion_clientes(*, clientes(*)), cotizacion_despachos(*), clientes!cotizaciones_cliente_principal_id_fkey(*), usuarios!cotizaciones_vendedor_id_fkey(*)`)
+        .order('updated_at', { ascending: false });
+
+      // Si no es admin, solo cargar cotizaciones del vendedor
+      if (!isAdmin && user?.id) {
+        query = query.eq('vendedor_id', user.id);
+      }
+      
+      const { data, error: reloadErr } = await query;
+      
+      if (reloadErr) throw reloadErr;
+      
+      const mapped: Quote[] = (data || []).map((row) => mapCotizacionToDomain({
+        cotizacion: row as CotizacionRow,
+        items: ((row as unknown as { cotizacion_items?: ItemRow[] }).cotizacion_items) || [],
+        clientes_adicionales: ((row as unknown as { cotizacion_clientes?: { cliente?: ClienteRow | null }[] }).cotizacion_clientes) || [],
+        despacho: ((row as unknown as { cotizacion_despachos?: DespRow[] }).cotizacion_despachos)?.[0] || null,
+        cliente_principal: (row as unknown as { clientes?: ClienteRow }).clientes,
+        vendedor: (row as unknown as { usuarios?: UsuarioRow }).usuarios
+      } as CotizacionAggregate));
+      
+      setAllQuotes(mapped);
+      return true;
+    } catch (error) {
+      console.error('Error actualizando prioridad:', error);
+      return false;
+    }
+  };
+
   // Utilidades
   const formatMoney = (amount: number): string => {
     return QuoteAmountCalculator.formatCurrency(amount);
@@ -728,8 +922,9 @@ export function useQuotes(): UseQuotesReturn {
   };
 
   const canDelete = (cotizacion: Quote): boolean => {
-    if (!isAdmin && user?.id !== cotizacion.vendedorId) return false;
-    return cotizacion.estado === 'borrador';
+    if (!isAdmin) return false;
+    // No se puede eliminar cotizaciones aceptadas o rechazadas (canceladas)
+    return cotizacion.estado !== 'aceptada' && cotizacion.estado !== 'rechazada';
   };
 
   // Optimización: Retornar la cotización desde el array completo sin filtros adicionales
@@ -762,6 +957,8 @@ export function useQuotes(): UseQuotesReturn {
     eliminarCotizacion,
     duplicarCotizacion,
     cambiarEstado,
+    cancelarCotizacion,
+    actualizarPrioridad,
     
     // Utilidades
     formatMoney,

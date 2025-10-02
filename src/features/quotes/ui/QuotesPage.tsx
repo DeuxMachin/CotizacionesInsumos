@@ -19,24 +19,33 @@ import {
   FiTrendingUp,
   FiChevronLeft,
   FiChevronRight,
+  FiChevronUp,
+  FiChevronDown,
   FiX,
   FiShoppingCart,
-  FiDownload
+  FiDownload,
+  FiStar,
+  FiXCircle,
+  FiHelpCircle
 } from 'react-icons/fi';
 
 import { useQuotes } from '../model/useQuotes';
 import { Quote, QuoteStatus } from '@/core/domain/quote/Quote';
+import { useAuth } from '@/contexts/AuthContext';
 
 // Import the filters panel component
 import { QuoteFiltersPanel } from './QuoteFiltersPanel';
 import { downloadFileFromResponse } from '@/lib/download';
 import { Toast } from '@/shared/ui/Toast';
+import { ConfirmDialog } from '@/shared/ui/ConfirmDialog';
+import { HelpGuide } from '@/shared/ui/HelpGuide';
 
 interface QuoteCardProps {
   quote: Quote;
   onView: (quote: Quote) => void;
   onEdit: (quote: Quote) => void;
   onDelete: (id: string) => void;
+  onCancel: (id: string) => void;
   onDuplicate: (id: string) => void;
   onChangeStatus: (id: string, status: QuoteStatus) => void;
   formatMoney: (amount: number) => string;
@@ -51,6 +60,7 @@ interface QuotesTableProps {
   onView: (quote: Quote) => void;
   onEdit: (quote: Quote) => void;
   onDelete: (id: string) => void;
+  onCancel: (id: string) => void;
   onDuplicate: (id: string) => void;
   onChangeStatus: (id: string, status: QuoteStatus) => void;
   formatMoney: (amount: number) => string;
@@ -58,10 +68,13 @@ interface QuotesTableProps {
   canEdit: (quote: Quote) => boolean;
   canDelete: (quote: Quote) => boolean;
   onConvert: (q: Quote) => void;
+  isVendedor: boolean;
+  onUpdatePriority: (id: string, prioridad: number | null) => Promise<void>;
 }
 
 export function QuotesPage() {
   const router = useRouter();
+  const { user } = useAuth();
   const {
     quotes,
     todasLasCotizaciones,
@@ -76,6 +89,8 @@ export function QuotesPage() {
     eliminarCotizacion,
     duplicarCotizacion,
     cambiarEstado,
+    cancelarCotizacion,
+    actualizarPrioridad,
     formatMoney,
     getStatusColor,
     canEdit,
@@ -89,6 +104,14 @@ export function QuotesPage() {
   const [selectedStates, setSelectedStates] = useState<QuoteStatus[]>([]);
   const [showFilters, setShowFilters] = useState(false);
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
+  
+  // Estados para modales
+  const [deleteDialog, setDeleteDialog] = useState<{ isOpen: boolean; quoteId: string | null }>({ isOpen: false, quoteId: null });
+  const [cancelDialog, setCancelDialog] = useState<{ isOpen: boolean; quoteId: string | null }>({ isOpen: false, quoteId: null });
+  const [showHelpGuide, setShowHelpGuide] = useState(false);
+
+  // Verificar si el usuario es vendedor (no admin)
+  const isVendedor = user && !isAdmin && user.role?.toLowerCase() === 'vendedor';
 
   // Aplicar filtros
   React.useMemo(() => {
@@ -134,12 +157,33 @@ export function QuotesPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (confirm('¿Estás seguro de que deseas eliminar esta cotización?')) {
-      const success = await eliminarCotizacion(id);
-      if (success) {
-        // Podrías mostrar un toast de éxito aquí
-      }
+    setDeleteDialog({ isOpen: true, quoteId: id });
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteDialog.quoteId) return;
+    const success = await eliminarCotizacion(deleteDialog.quoteId);
+    if (success) {
+      Toast.success('Cotización eliminada exitosamente');
+    } else {
+      Toast.error('No se pudo eliminar la cotización');
     }
+    setDeleteDialog({ isOpen: false, quoteId: null });
+  };
+
+  const handleCancel = async (id: string) => {
+    setCancelDialog({ isOpen: true, quoteId: id });
+  };
+
+  const confirmCancel = async () => {
+    if (!cancelDialog.quoteId) return;
+    const success = await cancelarCotizacion(cancelDialog.quoteId);
+    if (success) {
+      Toast.success('Cotización rechazada exitosamente');
+    } else {
+      Toast.error('No se pudo cancelar la cotización');
+    }
+    setCancelDialog({ isOpen: false, quoteId: null });
   };
 
   const handleDuplicate = async (id: string) => {
@@ -188,6 +232,15 @@ export function QuotesPage() {
   const handleConvert = async (quote: Quote) => {
     console.log('Convirtiendo cotización:', quote.id);
     router.push(`/dashboard/notas-venta/convertir?quoteId=${encodeURIComponent(quote.id)}`);
+  };
+
+  const handleUpdatePriority = async (id: string, prioridad: number | null) => {
+    const success = await actualizarPrioridad(id, prioridad);
+    if (success) {
+      Toast.success('Prioridad actualizada exitosamente');
+    } else {
+      Toast.error('Error al actualizar la prioridad');
+    }
   };
 
   const handleClearFilters = () => {
@@ -251,16 +304,14 @@ export function QuotesPage() {
                 </span>
               )}
             </button>
+            
             <button
-              onClick={() => setViewMode(viewMode === 'grid' ? 'table' : 'grid')}
-              className="p-2 rounded-lg border transition-colors"
-              style={{
-                backgroundColor: 'var(--bg-primary)',
-                borderColor: 'var(--border)',
-                color: 'var(--text-primary)'
-              }}
+              onClick={() => setShowHelpGuide(true)}
+              className="btn-secondary flex items-center gap-2 px-3 py-2"
+              title="Ver guía de ayuda"
             >
-              {viewMode === 'grid' ? <FiList className="w-4 h-4" /> : <FiGrid className="w-4 h-4" />}
+              <FiHelpCircle className="w-4 h-4" />
+              <span className="hidden sm:inline">Ayuda</span>
             </button>
             <button
               onClick={handleExport}
@@ -506,6 +557,7 @@ export function QuotesPage() {
               onView={handleView}
               onEdit={handleEdit}
               onDelete={handleDelete}
+              onCancel={handleCancel}
               onDuplicate={handleDuplicate}
               onChangeStatus={handleChangeStatus}
               formatMoney={formatMoney}
@@ -522,13 +574,16 @@ export function QuotesPage() {
           onView={handleView}
           onEdit={handleEdit}
           onDelete={handleDelete}
+          onCancel={handleCancel}
           onDuplicate={handleDuplicate}
           onChangeStatus={handleChangeStatus}
           formatMoney={formatMoney}
           getStatusColor={getStatusColor}
           canEdit={canEdit}
           canDelete={canDelete}
-      onConvert={handleConvert}
+          onConvert={handleConvert}
+          isVendedor={!!isVendedor}
+          onUpdatePriority={handleUpdatePriority}
         />
       )}
 
@@ -619,6 +674,36 @@ export function QuotesPage() {
         onFiltrosChange={setFiltros}
         vendedores={vendedores}
       />
+
+      {/* Diálogo de confirmación para eliminar */}
+      <ConfirmDialog
+        isOpen={deleteDialog.isOpen}
+        onClose={() => setDeleteDialog({ isOpen: false, quoteId: null })}
+        onConfirm={confirmDelete}
+        title="Eliminar Cotización"
+        message="¿Estás seguro de que deseas eliminar esta cotización? Esta acción no se puede deshacer y se eliminarán todos los datos relacionados."
+        confirmText="Eliminar"
+        cancelText="Cancelar"
+        type="danger"
+      />
+
+      {/* Diálogo de confirmación para cancelar */}
+      <ConfirmDialog
+        isOpen={cancelDialog.isOpen}
+        onClose={() => setCancelDialog({ isOpen: false, quoteId: null })}
+        onConfirm={confirmCancel}
+        title="Cancelar Cotización"
+        message="¿Estás seguro de que deseas rechazar esta cotización? Una vez rechazada, no se podrá modificar ni eliminar."
+        confirmText="Cancelar Cotización"
+        cancelText="Volver"
+        type="warning"
+      />
+
+      {/* Guía de ayuda */}
+      <HelpGuide
+        isOpen={showHelpGuide}
+        onClose={() => setShowHelpGuide(false)}
+      />
     </div>
   );
 }
@@ -628,7 +713,8 @@ function QuoteCard({
   quote, 
   onView, 
   onEdit, 
-  onDelete, 
+  onDelete,
+  onCancel,
   onDuplicate, 
   onChangeStatus,
   formatMoney, 
@@ -798,16 +884,28 @@ function QuoteCard({
                 Aceptar
               </button>
             )}
-            {canDelete(quote) && quote.estado !== 'aceptada' && (
+            {canDelete(quote) && (
               <button
                 onClick={(e) => {
                   e.stopPropagation();
                   onDelete(quote.id);
                 }}
-                className="p-2 rounded-lg hover:bg-red-100 transition-colors"
-                title="Eliminar"
+                className="p-2 rounded-lg hover:bg-red-100 transition-colors group"
+                title="Eliminar cotización"
               >
-                <FiTrash2 className="w-4 h-4 text-red-500" />
+                <FiTrash2 className="w-4 h-4 text-red-500 group-hover:text-red-700" />
+              </button>
+            )}
+            {quote.estado !== 'aceptada' && quote.estado !== 'rechazada' && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onCancel(quote.id);
+                }}
+                className="p-2 rounded-lg hover:bg-orange-100 transition-colors group"
+                title="Cancelar cotización"
+              >
+                <FiXCircle className="w-4 h-4 text-orange-500 group-hover:text-orange-700" />
               </button>
             )}
           </div>
@@ -822,15 +920,84 @@ function QuotesTable({
   quotes, 
   onView, 
   onEdit, 
-  onDelete, 
+  onDelete,
+  onCancel,
   onDuplicate, 
   onChangeStatus,
   formatMoney, 
   getStatusColor, 
   canEdit, 
   canDelete,
-  onConvert
+  onConvert,
+  isVendedor,
+  onUpdatePriority
 }: QuotesTableProps) {
+  const [sortedQuotes, setSortedQuotes] = React.useState<Quote[]>(quotes);
+
+  // Ordenar cotizaciones por prioridad si el usuario es vendedor
+  React.useEffect(() => {
+    if (isVendedor) {
+      const sorted = [...quotes].sort((a, b) => {
+        // Las cotizaciones sin prioridad van al final
+        if (a.prioridad === undefined || a.prioridad === null) return 1;
+        if (b.prioridad === undefined || b.prioridad === null) return -1;
+        return a.prioridad - b.prioridad;
+      });
+      setSortedQuotes(sorted);
+    } else {
+      setSortedQuotes(quotes);
+    }
+  }, [quotes, isVendedor]);
+
+  const handleMoveUp = async (quote: Quote, currentIndex: number) => {
+    if (currentIndex === 0) return;
+    
+    const prevQuote = sortedQuotes[currentIndex - 1];
+    
+    // Calcular nueva prioridad justo antes del elemento anterior
+    if (currentIndex === 1) {
+      // Si vamos a ser el primero, usar prioridad 1
+      await onUpdatePriority(quote.id, 1);
+    } else if (prevQuote.prioridad) {
+      // Tomar un número menor que el anterior
+      const newPriority = Math.max(1, prevQuote.prioridad - 1);
+      await onUpdatePriority(quote.id, newPriority);
+    } else {
+      await onUpdatePriority(quote.id, currentIndex);
+    }
+  };
+
+  const handleMoveDown = async (quote: Quote, currentIndex: number) => {
+    const lastPrioritizedIndex = sortedQuotes.findLastIndex(q => q.prioridad !== undefined && q.prioridad !== null);
+    if (currentIndex >= lastPrioritizedIndex) return;
+    
+    const nextQuote = sortedQuotes[currentIndex + 1];
+    
+    // Calcular nueva prioridad justo después del elemento siguiente
+    if (nextQuote.prioridad) {
+      const newPriority = nextQuote.prioridad + 1;
+      await onUpdatePriority(quote.id, newPriority);
+    } else {
+      await onUpdatePriority(quote.id, (currentIndex + 2) * 10);
+    }
+  };
+
+  const handleSetPriority = async (quote: Quote, index: number) => {
+    // Encontrar la última prioridad usada
+    const maxPriority = Math.max(
+      ...sortedQuotes
+        .filter(q => q.prioridad !== undefined && q.prioridad !== null)
+        .map(q => q.prioridad as number),
+      0
+    );
+    // Asignar la siguiente prioridad disponible
+    await onUpdatePriority(quote.id, maxPriority + 10);
+  };
+
+  const handleRemovePriority = async (quote: Quote) => {
+    await onUpdatePriority(quote.id, null);
+  };
+
   return (
     <div 
       className="rounded-lg overflow-hidden"
@@ -840,6 +1007,11 @@ function QuotesTable({
         <table className="w-full">
           <thead style={{ backgroundColor: 'var(--bg-secondary)' }}>
             <tr>
+              {isVendedor && (
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>
+                  Prioridad
+                </th>
+              )}
               <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>
                 Documento
               </th>
@@ -864,10 +1036,65 @@ function QuotesTable({
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200">
-            {quotes.map((quote) => {
+            {sortedQuotes.map((quote, index) => {
               const statusColor = getStatusColor(quote.estado);
               return (
                 <tr key={quote.id} className="hover:bg-gray-50" style={{ backgroundColor: 'var(--bg-primary)' }}>
+                  {isVendedor && (
+                    <td className="px-4 py-4 whitespace-nowrap">
+                      <div className="flex items-center gap-2">
+                        {/* Mostrar posición visual (no el número de prioridad de BD) */}
+                        <div className="flex items-center gap-1 min-w-[60px]">
+                          {quote.prioridad !== undefined && quote.prioridad !== null ? (
+                            <>
+                              <FiStar className="w-4 h-4 text-yellow-500 fill-yellow-500" />
+                              <span className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>
+                                #{index + 1}
+                              </span>
+                            </>
+                          ) : (
+                            <button
+                              onClick={() => handleSetPriority(quote, index)}
+                              className="flex items-center gap-1 px-2 py-1 text-xs rounded hover:bg-blue-50 border border-blue-300 text-blue-600"
+                              title="Marcar como prioritaria"
+                            >
+                              <FiStar className="w-3 h-3" />
+                              <span>Priorizar</span>
+                            </button>
+                          )}
+                        </div>
+                        
+                        {/* Controles de movimiento solo si está priorizada */}
+                        {quote.prioridad !== undefined && quote.prioridad !== null && (
+                          <div className="flex items-center gap-1 border-l pl-2" style={{ borderColor: 'var(--border)' }}>
+                            <button
+                              onClick={() => handleMoveUp(quote, index)}
+                              disabled={index === 0}
+                              className="p-1 rounded hover:bg-blue-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                              title="Mover arriba"
+                            >
+                              <FiChevronUp className="w-4 h-4 text-blue-600" />
+                            </button>
+                            <button
+                              onClick={() => handleMoveDown(quote, index)}
+                              disabled={index === sortedQuotes.length - 1}
+                              className="p-1 rounded hover:bg-blue-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                              title="Mover abajo"
+                            >
+                              <FiChevronDown className="w-4 h-4 text-blue-600" />
+                            </button>
+                            <button
+                              onClick={() => handleRemovePriority(quote)}
+                              className="p-1 rounded hover:bg-red-100 transition-colors ml-1"
+                              title="Quitar de prioritarias"
+                            >
+                              <FiX className="w-4 h-4 text-red-500" />
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </td>
+                  )}
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div>
                       <div className="font-medium" style={{ color: 'var(--text-primary)' }}>
@@ -953,13 +1180,22 @@ function QuotesTable({
                           Aceptar
                         </button>
                       )}
-                      {canDelete(quote) && quote.estado !== 'aceptada' && (
+                      {canDelete(quote) && (
                         <button
                           onClick={() => onDelete(quote.id)}
-                          className="p-1 rounded hover:bg-red-100"
-                          title="Eliminar"
+                          className="p-1 rounded hover:bg-red-100 transition-colors group"
+                          title="Eliminar cotización"
                         >
-                          <FiTrash2 className="w-4 h-4 text-red-500" />
+                          <FiTrash2 className="w-4 h-4 text-red-500 group-hover:text-red-700" />
+                        </button>
+                      )}
+                      {quote.estado !== 'aceptada' && quote.estado !== 'rechazada' && (
+                        <button
+                          onClick={() => onCancel(quote.id)}
+                          className="p-1 rounded hover:bg-orange-100 transition-colors group"
+                          title="Cancelar cotización"
+                        >
+                          <FiXCircle className="w-4 h-4 text-orange-500 group-hover:text-orange-700" />
                         </button>
                       )}
                     </div>

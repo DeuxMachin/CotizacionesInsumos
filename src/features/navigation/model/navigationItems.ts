@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { FiHome, FiFileText, FiUsers, FiPackage, FiBarChart2, FiMapPin, FiSettings, FiShield, FiTool } from "react-icons/fi";
+import { FiHome, FiFileText, FiUsers, FiPackage, FiBarChart2, FiMapPin, FiShield, FiTool } from "react-icons/fi";
 import type { Section } from "./useSection";
 import { usePermissions, type Resource, type Action } from "@/features/auth/model/permissions";
 
@@ -29,7 +29,6 @@ export const NAVIGATION_ICONS = {
   stock: FiPackage,
   reportes: FiBarChart2,
   admin: FiShield,
-  configuracion: FiSettings,
 } as const;
 
 // Definición completa de elementos de navegación
@@ -107,16 +106,6 @@ export const ALL_NAVIGATION_ITEMS: NavigationItem[] = [
     resource: "admin",
     requiredActions: ["read"],
     adminOnly: true,
-  },
-  {
-    key: "configuracion",
-    iconName: "configuracion",
-    label: "Configuración",
-    description: "Ajustes del sistema",
-    resource: "settings",
-    requiredActions: ["read"],
-    adminOnly: true,
-    comingSoon: true,
   },
 ] as const;
 

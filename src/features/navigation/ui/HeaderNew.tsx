@@ -3,7 +3,7 @@
 import { useSection } from "@/features/navigation/model/useSection";
 // Migrado al nuevo AuthContext basado en JWT
 import { useAuth } from "@/contexts/AuthContext";
-import { FiMenu, FiBell, FiLogOut } from "react-icons/fi";
+import { FiMenu, FiLogOut } from "react-icons/fi";
 import { Logo } from "@/shared/ui/Logo";
 import { ThemeToggle } from "@/features/theme/ui/ThemeToggle";
 import { usePathname } from "next/navigation";
@@ -19,8 +19,7 @@ const routeTitles: Record<string, string> = {
   "/dashboard/posibles-targets": "Posibles Targets",
   "/admin": "Panel de Administración",
   "/admin/usuarios": "Gestión de Usuarios",
-  "/admin/auditoria": "Logs de Auditoría",
-  "/admin/configuracion": "Configuración del Sistema"
+  "/admin/auditoria": "Logs de Auditoría"
 };
 
 // Subtítulos informativos que aparecen debajo del título principal
@@ -34,8 +33,7 @@ const routeSubtitles: Record<string, string> = {
   "/dashboard/posibles-targets": "Gestiona tus prospectos y ubicaciones",
   "/admin": "Administra todos los aspectos del sistema",
   "/admin/usuarios": "Gestiona usuarios y permisos",
-  "/admin/auditoria": "Revisa todas las actividades del sistema",
-  "/admin/configuracion": "Personaliza la configuración del sistema"
+  "/admin/auditoria": "Revisa todas las actividades del sistema"
 };
 
 export function Header() {
@@ -120,14 +118,6 @@ export function Header() {
             <ThemeToggle />
           </div>
           
-          {/* Notificaciones con indicador visual */}
-          <button className="relative btn-icon">
-            <FiBell className="w-4 h-4 sm:w-5 sm:h-5" />
-            <span className="absolute -top-1 -right-1 h-2 w-2 sm:h-3 sm:w-3 bg-red-500 rounded-full flex items-center justify-center">
-              <span className="text-xs font-bold text-white hidden sm:inline">1</span>
-            </span>
-          </button>
-
           {/* Avatar del usuario con menú */}
           <div 
             className="flex items-center gap-2 pl-2 sm:pl-3"

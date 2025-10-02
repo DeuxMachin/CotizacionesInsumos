@@ -18,19 +18,25 @@ import {
   FiPackage,
   FiShield,
   FiCreditCard,
-  FiAlertCircle
+  FiAlertCircle,
+  FiTrash2,
+  FiXCircle
 } from 'react-icons/fi';
 import { FiShoppingCart } from 'react-icons/fi';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useQuotes } from '@/features/quotes/model/useQuotes';
 import { downloadFileFromResponse } from '@/lib/download';
 import { NotasVentaService, SalesNoteRecord } from '@/services/notasVentaService';
+import { ConfirmDialog } from '@/shared/ui/ConfirmDialog';
+import { EditQuoteModal } from '@/features/quotes/ui/components';
+import { Toast } from '@/shared/ui/Toast';
+import type { QuoteItem, DeliveryInfo } from '@/core/domain/quote/Quote';
 
 export default function QuoteDetailPage() {
   const params = useParams();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { getQuoteById, formatMoney, getStatusColor, loading, eliminarCotizacion } = useQuotes();
+  const { getQuoteById, formatMoney, getStatusColor, loading, eliminarCotizacion, cancelarCotizacion, actualizarCotizacion, canDelete, isAdmin } = useQuotes();
   
   const quoteFolio = params.id as string; // folio (ej: COT000002)
   const quote = getQuoteById ? getQuoteById(quoteFolio) : null;
@@ -39,6 +45,10 @@ export default function QuoteDetailPage() {
   const [exporting, setExporting] = React.useState(false);
   // Estado para la nota de venta correspondiente (si existe)
   const [relatedSalesNote, setRelatedSalesNote] = React.useState<SalesNoteRecord | null>(null);
+  // Estados para modales
+  const [deleteDialog, setDeleteDialog] = React.useState(false);
+  const [cancelDialog, setCancelDialog] = React.useState(false);
+  const [editModal, setEditModal] = React.useState(false);
 
   // Buscar nota de venta correspondiente cuando la cotización esté aceptada
   React.useEffect(() => {
@@ -67,14 +77,38 @@ export default function QuoteDetailPage() {
   // ===== HOOKS CALLBACK ANTES DE RETURNS CONDICIONALES =====
   const handleDeleteQuote = React.useCallback(async () => {
     if (!quote) return;
-    if (!confirm('¿Eliminar DEFINITIVAMENTE esta cotización y todos sus datos relacionados (ítems, despacho, clientes adicionales y nota de venta si existe)?')) return;
+    setDeleteDialog(false);
     const ok = await eliminarCotizacion(quote.id);
     if (ok) {
+      Toast.success('Cotización eliminada exitosamente');
       router.push('/dashboard/cotizaciones');
     } else {
-      alert('No se pudo eliminar la cotización');
+      Toast.error('No se pudo eliminar la cotización');
     }
   }, [quote, eliminarCotizacion, router]);
+
+  const handleCancelQuote = React.useCallback(async () => {
+    if (!quote) return;
+    setCancelDialog(false);
+    const ok = await cancelarCotizacion(quote.id);
+    if (ok) {
+      Toast.success('Cotización rechazada exitosamente');
+    } else {
+      Toast.error('No se pudo cancelar la cotización');
+    }
+  }, [quote, cancelarCotizacion]);
+
+  const handleSaveEdit = React.useCallback(async (items: QuoteItem[], despacho: DeliveryInfo) => {
+    if (!quote) return false;
+    const success = await actualizarCotizacion(quote.id, { items, despacho });
+    if (success) {
+      Toast.success('Cotización actualizada exitosamente');
+      return true;
+    } else {
+      Toast.error('No se pudo actualizar la cotización');
+      return false;
+    }
+  }, [quote, actualizarCotizacion]);
   
   // ===== RETURNS CONDICIONALES =====
   if (loading) {
@@ -158,12 +192,6 @@ export default function QuoteDetailPage() {
     }
   };
 
-  const handleEdit = () => {
-    // Funcionalidad de edición será implementada después
-    alert('Funcionalidad de edición en desarrollo');
-  };
-  
-
   return (
     <div className="space-y-6 animate-fadeIn">
       {/* Header */}
@@ -240,44 +268,62 @@ export default function QuoteDetailPage() {
         <div className="flex items-center gap-2 self-end sm:self-auto mt-2 sm:mt-0 flex-wrap">
           <button
             onClick={handleConvert}
-            disabled={quote?.estado === 'aceptada'}
-            className="btn-primary flex items-center gap-1 sm:gap-2 px-2 sm:px-4 py-1 sm:py-2 text-sm"
-            style={quote?.estado === 'aceptada' ? { opacity: 0.5, cursor: 'not-allowed' } : {}}
+            disabled={quote?.estado === 'aceptada' || quote?.estado === 'rechazada'}
+            className="btn-primary flex items-center gap-2 px-3 sm:px-4 py-2 text-sm font-medium"
+            style={quote?.estado === 'aceptada' || quote?.estado === 'rechazada' ? { opacity: 0.5, cursor: 'not-allowed' } : {}}
+            title="Convertir cotización a nota de venta"
           >
-            <FiShoppingCart className="w-3 sm:w-4 h-3 sm:h-4" />
-            <span className="hidden xs:inline">Pasar a Venta</span>
+            <FiShoppingCart className="w-4 h-4" />
+            <span>Pasar a Venta</span>
           </button>
           <button
             onClick={handleExport}
             disabled={exporting}
-            className="btn-secondary flex items-center gap-1 sm:gap-2 px-2 sm:px-4 py-1 sm:py-2 text-sm"
+            className="btn-secondary flex items-center gap-2 px-3 sm:px-4 py-2 text-sm font-medium"
             style={exporting ? { opacity: .7, cursor: 'wait' } : {}}
+            title="Descargar PDF de la cotización"
           >
-            <FiDownload className="w-3 sm:w-4 h-3 sm:h-4" />
-            <span className="hidden xs:inline">{exporting ? 'Descargando...' : 'Descargar'}</span>
+            <FiDownload className="w-4 h-4" />
+            <span>{exporting ? 'Descargando...' : 'Descargar PDF'}</span>
           </button>
           <button
-            onClick={handleEdit}
-            disabled={quote?.estado === 'aceptada'}
-            className="btn-primary flex items-center gap-1 sm:gap-2 px-2 sm:px-4 py-1 sm:py-2 text-sm"
-            style={quote?.estado === 'aceptada' ? { opacity: 0.5, cursor: 'not-allowed' } : {}}
+            onClick={() => setEditModal(true)}
+            disabled={quote?.estado === 'aceptada' || quote?.estado === 'rechazada'}
+            className="btn-secondary flex items-center gap-2 px-3 sm:px-4 py-2 text-sm font-medium"
+            style={quote?.estado === 'aceptada' || quote?.estado === 'rechazada' ? { opacity: 0.5, cursor: 'not-allowed' } : {}}
+            title="Editar productos y despacho"
           >
-            <FiEdit2 className="w-3 sm:w-4 h-3 sm:h-4" />
-            <span className="hidden xs:inline">Editar</span>
+            <FiEdit2 className="w-4 h-4" />
+            <span>Editar</span>
           </button>
-          <button
-            onClick={handleDeleteQuote}
-            disabled={quote?.estado === 'aceptada'}
-            className="flex items-center gap-1 sm:gap-2 px-2 sm:px-4 py-1 sm:py-2 text-sm rounded-lg"
-            style={{
-              background: quote?.estado === 'aceptada' ? 'var(--bg-secondary)' : 'var(--danger-bg)',
-              color: quote?.estado === 'aceptada' ? 'var(--text-secondary)' : 'var(--danger-text)',
-              cursor: quote?.estado === 'aceptada' ? 'not-allowed' : 'pointer'
-            }}
-          >
-            <FiAlertCircle className="w-3 sm:w-4 h-3 sm:h-4" />
-            <span className="hidden xs:inline">Eliminar</span>
-          </button>
+          {isAdmin && quote?.estado !== 'aceptada' && quote?.estado !== 'rechazada' && (
+            <button
+              onClick={() => setCancelDialog(true)}
+              className="flex items-center gap-2 px-3 sm:px-4 py-2 text-sm font-medium rounded-lg hover:opacity-90 transition-opacity"
+              style={{
+                backgroundColor: 'var(--warning-bg)',
+                color: 'var(--warning-text)'
+              }}
+              title="Cancelar esta cotización"
+            >
+              <FiXCircle className="w-4 h-4" />
+              <span>Cancelar</span>
+            </button>
+          )}
+          {canDelete && canDelete(quote) && (
+            <button
+              onClick={() => setDeleteDialog(true)}
+              className="flex items-center gap-2 px-3 sm:px-4 py-2 text-sm font-medium rounded-lg hover:opacity-90 transition-opacity"
+              style={{
+                backgroundColor: 'var(--danger-bg)',
+                color: 'var(--danger-text)'
+              }}
+              title="Eliminar esta cotización permanentemente"
+            >
+              <FiTrash2 className="w-4 h-4" />
+              <span>Eliminar</span>
+            </button>
+          )}
           {/* Errores de venta eliminados junto con el flujo modal */}
         </div>
       </div>
@@ -686,6 +732,40 @@ export default function QuoteDetailPage() {
           )}
         </div>
       </div>
+
+      {/* Modales */}
+      {quote && (
+        <>
+          <ConfirmDialog
+            isOpen={deleteDialog}
+            onClose={() => setDeleteDialog(false)}
+            onConfirm={handleDeleteQuote}
+            title="Eliminar Cotización"
+            message="¿Estás seguro de que deseas eliminar esta cotización? Esta acción eliminará permanentemente todos los datos relacionados (productos, despacho, clientes adicionales). Esta acción no se puede deshacer."
+            confirmText="Eliminar"
+            cancelText="Cancelar"
+            type="danger"
+          />
+
+          <ConfirmDialog
+            isOpen={cancelDialog}
+            onClose={() => setCancelDialog(false)}
+            onConfirm={handleCancelQuote}
+            title="Cancelar Cotización"
+            message="¿Estás seguro de que deseas rechazar esta cotización? Una vez rechazada, no se podrá modificar ni eliminar. Esta acción es reversible solo por un administrador."
+            confirmText="Cancelar Cotización"
+            cancelText="Volver"
+            type="warning"
+          />
+
+          <EditQuoteModal
+            isOpen={editModal}
+            onClose={() => setEditModal(false)}
+            quote={quote}
+            onSave={handleSaveEdit}
+          />
+        </>
+      )}
     </div>
   );
 }
