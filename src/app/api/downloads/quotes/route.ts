@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
-import * as XLSX from 'xlsx';
+import ExcelJS from 'exceljs';
 import { AuditService } from '@/services/auditService';
 import { Database } from '@/lib/supabase';
 
@@ -192,56 +192,101 @@ export async function GET(request: NextRequest) {
       }
     });
 
-    // Crear workbook y worksheet
-    const wb = XLSX.utils.book_new();
-    const ws = XLSX.utils.json_to_sheet(exportData);
-
-    // Ajustar ancho de columnas
-    const colWidths = [
-      { wch: 15 }, // ID Cotización
-      { wch: 12 }, // Fecha Emisión
-      { wch: 12 }, // Fecha Vencimiento
-      { wch: 10 }, // Estado
-      { wch: 12 }, // Cliente RUT
-      { wch: 25 }, // Cliente Razón Social
-      { wch: 20 }, // Cliente Nombre Fantasía
-      { wch: 20 }, // Cliente Giro
-      { wch: 25 }, // Cliente Dirección
-      { wch: 15 }, // Cliente Ciudad
-      { wch: 15 }, // Cliente Comuna
-      { wch: 15 }, // Cliente Teléfono
-      { wch: 25 }, // Cliente Email
-      { wch: 20 }, // Vendedor
-      { wch: 15 }, // Producto SKU
-      { wch: 30 }, // Producto Nombre
-      { wch: 10 }, // Producto Unidad
-      { wch: 12 }, // Producto Tipo
-      { wch: 10 }, // Producto Moneda
-  { wch: 14 }, // Producto Afecto IVA
-      { wch: 10 }, // Cantidad
-      { wch: 15 }, // Precio Unitario
-      { wch: 10 }, // Descuento %
-      { wch: 15 }, // Descuento Monto
-      { wch: 15 }, // Subtotal
-      { wch: 10 }, // IVA Aplicado
-      { wch: 15 }, // Total Bruto Cotización
-      { wch: 15 }, // Total Descuento Cotización
-      { wch: 15 }, // Total Neto Cotización
-      { wch: 15 }, // IVA Cotización
-      { wch: 15 }, // Total Final Cotización
-      { wch: 20 }, // Condición Pago
-      { wch: 15 }, // Plazo Entrega
-      { wch: 30 }, // Observaciones
-      { wch: 12 }, // Fecha Creación
-      { wch: 12 }  // Fecha Actualización
+    // Crear workbook con ExcelJS
+    const workbook = new ExcelJS.Workbook();
+    workbook.creator = 'Sistema de Cotizaciones';
+    workbook.created = new Date();
+    
+    const worksheet = workbook.addWorksheet('Cotizaciones');
+    
+    // Definir columnas con headers y anchos
+    worksheet.columns = [
+      { header: 'ID Cotización', key: 'idCotizacion', width: 15 },
+      { header: 'Fecha Emisión', key: 'fechaEmision', width: 12 },
+      { header: 'Fecha Vencimiento', key: 'fechaVencimiento', width: 12 },
+      { header: 'Estado', key: 'estado', width: 10 },
+      { header: 'Cliente RUT', key: 'clienteRut', width: 12 },
+      { header: 'Cliente Razón Social', key: 'clienteRazonSocial', width: 25 },
+      { header: 'Cliente Nombre Fantasía', key: 'clienteNombreFantasia', width: 20 },
+      { header: 'Cliente Giro', key: 'clienteGiro', width: 20 },
+      { header: 'Cliente Dirección', key: 'clienteDireccion', width: 25 },
+      { header: 'Cliente Ciudad', key: 'clienteCiudad', width: 15 },
+      { header: 'Cliente Comuna', key: 'clienteComuna', width: 15 },
+      { header: 'Cliente Teléfono', key: 'clienteTelefono', width: 15 },
+      { header: 'Cliente Email', key: 'clienteEmail', width: 25 },
+      { header: 'Vendedor', key: 'vendedor', width: 20 },
+      { header: 'Producto SKU', key: 'productoSku', width: 15 },
+      { header: 'Producto Nombre', key: 'productoNombre', width: 30 },
+      { header: 'Producto Unidad', key: 'productoUnidad', width: 10 },
+      { header: 'Producto Tipo', key: 'productoTipo', width: 12 },
+      { header: 'Producto Moneda', key: 'productoMoneda', width: 10 },
+      { header: 'Producto Afecto IVA', key: 'productoAfectoIva', width: 14 },
+      { header: 'Cantidad', key: 'cantidad', width: 10 },
+      { header: 'Precio Unitario', key: 'precioUnitario', width: 15 },
+      { header: 'Descuento %', key: 'descuentoPct', width: 10 },
+      { header: 'Descuento Monto', key: 'descuentoMonto', width: 15 },
+      { header: 'Subtotal', key: 'subtotal', width: 15 },
+      { header: 'IVA Aplicado', key: 'ivaAplicado', width: 10 },
+      { header: 'Total Bruto Cotización', key: 'totalBruto', width: 15 },
+      { header: 'Total Descuento Cotización', key: 'totalDescuento', width: 15 },
+      { header: 'Total Neto Cotización', key: 'totalNeto', width: 15 },
+      { header: 'IVA Cotización', key: 'ivaCotizacion', width: 15 },
+      { header: 'Total Final Cotización', key: 'totalFinal', width: 15 },
+      { header: 'Condición Pago', key: 'condicionPago', width: 20 },
+      { header: 'Plazo Entrega', key: 'plazoEntrega', width: 15 },
+      { header: 'Observaciones', key: 'observaciones', width: 30 },
+      { header: 'Fecha Creación', key: 'fechaCreacion', width: 12 },
+      { header: 'Fecha Actualización', key: 'fechaActualizacion', width: 12 }
     ];
-    ws['!cols'] = colWidths;
-
-    // Agregar worksheet al workbook
-    XLSX.utils.book_append_sheet(wb, ws, 'Cotizaciones');
+    
+    // Agregar datos
+    exportData.forEach((row) => {
+      worksheet.addRow({
+        idCotizacion: row['ID Cotización'],
+        fechaEmision: row['Fecha Emisión'],
+        fechaVencimiento: row['Fecha Vencimiento'],
+        estado: row['Estado'],
+        clienteRut: row['Cliente RUT'],
+        clienteRazonSocial: row['Cliente Razón Social'],
+        clienteNombreFantasia: row['Cliente Nombre Fantasía'],
+        clienteGiro: row['Cliente Giro'],
+        clienteDireccion: row['Cliente Dirección'],
+        clienteCiudad: row['Cliente Ciudad'],
+        clienteComuna: row['Cliente Comuna'],
+        clienteTelefono: row['Cliente Teléfono'],
+        clienteEmail: row['Cliente Email'],
+        vendedor: row['Vendedor'],
+        productoSku: row['Producto SKU'],
+        productoNombre: row['Producto Nombre'],
+        productoUnidad: row['Producto Unidad'],
+        productoTipo: row['Producto Tipo'],
+        productoMoneda: row['Producto Moneda'],
+        productoAfectoIva: row['Producto Afecto IVA'],
+        cantidad: row['Cantidad'],
+        precioUnitario: row['Precio Unitario'],
+        descuentoPct: row['Descuento %'],
+        descuentoMonto: row['Descuento Monto'],
+        subtotal: row['Subtotal'],
+        ivaAplicado: row['IVA Aplicado'],
+        totalBruto: row['Total Bruto Cotización'],
+        totalDescuento: row['Total Descuento Cotización'],
+        totalNeto: row['Total Neto Cotización'],
+        ivaCotizacion: row['IVA Cotización'],
+        totalFinal: row['Total Final Cotización'],
+        condicionPago: row['Condición Pago'],
+        plazoEntrega: row['Plazo Entrega'],
+        observaciones: row['Observaciones'],
+        fechaCreacion: row['Fecha Creación'],
+        fechaActualizacion: row['Fecha Actualización']
+      });
+    });
+    
+    // Estilo de encabezados
+    worksheet.getRow(1).font = { bold: true };
+    worksheet.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE0E0E0' } };
 
   // Generar el buffer del archivo
-  const buffer = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
+  const buffer = await workbook.xlsx.writeBuffer();
 
   // Registrar en document_series (serie de descargas)
   const { registerDownloadSeries } = await import('@/services/documentSeriesService');

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
-import * as XLSX from 'xlsx';
+import ExcelJS from 'exceljs';
 import { AuditService } from '@/services/auditService';
 
 interface ProductoExportRow {
@@ -120,109 +120,69 @@ export async function GET(request: NextRequest) {
     }];
 
     // Crear workbook con múltiples hojas
-    const wb = XLSX.utils.book_new();
+    const wb = new ExcelJS.Workbook();
 
     // Hoja principal de productos
-    const wsProductos = XLSX.utils.json_to_sheet(productosExport);
-    XLSX.utils.book_append_sheet(wb, wsProductos, 'Productos');
+    const wsProductos = wb.addWorksheet('Productos');
+    const productosHeaders = Object.keys(productosExport[0] || {});
+    wsProductos.addRow(productosHeaders);
+    productosExport.forEach(row => {
+      wsProductos.addRow(Object.values(row));
+    });
 
-    // Aplicar formato a los headers (primera fila) - Headers muy destacados
-    const headersRange = XLSX.utils.decode_range(wsProductos['!ref'] || 'A1');
-    for (let col = headersRange.s.c; col <= headersRange.e.c; col++) {
-      const cellAddress = XLSX.utils.encode_cell({ r: 0, c: col });
-      if (wsProductos[cellAddress]) {
-        // Aplicar formato usando colores Excel estándar que definitivamente funcionan
-        wsProductos[cellAddress].s = {
-          font: {
-            bold: true,
-            sz: 12,
-            color: { rgb: "FFFFFF" } // Blanco
-          },
-          fill: {
-            patternType: "solid",
-            fgColor: { rgb: "FF4F81BD" }, // Azul Excel estándar
-            bgColor: { rgb: "FF4F81BD" }
-          },
-          border: {
-            top: { style: "thick", color: { rgb: "FF000000" } },
-            bottom: { style: "thick", color: { rgb: "FF000000" } },
-            left: { style: "thick", color: { rgb: "FF000000" } },
-            right: { style: "thick", color: { rgb: "FF000000" } }
-          },
-          alignment: { horizontal: "center", vertical: "center" }
-        };
-      }
-    }
+    // Estilizar encabezados de la hoja de productos
+    wsProductos.getRow(1).font = { bold: true, size: 12, color: { argb: 'FFFFFFFF' } };
+    wsProductos.getRow(1).fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FF4F81BD' }
+    };
+    wsProductos.getRow(1).alignment = { horizontal: 'center', vertical: 'middle' };
 
     // Hoja de estadísticas
-    const wsEstadisticas = XLSX.utils.json_to_sheet(estadisticas);
-    XLSX.utils.book_append_sheet(wb, wsEstadisticas, 'Estadísticas');
+    const wsEstadisticas = wb.addWorksheet('Estadísticas');
+    const estadisticasHeaders = Object.keys(estadisticas[0] || {});
+    wsEstadisticas.addRow(estadisticasHeaders);
+    estadisticas.forEach(row => {
+      wsEstadisticas.addRow(Object.values(row));
+    });
 
-    // Aplicar formato a los headers de estadísticas - Headers muy destacados
-    const statsHeadersRange = XLSX.utils.decode_range(wsEstadisticas['!ref'] || 'A1');
-    for (let col = statsHeadersRange.s.c; col <= statsHeadersRange.e.c; col++) {
-      const cellAddress = XLSX.utils.encode_cell({ r: 0, c: col });
-      if (wsEstadisticas[cellAddress]) {
-        wsEstadisticas[cellAddress].s = {
-          font: {
-            bold: true,
-            sz: 12,
-            color: { rgb: "FFFFFF" } // Blanco
-          },
-          fill: {
-            patternType: "solid",
-            fgColor: { rgb: "FF4F81BD" }, // Azul Excel estándar
-            bgColor: { rgb: "FF4F81BD" }
-          },
-          border: {
-            top: { style: "thick", color: { rgb: "FF000000" } },
-            bottom: { style: "thick", color: { rgb: "FF000000" } },
-            left: { style: "thick", color: { rgb: "FF000000" } },
-            right: { style: "thick", color: { rgb: "FF000000" } }
-          },
-          alignment: { horizontal: "center", vertical: "center" }
-        };
-      }
-    }
+    // Estilizar encabezados de la hoja de estadísticas
+    wsEstadisticas.getRow(1).font = { bold: true, size: 12, color: { argb: 'FFFFFFFF' } };
+    wsEstadisticas.getRow(1).fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FF4F81BD' }
+    };
+    wsEstadisticas.getRow(1).alignment = { horizontal: 'center', vertical: 'middle' };
 
     // Configurar anchos de columna
-    const colWidthsProductos = [
-      { wch: 8 }, // ID
-      { wch: 15 }, // SKU
-      { wch: 30 }, // Nombre
-      { wch: 40 }, // Descripción
-      { wch: 10 }, // Unidad
-      { wch: 15 }, // Costo Unitario
-      { wch: 15 }, // Precio Neto
-      { wch: 15 }, // Precio Venta
-      { wch: 8 }, // Moneda
-      { wch: 20 }, // Categoría
-      { wch: 10 }, // Afecto IVA
-      { wch: 12 }, // Control Stock
-      { wch: 30 }, // Ficha Técnica
-      { wch: 12 }, // Estado
-      { wch: 8 }, // Activo
-      { wch: 12 }  // Fecha Creación
+    wsProductos.columns = [
+      { width: 8 }, // ID
+      { width: 15 }, // SKU
+      { width: 30 }, // Nombre
+      { width: 40 }, // Descripción
+      { width: 10 }, // Unidad
+      { width: 15 }, // Costo Unitario
+      { width: 15 }, // Precio Neto
+      { width: 15 }, // Precio Venta
+      { width: 8 }, // Moneda
+      { width: 20 }, // Categoría
+      { width: 10 }, // Afecto IVA
+      { width: 12 }, // Control Stock
+      { width: 30 }, // Ficha Técnica
+      { width: 12 }, // Estado
+      { width: 8 }, // Activo
+      { width: 12 }  // Fecha Creación
     ];
-    wsProductos['!cols'] = colWidthsProductos;
 
-    const colWidthsEstadisticas = [
-      { wch: 35 }, // Métrica
-      { wch: 15 }  // Valor
+    wsEstadisticas.columns = [
+      { width: 35 }, // Métrica
+      { width: 15 }  // Valor
     ];
-    wsEstadisticas['!cols'] = colWidthsEstadisticas;
 
     // Generar el buffer del archivo con preservación de estilos
-    const buffer = XLSX.write(wb, {
-      type: 'buffer',
-      bookType: 'xlsx',
-      cellStyles: true,
-      Props: {
-        Title: 'Catálogo de Productos',
-        Subject: 'Exportación de productos',
-        Author: 'Sistema de Cotizaciones'
-      }
-    });
+    const buffer = await wb.xlsx.writeBuffer();
 
     // Registrar en document_series (serie de descargas)
     const { registerDownloadSeries } = await import('@/services/documentSeriesService');
