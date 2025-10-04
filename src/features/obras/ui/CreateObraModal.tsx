@@ -182,7 +182,32 @@ export function CreateObraModal({
       }
       setSearchingClientes(true);
       try {
-        const results = await ClientesService.search(term);
+        // Detectar si el término de búsqueda parece un RUT (contiene puntos, guión o es numérico)
+        const isRutLike = /[.\-]/.test(term) || /^\d+$/.test(term);
+        
+        // Si es RUT, cargar todos los clientes y filtrar client-side
+        // Si no, hacer búsqueda por nombre (API)
+        let results: Database['public']['Tables']['clientes']['Row'][] = [];
+        
+        if (isRutLike) {
+          // Normalizar: eliminar puntos, guiones y espacios
+          const normalizeRut = (v: string) => (v || '').replace(/[.\-\s]/g, '').toUpperCase();
+          const searchNormalized = normalizeRut(term);
+          
+          // Obtener todos los clientes
+          const allClients = await ClientesService.getAll();
+          
+          // Filtrar del lado del cliente
+          results = (allClients || []).filter(client => {
+            const rutNormalized = normalizeRut(client.rut || '');
+            // Buscar si el RUT normalizado contiene el término de búsqueda normalizado
+            return rutNormalized.includes(searchNormalized);
+          });
+        } else {
+          // Búsqueda normal por nombre
+          results = await ClientesService.search(term);
+        }
+        
         setClienteResults(results || []);
       } catch (e) {
         console.error('Error buscando clientes:', e);
@@ -239,7 +264,7 @@ export function CreateObraModal({
 
   const onClienteSelect = (cli: Database['public']['Tables']['clientes']['Row']) => {
     setClienteId(cli.id);
-    setClienteQuery(`${cli.nombre_razon_social} (${cli.rut})`);
+    setClienteQuery(cli.nombre_razon_social || '');
     setShowClienteDropdown(false);
     setConstructoraNombre(cli.nombre_razon_social || '');
     setConstructoraRut(cli.rut || '');
@@ -263,11 +288,20 @@ export function CreateObraModal({
 
     if (!constructoraRut.trim()) {
       newErrors.constructora = { ...newErrors.constructora, rut: 'El RUT de la constructora es obligatorio' };
-    } else if (!/^\d{7,8}-[\dkK]$/.test(constructoraRut)) {
-      newErrors.constructora = { ...newErrors.constructora, rut: 'Formato de RUT inválido (ej: 12345678-9)' };
+    } else {
+      // Normalizar RUT para validación (eliminar puntos y espacios)
+      const rutNormalizado = constructoraRut.trim().replace(/[.\s]/g, '');
+      // Validar formato: debe tener entre 7-8 dígitos, guión y dígito verificador
+      const rutRegex = /^\d{7,8}-[0-9kK]$/;
+      if (!rutRegex.test(rutNormalizado)) {
+        newErrors.constructora = { 
+          ...newErrors.constructora, 
+          rut: 'Formato de RUT inválido (ej: 20.838.987-4 o 20838987-4)' 
+        };
+      }
     }
 
-  // Teléfono de la constructora ya no es obligatorio
+
 
     // Validación de 5 contactos: nombre obligatorio; si no existe, usar botón "No existe"
     const contactosErrors: Record<number, { nombre?: string }> = {};
@@ -312,8 +346,15 @@ export function CreateObraModal({
     }
     if (step === 2) {
       if (!constructoraNombre.trim()) msgs.push('• Nombre de la constructora es obligatorio');
-      if (!constructoraRut.trim()) msgs.push('• RUT de la constructora es obligatorio');
-      else if (!/^\d{7,8}-[\dkK]$/.test(constructoraRut)) msgs.push('• RUT con formato inválido (ej: 12345678-9)');
+      if (!constructoraRut.trim()) {
+        msgs.push('• RUT de la constructora es obligatorio');
+      } else {
+        // Normalizar RUT para validación (eliminar puntos y espacios)
+        const rutNormalizado = constructoraRut.trim().replace(/[.\s]/g, '');
+        if (!/^\d{7,8}-[0-9kK]$/.test(rutNormalizado)) {
+          msgs.push('• RUT con formato inválido (ej: 20.838.987-4 o 20838987-4)');
+        }
+      }
     }
     if (step === 3) {
       contacts.forEach((c, i) => {

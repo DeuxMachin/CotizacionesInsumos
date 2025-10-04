@@ -50,12 +50,12 @@ export interface SalesNoteInput {
   costo_despacho?: number | null;
   fecha_estimada_entrega?: string | null;
   estado?: 'creada' | 'factura_parcial' | 'facturada';
+  confirmed_at?: string | null;
 }
 
 export interface SalesNoteRecord extends SalesNoteInput {
   id: number;
   fecha_emision?: string;
-  confirmed_at?: string | null;
   hash_documento?: string | null;
   created_at?: string;
   updated_at?: string;
@@ -64,6 +64,8 @@ export interface SalesNoteRecord extends SalesNoteInput {
 // Precise row types from Supabase schema
 export type SalesNoteRow = Database['public']['Tables']['notas_venta']['Row'];
 export type SalesNoteItemRow = Database['public']['Tables']['nota_venta_items']['Row'];
+type DocumentSeriesRow = Database['public']['Tables']['document_series']['Row'];
+type ClienteSaldoRow = Database['public']['Tables']['cliente_saldos']['Row'];
 type ProductJoin = { id: number; nombre: string; ficha_tecnica: string | null };
 
 export class NotasVentaService {
@@ -93,15 +95,15 @@ export class NotasVentaService {
       throw new Error(`No se encontró una serie de documentos activa para notas de venta del año ${currentYear}`);
     }
 
-    // Incrementar el último número
-    const nextNumber = series.ultimo_numero + 1;
-    const numeroSerie = `${series.prefijo}${nextNumber.toString().padStart(series.largo, '0')}`;
+  // Incrementar el último número
+  const seriesRow = series as DocumentSeriesRow;
+  const nextNumber = seriesRow.ultimo_numero + 1;
+  const numeroSerie = `${seriesRow.prefijo}${nextNumber.toString().padStart(seriesRow.largo, '0')}`;
 
     // Actualizar el último número en la base de datos
-    const { error: updateError } = await supabase
-      .from('document_series')
+    const { error: updateError } = await supabase.from('document_series')
       .update({ ultimo_numero: nextNumber })
-      .eq('id', series.id);
+      .eq('id', seriesRow.id);
 
     if (updateError) {
       throw new Error(`Error al actualizar el contador de serie de documentos: ${updateError.message}`);
@@ -135,7 +137,7 @@ export class NotasVentaService {
       .maybeSingle();
     if (error) throw error;
     if (!data) return false;
-  await this.deleteById(data.id);
+  await this.deleteById((data as { id: number }).id);
     return true;
   }
 
@@ -160,8 +162,7 @@ export class NotasVentaService {
     }
     if (!insertPayload.estado) insertPayload.estado = 'borrador';
     console.debug('[NotasVentaService.create] insertPayload', insertPayload);
-    const { data: notaInsert, error: notaError } = await supabase
-      .from('notas_venta')
+    const { data: notaInsert, error: notaError } = await supabase.from('notas_venta')
       .insert(insertPayload)
       .select('id, folio, Numero_Serie, cotizacion_id, vendedor_id, cliente_principal_id, estado, created_at')
       .single();
@@ -174,8 +175,7 @@ export class NotasVentaService {
 
     // Si hay cotizacion_id, actualizar el estado de la cotización a 'aceptada'
     if (insertPayload.cotizacion_id) {
-      const { error: updateError } = await supabase
-        .from('cotizaciones')
+      const { error: updateError } = await supabase.from('cotizaciones')
         .update({ estado: 'aceptada' })
         .eq('id', insertPayload.cotizacion_id);
       if (updateError) {
@@ -199,8 +199,7 @@ export class NotasVentaService {
         total_neto: it.total_neto,
         cantidad_facturada: it.cantidad_facturada ?? 0
       }));
-      const { error: itemsError } = await supabase
-        .from('nota_venta_items')
+      const { error: itemsError } = await supabase.from('nota_venta_items')
         .insert(itemsPayload);
       if (itemsError) {
         console.error('[NotasVentaService.create] Error insert nota_venta_items', itemsError);
@@ -229,8 +228,7 @@ export class NotasVentaService {
         };
         console.log('[NotasVentaService.create] Creando documento CxC:', cxcData);
 
-        const { error: cxcError } = await supabase
-          .from('cxc_documentos')
+        const { error: cxcError } = await supabase.from('cxc_documentos')
           .insert(cxcData);
         if (cxcError) {
           console.error('[NotasVentaService.create] Error creando documento CxC', cxcError);
@@ -251,30 +249,30 @@ export class NotasVentaService {
         console.log('[NotasVentaService.create] Saldo actual del cliente:', saldoActual);
 
         if (saldoActual) {
-          const nuevoCotizado = Math.max(0, (saldoActual.dinero_cotizado || 0) - total);
-          const nuevoPendiente = (saldoActual.pendiente || 0) + total;
+          const saldoRow = saldoActual as ClienteSaldoRow;
+          const nuevoCotizado = Math.max(0, (saldoRow.dinero_cotizado || 0) - total);
+          const nuevoPendiente = (saldoRow.pendiente || 0) + total;
           console.log('[NotasVentaService.create] Actualizando saldo existente:', {
-            id: saldoActual.id,
-            dineroCotizadoActual: saldoActual.dinero_cotizado,
+            id: saldoRow.id,
+            dineroCotizadoActual: saldoRow.dinero_cotizado,
             nuevoCotizado,
-            pendienteActual: saldoActual.pendiente,
+            pendienteActual: saldoRow.pendiente,
             nuevoPendiente,
-            pagadoActual: saldoActual.pagado
+            pagadoActual: saldoRow.pagado
           });
 
-          const { error: saldoError } = await supabase
-            .from('cliente_saldos')
+          const { error: saldoError } = await supabase.from('cliente_saldos')
             .update({
               dinero_cotizado: nuevoCotizado,
               pendiente: nuevoPendiente
               // pagado no se toca aquí, solo se actualiza con pagos
             })
-            .eq('id', saldoActual.id);
+            .eq('id', saldoRow.id);
           if (saldoError) {
             console.error('[NotasVentaService.create] Error actualizando cliente_saldos', saldoError);
             throw new Error(`Fallo al actualizar saldos del cliente: ${saldoError.message}`);
           } else {
-            console.log('[NotasVentaService.create] cliente_saldos actualizado exitosamente:', { id: saldoActual.id, pendiente: nuevoPendiente });
+            console.log('[NotasVentaService.create] cliente_saldos actualizado exitosamente:', { id: saldoRow.id, pendiente: nuevoPendiente });
           }
         } else {
           // Si no existe registro en cliente_saldos, crear uno con pagado = 0
@@ -288,8 +286,7 @@ export class NotasVentaService {
           };
           console.log('[NotasVentaService.create] Creando nuevo registro en cliente_saldos:', nuevoSaldo);
 
-          const { error: saldoError } = await supabase
-            .from('cliente_saldos')
+          const { error: saldoError } = await supabase.from('cliente_saldos')
             .insert(nuevoSaldo);
           if (saldoError) {
             console.error('[NotasVentaService.create] Error creando registro en cliente_saldos', saldoError);
@@ -348,8 +345,7 @@ export class NotasVentaService {
       total_neto: item.total_neto,
       cantidad_facturada: item.cantidad_facturada ?? 0
     };
-    const { data, error } = await supabase
-      .from('nota_venta_items')
+    const { data, error } = await supabase.from('nota_venta_items')
       .insert(payload)
       .select()
       .single();
@@ -362,8 +358,7 @@ export class NotasVentaService {
   }
 
   static async removeItem(itemId: number) {
-    const { error } = await supabase
-      .from('nota_venta_items')
+    const { error } = await supabase.from('nota_venta_items')
       .delete()
       .eq('id', itemId);
     if (error) throw error;
@@ -382,7 +377,7 @@ export class NotasVentaService {
       console.warn('[NotasVentaService.getCotizacionNumericIdByFolio] error', error);
       return null;
     }
-    return data?.id ?? null;
+  return (data as { id: number } | null)?.id ?? null;
   }
 
   /** Obtiene nota de venta por id de cotización (numeric) */
@@ -407,9 +402,14 @@ export class NotasVentaService {
   }
 
   static async update(notaVentaId: number, patch: Partial<SalesNoteInput>) {
-    const { data, error } = await supabase
-      .from('notas_venta')
-      .update(patch)
+    // Asegurar que updated_at se actualice siempre
+    const updateData = {
+      ...patch,
+      updated_at: new Date().toISOString()
+    };
+    
+    const { data, error } = await supabase.from('notas_venta')
+      .update(updateData)
       .eq('id', notaVentaId)
       .select(this.SELECT_COLS)
       .single();
@@ -418,11 +418,19 @@ export class NotasVentaService {
   }
 
   static async invoice(notaVentaId: number) {
-    return this.update(notaVentaId, { estado: 'facturada' });
+    const now = new Date().toISOString();
+    return this.update(notaVentaId, { 
+      estado: 'facturada',
+      confirmed_at: now
+    });
   }
 
   static async partialInvoice(notaVentaId: number) {
-    return this.update(notaVentaId, { estado: 'factura_parcial' });
+    const now = new Date().toISOString();
+    return this.update(notaVentaId, { 
+      estado: 'factura_parcial',
+      confirmed_at: now
+    });
   }
 
   /**
@@ -446,8 +454,7 @@ export class NotasVentaService {
         // La nueva cantidad debe ser mayor o igual a la actual y no mayor al total
         const finalQuantity = Math.max(currentFacturada, Math.min(newQuantity, totalQuantity));
         
-        await supabase
-          .from('nota_venta_items')
+        await supabase.from('nota_venta_items')
           .update({ cantidad_facturada: finalQuantity })
           .eq('id', itemId);
       }

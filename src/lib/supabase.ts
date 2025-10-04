@@ -969,6 +969,54 @@ export type Database = {
         Update: { id?: number; nombre?: string; descripcion?: string | null }
       }
       ,
+      cliente_contactos: {
+        Row: {
+          id: number
+          cliente_id: number
+          tipo: 'principal' | 'pago' | 'secundario' | 'otro'
+          nombre: string
+          cargo: string | null
+          email: string | null
+          telefono: string | null
+          celular: string | null
+          es_principal: boolean
+          notas: string | null
+          activo: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: number
+          cliente_id?: number
+          tipo?: 'principal' | 'pago' | 'secundario' | 'otro'
+          nombre: string
+          cargo?: string | null
+          email?: string | null
+          telefono?: string | null
+          celular?: string | null
+          es_principal?: boolean
+          notas?: string | null
+          activo?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: number
+          cliente_id?: number
+          tipo?: 'principal' | 'pago' | 'secundario' | 'otro'
+          nombre?: string
+          cargo?: string | null
+          email?: string | null
+          telefono?: string | null
+          celular?: string | null
+          es_principal?: boolean
+          notas?: string | null
+          activo?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      ,
       cxc_aplicaciones: {
         Row: { pago_id: number; documento_id: number; monto_aplicado: number; created_at: string }
         Insert: { pago_id: number; documento_id: number; monto_aplicado: number; created_at?: string }

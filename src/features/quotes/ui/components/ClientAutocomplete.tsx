@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { FiSearch, FiUser, FiCheck, FiX } from 'react-icons/fi';
 import { ClientInfo } from '@/core/domain/quote/Quote';
-import { Client, ClienteRow, mapClienteRowToClient } from '@/features/clients/model/clients';
+import { Client, ClienteRowWithType, mapClienteRowToClient } from '@/features/clients/model/clients';
 
 interface ClientAutocompleteProps {
   value: string;
@@ -41,12 +41,33 @@ export function ClientAutocomplete({
     pendingRequest.current = controller;
     const timeout = setTimeout(async () => {
       try {
-        const res = await fetch(`/api/clientes?search=${encodeURIComponent(value)}`, { signal: controller.signal });
+        // Detectar si el término de búsqueda parece un RUT (contiene puntos, guión o es numérico)
+        const isRutLike = /[.\-]/.test(value) || /^\d+$/.test(value);
+        
+        // Si es RUT, cargar todos los clientes y filtrar client-side
+        // Si no, hacer búsqueda por API (más eficiente para nombres)
+        const url = isRutLike ? '/api/clientes' : `/api/clientes?search=${encodeURIComponent(value)}`;
+
+        const res = await fetch(url, { signal: controller.signal });
         if (!res.ok) throw new Error('Error buscando clientes');
-        type ClientesSearchApiResponse = { data?: ClienteRow[] | null };
+        type ClientesSearchApiResponse = { data?: ClienteRowWithType[] | null };
         const body: ClientesSearchApiResponse = await res.json();
-        const rows: ClienteRow[] = body.data ?? [];
-        const mapped: Client[] = rows.map(mapClienteRowToClient);
+        const rows: ClienteRowWithType[] = body.data ?? [];
+        let mapped: Client[] = rows.map(mapClienteRowToClient);
+
+        // Si es búsqueda por RUT, filtrar del lado del cliente ignorando puntos y guiones
+        if (isRutLike) {
+          // Normalizar: eliminar puntos, guiones y espacios
+          const normalizeRut = (v: string) => (v || '').replace(/[.\-\s]/g, '').toUpperCase();
+          const searchNormalized = normalizeRut(value);
+          
+          mapped = mapped.filter(client => {
+            const rutNormalized = normalizeRut(client.rut);
+            // Buscar si el RUT normalizado contiene el término de búsqueda normalizado
+            return rutNormalized.includes(searchNormalized);
+          });
+        }
+
         setSearchResults(mapped);
         setIsOpen(mapped.length > 0);
         setSelectedIndex(-1);
@@ -105,6 +126,9 @@ export function ClientAutocomplete({
 
   // Seleccionar cliente
   const handleClientSelect = (client: Client) => {
+    // TODO: En el futuro, podríamos mejorar esto para obtener los datos completos del cliente
+    // incluyendo cliente_contactos para implementar el fallback de contactos principal -> pago
+    // Por ahora, usamos los campos legacy que ya están mapeados en el Client
     const clientData: Partial<ClientInfo> = {
       razonSocial: client.razonSocial,
       rut: client.rut,

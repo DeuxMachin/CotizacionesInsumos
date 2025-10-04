@@ -60,7 +60,9 @@ export function NewClientPage() {
     validatePhone,
     formatPhone,
     getRegiones,
-    getTiposEmpresa
+    getTiposEmpresa,
+    fetchClientTypes,
+    clientTypes
   } = useClients();
   
   const [currentStep, setCurrentStep] = useState<FormStep>('info');
@@ -82,6 +84,11 @@ export function NewClientPage() {
     creditLine: 0,
     discount: 0
   });
+
+  // Cargar tipos de cliente al montar
+  React.useEffect(() => {
+    fetchClientTypes();
+  }, [fetchClientTypes]);
   
   const [errors, setErrors] = useState<Record<string, string[]>>({});
   const [visitedSteps, setVisitedSteps] = useState<Set<FormStep>>(new Set(['info']));
@@ -240,6 +247,19 @@ export function NewClientPage() {
       return;
     }
 
+    console.log('🔍 NewClientPage.handleSave - formData completo:', formData);
+    console.log('🔍 Campos de contacto:', {
+      contactoNombre: formData.contactoNombre,
+      contactoEmail: formData.contactoEmail,
+      contactoTelefono: formData.contactoTelefono,
+      paymentResponsible: formData.paymentResponsible,
+      paymentEmail: formData.paymentEmail,
+      paymentPhone: formData.paymentPhone,
+      contactName: formData.contactName,
+      email: formData.email,
+      contactPhone: formData.contactPhone
+    });
+
     const success = await crearCliente(formData as NewClientData);
     if (success) {
       router.push('/dashboard/clientes');
@@ -276,6 +296,7 @@ export function NewClientPage() {
             validateRUT={validateRUT}
             regiones={getRegiones()}
             tiposEmpresa={getTiposEmpresa()}
+            clientTypes={clientTypes}
           />
         );
       case 'contact':

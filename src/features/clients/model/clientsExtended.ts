@@ -47,6 +47,31 @@ export interface ClientExtended {
     vencido: number
     dinero_cotizado?: number
   }>
+  // Nuevos datos de contactos estructurados
+  contactos?: {
+    principal?: {
+      nombre: string
+      cargo?: string | null
+      email?: string | null
+      telefono?: string | null
+      celular?: string | null
+    }
+    pago?: {
+      nombre: string
+      cargo?: string | null
+      email?: string | null
+      telefono?: string | null
+      celular?: string | null
+    }
+    secundarios?: Array<{
+      id: number
+      nombre: string
+      cargo?: string | null
+      email?: string | null
+      telefono?: string | null
+      celular?: string | null
+    }>
+  }
 }
 
 // Adaptador: fila BD -> ClientExtended (proporciona defaults)
@@ -67,6 +92,19 @@ export function mapRowToClientExtended(row: ClienteRowWithType): ClientExtended 
   const pending = latestSaldo?.pendiente ?? 0;
   const overdue = latestSaldo?.vencido ?? 0;
   const partial = latestSaldo?.dinero_cotizado ?? 0;
+  
+  // Procesar contactos estructurados
+  const contactosArray = Array.isArray(row.cliente_contactos) ? row.cliente_contactos : [];
+  const contactoPrincipal = contactosArray.find(c => c.tipo === 'principal' && c.activo);
+  const contactoPago = contactosArray.find(c => c.tipo === 'pago' && c.activo);
+  const contactosSecundarios = contactosArray.filter(c => c.tipo === 'secundario' && c.activo);
+  
+  console.log('[mapRowToClientExtended] Cliente:', row.id, 'Contactos:', contactosArray.length, {
+    principal: !!contactoPrincipal,
+    pago: !!contactoPago,
+    secundarios: contactosSecundarios.length
+  });
+  
   return {
     id: row.id,
     rut: row.rut,
@@ -77,25 +115,26 @@ export function mapRowToClientExtended(row: ClienteRowWithType): ClientExtended 
     ciudad: row.ciudad,
     comuna: row.comuna,
     tipoEmpresa: row.tipo === 'persona' ? 'Persona' : 'Empresa',
-    contactoNombre: row.contacto_pago || '',
-    contactoEmail: row.email_pago || '',
-    contactoTelefono: row.telefono_pago || '',
+    // Mantener compatibilidad con campos legacy usando el contacto principal si existe
+    contactoNombre: contactoPrincipal?.nombre || row.contacto_pago || '',
+    contactoEmail: contactoPrincipal?.email || row.email_pago || '',
+    contactoTelefono: contactoPrincipal?.telefono || row.telefono_pago || '',
     status: statusNormalized,
     fantasyName: row.nombre_fantasia,
     business: row.giro,
-    paymentResponsible: row.contacto_pago,
-    paymentPhone: row.telefono_pago,
+    paymentResponsible: contactoPago?.nombre || row.contacto_pago,
+    paymentPhone: contactoPago?.telefono || row.telefono_pago,
     credit: 0,
     additionalDays: 0,
     creditLine: row.linea_credito || 0,
     retention: 'NO',
     discount: row.descuento_cliente_pct || 0,
-    email: row.email_pago,
+    email: contactoPrincipal?.email || row.email_pago,
     phone: row.telefono,
-    mobile: row.celular,
-    contactName: row.contacto_pago,
-    contactPhone: row.telefono_pago,
-    paymentEmail: row.email_pago,
+    mobile: contactoPrincipal?.celular || row.celular,
+    contactName: contactoPrincipal?.nombre || row.contacto_pago,
+    contactPhone: contactoPrincipal?.telefono || row.telefono_pago,
+    paymentEmail: contactoPago?.email || row.email_pago,
     transferInfo: row.forma_pago,
     paid,
     pending,
@@ -103,7 +142,32 @@ export function mapRowToClientExtended(row: ClienteRowWithType): ClientExtended 
     overdue,
     clientType: row.cliente_tipos?.nombre || null,
     clientTypeId: row.cliente_tipos?.id || null,
-    cliente_saldos: row.cliente_saldos
+    cliente_saldos: row.cliente_saldos,
+    // Datos estructurados de contactos
+    contactos: {
+      principal: contactoPrincipal ? {
+        nombre: contactoPrincipal.nombre,
+        cargo: contactoPrincipal.cargo,
+        email: contactoPrincipal.email,
+        telefono: contactoPrincipal.telefono,
+        celular: contactoPrincipal.celular
+      } : undefined,
+      pago: contactoPago ? {
+        nombre: contactoPago.nombre,
+        cargo: contactoPago.cargo,
+        email: contactoPago.email,
+        telefono: contactoPago.telefono,
+        celular: contactoPago.celular
+      } : undefined,
+      secundarios: contactosSecundarios.map(c => ({
+        id: c.id,
+        nombre: c.nombre,
+        cargo: c.cargo,
+        email: c.email,
+        telefono: c.telefono,
+        celular: c.celular
+      }))
+    }
   }
 }
 

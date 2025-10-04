@@ -85,6 +85,15 @@ export default function ReunionesDashboard() {
 
   const isOwner = user?.role === 'dueño';
 
+  // Función para determinar si un usuario puede finalizar una reunión específica
+  const canFinalizeReunion = (reunion: ReunionData) => {
+    if (!user) return false;
+    // Dueños pueden finalizar cualquier reunión
+    if (isOwner) return true;
+    // Otros usuarios solo pueden finalizar sus propias reuniones
+    return reunion.userId === user.id;
+  };
+
   // Función para cargar reuniones
   const loadReuniones = useCallback(async (isBackgroundUpdate = false) => {
     try {
@@ -234,10 +243,24 @@ export default function ReunionesDashboard() {
         // Recargar las reuniones inmediatamente después del checkout
         await loadReuniones(false);
       } else {
-        console.error('Error al finalizar reunión:', response.statusText);
+        const errorData = await response.json().catch(() => ({ error: 'Error desconocido' }));
+        
+        // Solo mostrar error si NO es 404 (404 después de cerrar es normal al recargar)
+        // porque la reunión ya no existe como "activa"
+        if (response.status === 403) {
+          console.error('Error al finalizar reunión:', response.status, errorData);
+          alert('No tienes permisos para finalizar esta reunión.');
+        } else if (response.status === 404) {
+          // 404 es esperado después de cerrar exitosamente, solo recargar
+          await loadReuniones(false);
+        } else {
+          console.error('Error al finalizar reunión:', response.status, errorData);
+          alert(`Error al finalizar reunión: ${errorData.error || 'Error desconocido'}`);
+        }
       }
     } catch (error) {
       console.error('Error al finalizar reunión:', error);
+      alert('Error de conexión al finalizar reunión. Inténtalo de nuevo.');
     }
   };
 
@@ -485,11 +508,11 @@ export default function ReunionesDashboard() {
             <ReunionCard
               key={reunion.id}
               reunion={reunion}
-              onCheckout={viewMode === 'active' ? () => handleCheckout(reunion.obraId) : undefined}
+              onCheckout={viewMode === 'active' && canFinalizeReunion(reunion) ? () => handleCheckout(reunion.obraId) : undefined}
               onViewObra={() => router.push(`/dashboard/obras/${reunion.obraId}`)}
               formatDuration={formatDuration}
               isActive={viewMode === 'active'}
-              isOwner={user?.role === 'dueño'}
+              isOwner={isOwner}
             />
           ))
         )}
@@ -525,12 +548,12 @@ function ReunionCard({ reunion, onCheckout, onViewObra, formatDuration, isActive
                 <div className="flex items-center gap-1">
                   <FiUser className="w-4 h-4 flex-shrink-0" style={{ color: 'var(--text-muted)' }} />
                   <span className="text-sm font-medium line-clamp-1" style={{ color: 'var(--text-secondary)' }}>
-                    {reunion.userName || 'Usuario desconocido'}{reunion.userRole ? ` · ${reunion.userRole}` : ''}
+                    {reunion.userName || 'Usuario desconocido'}
                   </span>
                 </div>
-                {isOwner && (
-                  <span className="px-2 py-0.5 text-xs bg-orange-100 text-orange-700 rounded-full font-medium border border-orange-200">
-                    Dueño
+                {reunion.userRole && (
+                  <span className="px-2 py-0.5 text-xs bg-blue-100 text-blue-700 rounded-full font-medium border border-blue-200 capitalize">
+                    {reunion.userRole}
                   </span>
                 )}
                 {reunion.status === 'abierta' && (

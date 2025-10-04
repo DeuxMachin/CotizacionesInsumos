@@ -1328,29 +1328,110 @@ function ClientDetailPage() {
               icon={<FiPhone className="w-4 h-4 sm:w-5 sm:h-5" />}
             >
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-6 w-full">
+                {/* Contacto Principal */}
                 <div className="w-full">
                   <h4 className="font-medium mb-2 sm:mb-3 flex items-center gap-2 text-sm sm:text-base truncate" 
                       style={{ color: 'var(--text-primary)' }}>
                     <FiUser className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
                     <span className="truncate">Contacto Principal</span>
                   </h4>
-                  <InfoRow label="Nombre" value={client.contactoNombre || client.contactName || '-'} />
-                  <InfoRow label="Teléfono" value={client.contactoTelefono || client.contactPhone || '-'} type="phone" copyable />
-                  <InfoRow label="Email" value={client.contactoEmail || client.email || '-'} type="email" copyable />
-                  <InfoRow label="Móvil" value={client.mobile || '-'} type="phone" copyable />
+                  {client.contactos?.principal ? (
+                    <>
+                      <InfoRow label="Nombre" value={client.contactos.principal.nombre} />
+                      {client.contactos.principal.cargo && (
+                        <InfoRow label="Cargo" value={client.contactos.principal.cargo} />
+                      )}
+                      <InfoRow label="Email" value={client.contactos.principal.email || '-'} type="email" copyable />
+                      <InfoRow label="Teléfono" value={client.contactos.principal.telefono || '-'} type="phone" copyable />
+                      {client.contactos.principal.celular && (
+                        <InfoRow label="Celular" value={client.contactos.principal.celular} type="phone" copyable />
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      <InfoRow label="Nombre" value={client.contactoNombre || client.contactName || '-'} />
+                      <InfoRow label="Email" value={client.contactoEmail || client.email || '-'} type="email" copyable />
+                      <InfoRow label="Teléfono" value={client.contactoTelefono || client.contactPhone || '-'} type="phone" copyable />
+                      {client.mobile && (
+                        <InfoRow label="Celular" value={client.mobile} type="phone" copyable />
+                      )}
+                    </>
+                  )}
                 </div>
+
+                {/* Responsable de Pagos */}
                 <div className="w-full">
                   <h4 className="font-medium mb-2 sm:mb-3 flex items-center gap-2 text-sm sm:text-base truncate"
                       style={{ color: 'var(--text-primary)' }}>
                     <FiCreditCard className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
                     <span className="truncate">Responsable de Pagos</span>
                   </h4>
-                  <InfoRow label="Nombre" value={client.paymentResponsible || '-'} />
-                  <InfoRow label="Teléfono" value={client.paymentPhone || '-'} type="phone" copyable />
-                  <InfoRow label="Email" value={client.paymentEmail || '-'} type="email" copyable />
+                  {client.contactos?.pago ? (
+                    <>
+                      <InfoRow label="Nombre" value={client.contactos.pago.nombre} />
+                      {client.contactos.pago.cargo && (
+                        <InfoRow label="Cargo" value={client.contactos.pago.cargo} />
+                      )}
+                      <InfoRow label="Email" value={client.contactos.pago.email || '-'} type="email" copyable />
+                      <InfoRow label="Teléfono" value={client.contactos.pago.telefono || '-'} type="phone" copyable />
+                      {client.contactos.pago.celular && (
+                        <InfoRow label="Celular" value={client.contactos.pago.celular} type="phone" copyable />
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      <InfoRow label="Nombre" value={client.paymentResponsible || '-'} />
+                      <InfoRow label="Email" value={client.paymentEmail || '-'} type="email" copyable />
+                      <InfoRow label="Teléfono" value={client.paymentPhone || '-'} type="phone" copyable />
+                    </>
+                  )}
                   <InfoRow label="Medio de Pago" value={client.transferInfo || '-'} />
                 </div>
               </div>
+
+              {/* Contactos Secundarios */}
+              {client.contactos?.secundarios && client.contactos.secundarios.length > 0 && (
+                <div className="mt-6 pt-6 border-t" style={{ borderColor: 'var(--border)' }}>
+                  <h4 className="font-medium mb-3 flex items-center gap-2 text-sm sm:text-base" 
+                      style={{ color: 'var(--text-primary)' }}>
+                    <FiUser className="w-4 h-4 flex-shrink-0" />
+                    <span>Contactos Secundarios ({client.contactos.secundarios.length})</span>
+                  </h4>
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    {client.contactos.secundarios.map((contacto, index) => (
+                      <div 
+                        key={contacto.id}
+                        className="p-3 rounded-lg border"
+                        style={{ backgroundColor: 'var(--bg-secondary)', borderColor: 'var(--border)' }}
+                      >
+                        <div className="text-sm font-medium mb-2" style={{ color: 'var(--text-primary)' }}>
+                          {contacto.nombre}
+                        </div>
+                        {contacto.cargo && (
+                          <div className="text-xs mb-1" style={{ color: 'var(--text-secondary)' }}>
+                            {contacto.cargo}
+                          </div>
+                        )}
+                        {contacto.email && (
+                          <div className="text-xs mb-1" style={{ color: 'var(--text-secondary)' }}>
+                            📧 {contacto.email}
+                          </div>
+                        )}
+                        {contacto.telefono && (
+                          <div className="text-xs mb-1" style={{ color: 'var(--text-secondary)' }}>
+                            📞 {contacto.telefono}
+                          </div>
+                        )}
+                        {contacto.celular && (
+                          <div className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+                            📱 {contacto.celular}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </InfoCard>
 
             {/* Historial de Cotizaciones */}

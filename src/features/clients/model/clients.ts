@@ -17,6 +17,17 @@ export type ClienteRowWithType = ClienteRow & {
     pendiente: number
     vencido: number
     dinero_cotizado?: number
+  }>,
+  cliente_contactos?: Array<{
+    id: number
+    tipo: 'principal' | 'pago' | 'secundario' | 'otro'
+    nombre: string
+    cargo?: string | null
+    email?: string | null
+    telefono?: string | null
+    celular?: string | null
+    es_principal: boolean
+    activo: boolean
   }>
 }
 
@@ -37,7 +48,42 @@ export interface Client {
 }
 
 // Utilidad para mapear una fila de BD al tipo Client (básico)
-export function mapClienteRowToClient(row: ClienteRow): Client {
+export function mapClienteRowToClient(row: ClienteRowWithType): Client {
+  // Función helper para obtener información de contacto con fallback
+  const getContactInfo = () => {
+    // Buscar contacto principal activo
+    const contactoPrincipal = row.cliente_contactos?.find(c => c.tipo === 'principal' && c.activo);
+    
+    // Si hay contacto principal, usarlo
+    if (contactoPrincipal) {
+      return {
+        nombre: contactoPrincipal.nombre,
+        email: contactoPrincipal.email || '',
+        telefono: contactoPrincipal.telefono || ''
+      };
+    }
+    
+    // Si no hay contacto principal, buscar responsable de pagos activo
+    const responsablePagos = row.cliente_contactos?.find(c => c.tipo === 'pago' && c.activo);
+    
+    if (responsablePagos) {
+      return {
+        nombre: responsablePagos.nombre,
+        email: responsablePagos.email || '',
+        telefono: responsablePagos.telefono || ''
+      };
+    }
+    
+    // Fallback a campos legacy
+    return {
+      nombre: row.contacto_pago || '',
+      email: row.email_pago || '',
+      telefono: row.telefono_pago || ''
+    };
+  };
+
+  const contactInfo = getContactInfo();
+
   return {
     id: row.id,
     rut: row.rut,
@@ -48,9 +94,9 @@ export function mapClienteRowToClient(row: ClienteRow): Client {
     ciudad: row.ciudad,
     comuna: row.comuna,
     tipoEmpresa: row.tipo === 'persona' ? 'Persona' : 'Empresa',
-    contactoNombre: row.contacto_pago || '',
-    contactoEmail: row.email_pago || '',
-    contactoTelefono: row.telefono_pago || ''
+    contactoNombre: contactInfo.nombre,
+    contactoEmail: contactInfo.email,
+    contactoTelefono: contactInfo.telefono
   }
 }
 

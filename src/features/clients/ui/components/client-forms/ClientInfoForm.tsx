@@ -13,6 +13,8 @@ interface ClientInfoFormData {
   comuna: string;
   tipoEmpresa: "Ltda." | "S.A." | "SpA" | "E.I.R.L." | "Otra";
   fantasyName?: string;
+  // Nuevo: Tipo de Cliente (FK a cliente_tipos.id)
+  clientTypeId?: number | null;
 }
 
 interface ClientInfoFormProps {
@@ -23,6 +25,8 @@ interface ClientInfoFormProps {
   validateRUT: (rut: string) => boolean;
   regiones: string[];
   tiposEmpresa: Array<{ value: string; label: string }>;
+  // Lista de tipos de cliente desde la BD
+  clientTypes?: Array<{ id: number; nombre: string }>;
 }
 
 export function ClientInfoForm({
@@ -32,7 +36,8 @@ export function ClientInfoForm({
   formatRUT,
   validateRUT,
   regiones,
-  tiposEmpresa
+  tiposEmpresa,
+  clientTypes = []
 }: ClientInfoFormProps) {
   const [rutError, setRutError] = useState<string>('');
   const [showRutHelp, setShowRutHelp] = useState(false);
@@ -50,7 +55,7 @@ export function ClientInfoForm({
     }
   }, [data.rut, validateRUT]);
 
-  const handleInputChange = (field: keyof ClientInfoFormData, value: string | undefined) => {
+  const handleInputChange = (field: keyof ClientInfoFormData, value: string | number | undefined | null) => {
     onChange({ [field]: value });
   };
 
@@ -200,6 +205,31 @@ export function ClientInfoForm({
             ))}
           </select>
         </div>
+
+        {/* Tipo de Cliente (desde catálogo) */}
+        {clientTypes.length > 0 && (
+          <div className="lg:col-span-1">
+            <label className="form-label">
+              Tipo de Cliente
+            </label>
+            <select
+              value={data.clientTypeId ?? ''}
+              onChange={(e) => {
+                const val = e.target.value;
+                handleInputChange('clientTypeId', val === '' ? null : Number(val));
+              }}
+              className="form-input"
+            >
+              <option value="">Seleccionar tipo (opcional)</option>
+              {clientTypes.map((t) => (
+                <option key={t.id} value={t.id}>{t.nombre}</option>
+              ))}
+            </select>
+            <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
+              Clasificación del cliente (por ejemplo: Constructoras, Particulares, etc.)
+            </p>
+          </div>
+        )}
 
         {/* Giro Comercial */}
         <div className="lg:col-span-2">

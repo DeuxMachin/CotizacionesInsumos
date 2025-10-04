@@ -2,18 +2,22 @@
 
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import {  FiEye, FiFileText, FiCalendar, FiDollarSign, FiUser, FiSearch, FiArrowLeft } from 'react-icons/fi';
+import {  FiEye, FiFileText, FiCalendar, FiDollarSign, FiUser, FiSearch, FiArrowLeft, FiDownload } from 'react-icons/fi';
 import { NotasVentaService, SalesNoteRecord } from '@/services/notasVentaService';
 import { useQuotes } from '@/features/quotes/model/useQuotes';
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function SalesNotesPage() {
   const router = useRouter();
   const { formatMoney } = useQuotes();
+  const { user } = useAuth();
 
   const [salesNotes, setSalesNotes] = useState<SalesNoteRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
 
   // Cargar notas de venta
   useEffect(() => {
@@ -33,12 +37,47 @@ export default function SalesNotesPage() {
     }
   };
 
+  const handleDownloadXLSX = async () => {
+    if (!user || !user.isAdmin) return;
+
+    try {
+      const response = await fetch(`/api/downloads/sales-notes?userId=${user.id}&isAdmin=${user.isAdmin}`);
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Error al descargar el archivo');
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `notas_venta_${new Date().toISOString().split('T')[0]}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (error) {
+      console.error('Error descargando XLSX:', error);
+      setError(error instanceof Error ? error.message : 'Error al descargar el archivo XLSX');
+    }
+  };
+
   // Filtrar notas de venta por búsqueda
   const filteredNotes = salesNotes.filter(note =>
     (note.folio?.toLowerCase().includes(searchTerm.toLowerCase()) ?? false) ||
     (note.cliente_razon_social?.toLowerCase().includes(searchTerm.toLowerCase()) ?? false) ||
     (note.cotizacion_id?.toString().includes(searchTerm) ?? false)
   );
+
+  // Reset page when search changes
+  React.useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm]);
+
+  // Paginación
+  const totalPages = Math.ceil(filteredNotes.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedNotes = filteredNotes.slice(startIndex, startIndex + itemsPerPage);
 
   const getStatusColor = (estado: string) => {
     switch (estado) {
@@ -80,19 +119,34 @@ export default function SalesNotesPage() {
                 Gestiona las notas de venta y conversiones de cotizaciones
               </p>
             </div>
-            <button
-              onClick={() => router.push('/dashboard/cotizaciones')}
-              className="px-4 py-2 sm:px-6 sm:py-3 rounded-lg transition-all duration-200 flex items-center text-sm sm:text-base font-medium shadow-sm hover:shadow-md border-2"
-              style={{
-                backgroundColor: '#007bff',
-                color: 'white',
-                borderColor: '#007bff',
-                border: '2px solid #007bff'
-              }}
-            >
-              <FiArrowLeft className="w-5 h-5 sm:w-6 sm:h-6 mr-2 sm:mr-3" />
-              <span>Volver</span>
-            </button>
+            <div className="flex items-center space-x-4">
+              <button
+                onClick={handleDownloadXLSX}
+                disabled={!user || !user.isAdmin}
+                className="px-4 py-2 sm:px-6 sm:py-3 rounded-lg transition-all duration-200 flex items-center text-sm sm:text-base font-medium shadow-sm hover:shadow-md border-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                style={{
+                  backgroundColor: '#28a745',
+                  color: 'white',
+                  borderColor: '#28a745'
+                }}
+              >
+                <FiDownload className="w-5 h-5 sm:w-6 sm:h-6 mr-2 sm:mr-3" />
+                <span>Descargar XLSX</span>
+              </button>
+              <button
+                onClick={() => router.push('/dashboard/cotizaciones')}
+                className="px-4 py-2 sm:px-6 sm:py-3 rounded-lg transition-all duration-200 flex items-center text-sm sm:text-base font-medium shadow-sm hover:shadow-md border-2"
+                style={{
+                  backgroundColor: '#007bff',
+                  color: 'white',
+                  borderColor: '#007bff',
+                  border: '2px solid #007bff'
+                }}
+              >
+                <FiArrowLeft className="w-5 h-5 sm:w-6 sm:h-6 mr-2 sm:mr-3" />
+                <span>Volver</span>
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -132,7 +186,7 @@ export default function SalesNotesPage() {
 
         {/* Sales Notes List */}
         <div className="bg-white rounded-lg shadow-sm border overflow-hidden" style={{ borderColor: 'var(--border)' }}>
-          {filteredNotes.length === 0 ? (
+          {paginatedNotes.length === 0 ? (
             <div className="p-4 sm:p-8 text-center">
               <FiFileText className="w-12 sm:w-16 h-12 sm:h-16 mx-auto mb-4" style={{ color: 'var(--text-secondary)' }} />
               <h3 className="text-base sm:text-lg font-medium mb-2" style={{ color: 'var(--text-primary)' }}>
@@ -174,7 +228,7 @@ export default function SalesNotesPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y" style={{ borderColor: 'var(--border)' }}>
-                  {filteredNotes.map((note) => {
+                  {paginatedNotes.map((note) => {
                     const statusColors = getStatusColor(note.estado || 'borrador');
                     return (
                       <tr key={note.id} className="hover:bg-opacity-50" style={{ backgroundColor: 'var(--bg-primary)' }}>
@@ -245,6 +299,93 @@ export default function SalesNotesPage() {
                   })}
                 </tbody>
               </table>
+            </div>
+          )}
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="px-4 py-3 bg-white border-t flex items-center justify-between" style={{ borderColor: 'var(--border)' }}>
+              <div className="flex-1 flex justify-between sm:hidden">
+                <button
+                  onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                  disabled={currentPage === 1}
+                  className="relative inline-flex items-center px-4 py-2 text-sm font-medium rounded-md border disabled:opacity-50 disabled:cursor-not-allowed"
+                  style={{
+                    color: currentPage === 1 ? 'var(--text-secondary)' : 'var(--primary)',
+                    borderColor: 'var(--border)',
+                    backgroundColor: 'var(--bg-primary)'
+                  }}
+                >
+                  Anterior
+                </button>
+                <button
+                  onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                  disabled={currentPage === totalPages}
+                  className="ml-3 relative inline-flex items-center px-4 py-2 text-sm font-medium rounded-md border disabled:opacity-50 disabled:cursor-not-allowed"
+                  style={{
+                    color: currentPage === totalPages ? 'var(--text-secondary)' : 'var(--primary)',
+                    borderColor: 'var(--border)',
+                    backgroundColor: 'var(--bg-primary)'
+                  }}
+                >
+                  Siguiente
+                </button>
+              </div>
+              <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+                <div>
+                  <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+                    Mostrando <span className="font-medium">{startIndex + 1}</span> a{' '}
+                    <span className="font-medium">{Math.min(startIndex + itemsPerPage, filteredNotes.length)}</span> de{' '}
+                    <span className="font-medium">{filteredNotes.length}</span> resultados
+                  </p>
+                </div>
+                <div>
+                  <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px">
+                    <button
+                      onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                      disabled={currentPage === 1}
+                      className="relative inline-flex items-center px-2 py-2 rounded-l-md border text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                      style={{
+                        color: currentPage === 1 ? 'var(--text-secondary)' : 'var(--primary)',
+                        borderColor: 'var(--border)',
+                        backgroundColor: 'var(--bg-primary)'
+                      }}
+                    >
+                      <span className="sr-only">Anterior</span>
+                      ‹
+                    </button>
+                    {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                      <button
+                        key={page}
+                        onClick={() => setCurrentPage(page)}
+                        className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
+                          page === currentPage ? 'z-10' : ''
+                        }`}
+                        style={{
+                          color: page === currentPage ? 'white' : 'var(--primary)',
+                          borderColor: 'var(--border)',
+                          backgroundColor: page === currentPage ? 'var(--primary)' : 'var(--bg-primary)'
+                        }}
+                      >
+                        {page}
+                      </button>
+                    ))}
+                    <button
+                      onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                      disabled={currentPage === totalPages}
+                      className="relative inline-flex items-center px-2 py-2 rounded-r-md border text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                      style={{
+                        color: currentPage === totalPages ? 'var(--text-secondary)' : 'var(--primary)',
+                        borderColor: 'var(--border)',
+                        backgroundColor: 'var(--bg-primary)'
+                      }}
+                    >
+                      <span className="sr-only">Siguiente</span>
+                      ›
+                    </button>
+                  </nav>
+                </div>
+              </div>
             </div>
           )}
         </div>

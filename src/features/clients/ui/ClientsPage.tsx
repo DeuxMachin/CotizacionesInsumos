@@ -865,17 +865,22 @@ function ClientCard({ client, getStatusColor, formatMoney, onEliminar, onVerDeta
           </div>
         </div>
 
-        {/* Contacto */}
-        {client.contactoNombre && (
+        {/* Contacto Principal */}
+        {(client.contactos?.principal || client.contactoNombre) && (
           <div className="flex items-center gap-2 mb-4">
             <FiPhone className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />
             <div className="min-w-0">
               <span className="text-sm font-medium block truncate" style={{ color: 'var(--text-primary)' }}>
-                {client.contactoNombre}
+                {client.contactos?.principal?.nombre || client.contactoNombre}
               </span>
-              {client.contactoEmail && (
+              {(client.contactos?.principal?.email || client.contactoEmail) && (
                 <span className="text-xs block truncate" style={{ color: 'var(--text-muted)' }}>
-                  {client.contactoEmail}
+                  {client.contactos?.principal?.email || client.contactoEmail}
+                </span>
+              )}
+              {(client.contactos?.principal?.telefono || client.contactoTelefono) && (
+                <span className="text-xs block truncate" style={{ color: 'var(--text-muted)' }}>
+                  {client.contactos?.principal?.telefono || client.contactoTelefono}
                 </span>
               )}
             </div>

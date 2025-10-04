@@ -16,6 +16,8 @@ export interface NewClientData {
   ciudad?: string | null;
   comuna?: string | null;
   tipoEmpresa?: string;
+  // Tipo de Cliente (FK a cliente_tipos.id)
+  clientTypeId?: number | null;
   contactoNombre?: string;
   contactoEmail?: string;
   contactoTelefono?: string;
@@ -39,6 +41,7 @@ export interface NewClientData {
 
 export function useClients() {
   const [loading, setLoading] = useState(false);
+  const [clientTypes, setClientTypes] = useState<Array<{ id: number; nombre: string }>>([]);
 
   // Función para formatear RUT
   const formatRUT = useCallback((rut: string): string => {
@@ -99,29 +102,117 @@ export function useClients() {
         return false;
       }
 
+      console.log('🔍 useClients.crearCliente - Datos recibidos:', clientData);
+
+      // Preparar array de contactos
+      const contactos = [];
+      
+      // Contacto principal (siempre es obligatorio)
+      if (clientData.contactoNombre && clientData.contactoEmail) {
+        const contactoPrincipal = {
+          tipo: 'principal' as const,
+          nombre: clientData.contactoNombre,
+          cargo: null,
+          email: clientData.contactoEmail,
+          telefono: clientData.contactoTelefono || null,
+          celular: null,
+          es_principal: true,
+          notas: null,
+          activo: true
+        };
+        contactos.push(contactoPrincipal);
+        console.log('✅ Contacto Principal preparado:', contactoPrincipal);
+      } else {
+        console.warn('⚠️ Contacto Principal NO tiene datos completos:', {
+          nombre: clientData.contactoNombre,
+          email: clientData.contactoEmail
+        });
+      }
+      
+      // Responsable de pago (solo agregar si tiene al menos nombre Y email O teléfono)
+      if (clientData.paymentResponsible && 
+          (clientData.paymentEmail || clientData.paymentPhone)) {
+        // Verificar que no sea duplicado del contacto principal
+        const isDuplicate = clientData.paymentResponsible === clientData.contactoNombre;
+        
+        if (!isDuplicate) {
+          const responsablePago = {
+            tipo: 'pago' as const,
+            nombre: clientData.paymentResponsible,
+            cargo: null,
+            email: clientData.paymentEmail || null,
+            telefono: clientData.paymentPhone || null,
+            celular: null,
+            es_principal: false,
+            notas: null,
+            activo: true
+          };
+          contactos.push(responsablePago);
+          console.log('✅ Responsable de Pago preparado:', responsablePago);
+        } else {
+          console.log('ℹ️ Responsable de pago es igual al contacto principal, se omite');
+        }
+      } else {
+        console.log('ℹ️ No hay responsable de pago con datos completos');
+      }
+      
+      // Contacto secundario (solo agregar si tiene nombre Y al menos email O teléfono)
+      if (clientData.contactName && 
+          (clientData.email || clientData.contactPhone) &&
+          clientData.contactName !== clientData.contactoNombre &&
+          clientData.contactName !== clientData.paymentResponsible) {
+        const contactoSecundario = {
+          tipo: 'secundario' as const,
+          nombre: clientData.contactName,
+          cargo: null,
+          email: clientData.email || null,
+          telefono: clientData.contactPhone || null,
+          celular: null,
+          es_principal: false,
+          notas: null,
+          activo: true
+        };
+        contactos.push(contactoSecundario);
+        console.log('✅ Contacto Secundario preparado:', contactoSecundario);
+      } else {
+        console.log('ℹ️ No hay contacto secundario válido o es duplicado');
+      }
+
+      console.log('📋 Total de contactos preparados:', contactos.length, contactos);
+
+      // Preparar el payload
+      const payload = {
+        rut: clientData.rut,
+        nombre_razon_social: clientData.razonSocial || clientData.fantasyName || clientData.rut,
+        nombre_fantasia: clientData.fantasyName || null,
+        tipo: 'empresa',
+        giro: clientData.business || clientData.giro || null,
+        direccion: clientData.direccion || null,
+        ciudad: clientData.ciudad || null,
+        comuna: clientData.comuna || null,
+        telefono: clientData.phone || null,
+        celular: clientData.mobile || null,
+        forma_pago: clientData.transferInfo || null,
+        // Tipo de cliente (relación a cliente_tipos)
+        cliente_tipo_id: clientData.clientTypeId ?? null,
+        // Campos legacy para compatibilidad
+        contacto_pago: clientData.paymentResponsible || null,
+        email_pago: clientData.paymentEmail || null,
+        telefono_pago: clientData.paymentPhone || null,
+        linea_credito: clientData.creditLine || 0,
+        descuento_cliente_pct: clientData.discount || 0,
+        estado: 'vigente',
+        // Nuevos contactos estructurados
+        contactos: contactos
+      };
+
+      console.log('📤 Payload a enviar al API:', payload);
+
       // Llamada real a la API
       const res = await fetch('/api/clientes', {
         method: 'POST',
         headers: createHeaders(),
-        body: JSON.stringify({
-          rut: clientData.rut,
-            // Campos mínimos; otros opcionales. Ajustar según necesidades reales.
-          nombre_razon_social: clientData.razonSocial || clientData.fantasyName || clientData.rut,
-          tipo: 'empresa',
-          giro: clientData.business || clientData.giro || null,
-          direccion: clientData.direccion || null,
-          ciudad: clientData.ciudad || null,
-          comuna: clientData.comuna || null,
-          telefono: clientData.phone || null,
-          celular: clientData.mobile || null,
-          forma_pago: clientData.transferInfo || null,
-          contacto_pago: clientData.paymentResponsible || clientData.contactName || null,
-          email_pago: clientData.paymentEmail || clientData.email || null,
-          telefono_pago: clientData.paymentPhone || clientData.contactPhone || null,
-          linea_credito: clientData.creditLine || 0,
-          descuento_cliente_pct: clientData.discount || 0,
-          estado: 'vigente'
-        })
+        body: JSON.stringify(payload)
       });
 
       if (!res.ok) {
@@ -209,6 +300,20 @@ export function useClients() {
     ];
   }, []);
 
+  // Cargar tipos de cliente desde API
+  const fetchClientTypes = useCallback(async () => {
+    try {
+      const res = await fetch('/api/clientes/tipos');
+      if (!res.ok) throw new Error('Error al obtener tipos de cliente');
+      const body = await res.json();
+      setClientTypes(body.data || []);
+      return body.data as Array<{ id: number; nombre: string }>;
+    } catch (e) {
+      console.error('Error fetching client types', e);
+      return [] as Array<{ id: number; nombre: string }>;
+    }
+  }, []);
+
   return {
     loading,
     crearCliente,
@@ -219,6 +324,8 @@ export function useClients() {
     formatPhone,
     getRegiones,
     getTiposEmpresa,
+    clientTypes,
+    fetchClientTypes,
   // Ya no exponemos funciones locales de búsqueda; el consumo debe hacerse vía API
   };
 }
