@@ -162,28 +162,28 @@ export default function SalesNoteDetailPage() {
     <div className="min-h-screen" style={{ backgroundColor: 'var(--bg-primary)' }}>
       {/* Header */}
       <div className="border-b" style={{ borderColor: 'var(--border)', backgroundColor: 'var(--bg-secondary)' }}>
-        <div className="max-w-1xl mx-auto px-4 sm:px-6 lg:px-">
-          <div className="flex items-center justify-between h-25">
-            <div className="flex items-center">
+        <div className="w-full max-w-none mx-auto px-3 sm:px-4 lg:px-6">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between h-auto sm:h-20 py-3 sm:py-0 gap-3 sm:gap-0">
+            <div className="flex items-center min-w-0 flex-1 sm:flex-initial">
               <button
                 onClick={() => router.push('/dashboard/notas-venta')}
-                className="p-3 sm:p-2 rounded-lg hover:bg-opacity-80 transition-colors mr-3 sm:mr-4 touch-manipulation"
+                className="p-2 rounded-lg hover:bg-opacity-80 transition-colors mr-2 sm:mr-4 touch-manipulation flex-shrink-0"
                 style={{ color: 'var(--text-secondary)' }}
                 aria-label="Volver a notas de venta"
               >
-                <FiArrowLeft className="w-6 h-6 sm:w-5 sm:h-5" />
+                <FiArrowLeft className="w-5 h-5 sm:w-6 sm:h-6" />
               </button>
-              <div className="min-w-0">
-                <h1 className="text-lg sm:text-xl font-semibold truncate" style={{ color: 'var(--text-primary)' }}>
+              <div className="min-w-0 flex-1 sm:flex-initial">
+                <h1 className="text-base sm:text-lg font-semibold truncate" style={{ color: 'var(--text-primary)' }}>
                   Nota de Venta {salesNote.folio || `#${salesNote.id}`}
                 </h1>
                 {salesNote.Numero_Serie && (
-                  <p className="text-sm mt-1 truncate" style={{ color: 'var(--text-secondary)' }}>
+                  <p className="text-xs sm:text-sm mt-1 truncate" style={{ color: 'var(--text-secondary)' }}>
                     Número de orden de compra: <span className="font-medium" style={{ color: 'var(--text-primary)' }}>{salesNote.Numero_Serie}</span>
                   </p>
                 )}
                 <div className="flex items-center mt-1">
-                  <StatusIcon className="w-4 h-4 mr-2 flex-shrink-0" style={{ color: statusInfo.text }} />
+                  <StatusIcon className="w-3 h-3 sm:w-4 sm:h-4 mr-2 flex-shrink-0" style={{ color: statusInfo.text }} />
                   <span
                     className="px-2 py-1 rounded-full text-xs font-medium capitalize whitespace-nowrap"
                     style={{
@@ -196,32 +196,38 @@ export default function SalesNoteDetailPage() {
                 </div>
               </div>
             </div>
-            <div className="flex space-x-2">
+            <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto justify-end">
               <button
                 onClick={handleExportPDF}
                 disabled={exporting}
-                className="px-4 py-2 rounded-lg transition-colors flex items-center disabled:opacity-50"
+                className="inline-flex items-center gap-1 sm:gap-2 px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium rounded-lg transition-colors flex-1 sm:flex-initial disabled:opacity-50"
                 style={{
                   color: 'var(--primary)',
                   border: '1px solid var(--primary)',
                   backgroundColor: 'transparent'
                 }}
               >
-                <FiDownload className="w-4 h-4 mr-2" />
-                {exporting ? 'Exportando...' : 'PDF'}
+                <FiDownload className="w-3 h-3 sm:w-4 sm:h-4" />
+                <span className="hidden sm:inline">{exporting ? 'Exportando...' : 'PDF'}</span>
+                <span className="inline sm:hidden">{exporting ? '...' : 'PDF'}</span>
               </button>
               {(salesNote.estado === 'creada' || salesNote.estado === 'factura_parcial') && (
                 <button
                   onClick={handleOpenInvoiceModal}
-                  className="px-4 py-2 rounded-lg transition-colors flex items-center font-medium"
+                  className="inline-flex items-center justify-center gap-1 sm:gap-2 px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium rounded-lg transition-colors flex-1 sm:flex-initial"
                   style={{
                     backgroundColor: 'var(--success)',
                     color: 'white',
                     border: 'none'
                   }}
                 >
-                  <FiCheckCircle className="w-4 h-4 mr-2" />
-                  {salesNote.estado === 'factura_parcial' ? 'Completar Facturación' : 'Facturar Nota de Venta'}
+                  <FiCheckCircle className="w-3 h-3 sm:w-4 sm:h-4" />
+                  <span className="hidden sm:inline">
+                    {salesNote.estado === 'factura_parcial' ? 'Completar Facturación' : 'Facturar Nota de Venta'}
+                  </span>
+                  <span className="inline sm:hidden">
+                    {salesNote.estado === 'factura_parcial' ? 'Completar' : 'Facturar'}
+                  </span>
                 </button>
               )}
             </div>
@@ -230,7 +236,7 @@ export default function SalesNoteDetailPage() {
       </div>
 
       {/* Content */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="w-full max-w-none mx-auto px-3 sm:px-4 lg:px-6 py-4 sm:py-6 lg:py-8 overflow-x-hidden">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Main Content */}
           <div className="lg:col-span-2 space-y-6">
@@ -475,6 +481,24 @@ export default function SalesNoteDetailPage() {
           </div>
         </div>
       </div>
+
+      {/* Botón flotante de facturación para móvil */}
+      {(salesNote.estado === 'creada' || salesNote.estado === 'factura_parcial') && (
+        <div className="fixed bottom-4 right-4 z-10 sm:hidden">
+          <button
+            onClick={handleOpenInvoiceModal}
+            className="w-14 h-14 rounded-full shadow-lg transition-all duration-200 hover:scale-105 active:scale-95 flex items-center justify-center"
+            style={{
+              backgroundColor: 'var(--success)',
+              color: 'white',
+              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)'
+            }}
+            aria-label={salesNote.estado === 'factura_parcial' ? 'Completar Facturación' : 'Facturar Nota de Venta'}
+          >
+            <FiCheckCircle className="w-6 h-6" />
+          </button>
+        </div>
+      )}
 
       {/* Invoice Items Modal */}
       <InvoiceItemsModal

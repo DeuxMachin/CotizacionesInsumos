@@ -44,7 +44,7 @@ export function DashboardFinancialSummary({ period }: DashboardFinancialSummaryP
       <div className="space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div>
-            <h2 className="text-xl font-bold" style={{ color: 'var(--text-primary)' }}>
+            <h2 className="text-lg sm:text-xl font-bold" style={{ color: 'var(--text-primary)' }}>
               Resumen Financiero
             </h2>
             <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
@@ -58,11 +58,11 @@ export function DashboardFinancialSummary({ period }: DashboardFinancialSummaryP
             Último mes
           </div>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
           {Array.from({ length: 4 }).map((_, i) => (
             <div key={i} className="animate-pulse">
               <div 
-                className="p-4 rounded-xl border"
+                className="p-3 sm:p-4 rounded-xl border w-full"
                 style={{ 
                   backgroundColor: 'var(--bg-primary)',
                   borderColor: 'var(--border-subtle)'
@@ -84,7 +84,7 @@ export function DashboardFinancialSummary({ period }: DashboardFinancialSummaryP
       <div className="space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div>
-            <h2 className="text-xl font-bold" style={{ color: 'var(--text-primary)' }}>
+            <h2 className="text-lg sm:text-xl font-bold" style={{ color: 'var(--text-primary)' }}>
               Resumen Financiero
             </h2>
             <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
@@ -169,7 +169,7 @@ export function DashboardFinancialSummary({ period }: DashboardFinancialSummaryP
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h2 className="text-xl font-bold" style={{ color: 'var(--text-primary)' }}>
+          <h2 className="text-lg sm:text-xl font-bold" style={{ color: 'var(--text-primary)' }}>
             Resumen Financiero
           </h2>
           <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
@@ -185,7 +185,7 @@ export function DashboardFinancialSummary({ period }: DashboardFinancialSummaryP
       </div>
 
       {/* KPIs Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
         {dashboardKPIs.map((kpi) => {
           const Icon = kpi.icon;
           const isPositiveTrend = kpi.trend > 0;
@@ -194,7 +194,7 @@ export function DashboardFinancialSummary({ period }: DashboardFinancialSummaryP
           return (
             <div
               key={kpi.id}
-              className="group p-4 rounded-xl border transition-all duration-300 hover:shadow-lg hover:scale-[1.02] cursor-default"
+              className="group p-3 sm:p-4 rounded-xl border transition-all duration-300 hover:shadow-lg hover:scale-[1.02] cursor-default w-full"
               style={{ 
                 backgroundColor: 'var(--bg-primary)',
                 borderColor: 'var(--border-subtle)'
@@ -211,7 +211,7 @@ export function DashboardFinancialSummary({ period }: DashboardFinancialSummaryP
                   }}
                 >
                   <Icon 
-                    className="w-4 h-4"
+                    className="w-3 h-3 sm:w-4 sm:h-4"
                     style={{
                       color: kpi.id === 'total_sales' || kpi.id === 'growth' ? 'var(--accent-text)' : 
                             kpi.id === 'net' ? 'var(--green-color)' : 
@@ -233,10 +233,10 @@ export function DashboardFinancialSummary({ period }: DashboardFinancialSummaryP
                 <p className="text-xs font-bold tracking-wider" style={{ color: 'var(--text-secondary)' }}>
                   {kpi.title}
                 </p>
-                <p className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>
+                <p className="text-base sm:text-lg font-bold truncate" style={{ color: 'var(--text-primary)' }}>
                   {kpi.value}
                 </p>
-                <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
+                <p className="text-xs truncate" style={{ color: 'var(--text-tertiary)' }}>
                   {kpi.subValue}
                 </p>
               </div>

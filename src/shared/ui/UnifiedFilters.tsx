@@ -78,6 +78,17 @@ export function UnifiedFilters({
             style={{ borderColor: 'var(--border)' }}
           >
             <button
+              onClick={onClose}
+              className="px-4 py-2 text-sm font-medium rounded-lg border transition-colors"
+              style={{
+                borderColor: 'var(--border)',
+                backgroundColor: 'var(--bg-secondary)',
+                color: 'var(--text-secondary)',
+              }}
+            >
+              Cerrar
+            </button>
+            <button
               onClick={onClear}
               className="flex-1 px-4 py-2 text-sm font-medium rounded-lg border transition-colors"
               style={{

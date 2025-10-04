@@ -104,18 +104,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     }, 30 * 60 * 1000); // Cada 30 minutos
 
-    const checkInactivity = setInterval(() => {
-      if (lastActivity && Date.now() - lastActivity > 20 * 60 * 1000) { // 20 minutos de inactividad
-        alert('Su sesión ha expirado por inactividad.');
-        logout();
-      }
-    }, 60000);
-
-    return () => {
-      events.forEach(event => window.removeEventListener(event, updateActivity));
-      clearInterval(tokenRefreshInterval);
-      clearInterval(checkInactivity);
-    };
   }, [user, lastActivity]);
 
   const login = async (email: string, password: string) => {

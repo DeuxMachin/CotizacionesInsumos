@@ -5,6 +5,7 @@ import { verifyToken, signAccessToken } from '@/lib/auth/tokens'
 export async function GET(request: NextRequest) {
   try {
   const token = request.cookies.get('auth-token')?.value
+  const refreshToken = request.cookies.get('refresh-token')?.value
 
     if (!token) {
       return NextResponse.json({
@@ -28,6 +29,47 @@ export async function GET(request: NextRequest) {
           success: false,
           error: 'Usuario no encontrado o inactivo'
         }, { status: 401 })
+      }
+
+      // Verificar inactividad: si han pasado más de 20 minutos desde la última actividad
+      if (refreshToken) {
+        const { data: session, error: sessionError } = await supabase
+          .from('user_sessions')
+          .select('last_activity')
+          .eq('session_id', refreshToken)
+          .single();
+
+        if (sessionError || !session) {
+          return NextResponse.json({
+            success: false,
+            error: 'Sesión expirada'
+          }, { status: 401 })
+        }
+
+        const lastActivity = new Date(session.last_activity).getTime();
+        const now = Date.now();
+        const inactivityLimit = 20 * 60 * 1000; // 20 minutos
+
+        if (now - lastActivity > inactivityLimit) {
+          // Eliminar sesión expirada
+          await supabase
+            .from('user_sessions')
+            .delete()
+            .eq('session_id', refreshToken);
+
+          return NextResponse.json({
+            success: false,
+            error: 'Sesión expirada por inactividad'
+          }, { status: 401 })
+        }
+      }
+
+      // Actualizar last_activity en user_sessions
+      if (refreshToken) {
+        await supabase
+          .from('user_sessions')
+          .update({ last_activity: new Date().toISOString() })
+          .eq('session_id', refreshToken);
       }
 
       const response = NextResponse.json({

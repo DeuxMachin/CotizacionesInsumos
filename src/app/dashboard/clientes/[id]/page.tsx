@@ -302,7 +302,7 @@ function PaginationControls({ currentPage, totalPages, totalItems, pageSize, onP
         title="Página anterior"
       >
         <FiChevronLeft className="w-4 h-4" />
-        <span className="hidden sm:inline">Anterior</span>
+        <span className="sm:hidden">Anterior</span>
       </button>
 
       <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 text-xs sm:text-sm text-center" style={{ color: 'var(--text-secondary)' }}>
@@ -323,7 +323,7 @@ function PaginationControls({ currentPage, totalPages, totalItems, pageSize, onP
         className="btn-secondary inline-flex items-center gap-1 px-2 sm:px-3 py-2 disabled:opacity-60 w-full sm:w-auto justify-center"
         title="Página siguiente"
       >
-        <span className="hidden sm:inline">Siguiente</span>
+        <span className="sm:hidden">Siguiente</span>
         <FiChevronRight className="w-4 h-4" />
       </button>
     </div>
@@ -1437,8 +1437,8 @@ function ClientDetailPage() {
             {/* Historial de Cotizaciones */}
             <InfoCard 
               title={
-                <div className="flex items-center justify-between w-full">
-                  <span>
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between w-full gap-2 sm:gap-0">
+                  <span className="truncate">
                     {showSalesNotes 
                       ? `Historia de Notas de venta (${salesNotesLoading ? '...' : salesNotes.length})`
                       : `Historial de Cotizaciones (${quotesLoading ? '...' : clientQuotes.length})`
@@ -1446,9 +1446,14 @@ function ClientDetailPage() {
                   </span>
                   <button
                     onClick={() => setShowSalesNotes(!showSalesNotes)}
-                    className="btn-secondary text-xs px-3 py-1 ml-4"
+                    className="btn-secondary text-xs px-2 sm:px-3 py-1 self-start sm:self-auto flex-shrink-0"
                   >
-                    {showSalesNotes ? 'Ver Cotizaciones' : 'Ver Notas de Venta'}
+                    <span className="hidden sm:inline">
+                      {showSalesNotes ? 'Ver Cotizaciones' : 'Ver Notas de Venta'}
+                    </span>
+                    <span className="sm:hidden">
+                      {showSalesNotes ? 'Cotizaciones' : 'Notas Venta'}
+                    </span>
                   </button>
                 </div>
               }
@@ -2197,14 +2202,6 @@ interface LoanModalProps {
 function PaymentModal({ open, onClose, onSubmit, form, onChange, saving, errors, financialTotals, client: _client }: PaymentModalProps) {
   if (!open) return null;
 
-  const formatAmount = (amount: number) => {
-    return new Intl.NumberFormat('es-CL', {
-      style: 'currency',
-      currency: 'CLP',
-      maximumFractionDigits: 0
-    }).format(amount);
-  };
-
   // Calcular el pendiente después del pago
   const calculatePendingAfterPayment = () => {
     return Math.max(0, financialTotals.pending - form.amount);
@@ -2341,11 +2338,11 @@ function PaymentModal({ open, onClose, onSubmit, form, onChange, saving, errors,
                          backgroundColor: 'var(--success-bg)',
                          color: 'var(--success-text)'
                        }}>
-                    {form.amount > 0 ? formatAmount(calculatePendingAfterPayment()) : 'Sin calcular'}
+                    {form.amount > 0 ? formatCLP(calculatePendingAfterPayment()) : 'Sin calcular'}
                   </div>
                   {form.amount > 0 && (
                     <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
-                      Monto del pago: {formatAmount(form.amount)}
+                      Monto del pago: {formatCLP(form.amount)}
                     </p>
                   )}
                 </div>
@@ -2523,7 +2520,7 @@ function PaymentModal({ open, onClose, onSubmit, form, onChange, saving, errors,
                 </div>
                 <div className="text-right">
                   <div className="text-2xl font-bold" style={{ color: 'var(--success-text)' }}>
-                    {form.amount > 0 ? formatAmount(form.amount) : '$0'}
+                    {form.amount > 0 ? formatCLP(form.amount) : '$0'}
                   </div>
                   <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>
                     {form.date ? new Date(form.date).toLocaleDateString('es-CL') : 'Sin fecha'}
@@ -2576,14 +2573,6 @@ function PaymentModal({ open, onClose, onSubmit, form, onChange, saving, errors,
 
 function LoanModal({ open, onClose, onSubmit, form, onChange, saving, errors, client: _client, financialTotals: _financialTotals }: LoanModalProps) {
   if (!open) return null;
-
-  const formatAmount = (amount: number) => {
-    return new Intl.NumberFormat('es-CL', {
-      style: 'currency',
-      currency: 'CLP',
-      maximumFractionDigits: 0
-    }).format(amount);
-  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 animate-in fade-in duration-300"
@@ -2683,7 +2672,7 @@ function LoanModal({ open, onClose, onSubmit, form, onChange, saving, errors, cl
                   </div>
                   {form.amount > 0 && (
                     <p className="mt-1 text-xs" style={{ color: 'var(--text-secondary)' }}>
-                      {formatAmount(form.amount)}
+                      {formatCLP(form.amount)}
                     </p>
                   )}
                   {errors.amount && (
@@ -2798,7 +2787,7 @@ function LoanModal({ open, onClose, onSubmit, form, onChange, saving, errors, cl
                   Monto del Préstamo:
                 </span>
                 <span className="text-lg font-bold" style={{ color: 'var(--warning-text)' }}>
-                  {formatAmount(form.amount)}
+                  {formatCLP(form.amount)}
                 </span>
               </div>
             </div>

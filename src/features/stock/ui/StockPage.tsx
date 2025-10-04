@@ -394,7 +394,7 @@ export default function StockPage() {
   }
 
   return (
-    <div className="space-y-6 px-3 sm:px-4">
+    <div className="space-y-4 sm:space-y-6 px-2 sm:px-3 md:px-4">
       {/* Header simplificado y más amigable - responsive */}
       <div 
         className="border-b px-3 sm:px-6 py-5 sm:py-8"
@@ -419,12 +419,12 @@ export default function StockPage() {
             </p>
           </div>
 
-          <div className="flex flex-col sm:flex-row items-center gap-3 sm:gap-4 w-full lg:w-auto">
+          <div className="flex flex-col md:flex-row items-center gap-3 sm:gap-4 w-full lg:w-auto">
             {/* Vista simplificada - quitar el toggle complejo */}
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
+            <div className="flex flex-col md:flex-row items-stretch md:items-center gap-3 w-full md:w-auto">
               <button
                 onClick={() => setShowGuideModal(true)}
-                className="px-4 sm:px-6 py-3 rounded-lg transition-colors duration-200 font-semibold flex items-center justify-center gap-2 shadow-md hover:shadow-lg text-sm sm:text-base"
+                className="px-3 sm:px-4 md:px-6 py-2 sm:py-3 rounded-lg transition-colors duration-200 font-semibold flex items-center justify-center gap-2 shadow-md hover:shadow-lg text-sm"
                 style={{ backgroundColor: 'var(--info-bg)', color: 'var(--info-text)' }}
                 title="Guía de productos"
               >
@@ -434,7 +434,7 @@ export default function StockPage() {
               {(['admin', 'dueño', 'dueno'].includes(user?.role?.toLowerCase() || '')) && (
                 <Link
                   href="/dashboard/stock/nuevo"
-                  className="px-4 sm:px-6 py-3 rounded-lg transition-colors duration-200 font-semibold flex items-center justify-center gap-2 shadow-md hover:shadow-lg text-sm sm:text-base"
+                  className="px-3 sm:px-4 md:px-6 py-2 sm:py-3 rounded-lg transition-colors duration-200 font-semibold flex items-center justify-center gap-2 shadow-md hover:shadow-lg text-sm"
                   style={{ 
                     backgroundColor: 'var(--accent-primary)', 
                     color: 'white' 
@@ -451,7 +451,7 @@ export default function StockPage() {
               )}
 
               <button
-                className="px-4 sm:px-6 py-3 rounded-lg transition-colors duration-200 font-semibold flex items-center justify-center gap-2 shadow-md hover:shadow-lg text-sm sm:text-base"
+                className="px-3 sm:px-4 md:px-6 py-2 sm:py-3 rounded-lg transition-colors duration-200 font-semibold flex items-center justify-center gap-2 shadow-md hover:shadow-lg text-sm"
                 style={{ 
                   backgroundColor: 'var(--success-bg)', 
                   color: 'var(--success-text)' 
@@ -471,7 +471,7 @@ export default function StockPage() {
                 <div className="relative">
                   <button
                     onClick={() => setShowCategoryMenu(v => !v)}
-                    className="px-4 sm:px-6 py-3 rounded-lg transition-colors duration-200 font-semibold flex items-center justify-center gap-2 shadow-md hover:shadow-lg text-sm sm:text-base border"
+                    className="px-3 sm:px-4 md:px-6 py-2 sm:py-3 rounded-lg transition-colors duration-200 font-semibold flex items-center justify-center gap-2 shadow-md hover:shadow-lg text-sm sm:text-base border"
                     style={{ backgroundColor: 'var(--button-secondary-bg)', color: 'var(--text-primary)', borderColor: 'var(--border)' }}
                     aria-haspopup="menu"
                     aria-expanded={showCategoryMenu}
@@ -480,7 +480,7 @@ export default function StockPage() {
                     <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"/></svg>
                   </button>
                   {showCategoryMenu && (
-                    <div className="absolute left-0 mt-2 w-56 rounded-lg border shadow-lg z-30 overflow-hidden" style={{ backgroundColor: 'var(--card-bg)', borderColor: 'var(--border)' }}>
+                    <div className="absolute left-0 mt-2 w-48 sm:w-56 rounded-lg border shadow-lg z-30 overflow-hidden" style={{ backgroundColor: 'var(--card-bg)', borderColor: 'var(--border)' }}>
                       <button onClick={openCreateCategory} className="block w-full text-left px-4 py-2 text-sm" style={{ color: 'var(--text-primary)' }}>➕ Crear nueva</button>
                       <button onClick={openEditCategory} className="block w-full text-left px-4 py-2 text-sm" style={{ color: 'var(--text-primary)' }}>✏️ Editar</button>
                       <button onClick={openDeleteCategory} className="block w-full text-left px-4 py-2 text-sm" style={{ color: 'var(--error-text)' }}>🗑️ Eliminar</button>
@@ -494,7 +494,7 @@ export default function StockPage() {
       </div>
 
       {/* Estadísticas simplificadas - responsive */}
-  <div className="max-w-7xl mx-auto grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6 mb-6 sm:mb-8 px-3 sm:px-0">
+  <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6 mb-6 sm:mb-8 px-3 sm:px-0">
         <div 
           className="rounded-xl border-2 p-4 sm:p-6 text-center"
           style={{ 
@@ -647,14 +647,14 @@ export default function StockPage() {
 
       {/* Información de resultados simplificada - responsive */}
   <div className="max-w-7xl mx-auto flex flex-col sm:flex-row sm:items-center justify-between mb-4 sm:mb-6 px-3 sm:px-0">
-        <div className="text-lg sm:text-xl font-medium mb-2 sm:mb-0" style={{ color: 'var(--text-primary)' }}>
+        <div className="text-base sm:text-lg md:text-xl font-medium mb-2 sm:mb-0" style={{ color: 'var(--text-primary)' }}>
           {searchQuery ? (
-            <>Mostrando resultados para: <span className="font-bold" style={{ color: 'var(--accent-primary)' }}> &quot;{searchQuery}&quot;</span></>
+            <>Resultados: <span className="font-bold" style={{ color: 'var(--accent-primary)' }}>&quot;{searchQuery}&quot;</span></>
           ) : (
             'Todos los productos'
           )}
-          <span className="ml-2" style={{ color: 'var(--text-secondary)' }}>
-            ({filteredAndSortedItems.length} productos)
+          <span className="ml-1 sm:ml-2 text-sm sm:text-base" style={{ color: 'var(--text-secondary)' }}>
+            ({filteredAndSortedItems.length})
           </span>
         </div>
       </div>
@@ -811,7 +811,7 @@ export default function StockPage() {
 }
 function ProductGrid({ products, onEdit, onAskDelete, user, openRowMenuId, setOpenRowMenuId }: { products: InventoryItem[]; onEdit: (product: InventoryItem) => void; onAskDelete: (id: number) => void; user: User | null; openRowMenuId: number | null; setOpenRowMenuId: (id: number | null) => void }) {
   return (
-    <div className="max-w-7xl mx-auto grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6 px-3 sm:px-0 items-stretch w-full">
+    <div className="max-w-7xl mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 px-3 sm:px-0 items-stretch w-full">
       {products.map(product => (
         <ProductCard key={product.id} product={product} onEdit={onEdit} onAskDelete={onAskDelete} user={user} openRowMenuId={openRowMenuId} setOpenRowMenuId={setOpenRowMenuId} />
       ))}
@@ -843,16 +843,16 @@ function ProductCard({ product, onEdit, onAskDelete, user, openRowMenuId, setOpe
         }}
       >
         <div className="flex items-start justify-between gap-4">
-          <div className="flex-1 min-w-0 min-h-[120px]">
+          <div className="flex-1 min-w-0 min-h-[100px] sm:min-h-[120px]">
             {/* Nombre del producto - responsive - altura fija para alineación */}
-            <div className="h-16 mb-2 sm:mb-3 flex items-start">
+            <div className="h-12 sm:h-16 mb-2 sm:mb-3 flex items-start">
               <h3 className={`text-lg sm:text-2xl font-bold leading-tight w-full ${expandedName ? '' : 'line-clamp-2'} cursor-pointer`} style={{ color: 'var(--text-primary)' }} onClick={() => setExpandedName(!expandedName)} title={product.nombre}>
                 {product.nombre}
               </h3>
             </div>
 
             {/* Categoría - badge responsive - siempre reservar espacio para alineación */}
-            <div className="h-8 flex items-center mb-2 overflow-hidden">
+            <div className="h-6 sm:h-8 flex items-center mb-2 overflow-hidden">
               {product.tipo ? (
                 <span 
                   className={`inline-flex items-center px-3 sm:px-4 py-1 sm:py-2 rounded-full text-xs sm:text-sm font-semibold ${expandedCategory ? '' : 'truncate'} max-w-full cursor-pointer`}
@@ -908,7 +908,7 @@ function ProductCard({ product, onEdit, onAskDelete, user, openRowMenuId, setOpe
                   ⋯
                 </button>
                 {menuOpen && (
-                  <div className="absolute right-0 mt-2 w-44 rounded-lg border shadow-lg z-30 overflow-hidden" style={{ backgroundColor: 'var(--card-bg)', borderColor: 'var(--border)' }}>
+                  <div className="absolute right-0 mt-2 w-36 sm:w-44 rounded-lg border shadow-lg z-30 overflow-hidden" style={{ backgroundColor: 'var(--card-bg)', borderColor: 'var(--border)' }}>
                     <button onClick={() => { setOpenRowMenuId(null); onAskDelete(product.id); }} className="block w-full text-left px-4 py-2 text-sm" style={{ color: 'var(--error-text)' }}>🗑️ Eliminar</button>
                   </div>
                 )}
@@ -956,7 +956,7 @@ function ProductCard({ product, onEdit, onAskDelete, user, openRowMenuId, setOpe
                 }}
               >
                 <span className="text-lg font-bold" style={{ color: 'var(--success-text)' }}>Precio de Venta</span>
-                <span className="text-2xl font-bold text-right w-[120px]" style={{ color: 'var(--success-text)' }}>
+                <span className="text-2xl font-bold text-right w-[100px] sm:w-[120px]" style={{ color: 'var(--success-text)' }}>
                   {formatCLP(product.precio_venta)}
                 </span>
               </div>
@@ -969,7 +969,7 @@ function ProductCard({ product, onEdit, onAskDelete, user, openRowMenuId, setOpe
                 style={{ backgroundColor: 'var(--input-bg)' }}
               >
                 <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>Precio Neto</span>
-                <span className="text-lg font-semibold text-right w-[120px]" style={{ color: 'var(--text-primary)' }}>
+                <span className="text-lg font-semibold text-right w-[100px] sm:w-[120px]" style={{ color: 'var(--text-primary)' }}>
                   {formatCLP(product.precio_neto)}
                 </span>
               </div>
@@ -982,7 +982,7 @@ function ProductCard({ product, onEdit, onAskDelete, user, openRowMenuId, setOpe
                 style={{ backgroundColor: 'var(--input-bg)' }}
               >
                 <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>Costo</span>
-                <span className="text-sm text-right w-[120px]" style={{ color: 'var(--text-secondary)' }}>
+                <span className="text-sm text-right w-[100px] sm:w-[120px]" style={{ color: 'var(--text-secondary)' }}>
                   {formatCLP(product.costo_unitario)}
                 </span>
               </div>

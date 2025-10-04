@@ -34,7 +34,7 @@ const DashboardFinancialSummary = dynamic(() => import("@/features/reports/ui/Da
     </div>
     <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
       {[1, 2, 3, 4].map((i) => (
-        <div key={i} className="h-28 rounded-lg bg-gray-200 dark:bg-gray-700"></div>
+        <div key={i} className="min-h-[100px] sm:min-h-[120px] rounded-lg bg-gray-200 dark:bg-gray-700"></div>
       ))}
     </div>
   </div>
@@ -47,7 +47,7 @@ const MonthlySalesChart = dynamic(() => import("@/features/reports/ui/MonthlySal
       <div className="h-5 w-40 bg-gray-200 dark:bg-gray-700 rounded mb-2"></div>
       <div className="h-3 w-56 bg-gray-200 dark:bg-gray-700 rounded"></div>
     </div>
-    <div className="h-64 rounded-lg bg-gray-200 dark:bg-gray-700"></div>
+    <div className="min-h-[200px] sm:min-h-[250px] rounded-lg bg-gray-200 dark:bg-gray-700"></div>
   </div>
 });
 
@@ -55,7 +55,7 @@ const MonthlySalesChart = dynamic(() => import("@/features/reports/ui/MonthlySal
 
 export default function DashboardPage() {
   return (
-    <div className="space-y-3 sm:space-y-4 lg:space-y-6 animate-fadeIn">
+    <div className="space-y-4 sm:space-y-6 animate-fadeIn overflow-x-hidden">
       {/* Acciones rápidas */}
       <QuickActions />
       
@@ -63,12 +63,12 @@ export default function DashboardPage() {
       <DashboardFinancialSummary period="Últimos 6 meses" />
       
       {/* Grid de contenido secundario */}
-      <div className="grid gap-3 sm:gap-4 lg:gap-6 xl:grid-cols-2">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Actividad reciente */}
         <UnifiedAuditLog mode="dashboard" limit={5} />
 
         {/* Gráfico de ventas mensuales */}
-        <div className="rounded-xl" style={{ overflow: 'hidden' }}>
+        <div className="rounded-xl w-full overflow-hidden">
           <MonthlySalesChart period="Últimos 6 meses" />
         </div>
       </div>

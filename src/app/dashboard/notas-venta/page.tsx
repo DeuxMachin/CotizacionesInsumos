@@ -106,45 +106,46 @@ export default function SalesNotesPage() {
   }
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: 'var(--bg-primary)' }}>
+    <div className="min-h-screen overflow-x-hidden" style={{ backgroundColor: 'var(--bg-primary)' }}>
       {/* Header */}
       <div className="border-b" style={{ borderColor: 'var(--border)', backgroundColor: 'var(--bg-secondary)' }}>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <div>
-              <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>
+        <div className="w-full max-w-none mx-auto px-3 sm:px-4 lg:px-6">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between h-auto sm:h-16 py-3 sm:py-0 gap-3 sm:gap-0">
+            <div className="min-w-0 flex-1 sm:flex-initial">
+              <h1 className="text-lg sm:text-xl font-bold truncate" style={{ color: 'var(--text-primary)' }}>
                 Notas de Venta
               </h1>
-              <p style={{ color: 'var(--text-secondary)' }}>
+              <p className="text-xs sm:text-sm" style={{ color: 'var(--text-secondary)' }}>
                 Gestiona las notas de venta y conversiones de cotizaciones
               </p>
             </div>
-            <div className="flex items-center space-x-4">
+            <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto justify-end">
               <button
                 onClick={handleDownloadXLSX}
                 disabled={!user || !user.isAdmin}
-                className="px-4 py-2 sm:px-6 sm:py-3 rounded-lg transition-all duration-200 flex items-center text-sm sm:text-base font-medium shadow-sm hover:shadow-md border-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="inline-flex items-center gap-1 sm:gap-2 px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium rounded-lg transition-all duration-200 shadow-sm hover:shadow-md border-2 disabled:opacity-50 disabled:cursor-not-allowed"
                 style={{
                   backgroundColor: '#28a745',
                   color: 'white',
                   borderColor: '#28a745'
                 }}
               >
-                <FiDownload className="w-5 h-5 sm:w-6 sm:h-6 mr-2 sm:mr-3" />
-                <span>Descargar XLSX</span>
+                <FiDownload className="w-3 h-3 sm:w-4 sm:h-4" />
+                <span className="hidden sm:inline">Descargar XLSX</span>
+                <span className="inline sm:hidden">Descargar</span>
               </button>
               <button
                 onClick={() => router.push('/dashboard/cotizaciones')}
-                className="px-4 py-2 sm:px-6 sm:py-3 rounded-lg transition-all duration-200 flex items-center text-sm sm:text-base font-medium shadow-sm hover:shadow-md border-2"
+                className="inline-flex items-center gap-1 sm:gap-2 px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium rounded-lg transition-all duration-200 shadow-sm hover:shadow-md border-2"
                 style={{
                   backgroundColor: '#007bff',
                   color: 'white',
-                  borderColor: '#007bff',
-                  border: '2px solid #007bff'
+                  borderColor: '#007bff'
                 }}
               >
-                <FiArrowLeft className="w-5 h-5 sm:w-6 sm:h-6 mr-2 sm:mr-3" />
-                <span>Volver</span>
+                <FiArrowLeft className="w-3 h-3 sm:w-4 sm:h-4" />
+                <span className="hidden sm:inline">Volver</span>
+                <span className="inline sm:hidden">Volver</span>
               </button>
             </div>
           </div>
@@ -152,17 +153,17 @@ export default function SalesNotesPage() {
       </div>
 
       {/* Content */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="w-full max-w-none mx-auto px-3 sm:px-4 lg:px-6 py-4 sm:py-6 lg:py-8 overflow-x-hidden">
         {/* Search */}
-        <div className="mb-6">
-          <div className="relative">
-            <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5" style={{ color: 'var(--text-secondary)' }} />
+        <div className="mb-4 sm:mb-6">
+          <div className="relative max-w-md">
+            <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5" style={{ color: 'var(--text-secondary)' }} />
             <input
               type="text"
               placeholder="Buscar por folio, cliente o cotización..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 rounded-lg border focus:outline-none focus:ring-2"
+              className="w-full pl-9 sm:pl-10 pr-4 py-2 text-sm sm:text-base rounded-lg border focus:outline-none focus:ring-2"
               style={{
                 borderColor: 'var(--border)',
                 backgroundColor: 'var(--bg-secondary)',
@@ -175,7 +176,7 @@ export default function SalesNotesPage() {
 
         {/* Error Message */}
         {error && (
-          <div className="mb-6 p-4 rounded-lg border" style={{
+          <div className="mb-4 sm:mb-6 p-3 sm:p-4 rounded-lg border" style={{
             backgroundColor: 'var(--error-bg)',
             borderColor: 'var(--error)',
             color: 'var(--error-text)'
@@ -188,11 +189,11 @@ export default function SalesNotesPage() {
         <div className="bg-white rounded-lg shadow-sm border overflow-hidden" style={{ borderColor: 'var(--border)' }}>
           {paginatedNotes.length === 0 ? (
             <div className="p-4 sm:p-8 text-center">
-              <FiFileText className="w-12 sm:w-16 h-12 sm:h-16 mx-auto mb-4" style={{ color: 'var(--text-secondary)' }} />
-              <h3 className="text-base sm:text-lg font-medium mb-2" style={{ color: 'var(--text-primary)' }}>
+              <FiFileText className="w-8 sm:w-12 h-8 sm:h-12 mx-auto mb-3 sm:mb-4" style={{ color: 'var(--text-secondary)' }} />
+              <h3 className="text-sm sm:text-base font-medium mb-2" style={{ color: 'var(--text-primary)' }}>
                 {searchTerm ? 'No se encontraron notas de venta' : 'No hay notas de venta'}
               </h3>
-              <p className="text-sm sm:text-base" style={{ color: 'var(--text-secondary)' }}>
+              <p className="text-xs sm:text-sm" style={{ color: 'var(--text-secondary)' }}>
                 {searchTerm
                   ? 'Intenta con otros términos de búsqueda'
                   : 'Las notas de venta aparecerán aquí cuando conviertas cotizaciones aceptadas'
@@ -201,7 +202,7 @@ export default function SalesNotesPage() {
             </div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[600px]">
+              <table className="w-full min-w-[500px] sm:min-w-[600px]">
                 <thead style={{ backgroundColor: 'var(--bg-secondary)' }}>
                   <tr>
                     <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>
@@ -231,11 +232,16 @@ export default function SalesNotesPage() {
                   {paginatedNotes.map((note) => {
                     const statusColors = getStatusColor(note.estado || 'borrador');
                     return (
-                      <tr key={note.id} className="hover:bg-opacity-50" style={{ backgroundColor: 'var(--bg-primary)' }}>
+                      <tr 
+                        key={note.id} 
+                        onClick={() => router.push(`/dashboard/notas-venta/${note.id}`)}
+                        className="hover:bg-opacity-50 cursor-pointer transition-colors"
+                        style={{ backgroundColor: 'var(--bg-primary)' }}
+                      >
                         <td className="px-3 sm:px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center">
-                            <FiFileText className="w-4 h-4 mr-2" style={{ color: 'var(--text-secondary)' }} />
-                            <span className="font-medium text-sm sm:text-base" style={{ color: 'var(--text-primary)' }}>
+                            <FiFileText className="w-4 h-4 mr-2 flex-shrink-0" style={{ color: 'var(--text-secondary)' }} />
+                            <span className="font-medium text-sm sm:text-base truncate" style={{ color: 'var(--text-primary)' }}>
                               {note.folio || 'Sin folio'}
                             </span>
                           </div>
@@ -250,15 +256,15 @@ export default function SalesNotesPage() {
                         </td>
                         <td className="px-3 sm:px-6 py-4 whitespace-nowrap hidden sm:table-cell">
                           <div className="flex items-center">
-                            <FiCalendar className="w-4 h-4 mr-2" style={{ color: 'var(--text-secondary)' }} />
-                            <span className="text-sm" style={{ color: 'var(--text-primary)' }}>
+                            <FiCalendar className="w-4 h-4 mr-2 flex-shrink-0" style={{ color: 'var(--text-secondary)' }} />
+                            <span className="text-xs sm:text-sm" style={{ color: 'var(--text-primary)' }}>
                               {note.fecha_emision ? new Date(note.fecha_emision).toLocaleDateString('es-CL') : 'N/A'}
                             </span>
                           </div>
                         </td>
                         <td className="px-3 sm:px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center">
-                            <FiDollarSign className="w-4 h-4 mr-2" style={{ color: 'var(--text-secondary)' }} />
+                            <FiDollarSign className="w-4 h-4 mr-2 flex-shrink-0" style={{ color: 'var(--text-secondary)' }} />
                             <span className="font-medium text-sm sm:text-base" style={{ color: 'var(--primary)' }}>
                               {formatMoney(note.total)}
                             </span>
@@ -276,14 +282,17 @@ export default function SalesNotesPage() {
                           </span>
                         </td>
                         <td className="px-3 sm:px-6 py-4 whitespace-nowrap hidden lg:table-cell">
-                          <span className="text-sm" style={{ color: 'var(--text-primary)' }}>
+                          <span className="text-xs sm:text-sm" style={{ color: 'var(--text-primary)' }}>
                             {note.cotizacion_id ? `COT${note.cotizacion_id.toString().padStart(6, '0')}` : 'N/A'}
                           </span>
                         </td>
                         <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-right">
                           <button
-                            onClick={() => router.push(`/dashboard/notas-venta/${note.id}`)}
-                            className="px-2 sm:px-3 py-1 rounded-lg transition-colors text-xs sm:text-sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              router.push(`/dashboard/notas-venta/${note.id}`);
+                            }}
+                            className="px-2 sm:px-3 py-1 rounded-lg transition-colors text-xs sm:text-sm opacity-75 hover:opacity-100"
                             style={{
                               color: 'var(--primary)',
                               border: '1px solid var(--primary)',
@@ -304,12 +313,12 @@ export default function SalesNotesPage() {
 
           {/* Pagination */}
           {totalPages > 1 && (
-            <div className="px-4 py-3 bg-white border-t flex items-center justify-between" style={{ borderColor: 'var(--border)' }}>
+            <div className="px-3 sm:px-4 py-3 bg-white border-t flex items-center justify-between" style={{ borderColor: 'var(--border)' }}>
               <div className="flex-1 flex justify-between sm:hidden">
                 <button
                   onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
                   disabled={currentPage === 1}
-                  className="relative inline-flex items-center px-4 py-2 text-sm font-medium rounded-md border disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="relative inline-flex items-center px-3 py-2 text-xs sm:text-sm font-medium rounded-md border disabled:opacity-50 disabled:cursor-not-allowed"
                   style={{
                     color: currentPage === 1 ? 'var(--text-secondary)' : 'var(--primary)',
                     borderColor: 'var(--border)',
@@ -321,7 +330,7 @@ export default function SalesNotesPage() {
                 <button
                   onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
                   disabled={currentPage === totalPages}
-                  className="ml-3 relative inline-flex items-center px-4 py-2 text-sm font-medium rounded-md border disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="ml-3 relative inline-flex items-center px-3 py-2 text-xs sm:text-sm font-medium rounded-md border disabled:opacity-50 disabled:cursor-not-allowed"
                   style={{
                     color: currentPage === totalPages ? 'var(--text-secondary)' : 'var(--primary)',
                     borderColor: 'var(--border)',
@@ -333,7 +342,7 @@ export default function SalesNotesPage() {
               </div>
               <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
                 <div>
-                  <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+                  <p className="text-xs sm:text-sm" style={{ color: 'var(--text-secondary)' }}>
                     Mostrando <span className="font-medium">{startIndex + 1}</span> a{' '}
                     <span className="font-medium">{Math.min(startIndex + itemsPerPage, filteredNotes.length)}</span> de{' '}
                     <span className="font-medium">{filteredNotes.length}</span> resultados
@@ -344,7 +353,7 @@ export default function SalesNotesPage() {
                     <button
                       onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
                       disabled={currentPage === 1}
-                      className="relative inline-flex items-center px-2 py-2 rounded-l-md border text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="relative inline-flex items-center px-2 py-2 rounded-l-md border text-xs sm:text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                       style={{
                         color: currentPage === 1 ? 'var(--text-secondary)' : 'var(--primary)',
                         borderColor: 'var(--border)',
@@ -358,7 +367,7 @@ export default function SalesNotesPage() {
                       <button
                         key={page}
                         onClick={() => setCurrentPage(page)}
-                        className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
+                        className={`relative inline-flex items-center px-2 sm:px-4 py-2 border text-xs sm:text-sm font-medium ${
                           page === currentPage ? 'z-10' : ''
                         }`}
                         style={{
@@ -373,7 +382,7 @@ export default function SalesNotesPage() {
                     <button
                       onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
                       disabled={currentPage === totalPages}
-                      className="relative inline-flex items-center px-2 py-2 rounded-r-md border text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="relative inline-flex items-center px-2 py-2 rounded-r-md border text-xs sm:text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                       style={{
                         color: currentPage === totalPages ? 'var(--text-secondary)' : 'var(--primary)',
                         borderColor: 'var(--border)',

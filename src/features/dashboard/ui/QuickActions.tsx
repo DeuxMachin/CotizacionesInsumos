@@ -55,7 +55,7 @@ export function QuickActions() {
 
   return (
     <div 
-      className="rounded-xl p-4 sm:p-6"
+      className="rounded-xl p-3 sm:p-6"
       style={{ 
         backgroundColor: 'var(--bg-primary)',
         border: '1px solid var(--border-subtle)' 
@@ -63,7 +63,7 @@ export function QuickActions() {
     >
       {/* Header de la sección */}
       <div className="mb-3 sm:mb-4 lg:mb-6">
-        <h3 className="section-title text-lg sm:text-xl mb-1">
+        <h3 className="section-title text-base sm:text-lg mb-1">
           Acciones Rápidas
         </h3>
         <p className="text-xs sm:text-sm text-theme-secondary">
@@ -72,12 +72,12 @@ export function QuickActions() {
       </div>
 
       {/* Grid de acciones */}
-      <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 lg:gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3 lg:gap-4">
         {quickActions.map((a, idx) => (
           <button
             key={a.action}
             onClick={() => handleActionClick(a.action)}
-            className="group text-left rounded-xl p-3 sm:p-4 lg:p-5 hover:shadow-theme-md transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 animate-slideUp"
+            className="group text-left rounded-xl p-2 sm:p-4 lg:p-5 hover:shadow-theme-md transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 animate-slideUp w-full"
             style={{ 
               backgroundColor: 'var(--bg-primary)',
               animationDelay: `${idx * 60}ms`,
@@ -88,14 +88,14 @@ export function QuickActions() {
           >
             <div className="flex flex-col items-center text-center">
               <div className="mb-2 sm:mb-3">
-                <div className="w-5 h-5 sm:w-6 sm:h-6 lg:w-7 lg:h-7 text-orange-600 dark:text-orange-400">
+                <div className="w-4 h-4 sm:w-6 sm:h-6 lg:w-7 lg:h-7 text-orange-600 dark:text-orange-400">
                   {a.icon}
                 </div>
               </div>
-              <h4 className="font-semibold text-theme-primary mb-1 text-sm sm:text-base">
+              <h4 className="font-semibold text-theme-primary mb-1 text-xs sm:text-sm truncate">
                 {a.title}
               </h4>
-              <p className="text-xs sm:text-sm text-theme-secondary hidden sm:block">
+              <p className="text-xs sm:text-sm text-theme-secondary hidden sm:block truncate">
                 {a.description}
               </p>
             </div>

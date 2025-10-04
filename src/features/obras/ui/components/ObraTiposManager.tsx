@@ -167,7 +167,7 @@ export function ObraTiposManager({ isOpen, onClose, onUpdate }: ObraTiposManager
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4">
       {/* Backdrop */}
       <div 
         className="absolute inset-0 bg-black/50 backdrop-blur-sm" 
@@ -176,7 +176,7 @@ export function ObraTiposManager({ isOpen, onClose, onUpdate }: ObraTiposManager
 
       {/* Modal */}
       <div 
-        className="relative w-full max-w-3xl rounded-xl shadow-2xl overflow-hidden"
+        className="relative w-full max-w-lg sm:max-w-2xl lg:max-w-3xl max-h-[90vh] rounded-xl shadow-2xl overflow-hidden flex flex-col"
         style={{ 
           backgroundColor: 'var(--card-bg)',
           border: '1px solid var(--border)'
@@ -184,7 +184,7 @@ export function ObraTiposManager({ isOpen, onClose, onUpdate }: ObraTiposManager
       >
         {/* Header */}
         <div 
-          className="flex items-center justify-between p-6 border-b"
+          className="flex items-center justify-between p-4 sm:p-6 border-b flex-shrink-0"
           style={{ borderColor: 'var(--border)' }}
         >
           <div className="flex items-center gap-3">

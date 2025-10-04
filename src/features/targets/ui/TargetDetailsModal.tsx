@@ -5,7 +5,7 @@ import { useState, useEffect } from "react";
 import { ConvertToObraModal } from "./ConvertToObraModal";
 import EditTargetModal from "./EditTargetModal";
 import { StatusChangeModal } from "./StatusChangeModal";
-import { FiMapPin, FiPhone, FiMail, FiUser, FiCalendar, FiClock, FiMap, FiExternalLink, FiEdit3, FiMessageSquare, FiHome, FiFlag, FiSettings } from "react-icons/fi";
+import { FiMapPin, FiPhone, FiMail, FiUser, FiCalendar, FiClock, FiMap, FiExternalLink, FiEdit3, FiMessageSquare, FiHome, FiFlag, FiSettings, FiX } from "react-icons/fi";
 import type { PosibleTarget, TargetEvento } from "../model/types";
 import { useTargets } from "../model/useTargets";
 
@@ -95,7 +95,7 @@ export function TargetDetailsModal({ target, isOpen, onClose, onTargetUpdated }:
       <div className="w-full max-w-4xl mx-auto max-h-[85vh] overflow-y-auto custom-scrollbar">
         {/* Header Principal */}
         <div className="p-3 sm:p-4" style={{ borderBottom: '1px solid var(--border)' }}>
-          <div className="flex flex-col gap-2">
+          <div className="flex items-start justify-between gap-4">
             <div className="flex-1">
               <h1 className="text-xl sm:text-2xl font-bold mb-2" style={{ color: 'var(--text-primary)' }}>
                 {target.titulo}
@@ -126,38 +126,48 @@ export function TargetDetailsModal({ target, isOpen, onClose, onTargetUpdated }:
               </div>
             </div>
             
-            {/* Información de Gestión - Más compacta */}
-            <div 
-              className="p-2 rounded-lg"
-              style={{ 
-                backgroundColor: 'var(--bg-secondary)',
-                border: '1px solid var(--border)'
-              }}
+            {/* Botón de cerrar */}
+            <button
+              onClick={onClose}
+              className="p-2 rounded-lg hover:opacity-80 transition-opacity"
+              style={{ backgroundColor: 'var(--bg-secondary)', color: 'var(--text-secondary)' }}
+              title="Cerrar"
             >
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs sm:text-sm">
+              <FiX className="w-5 h-5" />
+            </button>
+          </div>
+          
+          {/* Información de Gestión - Más compacta */}
+          <div 
+            className="mt-3 p-2 rounded-lg"
+            style={{ 
+              backgroundColor: 'var(--bg-secondary)',
+              border: '1px solid var(--border)'
+            }}
+          >
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs sm:text-sm">
+              <div>
+                <span style={{ color: 'var(--text-secondary)' }}>Creado:</span>
+                <p style={{ color: 'var(--text-primary)' }} className="font-medium">
+                  {formatDate(target.fechaCreacion)}
+                </p>
+              </div>
+              {target.gestionadoPor && (
                 <div>
-                  <span style={{ color: 'var(--text-secondary)' }}>Creado:</span>
-                  <p style={{ color: 'var(--text-primary)' }} className="font-medium">
-                    {formatDate(target.fechaCreacion)}
+                  <span style={{ color: 'var(--text-secondary)' }}>Gestiona:</span>
+                  <p style={{ color: 'var(--accent-primary)' }} className="font-medium">
+                    {target.nombreGestionadoPor}
                   </p>
                 </div>
-                {target.gestionadoPor && (
-                  <div>
-                    <span style={{ color: 'var(--text-secondary)' }}>Gestiona:</span>
-                    <p style={{ color: 'var(--accent-primary)' }} className="font-medium">
-                      {target.nombreGestionadoPor}
-                    </p>
-                  </div>
-                )}
-                {target.fechaEstimadaInicio && (
-                  <div>
-                    <span style={{ color: 'var(--text-secondary)' }}>Inicio Est.:</span>
-                    <p style={{ color: 'var(--text-primary)' }} className="font-medium">
-                      {formatDate(target.fechaEstimadaInicio)}
-                    </p>
-                  </div>
-                )}
-              </div>
+              )}
+              {target.fechaEstimadaInicio && (
+                <div>
+                  <span style={{ color: 'var(--text-secondary)' }}>Inicio Est.:</span>
+                  <p style={{ color: 'var(--text-primary)' }} className="font-medium">
+                    {formatDate(target.fechaEstimadaInicio)}
+                  </p>
+                </div>
+              )}
             </div>
           </div>
         </div>

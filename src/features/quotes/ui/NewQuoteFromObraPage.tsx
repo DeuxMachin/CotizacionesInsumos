@@ -432,9 +432,9 @@ export function NewQuoteFromObraPage() {
         className="sticky top-0 z-10 border-b"
         style={{ backgroundColor: 'var(--card-bg)', borderColor: 'var(--border)' }}
       >
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col sm:flex-row items-center justify-between h-auto sm:h-16 py-3 sm:py-0 gap-2 sm:gap-0">
-            <div className="flex items-center gap-4 w-full sm:w-auto">
+        <div className="w-full max-w-none mx-auto px-3 sm:px-4 lg:px-6">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between h-auto sm:h-16 py-3 sm:py-0 gap-3 sm:gap-0">
+            <div className="flex items-center gap-3 w-full sm:w-auto">
               <button
                 onClick={() => router.push(`/dashboard/obras/${obraId}`)}
                 className="p-2 rounded-lg transition-colors"
@@ -445,16 +445,16 @@ export function NewQuoteFromObraPage() {
                 }}
                 aria-label="Volver a detalle de obra"
               >
-                <FiArrowLeft className="w-5 h-5" />
+                <FiArrowLeft className="w-4 h-4 sm:w-5 sm:h-5" />
               </button>
               
-              <div>
-                <h1 className="text-lg sm:text-xl font-bold flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
-                  <FiTool className="w-5 h-5" style={{ color: 'var(--accent-primary)' }} />
+              <div className="min-w-0 flex-1 sm:flex-initial">
+                <h1 className="text-lg sm:text-xl font-bold flex items-center gap-2 truncate" style={{ color: 'var(--text-primary)' }}>
+                  <FiTool className="w-4 h-4 sm:w-5 sm:h-5" style={{ color: 'var(--accent-primary)' }} />
                   Nueva Cotización para Obra
                 </h1>
                 {obra && (
-                  <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+                  <p className="text-sm truncate" style={{ color: 'var(--text-secondary)' }}>
                     {obra.nombreEmpresa} • {obra.constructora.nombre}
                   </p>
                 )}
@@ -489,7 +489,7 @@ export function NewQuoteFromObraPage() {
       </div>
 
       {/* Contenido principal */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-8">
+      <div className="w-full max-w-none mx-auto px-3 sm:px-4 lg:px-6 py-4 sm:py-8">
         <div className="flex flex-col lg:flex-row gap-4 sm:gap-8">
           {/* Sidebar de pasos - Visible solo en lg y superiores */}
           <div className="hidden lg:block lg:w-1/4">
@@ -585,7 +585,7 @@ export function NewQuoteFromObraPage() {
                         className="flex flex-col items-center gap-1 px-3 py-2"
                       >
                         <div 
-                          className="w-10 h-10 rounded-full flex items-center justify-center"
+                          className="w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center"
                           style={{
                             backgroundColor: isActive ? 'var(--accent-primary)' : 
                                            isCompleted ? 'var(--success-bg)' : 
@@ -596,15 +596,15 @@ export function NewQuoteFromObraPage() {
                           }}
                         >
                           {isCompleted ? (
-                            <FiCheck className="w-5 h-5" />
+                            <FiCheck className="w-3 h-3 sm:w-5 sm:h-5" />
                           ) : hasErrors ? (
-                            <FiAlertCircle className="w-5 h-5" style={{ color: 'var(--danger-text)' }} />
+                            <FiAlertCircle className="w-3 h-3 sm:w-5 sm:h-5" style={{ color: 'var(--danger-text)' }} />
                           ) : (
-                            <Icon className="w-5 h-5" />
+                            <Icon className="w-3 h-3 sm:w-5 sm:h-5" />
                           )}
                         </div>
                         <span 
-                          className="text-xs font-medium"
+                          className="text-xs font-medium text-center leading-tight max-w-[50px] sm:max-w-none truncate"
                           style={{ 
                             color: isActive ? 'var(--accent-primary)' : 
                                   'var(--text-secondary)'
@@ -615,8 +615,8 @@ export function NewQuoteFromObraPage() {
                       </button>
                       {index < STEPS.length - 1 && (
                         <div 
-                          className="w-6 h-px"
-                          style={{ backgroundColor: 'var(--border)' }}
+                          className="w-4 sm:w-6 h-0.5 rounded flex-shrink-0 mx-1 sm:mx-2"
+                          style={{ backgroundColor: isStepCompleted(STEPS[index].id as FormStep) ? 'var(--accent-primary)' : 'var(--border-subtle)' }}
                         />
                       )}
                     </div>
@@ -629,7 +629,7 @@ export function NewQuoteFromObraPage() {
           {/* Contenido del formulario */}
           <div className="lg:w-3/4 w-full">
             <div 
-              className="rounded-lg p-6 mb-6"
+              className="rounded-lg p-4 sm:p-6 mb-4 sm:mb-6"
               style={{ backgroundColor: 'var(--card-bg)', border: '1px solid var(--border)' }}
             >
               {obra && (
@@ -652,34 +652,37 @@ export function NewQuoteFromObraPage() {
             </div>
 
             {/* Navegación de pasos */}
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-6">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 sm:gap-4 mt-4 sm:mt-6">
               <button
                 onClick={handlePrevious}
                 disabled={currentStep === 'client'}
-                className="btn-secondary flex items-center gap-2 w-full sm:w-auto"
+                className="btn-secondary flex items-center justify-center gap-1 sm:gap-2 w-full sm:w-auto px-3 sm:px-4 py-2 text-xs sm:text-sm"
               >
-                <FiArrowLeft className="w-4 h-4" />
-                Anterior
+                <FiArrowLeft className="w-3 h-3 sm:w-4 sm:h-4" />
+                <span className="hidden sm:inline">Anterior</span>
+                <span className="inline sm:hidden">←</span>
               </button>
 
-              <div className="text-sm hidden sm:block" style={{ color: 'var(--text-secondary)' }}>
+              <div className="text-xs sm:text-sm text-center sm:text-left" style={{ color: 'var(--text-secondary)' }}>
                 Paso {STEPS.findIndex(s => s.id === currentStep) + 1} de {STEPS.length}
               </div>
 
               <button
                 onClick={currentStep === 'summary' ? handleSendQuote : handleNext}
                 disabled={currentStep === 'summary' ? (loading || !isStepValid('summary')) : false}
-                className="btn-primary flex items-center gap-2 w-full sm:w-auto"
+                className="btn-primary flex items-center justify-center gap-1 sm:gap-2 w-full sm:w-auto px-3 sm:px-4 py-2 text-xs sm:text-sm"
               >
                 {currentStep === 'summary' ? (
                   <>
-                    <FiSend className="w-4 h-4" />
-                    Enviar Cotización
+                    <FiSend className="w-3 h-3 sm:w-4 sm:h-4" />
+                    <span className="hidden sm:inline">Enviar Cotización</span>
+                    <span className="inline sm:hidden">Enviar</span>
                   </>
                 ) : (
                   <>
-                    Siguiente
-                    <FiArrowLeft className="w-4 h-4 rotate-180" />
+                    <span className="hidden sm:inline">Siguiente</span>
+                    <span className="inline sm:hidden">→</span>
+                    <FiArrowLeft className="w-3 h-3 sm:w-4 sm:h-4 rotate-180" />
                   </>
                 )}
               </button>

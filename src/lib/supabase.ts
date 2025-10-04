@@ -1074,6 +1074,33 @@ export type Database = {
         }
       }
       ,
+      user_sessions: {
+        Row: {
+          id: string
+          user_id: string
+          session_id: string
+          last_activity: string | null
+          created_at: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          session_id: string
+          last_activity?: string | null
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          session_id?: string
+          last_activity?: string | null
+          created_at?: string | null
+          updated_at?: string | null
+        }
+      }
+      ,
       obra_visitas: {
         Row: {
           id: number

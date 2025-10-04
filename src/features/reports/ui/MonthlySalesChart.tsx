@@ -484,7 +484,7 @@ export function MonthlySalesChart({ period }: MonthlySalesChartProps) {
             Cargando datos...
           </p>
         </div>
-        <div className="h-64 flex items-center justify-center">
+        <div className="min-h-[200px] sm:min-h-[250px] flex items-center justify-center">
           <div className="animate-spin rounded-full h-8 w-8 border-2 border-gray-300 border-t-blue-600"></div>
         </div>
       </div>
@@ -505,7 +505,7 @@ export function MonthlySalesChart({ period }: MonthlySalesChartProps) {
             Error: {error}
           </p>
         </div>
-        <div className="h-64 flex items-center justify-center">
+        <div className="min-h-[200px] sm:min-h-[250px] flex items-center justify-center">
           <p style={{ color: 'var(--text-secondary)' }}>Los datos no pudieron cargarse</p>
         </div>
       </div>
@@ -541,11 +541,11 @@ export function MonthlySalesChart({ period }: MonthlySalesChartProps) {
       </div>
 
       {/* Canvas para el gráfico */}
-      <div className="relative">
+      <div className="relative w-full overflow-hidden">
         <canvas
           ref={canvasRef}
-          className="w-full"
-          style={{ height: '350px' }}
+          className="w-full max-w-full"
+          style={{ height: 'clamp(200px, 25vh, 350px)' }}
         />
         
         {/* Tooltip interactivo */}

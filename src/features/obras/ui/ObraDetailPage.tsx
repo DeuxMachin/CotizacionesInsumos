@@ -546,7 +546,7 @@ export function ObraDetailPage({
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: 'var(--bg-primary)' }}>
-  <div className="max-w-7xl mx-auto p-3 sm:p-5 lg:p-8">
+  <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6 xl:px-8 py-4 sm:py-6">
         {/* Breadcrumbs */}
         <nav aria-label="Breadcrumb" className="mb-4 sm:mb-6">
           <ol className="flex items-center gap-2 text-xs sm:text-sm" style={{ color: 'var(--text-secondary)' }}>
@@ -570,7 +570,7 @@ export function ObraDetailPage({
 
         {/* Header principal y Acciones rápidas */}
         <header
-          className="rounded-xl p-3 sm:p-5 mb-3 sm:mb-6"
+          className="rounded-xl p-3 sm:p-4 lg:p-6 mb-4 sm:mb-6"
           style={{ backgroundColor: 'var(--card-bg)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-md)' }}
         >
           <div className="flex flex-col gap-4">
@@ -756,9 +756,9 @@ export function ObraDetailPage({
         </header>
 
         {/* Contenido principal: columna principal + sidebar sticky */}
-  <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-4">
+  <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
           {/* Columna principal (2/3) */}
-          <main className="lg:col-span-2 space-y-4">
+          <main className="lg:col-span-2 space-y-4 sm:space-y-6 lg:space-y-8">
             {/* Resumen de la obra (KPI + finanzas) */}
             <section id="section-resumen" className="space-y-3 sm:space-y-4" aria-label="Resumen de la obra">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
@@ -796,7 +796,7 @@ export function ObraDetailPage({
                   <FiDollarSign className="w-4 h-4" style={{ color: 'var(--accent-primary)' }} />
                   Resumen de cotizaciones
                 </h2>
-                <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
                   <div className="p-3 rounded text-center" style={{ backgroundColor: 'var(--bg-secondary)' }}>
                     <p className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>Total Cotizado</p>
                     <p className="text-lg sm:text-xl font-bold mt-1 break-words" style={{ color: 'var(--text-primary)' }}>
@@ -1252,7 +1252,7 @@ export function ObraDetailPage({
           <aside className="lg:col-span-1 lg:sticky lg:top-6 h-fit space-y-4">
             <section className="p-4 rounded-lg" style={{ backgroundColor: 'var(--card-bg)', border: '1px solid var(--border)' }}>
               <h3 className="text-sm font-semibold mb-3" style={{ color: 'var(--text-primary)' }}>Resumen</h3>
-              <div className="grid grid-cols-2 gap-3 text-xs">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                 <div>
                   <span style={{ color: 'var(--text-secondary)' }}>Estado</span>
                   <div className="mt-1 px-2 py-0.5 rounded-full inline-block" style={{ backgroundColor: estadoColor.bg, color: estadoColor.text, fontWeight: 600 }}>

@@ -2,7 +2,7 @@
 
 import { Modal } from "@/shared/ui/Modal";
 import { useState } from "react";
-import { FiCheckCircle, FiClock, FiPhone, FiTrendingUp, FiXCircle, FiRotateCcw } from "react-icons/fi";
+import { FiCheckCircle, FiClock, FiPhone, FiTrendingUp, FiXCircle, FiRotateCcw, FiX } from "react-icons/fi";
 import { useTargets } from "../model/useTargets";
 import type { PosibleTarget } from "../model/types";
 
@@ -80,12 +80,26 @@ export function StatusChangeModal({ target, isOpen, onClose, onStatusUpdated }: 
       <div className="w-full max-w-md mx-auto">
         {/* Header */}
         <div className="p-4 sm:p-6" style={{ borderBottom: '1px solid var(--border)' }}>
-          <h2 className="text-lg sm:text-xl font-bold mb-2" style={{ color: 'var(--text-primary)' }}>
-            Cambiar Estado del Target
-          </h2>
-          <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-            {target.titulo}
-          </p>
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex-1">
+              <h2 className="text-lg sm:text-xl font-bold mb-2" style={{ color: 'var(--text-primary)' }}>
+                Cambiar Estado del Target
+              </h2>
+              <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+                {target.titulo}
+              </p>
+            </div>
+            
+            {/* Botón de cerrar */}
+            <button
+              onClick={onClose}
+              className="p-2 rounded-lg hover:opacity-80 transition-opacity"
+              style={{ backgroundColor: 'var(--bg-secondary)', color: 'var(--text-secondary)' }}
+              title="Cerrar"
+            >
+              <FiX className="w-5 h-5" />
+            </button>
+          </div>
         </div>
 
         {/* Current Status */}

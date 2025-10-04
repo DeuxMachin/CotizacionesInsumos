@@ -463,11 +463,11 @@ export default function UnifiedAuditLog({
 
   // Renderizado para modo admin
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Encabezado */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-0">
         <div>
-          <h1 className="text-2xl font-bold mb-2" style={{ color: 'var(--text-primary)' }}>
+          <h1 className="text-xl sm:text-2xl font-bold mb-2" style={{ color: 'var(--text-primary)' }}>
             {getTitle()}
           </h1>
           <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
@@ -488,7 +488,7 @@ export default function UnifiedAuditLog({
       {/* Filtros y búsqueda (solo en modo admin) */}
       {mode === 'admin' && user?.isAdmin && (
         <div 
-          className="rounded-xl p-6"
+          className="rounded-xl p-4 sm:p-6"
           style={{ 
             backgroundColor: 'var(--bg-primary)',
             border: '1px solid var(--border-subtle)' 
@@ -594,7 +594,7 @@ export default function UnifiedAuditLog({
         )}
 
         {/* Contenido */}
-        <div className="p-6">
+        <div className="p-4 sm:p-6">
           {loading ? (
             <div className="space-y-4">
               {Array.from({ length: mode === 'admin' ? 10 : 5 }).map((_, i) => (
@@ -686,7 +686,7 @@ export default function UnifiedAuditLog({
                   >
                     {ICONS[iconType]}
                     <div className="flex-1 min-w-0">
-                      <div className="font-medium" style={{ color: 'var(--text-primary)' }}>
+                      <div className="font-medium truncate" style={{ color: 'var(--text-primary)' }}>
                         {description}
                       </div>
                       
@@ -694,7 +694,7 @@ export default function UnifiedAuditLog({
                       {mode === 'admin' && additionalInfo.length > 0 && (
                         <div className="text-xs mt-1 space-y-1" style={{ color: 'var(--text-muted)' }}>
                           {additionalInfo.map((info, infoIdx) => (
-                            <div key={infoIdx} className="text-xs">
+                            <div key={infoIdx} className="text-xs truncate">
                               {info}
                             </div>
                           ))}
@@ -706,7 +706,7 @@ export default function UnifiedAuditLog({
                         {userEmail && (
                           <>
                             <span>•</span>
-                            <span>{userEmail}</span>
+                            <span className="truncate max-w-[120px]">{userEmail}</span>
                           </>
                         )}
                         {mode === 'admin' && (

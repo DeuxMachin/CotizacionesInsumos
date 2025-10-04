@@ -169,6 +169,20 @@ export async function POST(request: NextRequest) {
     // Cookies seguras
     setAuthCookies(response, accessToken, refreshToken, request);
 
+    // Crear entrada en user_sessions
+    const { error: sessionError } = await supabase
+      .from('user_sessions')
+      .insert({
+        user_id: user.id,
+        session_id: refreshToken, // Usar refresh token como session_id
+        last_activity: new Date().toISOString()
+      });
+
+    if (sessionError) {
+      console.error('Error creando sesión:', sessionError);
+      // No fallar el login por esto, pero loggear
+    }
+
   // Resetear contador de intentos fallidos al éxito
   resetAttempts(email);
   return response

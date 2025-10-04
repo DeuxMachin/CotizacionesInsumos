@@ -1,7 +1,23 @@
-import { NextResponse } from 'next/server'
+import { NextResponse, NextRequest } from 'next/server'
+import { supabase } from '@/lib/supabase'
 
-export async function POST() {
+export async function POST(request: NextRequest) {
   try {
+    const refreshCookie = request.cookies.get('refresh-token')?.value;
+
+    // Eliminar sesión de la BD si existe
+    if (refreshCookie) {
+      const { error } = await supabase
+        .from('user_sessions')
+        .delete()
+        .eq('session_id', refreshCookie);
+
+      if (error) {
+        console.error('Error eliminando sesión:', error);
+        // No fallar el logout
+      }
+    }
+
     const response = NextResponse.json({
       success: true,
       message: 'Logout exitoso'

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { verifyToken, signAccessToken, signRefreshToken, isExpired } from '@/lib/auth/tokens'
 import { getRateKey, getUserAgent } from '@/lib/request'
 import { refreshLimiter } from '@/lib/rateLimiter'
+import { supabase } from '@/lib/supabase'
 
 export async function POST(request: NextRequest) {
   try {
@@ -35,8 +36,32 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'Refresh context mismatch' }, { status: 401 });
     }
 
+    // Actualizar last_activity en user_sessions
+    const { error: updateError } = await supabase
+      .from('user_sessions')
+      .update({ last_activity: new Date().toISOString() })
+      .eq('session_id', refreshCookie);
+
+    if (updateError) {
+      console.error('Error actualizando actividad de sesión:', updateError);
+      // No fallar el refresh por esto
+    }
+
     const accessToken = await signAccessToken({ id: payload.sub, email: payload.email || '', rol: payload.rol || 'vendedor' });
     const newRefreshToken = await signRefreshToken({ id: payload.sub, email: payload.email || '', rol: payload.rol || 'vendedor' });
+
+    // Actualizar session_id y last_activity
+    const { error: updateSessionError } = await supabase
+      .from('user_sessions')
+      .update({ 
+        session_id: newRefreshToken,
+        last_activity: new Date().toISOString() 
+      })
+      .eq('session_id', refreshCookie);
+
+    if (updateSessionError) {
+      console.error('Error actualizando sesión:', updateSessionError);
+    }
 
     const response = NextResponse.json({ success: true });
     const isProd = process.env.NODE_ENV === 'production';

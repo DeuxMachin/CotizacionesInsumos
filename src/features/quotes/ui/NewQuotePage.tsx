@@ -14,6 +14,7 @@ import {
   FiChevronRight,
   FiAlertCircle,
   FiClock,
+  FiChevronLeft,
 
 } from 'react-icons/fi';
 import { useQuotes } from '../model/useQuotes';
@@ -435,54 +436,56 @@ export function NewQuotePage() {
     <div className="min-h-screen" style={{ backgroundColor: 'var(--bg-primary)' }}>
       {/* Header Moderno */}
       <div className="shadow-sm border-b" style={{ backgroundColor: 'var(--card-bg)', borderColor: 'var(--border-subtle)' }}>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center gap-4">
+        <div className="w-full max-w-none mx-auto px-3 sm:px-4 lg:px-6">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between h-auto sm:h-16 py-3 sm:py-0 gap-3 sm:gap-0">
+            <div className="flex items-center gap-3 w-full sm:w-auto">
               <button
                 onClick={() => router.push('/dashboard/cotizaciones')}
                 className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
                 aria-label="Volver a cotizaciones"
               >
-                <FiArrowLeft className="w-5 h-5" style={{ color: 'var(--text-secondary)' }} />
+                <FiArrowLeft className="w-4 h-4 sm:w-5 sm:h-5" style={{ color: 'var(--text-secondary)' }} />
               </button>
-              <div>
-                <h1 className="text-xl font-bold" style={{ color: 'var(--text-primary)' }}>
+              <div className="min-w-0 flex-1 sm:flex-initial">
+                <h1 className="text-lg sm:text-xl font-bold truncate" style={{ color: 'var(--text-primary)' }}>
                   Nueva Cotización
                 </h1>
-                <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+                <p className="text-xs sm:text-sm" style={{ color: 'var(--text-secondary)' }}>
                   Crea una cotización paso a paso
                 </p>
               </div>
             </div>
 
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto justify-end">
               <button
                 onClick={() => handleSave('borrador')}
                 disabled={loading}
-                className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
+                className="inline-flex items-center gap-1 sm:gap-2 px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
                 style={{ 
                   color: 'var(--text-primary)', 
                   backgroundColor: 'var(--card-bg)', 
                   border: '1px solid var(--border-subtle)' 
                 }}
               >
-                <FiSave className="w-4 h-4" />
-                Guardar Borrador
+                <FiSave className="w-3 h-3 sm:w-4 sm:h-4" />
+                <span className="hidden sm:inline">Guardar Borrador</span>
+                <span className="inline sm:hidden">Guardar</span>
               </button>
               <button
                 onClick={() => handleSave('enviada')}
                 disabled={loading || !isStepValid('summary')}
-                className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="inline-flex items-center gap-1 sm:gap-2 px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <FiSend className="w-4 h-4" />
-                Enviar Cotización
+                <FiSend className="w-3 h-3 sm:w-4 sm:h-4" />
+                <span className="hidden sm:inline">Enviar Cotización</span>
+                <span className="inline sm:hidden">Enviar</span>
               </button>
             </div>
           </div>
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="w-full max-w-none mx-auto px-3 sm:px-4 lg:px-6 py-6 sm:py-8">
         {/* Progreso horizontal y compacto */}
         <div>
           <div className="text-center mb-3">
@@ -490,9 +493,9 @@ export function NewQuotePage() {
             <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>Sigue el proceso para completar la cotización</p>
           </div>
 
-          <div className="rounded-xl shadow-sm p-3 sm:p-4 mb-6" style={{ backgroundColor: 'var(--card-bg)', border: '1px solid var(--border-subtle)' }}>
+          <div className="rounded-xl shadow-sm p-2 sm:p-3 lg:p-4 mb-4 sm:mb-6" style={{ backgroundColor: 'var(--card-bg)', border: '1px solid var(--border-subtle)' }}>
             <div className="flex items-center justify-center">
-              <div className="flex items-center gap-3 sm:gap-4 overflow-x-auto max-w-full px-2">
+              <div className="flex items-center gap-2 sm:gap-3 lg:gap-4 overflow-x-auto max-w-full px-1 sm:px-2">
                 {STEPS.map((step, index) => {
                   const Icon = step.icon;
                   const isActive = currentStep === step.id;
@@ -501,15 +504,15 @@ export function NewQuotePage() {
                   const isAccessible = index === 0 || isStepCompleted(STEPS[index - 1].id as FormStep);
 
                   return (
-                    <div key={step.id} className="flex items-center min-w-max">
+                    <div key={step.id} className="flex items-center flex-shrink-0">
                       <button
                         onClick={() => isAccessible && handleStepChange(step.id as FormStep)}
                         disabled={!isAccessible}
-                        className={`flex flex-col items-center justify-center px-2 py-1 rounded-md text-xs ${!isAccessible ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                        className={`flex flex-col items-center justify-center px-1 sm:px-2 py-1 rounded-md text-xs transition-all ${!isAccessible ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:scale-105'}`}
                         title={step.description}
                       >
                         <div
-                          className={`flex items-center justify-center w-8 h-8 sm:w-9 sm:h-9 rounded-full border-2 transition-all ${
+                          className={`flex items-center justify-center w-7 h-7 sm:w-8 sm:h-8 lg:w-9 lg:h-9 rounded-full border-2 transition-all ${
                             isCompleted
                               ? 'bg-green-500 border-green-500 text-white'
                               : isActive
@@ -520,21 +523,21 @@ export function NewQuotePage() {
                           }`}
                         >
                           {isCompleted ? (
-                            <FiCheck className="w-4 h-4" />
+                            <FiCheck className="w-3 h-3 sm:w-4 sm:h-4" />
                           ) : hasErrors ? (
-                            <FiAlertCircle className="w-4 h-4" />
+                            <FiAlertCircle className="w-3 h-3 sm:w-4 sm:h-4" />
                           ) : (
-                            <Icon className="w-4 h-4" />
+                            <Icon className="w-3 h-3 sm:w-4 sm:h-4" />
                           )}
                         </div>
-                        <span className="mt-1 font-medium" style={{ color: 'var(--text-primary)' }}>
+                        <span className="mt-1 font-medium text-center leading-tight max-w-[60px] sm:max-w-none truncate" style={{ color: 'var(--text-primary)' }}>
                           {step.label}
                         </span>
                       </button>
 
                       {/* Conector horizontal */}
                       {index < STEPS.length - 1 && (
-                        <div className="mx-2 sm:mx-3 h-0.5 w-6 sm:w-10 rounded" style={{ backgroundColor: isStepCompleted(STEPS[index].id as FormStep) ? step.color : 'var(--border-subtle)' }} />
+                        <div className="mx-1 sm:mx-2 lg:mx-3 h-0.5 w-4 sm:w-6 lg:w-10 rounded flex-shrink-0" style={{ backgroundColor: isStepCompleted(STEPS[index].id as FormStep) ? step.color : 'var(--border-subtle)' }} />
                       )}
                     </div>
                   );
@@ -547,22 +550,22 @@ export function NewQuotePage() {
           <div>
             <div className="rounded-xl shadow-sm overflow-hidden" style={{ backgroundColor: 'var(--card-bg)', border: '1px solid var(--border-subtle)' }}>
               {/* Header del paso actual */}
-              <div className="px-6 py-4" style={{ borderBottom: '1px solid var(--border-subtle)' }}>
-                <div className="flex items-center gap-4">
+              <div className="px-4 sm:px-6 py-3 sm:py-4" style={{ borderBottom: '1px solid var(--border-subtle)' }}>
+                <div className="flex items-center gap-3 sm:gap-4">
                   <div
-                    className="w-10 h-10 rounded-lg flex items-center justify-center"
+                    className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg flex items-center justify-center flex-shrink-0"
                     style={{ backgroundColor: STEPS.find(s => s.id === currentStep)?.color + '20' }}
                   >
                     {React.createElement(STEPS.find(s => s.id === currentStep)?.icon || FiPackage, {
-                      className: "w-5 h-5",
+                      className: "w-4 h-4 sm:w-5 sm:h-5",
                       style: { color: STEPS.find(s => s.id === currentStep)?.color }
                     })}
                   </div>
-                  <div>
-                    <h2 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>
+                  <div className="min-w-0 flex-1">
+                    <h2 className="text-base sm:text-lg font-semibold truncate" style={{ color: 'var(--text-primary)' }}>
                       {STEPS.find(s => s.id === currentStep)?.label}
                     </h2>
-                    <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+                    <p className="text-xs sm:text-sm" style={{ color: 'var(--text-secondary)' }}>
                       {STEPS.find(s => s.id === currentStep)?.description}
                     </p>
                   </div>
@@ -570,7 +573,7 @@ export function NewQuotePage() {
               </div>
 
               {/* Contenido del formulario */}
-              <div className="p-6">
+              <div className="p-4 sm:p-6">
                 {/* Mensajes de error */}
                 {visitedSteps.has(currentStep) && errors[currentStep] && errors[currentStep].length > 0 && (
                   <div className="mb-6 p-4 rounded-lg" style={{ backgroundColor: 'var(--danger-bg)', border: '1px solid var(--danger)' }}>
@@ -595,28 +598,29 @@ export function NewQuotePage() {
               </div>
 
               {/* Navegación inferior */}
-              <div className="px-6 py-4 border-t" style={{ backgroundColor: 'var(--bg-secondary)', borderColor: 'var(--border-subtle)' }}>
-                <div className="flex items-center justify-between">
+              <div className="px-4 sm:px-6 py-3 sm:py-4 border-t" style={{ backgroundColor: 'var(--bg-secondary)', borderColor: 'var(--border-subtle)' }}>
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 sm:gap-0">
                   <button
                     onClick={handlePrevious}
                     disabled={currentStep === 'client'}
-                    className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="inline-flex items-center justify-center gap-1 sm:gap-2 px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed w-full sm:w-auto"
                     style={{ 
                       color: 'var(--text-primary)', 
                       backgroundColor: 'var(--card-bg)', 
                       border: '1px solid var(--border-subtle)' 
                     }}
                   >
-                    <FiArrowLeft className="w-4 h-4" />
-                    Anterior
+                    <FiChevronLeft className="w-2 h-2 sm:w-3 sm:h-3" />
+                    <span className="hidden sm:inline">Anterior</span>
+                    <span className="inline sm:hidden">Anterior</span>
                   </button>
 
-                  <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+                  <div className="text-xs sm:text-sm text-center sm:text-left" style={{ color: 'var(--text-secondary)' }}>
                     Paso {STEPS.findIndex(s => s.id === currentStep) + 1} de {STEPS.length}
                   </div>
 
                   {currentStep === 'summary' ? (
-                    <div className="flex items-center gap-3">
+                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3 w-full sm:w-auto">
                       <button
                         onClick={() => handleSave('borrador')}
                         disabled={loading || sendingEmail}
@@ -665,10 +669,11 @@ export function NewQuotePage() {
                   ) : (
                     <button
                       onClick={handleNext}
-                      className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"
+                      className="inline-flex items-center justify-center gap-1 sm:gap-2 px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors w-full sm:w-auto"
                     >
-                      Siguiente
-                      <FiChevronRight className="w-4 h-4" />
+                      <span className="hidden sm:inline">Siguiente</span>
+                      <span className="inline sm:hidden">Siguiente</span>
+                      <FiChevronRight className="w-3 h-3 sm:w-4 sm:h-4" />
                     </button>
                   )}
                 </div>

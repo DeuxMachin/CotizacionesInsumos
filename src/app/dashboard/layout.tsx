@@ -44,17 +44,17 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       <Sidebar />
       
       {/* Contenido principal */}
-      <div className="flex-1 flex flex-col min-h-screen ml-0 lg:ml-64">
+      <div className="flex-1 flex flex-col min-h-screen ml-0 lg:ml-64 overflow-x-hidden">
         {/* Header fijo en la parte superior */}
         <Header />
         
         {/* Contenido scrolleable */}
         <main 
-          className="flex-1 overflow-auto"
+          className="flex-1 overflow-auto overflow-x-hidden"
           style={{ backgroundColor: 'var(--bg-secondary)' }}
         >
-          <div className="p-3 sm:p-4 lg:p-6">
-            <div className="max-w-7xl mx-auto space-y-3 sm:space-y-4 lg:space-y-6">
+          <div className="px-2 sm:px-4 lg:px-6 py-2 sm:py-4 lg:py-6">
+            <div className="w-full max-w-none mx-auto space-y-3 sm:space-y-4 lg:space-y-6">
               {/* Breadcrumbs */}
               <Breadcrumbs />
               {children}
