@@ -76,7 +76,7 @@ const Toast: React.FC<ToastProps> = ({ message, type, onClose }) => {
 
   return (
     <div
-      className="fixed top-4 right-4 z-50 animate-in slide-in-from-right-2 duration-300"
+      className="fixed top-20 right-4 z-50 animate-in slide-in-from-right-2 duration-300"
       style={{
         backgroundColor: styles.bg,
         border: `2px solid ${styles.border}`,
@@ -652,7 +652,7 @@ export function ProductsForm({ items, onChange }: ProductsFormProps) {
   // Toast management
   const addToast = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
     const id = Date.now();
-    setToasts(prev => [...prev, { id, message, type }]);
+    setToasts([{ id, message, type }]); // Replace previous toast instead of adding to array
   };
 
   const removeToast = (id: number) => {
