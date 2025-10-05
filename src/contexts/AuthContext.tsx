@@ -82,7 +82,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const updateActivity = () => setLastActivity(Date.now());
 
     const events = ['mousemove', 'keydown', 'click', 'scroll', 'touchstart'];
-    events.forEach(event => window.addEventListener(event, updateActivity));
+    events.forEach(event => window.addEventListener(event, updateActivity, { passive: true }));
 
     // Renovar token cada 30 minutos si hay actividad reciente
     const tokenRefreshInterval = setInterval(async () => {
@@ -104,7 +104,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     }, 30 * 60 * 1000); // Cada 30 minutos
 
-  }, [user, lastActivity]);
+    // ✅ CRITICAL: Limpiar event listeners y intervals
+    return () => {
+      events.forEach(event => window.removeEventListener(event, updateActivity));
+      clearInterval(tokenRefreshInterval);
+    };
+  }, [user]); // ✅ Solo depende de user, NO de lastActivity
 
   const login = async (email: string, password: string) => {
   log.debug('[Auth] Iniciando login (API directa) para', email)
