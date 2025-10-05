@@ -303,7 +303,7 @@ export default function ReunionesDashboard() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>
             Control de Reuniones
@@ -312,51 +312,53 @@ export default function ReunionesDashboard() {
             Gestiona las reuniones en obras
           </p>
         </div>
-        <div className="flex items-center gap-3">
-          <span className="px-3 py-1 bg-green-100 text-green-800 text-sm font-medium rounded-full">
+        <div className="flex items-center justify-between sm:justify-end gap-3">
+          <span className="px-2 sm:px-3 py-1 bg-green-100 text-green-800 text-xs sm:text-sm font-medium rounded-full whitespace-nowrap">
             {reuniones.filter(r => r.status === 'abierta').length} activas
           </span>
-          <button
-            onClick={() => loadReuniones(false)}
-            disabled={loading}
-            className="p-2 text-gray-500 hover:text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            title="Actualizar reuniones"
-          >
-            <FiRefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-          </button>
-          {updating && (
-            <div className="flex items-center gap-2 text-xs text-gray-500">
-              <div className="animate-spin rounded-full h-3 w-3 border border-gray-300 border-t-gray-600"></div>
-              Actualizando...
-            </div>
-          )}
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => loadReuniones(false)}
+              disabled={loading}
+              className="p-2 text-gray-500 hover:text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              title="Actualizar reuniones"
+            >
+              <FiRefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+            </button>
+            {updating && (
+              <div className="flex items-center gap-2 text-xs text-gray-500">
+                <div className="animate-spin rounded-full h-3 w-3 border border-gray-300 border-t-gray-600"></div>
+                <span className="hidden sm:inline">Actualizando...</span>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
       {/* Estadísticas rápidas */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <div className="p-4 rounded-lg border" style={{ backgroundColor: 'var(--card-bg)', borderColor: 'var(--border)' }}>
+        <div className="p-3 sm:p-4 rounded-lg border" style={{ backgroundColor: 'var(--card-bg)', borderColor: 'var(--border)' }}>
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-green-100 rounded-lg">
-              <FiUsers className="w-5 h-5 text-green-600" />
+            <div className="p-2 bg-green-100 rounded-lg flex-shrink-0">
+              <FiUsers className="w-4 h-4 sm:w-5 sm:h-5 text-green-600" />
             </div>
-            <div>
-              <p className="text-sm font-medium" style={{ color: 'var(--text-muted)' }}>Reuniones Activas</p>
-              <p className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>
+            <div className="min-w-0 flex-1">
+              <p className="text-xs sm:text-sm font-medium truncate" style={{ color: 'var(--text-muted)' }}>Reuniones Activas</p>
+              <p className="text-xl sm:text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>
                 {reuniones.filter(r => r.status === 'abierta').length}
               </p>
             </div>
           </div>
         </div>
 
-        <div className="p-4 rounded-lg border" style={{ backgroundColor: 'var(--card-bg)', borderColor: 'var(--border)' }}>
+        <div className="p-3 sm:p-4 rounded-lg border" style={{ backgroundColor: 'var(--card-bg)', borderColor: 'var(--border)' }}>
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-blue-100 rounded-lg">
-              <FiClock className="w-5 h-5 text-blue-600" />
+            <div className="p-2 bg-blue-100 rounded-lg flex-shrink-0">
+              <FiClock className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600" />
             </div>
-            <div>
-              <p className="text-sm font-medium" style={{ color: 'var(--text-muted)' }}>Total Hoy</p>
-              <p className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>
+            <div className="min-w-0 flex-1">
+              <p className="text-xs sm:text-sm font-medium truncate" style={{ color: 'var(--text-muted)' }}>Total Hoy</p>
+              <p className="text-xl sm:text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>
                 {reuniones.filter(r => {
                   const today = new Date();
                   const reunionDate = r.startTime;
@@ -367,28 +369,28 @@ export default function ReunionesDashboard() {
           </div>
         </div>
 
-        <div className="p-4 rounded-lg border" style={{ backgroundColor: 'var(--card-bg)', borderColor: 'var(--border)' }}>
+        <div className="p-3 sm:p-4 rounded-lg border" style={{ backgroundColor: 'var(--card-bg)', borderColor: 'var(--border)' }}>
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-purple-100 rounded-lg">
-              <FiMapPin className="w-5 h-5 text-purple-600" />
+            <div className="p-2 bg-purple-100 rounded-lg flex-shrink-0">
+              <FiMapPin className="w-4 h-4 sm:w-5 sm:h-5 text-purple-600" />
             </div>
-            <div>
-              <p className="text-sm font-medium" style={{ color: 'var(--text-muted)' }}>Con Ubicación</p>
-              <p className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>
+            <div className="min-w-0 flex-1">
+              <p className="text-xs sm:text-sm font-medium truncate" style={{ color: 'var(--text-muted)' }}>Con Ubicación</p>
+              <p className="text-xl sm:text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>
                 {reuniones.filter(r => r.location).length}
               </p>
             </div>
           </div>
         </div>
 
-        <div className="p-4 rounded-lg border" style={{ backgroundColor: 'var(--card-bg)', borderColor: 'var(--border)' }}>
+        <div className="p-3 sm:p-4 rounded-lg border" style={{ backgroundColor: 'var(--card-bg)', borderColor: 'var(--border)' }}>
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-orange-100 rounded-lg">
-              <FiCalendar className="w-5 h-5 text-orange-600" />
+            <div className="p-2 bg-orange-100 rounded-lg flex-shrink-0">
+              <FiCalendar className="w-4 h-4 sm:w-5 sm:h-5 text-orange-600" />
             </div>
-            <div>
-              <p className="text-sm font-medium" style={{ color: 'var(--text-muted)' }}>Esta Semana</p>
-              <p className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>
+            <div className="min-w-0 flex-1">
+              <p className="text-xs sm:text-sm font-medium truncate" style={{ color: 'var(--text-muted)' }}>Esta Semana</p>
+              <p className="text-xl sm:text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>
                 {reuniones.filter(r => {
                   const weekAgo = new Date();
                   weekAgo.setDate(weekAgo.getDate() - 7);
@@ -423,7 +425,7 @@ export default function ReunionesDashboard() {
       </div>
 
       {/* Filtros */}
-      <div className="flex items-center gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
         <div className="flex-1 relative">
           <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4" style={{ color: 'var(--text-muted)' }} />
           <input
@@ -442,7 +444,7 @@ export default function ReunionesDashboard() {
 
         <button
           onClick={() => setShowFilters(!showFilters)}
-          className={`px-3 py-2 border rounded-lg flex items-center gap-2 transition-colors ${
+          className={`px-3 py-2 border rounded-lg flex items-center justify-center gap-2 transition-colors whitespace-nowrap ${
             showFilters ? 'bg-blue-50 border-blue-200' : ''
           }`}
           style={{
@@ -452,7 +454,7 @@ export default function ReunionesDashboard() {
           }}
         >
           <FiFilter className="w-4 h-4" />
-          Filtros
+          <span className="hidden sm:inline">Filtros</span>
         </button>
       </div>
 
@@ -568,13 +570,13 @@ function ReunionCard({ reunion, onCheckout, onViewObra, formatDuration, isActive
           {/* Información de tiempo y estado */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
             {!isActive && (
-              <div className="flex items-center gap-2">
-                <FiCalendar className="w-4 h-4 flex-shrink-0 text-blue-500" />
-                <div className="min-w-0">
+              <div className="flex items-start gap-2">
+                <FiCalendar className="w-4 h-4 flex-shrink-0 text-blue-500 mt-0.5" />
+                <div className="min-w-0 flex-1">
                   <span className="text-xs font-medium uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>
                     Fecha y Horario
                   </span>
-                  <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
+                  <p className="text-sm font-medium break-words" style={{ color: 'var(--text-primary)' }}>
                     {reunion.startTime && reunion.endTime && !isNaN(reunion.startTime.getTime()) && !isNaN(reunion.endTime.getTime())
                       ? `${reunion.startTime.toLocaleDateString('es-CL', {
                           day: '2-digit',
@@ -593,9 +595,9 @@ function ReunionCard({ reunion, onCheckout, onViewObra, formatDuration, isActive
               </div>
             )}
 
-            <div className="flex items-center gap-2">
-              <FiClock className={`w-4 h-4 flex-shrink-0 ${isActive ? 'text-green-500' : 'text-gray-400'}`} />
-              <div className="min-w-0">
+            <div className="flex items-start gap-2">
+              <FiClock className={`w-4 h-4 flex-shrink-0 mt-0.5 ${isActive ? 'text-green-500' : 'text-gray-400'}`} />
+              <div className="min-w-0 flex-1">
                 <span className="text-xs font-medium uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>
                   {isActive ? 'En curso' : 'Duración'}
                 </span>
@@ -606,13 +608,13 @@ function ReunionCard({ reunion, onCheckout, onViewObra, formatDuration, isActive
             </div>
 
             {isActive && (
-              <div className="flex items-center gap-2">
-                <FiCalendar className="w-4 h-4 flex-shrink-0 text-green-500" />
-                <div className="min-w-0">
+              <div className="flex items-start gap-2 sm:col-span-2">
+                <FiCalendar className="w-4 h-4 flex-shrink-0 text-green-500 mt-0.5" />
+                <div className="min-w-0 flex-1">
                   <span className="text-xs font-medium uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>
                     Iniciada
                   </span>
-                  <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
+                  <p className="text-sm font-medium break-words" style={{ color: 'var(--text-primary)' }}>
                     {reunion.startTime && !isNaN(reunion.startTime.getTime())
                       ? reunion.startTime.toLocaleString('es-CL', {
                           day: '2-digit',
@@ -627,9 +629,9 @@ function ReunionCard({ reunion, onCheckout, onViewObra, formatDuration, isActive
             )}
 
             {isOwner && reunion.location && (
-              <div className="flex items-center gap-2">
-                <FiMapPin className="w-4 h-4 flex-shrink-0 text-blue-500" />
-                <div className="min-w-0">
+              <div className="flex items-start gap-2 sm:col-span-2">
+                <FiMapPin className="w-4 h-4 flex-shrink-0 text-blue-500 mt-0.5" />
+                <div className="min-w-0 flex-1">
                   <span className="text-xs font-medium uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>
                     Ubicación
                   </span>
@@ -671,10 +673,10 @@ function ReunionCard({ reunion, onCheckout, onViewObra, formatDuration, isActive
         </div>
 
         {/* Acciones */}
-        <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
+        <div className="flex flex-col sm:flex-row gap-2 sm:items-center sm:justify-end sm:flex-shrink-0">
           <button
             onClick={onViewObra}
-            className="px-4 py-2 text-sm font-medium border rounded-lg hover:bg-gray-50 transition-colors flex items-center justify-center gap-2"
+            className="px-3 sm:px-4 py-2 text-sm font-medium border rounded-lg hover:bg-gray-50 transition-colors flex items-center justify-center gap-2 order-2 sm:order-1"
             style={{ borderColor: 'var(--border)', color: 'var(--text-primary)' }}
           >
             <FiEye className="w-4 h-4" />
@@ -684,7 +686,7 @@ function ReunionCard({ reunion, onCheckout, onViewObra, formatDuration, isActive
           {isActive && onCheckout && (
             <button
               onClick={onCheckout}
-              className="px-4 py-2 text-sm font-medium bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors flex items-center justify-center gap-2"
+              className="px-3 sm:px-4 py-2 text-sm font-medium bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors flex items-center justify-center gap-2 order-1 sm:order-2"
             >
               <FiX className="w-4 h-4" />
               <span className="hidden sm:inline">Finalizar</span>

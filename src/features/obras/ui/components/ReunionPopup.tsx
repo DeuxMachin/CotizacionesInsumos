@@ -103,10 +103,10 @@ export function ReunionPopup({ isOpen, onClose, onStart, obraName, isLoading }: 
         </div>
 
         {/* Footer */}
-        <div className="flex items-center gap-3 p-4 border-t" style={{ borderColor: 'var(--border)' }}>
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 p-4 border-t" style={{ borderColor: 'var(--border)' }}>
           <button
             onClick={onClose}
-            className="flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors"
+            className="flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors order-2 sm:order-1"
             style={{ backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)' }}
           >
             Ahora no
@@ -114,7 +114,7 @@ export function ReunionPopup({ isOpen, onClose, onStart, obraName, isLoading }: 
           <button
             onClick={handleStart}
             disabled={isLoading}
-            className="flex-1 py-2 px-4 rounded-md text-sm font-medium text-white transition-colors"
+            className="flex-1 py-2 px-4 rounded-md text-sm font-medium text-white transition-colors order-1 sm:order-2"
             style={{ backgroundColor: 'var(--accent-primary)' }}
           >
             {isLoading ? 'Iniciando...' : 'Iniciar reunión'}
