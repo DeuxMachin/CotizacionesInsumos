@@ -60,12 +60,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             log.debug('[Auth] Usuario autenticado:', newUser.email);
           } else {
             log.debug('[Auth] Sin sesión activa');
+            setUser(null);
           }
         } else {
           log.debug('[Auth] Sin sesión activa (respuesta no ok)');
+          setUser(null);
         }
       } catch (error) {
         log.error('Error inicializando autenticación:', error);
+        setUser(null);
       } finally {
         log.debug('[Auth] Inicialización completada')
         setLoading(false);
@@ -75,7 +78,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     initializeAuth();
   }, []);
 
-  // Sistema de renovación automática de tokens
+  // Sistema de renovación automática de tokens e inactividad
   useEffect(() => {
     if (!user) return;
 
@@ -84,9 +87,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const events = ['mousemove', 'keydown', 'click', 'scroll', 'touchstart'];
     events.forEach(event => window.addEventListener(event, updateActivity, { passive: true }));
 
-    // Renovar token cada 30 minutos si hay actividad reciente
+    // Verificar inactividad cada minuto (solo si la página está abierta)
+    const inactivityCheckInterval = setInterval(() => {
+      if (lastActivity && Date.now() - lastActivity > 20 * 60 * 1000) { // 20 minutos sin actividad
+        log.warn('[Auth] Sesión cerrada por inactividad (20 minutos sin interacción)');
+        setUser(null);
+        setLoading(false);
+        router.replace('/login');
+      }
+    }, 60 * 1000); // Cada 1 minuto
+
+    // Renovar token cada 45 minutos si hay actividad reciente
     const tokenRefreshInterval = setInterval(async () => {
-      if (lastActivity && Date.now() - lastActivity < 30 * 60 * 1000) { // Actividad en los últimos 30 minutos
+      if (lastActivity && Date.now() - lastActivity < 45 * 60 * 1000) { // Actividad en los últimos 45 minutos
         try {
           const response = await fetch('/api/auth/refresh', {
             method: 'POST',
@@ -102,14 +115,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           log.error('[Auth] Error en renovación automática de token:', error);
         }
       }
-    }, 30 * 60 * 1000); // Cada 30 minutos
+    }, 45 * 60 * 1000); // Cada 45 minutos
 
     // ✅ CRITICAL: Limpiar event listeners y intervals
     return () => {
       events.forEach(event => window.removeEventListener(event, updateActivity));
+      clearInterval(inactivityCheckInterval);
       clearInterval(tokenRefreshInterval);
     };
-  }, [user]); // ✅ Solo depende de user, NO de lastActivity
+  }, [user, lastActivity, router]); // Incluir lastActivity y router
 
   const login = async (email: string, password: string) => {
   log.debug('[Auth] Iniciando login (API directa) para', email)

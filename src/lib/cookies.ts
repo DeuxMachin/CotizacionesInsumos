@@ -15,7 +15,7 @@ export function setAuthCookies(res: NextResponse, accessToken: string, refreshTo
     httpOnly: true,
     secure: isProd,
     sameSite: 'lax',
-    maxAge: 60 * 60 * 24,
+    maxAge: 60 * 60, // 1 hora
     path: '/',
   });
 
@@ -25,7 +25,7 @@ export function setAuthCookies(res: NextResponse, accessToken: string, refreshTo
     httpOnly: false,
     secure: isProd,
     sameSite: 'lax',
-    maxAge: 60 * 60 * 24 * 7,
+    maxAge: 60 * 60 * 24 * 2, // 2 días
     path: '/',
   });
 
@@ -33,7 +33,7 @@ export function setAuthCookies(res: NextResponse, accessToken: string, refreshTo
     httpOnly: true,
     secure: isProd,
     sameSite: 'lax',
-    maxAge: 60 * 60 * 24 * 7,
+    maxAge: 60 * 60 * 24 * 2, // 2 días
     path: '/',
   });
 }

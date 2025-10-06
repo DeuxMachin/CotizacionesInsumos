@@ -36,21 +36,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'Refresh context mismatch' }, { status: 401 });
     }
 
-    // Actualizar last_activity en user_sessions
-    const { error: updateError } = await supabase
-      .from('user_sessions')
-      .update({ last_activity: new Date().toISOString() })
-      .eq('session_id', refreshCookie);
-
-    if (updateError) {
-      console.error('Error actualizando actividad de sesión:', updateError);
-      // No fallar el refresh por esto
-    }
-
     const accessToken = await signAccessToken({ id: payload.sub, email: payload.email || '', rol: payload.rol || 'vendedor' });
     const newRefreshToken = await signRefreshToken({ id: payload.sub, email: payload.email || '', rol: payload.rol || 'vendedor' });
 
-    // Actualizar session_id y last_activity
+    // Actualizar session_id y last_activity (sin validar inactividad en servidor)
     const { error: updateSessionError } = await supabase
       .from('user_sessions')
       .update({ 
@@ -61,6 +50,7 @@ export async function POST(request: NextRequest) {
 
     if (updateSessionError) {
       console.error('Error actualizando sesión:', updateSessionError);
+      // No fallar el refresh por esto
     }
 
     const response = NextResponse.json({ success: true });
@@ -70,7 +60,7 @@ export async function POST(request: NextRequest) {
       httpOnly: true,
       secure: isProd,
       sameSite: 'lax',
-      maxAge: 60 * 60 * 24, // 24 horas (en lugar de 10 minutos)
+      maxAge: 60 * 60, // 1 hora
       path: '/'
     });
 
@@ -78,7 +68,7 @@ export async function POST(request: NextRequest) {
       httpOnly: true,
       secure: isProd,
       sameSite: 'lax',
-      maxAge: 60 * 60 * 24 * 7,
+      maxAge: 60 * 60 * 24 * 2, // 2 días
       path: '/'
     });
 

@@ -1,7 +1,7 @@
 import { SignJWT, jwtVerify } from 'jose'
 
-const DEFAULT_ACCESS_TTL = 60 * 60 * 24; // 24 horas (en lugar de 10 minutos)
-const DEFAULT_REFRESH_TTL = 60 * 60 * 24 * 7; // 7 días
+const DEFAULT_ACCESS_TTL = 60 * 60; // 1 hora
+const DEFAULT_REFRESH_TTL = 60 * 60 * 24 * 2; // 2 días
 
 export interface JWTPayload {
   sub?: string;

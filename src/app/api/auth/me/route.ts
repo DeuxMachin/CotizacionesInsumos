@@ -31,40 +31,8 @@ export async function GET(request: NextRequest) {
         }, { status: 401 })
       }
 
-      // Verificar inactividad: si han pasado más de 20 minutos desde la última actividad
-      if (refreshToken) {
-        const { data: session, error: sessionError } = await supabase
-          .from('user_sessions')
-          .select('last_activity')
-          .eq('session_id', refreshToken)
-          .single();
-
-        if (sessionError || !session) {
-          return NextResponse.json({
-            success: false,
-            error: 'Sesión expirada'
-          }, { status: 401 })
-        }
-
-        const lastActivity = new Date(session.last_activity).getTime();
-        const now = Date.now();
-        const inactivityLimit = 20 * 60 * 1000; // 20 minutos
-
-        if (now - lastActivity > inactivityLimit) {
-          // Eliminar sesión expirada
-          await supabase
-            .from('user_sessions')
-            .delete()
-            .eq('session_id', refreshToken);
-
-          return NextResponse.json({
-            success: false,
-            error: 'Sesión expirada por inactividad'
-          }, { status: 401 })
-        }
-      }
-
-      // Actualizar last_activity en user_sessions
+      // Actualizar last_activity en user_sessions (sin validar inactividad en servidor)
+      // La validación de inactividad se maneja en el frontend
       if (refreshToken) {
         await supabase
           .from('user_sessions')
@@ -91,16 +59,16 @@ export async function GET(request: NextRequest) {
   response.headers.set('Pragma', 'no-cache');
   response.headers.set('Expires', '0');
 
-      // Renovar access token si le quedan menos de 2 minutos
+      // Renovar access token si le quedan menos de 10 minutos
       const exp = decoded.exp as number | undefined;
       const now = Math.floor(Date.now() / 1000);
-      if (exp && exp - now < 120) {
+      if (exp && exp - now < 600) {
         const newAccess = await signAccessToken({ id: user.id, email: user.email, rol: user.rol });
         response.cookies.set('auth-token', newAccess, {
           httpOnly: true,
           secure: process.env.NODE_ENV === 'production',
-          sameSite: 'strict',
-          maxAge: 10 * 60,
+          sameSite: 'lax',
+          maxAge: 60 * 60, // 1 hora
           path: '/'
         });
       }
