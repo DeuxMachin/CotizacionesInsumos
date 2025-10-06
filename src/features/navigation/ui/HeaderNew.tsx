@@ -7,6 +7,8 @@ import { FiMenu, FiLogOut } from "react-icons/fi";
 import { Logo } from "@/shared/ui/Logo";
 import { ThemeToggle } from "@/features/theme/ui/ThemeToggle";
 import { usePathname } from "next/navigation";
+import { useScrollDirection } from "@/hooks/useScrollDirection";
+import { useEffect, useState } from "react";
 
 // Títulos descriptivos para cada sección del sistema
 const routeTitles: Record<string, string> = {
@@ -40,6 +42,25 @@ export function Header() {
   const { setSidebarOpen } = useSection();
   const { logout, user } = useAuth();
   const pathname = usePathname();
+  const scrollDirection = useScrollDirection({ threshold: 10 });
+  
+  // Detectar si estamos en móvil - inicializar con función para evitar SSR mismatch
+  const [isMobile, setIsMobile] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return window.innerWidth < 1024;
+  });
+
+  // Detectar si estamos en móvil
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 1024); // lg breakpoint
+    };
+    
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   // Obtener el título y subtítulo correspondiente a la ruta actual
   const getRouteTitle = (): string => {
@@ -78,12 +99,22 @@ export function Header() {
     return "Bienvenido al sistema";
   };
 
+  // Determinar si el header debe estar visible
+  // En móviles: se oculta al bajar, aparece al subir o estar en el top
+  // En desktop: siempre visible
+  const shouldHideHeader = isMobile && scrollDirection === 'down';
+  const isAtTop = scrollDirection === 'top';
+
   return (
     <header 
-      className="sticky top-0 z-30 shadow-sm transition-colors duration-200"
+      className="sticky top-0 z-30 shadow-sm"
       style={{ 
         backgroundColor: 'var(--bg-primary)',
-        borderBottom: '1px solid var(--border-subtle)' 
+        borderBottom: '1px solid var(--border-subtle)',
+        transform: shouldHideHeader ? 'translateY(-100%)' : 'translateY(0)',
+        transition: 'transform 0.3s ease-in-out, box-shadow 0.3s ease-in-out',
+        boxShadow: isAtTop ? 'none' : '0 2px 8px rgba(0, 0, 0, 0.1)',
+        willChange: 'transform'
       }}
     >
       <div className="flex items-center justify-between h-14 sm:h-16 px-3 sm:px-4 lg:px-6 max-w-7xl mx-auto">

@@ -409,7 +409,7 @@ export default function StockPage() {
               className="text-2xl sm:text-3xl font-bold mb-2"
               style={{ color: 'var(--text-primary)' }}
             >
-              📦 Productos
+              Productos
             </h1>
             <p 
               className="text-base sm:text-lg"
@@ -428,7 +428,7 @@ export default function StockPage() {
                 style={{ backgroundColor: 'var(--info-bg)', color: 'var(--info-text)' }}
                 title="Guía de productos"
               >
-                ❓ Guía
+                Guía
               </button>
 
               {(['admin', 'dueño', 'dueno'].includes(user?.role?.toLowerCase() || '')) && (
@@ -476,14 +476,14 @@ export default function StockPage() {
                     aria-haspopup="menu"
                     aria-expanded={showCategoryMenu}
                   >
-                    📁 Categorías
+                    Categorías
                     <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"/></svg>
                   </button>
                   {showCategoryMenu && (
                     <div className="absolute left-0 mt-2 w-48 sm:w-56 rounded-lg border shadow-lg z-30 overflow-hidden" style={{ backgroundColor: 'var(--card-bg)', borderColor: 'var(--border)' }}>
-                      <button onClick={openCreateCategory} className="block w-full text-left px-4 py-2 text-sm" style={{ color: 'var(--text-primary)' }}>➕ Crear nueva</button>
-                      <button onClick={openEditCategory} className="block w-full text-left px-4 py-2 text-sm" style={{ color: 'var(--text-primary)' }}>✏️ Editar</button>
-                      <button onClick={openDeleteCategory} className="block w-full text-left px-4 py-2 text-sm" style={{ color: 'var(--error-text)' }}>🗑️ Eliminar</button>
+                      <button onClick={openCreateCategory} className="block w-full text-left px-4 py-2 text-sm" style={{ color: 'var(--text-primary)' }}>Crear nueva</button>
+                      <button onClick={openEditCategory} className="block w-full text-left px-4 py-2 text-sm" style={{ color: 'var(--text-primary)' }}>Editar</button>
+                      <button onClick={openDeleteCategory} className="block w-full text-left px-4 py-2 text-sm" style={{ color: 'var(--error-text)' }}>Eliminar</button>
                     </div>
                   )}
                 </div>
@@ -561,16 +561,16 @@ export default function StockPage() {
 
       {/* Filtros simplificados - responsive */}
       <div 
-        className="max-w-7xl mx-auto rounded-xl border-2 p-4 sm:p-6 mb-6 mx-3 sm:mx-0"
+        className="max-w-7xl mx-auto rounded-xl border-2 p-4 sm:p-6 mb-6"
         style={{ 
           backgroundColor: 'var(--card-bg)', 
           borderColor: 'var(--border)' 
         }}
       >
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 items-end">
           <div>
             <label className="block text-base sm:text-lg font-semibold mb-2 sm:mb-3" style={{ color: 'var(--text-primary)' }}>
-              🔍 Buscar Productos
+              Buscar Productos
             </label>
             <input
               type="text"
@@ -588,7 +588,7 @@ export default function StockPage() {
 
           <div>
             <label className="block text-base sm:text-lg font-semibold mb-2 sm:mb-3" style={{ color: 'var(--text-primary)' }}>
-              📁 Categoría
+              Categoría
             </label>
             <select
               className="w-full px-3 sm:px-4 py-2 sm:py-3 border-2 rounded-lg text-base sm:text-lg transition-colors"
@@ -611,7 +611,7 @@ export default function StockPage() {
 
           <div className="sm:col-span-2 lg:col-span-1">
             <label className="block text-base sm:text-lg font-semibold mb-2 sm:mb-3" style={{ color: 'var(--text-primary)' }}>
-              📊 Ordenar Por
+              Ordenar Por
             </label>
             <div className="flex gap-2 sm:gap-3">
               <select

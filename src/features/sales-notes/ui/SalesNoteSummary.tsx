@@ -9,7 +9,7 @@ interface SalesNoteSummaryProps {
 
 export function SalesNoteSummary({ salesNote, formatMoney }: SalesNoteSummaryProps) {
   return (
-    <div className="bg-white rounded-lg shadow-sm border" style={{ borderColor: 'var(--border)' }}>
+    <div className="rounded-lg shadow-sm border" style={{ backgroundColor: 'var(--card-bg)', borderColor: 'var(--border)' }}>
       <div className="p-4 sm:p-6">
         <h2 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4 flex items-center" style={{ color: 'var(--text-primary)' }}>
           <FiDollarSign className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />

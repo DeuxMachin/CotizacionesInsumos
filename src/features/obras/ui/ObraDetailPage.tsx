@@ -603,10 +603,10 @@ export function ObraDetailPage({
                 </div>
               </div>
 
-              <div className="flex items-center gap-2 flex-shrink-0">
+              <div className="flex flex-col sm:flex-row items-center gap-2 flex-shrink-0 w-full sm:w-auto">
                 <button
                   onClick={handleBack}
-                  className="text-sm px-4 py-2 min-h-[44px] flex items-center gap-2 rounded-md transition-all duration-200 font-semibold"
+                  className="text-sm px-4 py-2 min-h-[44px] flex items-center gap-2 rounded-md transition-all duration-200 font-semibold w-full sm:w-auto"
                   style={{ backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)', border: '1px solid var(--border)' }}
                   title="Volver atrás"
                 >
@@ -619,7 +619,7 @@ export function ObraDetailPage({
                   <button
                     onClick={handleEndReunion}
                     disabled={endingReunion}
-                    className="text-sm px-4 py-2 min-h-[44px] flex items-center gap-2 rounded-md transition-all duration-200 font-semibold text-white bg-orange-500 hover:bg-orange-600 disabled:opacity-50"
+                    className="text-sm px-4 py-2 min-h-[44px] flex items-center gap-2 rounded-md transition-all duration-200 font-semibold text-white bg-orange-500 hover:bg-orange-600 disabled:opacity-50 w-full sm:w-auto"
                     title="Finalizar reunión actual"
                   >
                     <FiClock className="w-4 h-4" />
@@ -628,7 +628,7 @@ export function ObraDetailPage({
                 ) : (
                   <button
                     onClick={() => setIsReunionPopupOpen(true)}
-                    className="text-sm px-4 py-2 min-h-[44px] flex items-center gap-2 rounded-md transition-all duration-200 font-semibold text-white bg-green-500 hover:bg-green-600"
+                    className="text-sm px-4 py-2 min-h-[44px] flex items-center gap-2 rounded-md transition-all duration-200 font-semibold text-white bg-green-500 hover:bg-green-600 w-full sm:w-auto"
                     title="Iniciar reunión en esta obra"
                   >
                     <FiPlay className="w-4 h-4" />
@@ -640,7 +640,7 @@ export function ObraDetailPage({
                   <button
                     onClick={handleConfirmEntrega}
                     disabled={confirmingEntrega}
-                    className="text-sm px-3 py-2 min-h-[44px] flex items-center gap-2 rounded-md transition-all duration-200 font-semibold"
+                    className="text-sm px-3 py-2 min-h-[44px] flex items-center gap-2 rounded-md transition-all duration-200 font-semibold w-full sm:w-auto"
                     style={{ backgroundColor: 'var(--success-bg)', color: 'var(--success-text)', border: '1px solid var(--success-text)' }}
                     title="Marcar obra como FINALIZADA"
                   >
@@ -650,7 +650,7 @@ export function ObraDetailPage({
                 )}
                 <button
                   onClick={() => router.push(`/dashboard/obras/${obra.id}/nueva-cotizacion`)}
-                  className="text-sm px-4 py-2 min-h-[44px] flex items-center gap-2 rounded-md transition-all duration-200 font-semibold text-white"
+                  className="text-sm px-4 py-2 min-h-[44px] flex items-center gap-2 rounded-md transition-all duration-200 font-semibold text-white w-full sm:w-auto"
                   style={{ backgroundColor: 'var(--accent-primary)' }}
                   title="Crear cotización para esta obra"
                   onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'var(--accent-hover)')}
@@ -661,7 +661,7 @@ export function ObraDetailPage({
                 </button>
                 <button
                   onClick={openEditPanel}
-                  className="text-sm px-4 py-2 min-h-[44px] flex items-center gap-2 rounded-md transition-all duration-200 font-semibold"
+                  className="text-sm px-4 py-2 min-h-[44px] flex items-center gap-2 rounded-md transition-all duration-200 font-semibold w-full sm:w-auto"
                   style={{ backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)', border: '1px solid var(--border)' }}
                   title="Editar datos de la obra"
                 >

@@ -241,7 +241,7 @@ export default function SalesNoteDetailPage() {
           {/* Main Content */}
           <div className="lg:col-span-2 space-y-6">
             {/* Sales Note Information */}
-            <div className="bg-white rounded-lg shadow-sm border" style={{ borderColor: 'var(--border)' }}>
+            <div className="rounded-lg shadow-sm border" style={{ backgroundColor: 'var(--card-bg)', borderColor: 'var(--border)' }}>
               <div className="p-4 sm:p-6">
                 <h2 className="text-lg font-semibold mb-4 flex items-center" style={{ color: 'var(--text-primary)' }}>
                   <FiFileText className="w-5 h-5 mr-2" />
@@ -294,7 +294,7 @@ export default function SalesNoteDetailPage() {
             </div>
 
             {/* Client Information */}
-            <div className="bg-white rounded-lg shadow-sm border" style={{ borderColor: 'var(--border)' }}>
+            <div className="rounded-lg shadow-sm border" style={{ backgroundColor: 'var(--card-bg)', borderColor: 'var(--border)' }}>
               <div className="p-4 sm:p-6">
                 <h2 className="text-lg font-semibold mb-4 flex items-center" style={{ color: 'var(--text-primary)' }}>
                   <FiUser className="w-5 h-5 mr-2" />
@@ -324,7 +324,7 @@ export default function SalesNoteDetailPage() {
             </div>
 
             {/* Products */}
-            <div className="bg-white rounded-lg shadow-sm border" style={{ borderColor: 'var(--border)' }}>
+            <div className="rounded-lg shadow-sm border" style={{ backgroundColor: 'var(--card-bg)', borderColor: 'var(--border)' }}>
               <div className="p-4 sm:p-6">
                 <h2 className="text-lg font-semibold mb-4 flex items-center" style={{ color: 'var(--text-primary)' }}>
                   <FiPackage className="w-5 h-5 mr-2" />
@@ -386,7 +386,7 @@ export default function SalesNoteDetailPage() {
           {/* Sidebar */}
           <div className="space-y-6">
             {/* Summary */}
-            <div className="bg-white rounded-lg shadow-sm border" style={{ borderColor: 'var(--border)' }}>
+            <div className="rounded-lg shadow-sm border" style={{ backgroundColor: 'var(--card-bg)', borderColor: 'var(--border)' }}>
               <div className="p-4 sm:p-6">
                 <h2 className="text-lg font-semibold mb-4 flex items-center" style={{ color: 'var(--text-primary)' }}>
                   <FiDollarSign className="w-5 h-5 mr-2" />
@@ -419,7 +419,7 @@ export default function SalesNoteDetailPage() {
 
             {/* Delivery Information */}
             {(salesNote.direccion_despacho || salesNote.fecha_estimada_entrega) && (
-              <div className="bg-white rounded-lg shadow-sm border" style={{ borderColor: 'var(--border)' }}>
+              <div className="rounded-lg shadow-sm border" style={{ backgroundColor: 'var(--card-bg)', borderColor: 'var(--border)' }}>
                 <div className="p-4 sm:p-6">
                   <h2 className="text-lg font-semibold mb-4 flex items-center" style={{ color: 'var(--text-primary)' }}>
                     <FiTruck className="w-5 h-5 mr-2" />
@@ -456,7 +456,7 @@ export default function SalesNoteDetailPage() {
             )}
 
             {/* Additional Information */}
-            <div className="bg-white rounded-lg shadow-sm border" style={{ borderColor: 'var(--border)' }}>
+            <div className="rounded-lg shadow-sm border" style={{ backgroundColor: 'var(--card-bg)', borderColor: 'var(--border)' }}>
               <div className="p-4 sm:p-6">
                 <h2 className="text-lg font-semibold mb-4 flex items-center" style={{ color: 'var(--text-primary)' }}>
                   <FiInfo className="w-5 h-5 mr-2" />
