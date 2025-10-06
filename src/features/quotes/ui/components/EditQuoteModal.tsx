@@ -97,7 +97,7 @@ export function EditQuoteModal({
   const { subtotal, descuentoTotal } = calcularTotales();
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fadeIn overflow-y-auto">
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-2 sm:p-4 animate-fadeIn overflow-y-auto">
       {/* Overlay */}
       <div 
         className="absolute inset-0 bg-black/50 backdrop-blur-sm"
@@ -106,8 +106,12 @@ export function EditQuoteModal({
       
       {/* Modal */}
       <div 
-        className="relative w-full max-w-5xl rounded-lg shadow-xl animate-slideUp my-8"
-        style={{ backgroundColor: 'var(--card-bg)', border: '1px solid var(--border)', maxHeight: 'calc(100vh - 4rem)' }}
+        className="relative w-full max-w-5xl rounded-lg shadow-xl animate-slideUp my-4 sm:my-8 flex flex-col"
+        style={{ 
+          backgroundColor: 'var(--card-bg)', 
+          border: '1px solid var(--border)', 
+          maxHeight: 'calc(100vh - 2rem)'
+        }}
       >
         {/* Header */}
         <div className="flex items-center justify-between p-4 sm:p-6 border-b sticky top-0 z-10" 
@@ -156,7 +160,7 @@ export function EditQuoteModal({
         </div>
 
         {/* Content */}
-        <div className="p-4 sm:p-6 overflow-y-auto" style={{ maxHeight: 'calc(100vh - 16rem)' }}>
+        <div className="p-4 sm:p-6 overflow-y-auto flex-1">
           {activeTab === 'productos' ? (
             <div className="space-y-4">
               {/* Lista de productos */}
@@ -193,8 +197,8 @@ export function EditQuoteModal({
                           step="1"
                           placeholder="0"
                           style={{ 
-                            backgroundColor: '#ffffff',
-                            color: '#1f2937',
+                            backgroundColor: 'var(--bg-primary)',
+                            color: 'var(--text-primary)',
                             borderColor: 'var(--border)'
                           }}
                         />
@@ -212,8 +216,8 @@ export function EditQuoteModal({
                           step="1"
                           placeholder="0"
                           style={{ 
-                            backgroundColor: '#ffffff',
-                            color: '#1f2937',
+                            backgroundColor: 'var(--bg-primary)',
+                            color: 'var(--text-primary)',
                             borderColor: 'var(--border)'
                           }}
                         />
@@ -235,8 +239,8 @@ export function EditQuoteModal({
                           step="1"
                           placeholder="0"
                           style={{ 
-                            backgroundColor: '#ffffff',
-                            color: '#1f2937',
+                            backgroundColor: 'var(--bg-primary)',
+                            color: 'var(--text-primary)',
                             borderColor: 'var(--border)'
                           }}
                         />
@@ -307,7 +311,12 @@ export function EditQuoteModal({
                     type="text"
                     value={despacho.direccion}
                     onChange={(e) => setDespacho({ ...despacho, direccion: e.target.value })}
-                    className="input w-full"
+                    className="w-full px-3 py-2 rounded-lg border transition-colors"
+                    style={{
+                      backgroundColor: 'var(--bg-primary)',
+                      borderColor: 'var(--border)',
+                      color: 'var(--text-primary)'
+                    }}
                     placeholder="Ingrese la dirección de despacho"
                   />
                 </div>
@@ -319,7 +328,12 @@ export function EditQuoteModal({
                     type="text"
                     value={despacho.ciudad}
                     onChange={(e) => setDespacho({ ...despacho, ciudad: e.target.value })}
-                    className="input w-full"
+                    className="w-full px-3 py-2 rounded-lg border transition-colors"
+                    style={{
+                      backgroundColor: 'var(--bg-primary)',
+                      borderColor: 'var(--border)',
+                      color: 'var(--text-primary)'
+                    }}
                     placeholder="Ciudad"
                   />
                 </div>
@@ -331,7 +345,12 @@ export function EditQuoteModal({
                     type="text"
                     value={despacho.comuna}
                     onChange={(e) => setDespacho({ ...despacho, comuna: e.target.value })}
-                    className="input w-full"
+                    className="w-full px-3 py-2 rounded-lg border transition-colors"
+                    style={{
+                      backgroundColor: 'var(--bg-primary)',
+                      borderColor: 'var(--border)',
+                      color: 'var(--text-primary)'
+                    }}
                     placeholder="Comuna"
                   />
                 </div>
@@ -343,7 +362,12 @@ export function EditQuoteModal({
                     type="date"
                     value={despacho.fechaEstimada || ''}
                     onChange={(e) => setDespacho({ ...despacho, fechaEstimada: e.target.value })}
-                    className="input w-full"
+                    className="w-full px-3 py-2 rounded-lg border transition-colors"
+                    style={{
+                      backgroundColor: 'var(--bg-primary)',
+                      borderColor: 'var(--border)',
+                      color: 'var(--text-primary)'
+                    }}
                   />
                 </div>
                 <div>

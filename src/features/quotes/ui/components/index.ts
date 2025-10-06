@@ -6,4 +6,5 @@ export { default as DeliveryForm } from './DeliveryForm';
 // export { default as CommercialTermsForm } from './CommercialTermsForm';
 export { default as QuoteSummary } from './QuoteSummary';
 export { EditQuoteModal } from './EditQuoteModal';
+export { SendEmailModal } from './SendEmailModal';
 

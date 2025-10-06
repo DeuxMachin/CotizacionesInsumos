@@ -20,7 +20,9 @@ import {
   FiCreditCard,
   FiAlertCircle,
   FiTrash2,
-  FiXCircle
+  FiXCircle,
+  FiSend,
+  FiHelpCircle
 } from 'react-icons/fi';
 import { FiShoppingCart } from 'react-icons/fi';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
@@ -28,7 +30,7 @@ import { useQuotes } from '@/features/quotes/model/useQuotes';
 import { downloadFileFromResponse } from '@/lib/download';
 import { NotasVentaService, SalesNoteRecord } from '@/services/notasVentaService';
 import { ConfirmDialog } from '@/shared/ui/ConfirmDialog';
-import { EditQuoteModal } from '@/features/quotes/ui/components';
+import { EditQuoteModal, SendEmailModal } from '@/features/quotes/ui/components';
 import { Toast } from '@/shared/ui/Toast';
 import type { QuoteItem, DeliveryInfo } from '@/core/domain/quote/Quote';
 
@@ -49,6 +51,24 @@ export default function QuoteDetailPage() {
   const [deleteDialog, setDeleteDialog] = React.useState(false);
   const [cancelDialog, setCancelDialog] = React.useState(false);
   const [editModal, setEditModal] = React.useState(false);
+  const [sendEmailModal, setSendEmailModal] = React.useState(false);
+  // Estado para menú de acciones
+  const [openActionsMenu, setOpenActionsMenu] = React.useState(false);
+
+  // Cerrar menú al hacer click fuera
+  React.useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      if (!target.closest('.actions-menu-container')) {
+        setOpenActionsMenu(false);
+      }
+    };
+    
+    if (openActionsMenu) {
+      document.addEventListener('click', handleClickOutside);
+      return () => document.removeEventListener('click', handleClickOutside);
+    }
+  }, [openActionsMenu]);
 
   // Buscar nota de venta correspondiente cuando la cotización esté aceptada
   React.useEffect(() => {
@@ -109,7 +129,36 @@ export default function QuoteDetailPage() {
       return false;
     }
   }, [quote, actualizarCotizacion]);
-  
+
+  const handleSendEmail = async (email: string, name: string, message?: string) => {
+    if (!quote) return;
+    try {
+      const response = await fetch('/api/cotizaciones/send-email', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          quoteData: quote,
+          recipientEmail: email,
+          recipientName: name,
+          message: message || undefined,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        Toast.success('Cotización enviada por email exitosamente');
+      } else {
+        Toast.error(`Error al enviar email: ${result.error}`);
+      }
+    } catch (error) {
+      console.error('Error enviando email:', error);
+      Toast.error('Error al enviar la cotización por email');
+    }
+  };
+
   // ===== RETURNS CONDICIONALES =====
   if (loading) {
     return (
@@ -287,43 +336,70 @@ export default function QuoteDetailPage() {
             <span>{exporting ? 'Descargando...' : 'Descargar PDF'}</span>
           </button>
           <button
-            onClick={() => setEditModal(true)}
-            disabled={quote?.estado === 'aceptada' || quote?.estado === 'rechazada'}
+            onClick={() => setSendEmailModal(true)}
             className="btn-secondary flex items-center gap-2 px-3 sm:px-4 py-2 text-sm font-medium"
-            style={quote?.estado === 'aceptada' || quote?.estado === 'rechazada' ? { opacity: 0.5, cursor: 'not-allowed' } : {}}
-            title="Editar productos y despacho"
+            title="Enviar cotización por email"
           >
-            <FiEdit2 className="w-4 h-4" />
-            <span>Editar</span>
+            <FiSend className="w-4 h-4" />
+            <span>Enviar</span>
           </button>
-          {isAdmin && quote?.estado !== 'aceptada' && quote?.estado !== 'rechazada' && (
+          {/* Menú desplegable de Acciones */}
+          <div className="relative actions-menu-container">
             <button
-              onClick={() => setCancelDialog(true)}
-              className="flex items-center gap-2 px-3 sm:px-4 py-2 text-sm font-medium rounded-lg hover:opacity-90 transition-opacity"
-              style={{
-                backgroundColor: 'var(--warning-bg)',
-                color: 'var(--warning-text)'
-              }}
-              title="Cancelar esta cotización"
+              onClick={() => setOpenActionsMenu(!openActionsMenu)}
+              className="btn-secondary flex items-center gap-2 px-3 sm:px-4 py-2 text-sm font-medium"
+              title="Acciones"
             >
-              <FiXCircle className="w-4 h-4" />
-              <span>Cancelar</span>
+              <FiHelpCircle className="w-4 h-4" />
+              <span>Acciones</span>
             </button>
-          )}
-          {canDelete && canDelete(quote) && (
-            <button
-              onClick={() => setDeleteDialog(true)}
-              className="flex items-center gap-2 px-3 sm:px-4 py-2 text-sm font-medium rounded-lg hover:opacity-90 transition-opacity"
-              style={{
-                backgroundColor: 'var(--danger-bg)',
-                color: 'var(--danger-text)'
-              }}
-              title="Eliminar esta cotización permanentemente"
-            >
-              <FiTrash2 className="w-4 h-4" />
-              <span>Eliminar</span>
-            </button>
-          )}
+            {openActionsMenu && (
+              <div 
+                className="absolute right-0 mt-1 w-48 rounded-md shadow-lg z-50"
+                style={{ 
+                  backgroundColor: 'var(--card-bg)', 
+                  border: '1px solid var(--border)' 
+                }}
+              >
+                <button
+                  onClick={() => {
+                    setEditModal(true);
+                    setOpenActionsMenu(false);
+                  }}
+                  disabled={quote?.estado === 'aceptada' || quote?.estado === 'rechazada'}
+                  className="block w-full text-left px-4 py-2 text-sm hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                  style={{ color: 'var(--text-primary)' }}
+                >
+                  <FiEdit2 className="inline w-4 h-4 mr-2" />
+                  Editar
+                </button>
+                {isAdmin && quote?.estado !== 'aceptada' && quote?.estado !== 'rechazada' && (
+                  <button
+                    onClick={() => {
+                      setCancelDialog(true);
+                      setOpenActionsMenu(false);
+                    }}
+                    className="block w-full text-left px-4 py-2 text-sm hover:bg-orange-50 text-orange-600"
+                  >
+                    <FiXCircle className="inline w-4 h-4 mr-2" />
+                    Cancelar
+                  </button>
+                )}
+                {canDelete && canDelete(quote) && (
+                  <button
+                    onClick={() => {
+                      setDeleteDialog(true);
+                      setOpenActionsMenu(false);
+                    }}
+                    className="block w-full text-left px-4 py-2 text-sm hover:bg-red-50 text-red-600"
+                  >
+                    <FiTrash2 className="inline w-4 h-4 mr-2" />
+                    Eliminar
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
           {/* Errores de venta eliminados junto con el flujo modal */}
         </div>
       </div>
@@ -763,6 +839,13 @@ export default function QuoteDetailPage() {
             onClose={() => setEditModal(false)}
             quote={quote}
             onSave={handleSaveEdit}
+          />
+
+          <SendEmailModal
+            isOpen={sendEmailModal}
+            onClose={() => setSendEmailModal(false)}
+            quote={quote}
+            onSend={handleSendEmail}
           />
         </>
       )}

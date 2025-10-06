@@ -15,7 +15,11 @@ export async function sendGmailTest({
   message,
   attachmentContent,
   attachmentName,
-  isBase64 = false
+  isBase64 = false,
+  /** If true, use `message` as the full HTML without wrapping */
+  useRawHtml = false,
+  /** Additional attachments (e.g., inline images with cid) */
+  extraAttachments,
 }: {
   toEmail: string;
   subject: string;
@@ -23,16 +27,20 @@ export async function sendGmailTest({
   attachmentContent?: string;
   attachmentName?: string;
   isBase64?: boolean;
+  useRawHtml?: boolean;
+  extraAttachments?: SendMailOptions['attachments'];
 }) {
   try {
     const mailOptions: SendMailOptions = {
       from: process.env.GMAIL_USER,
       to: toEmail,
       subject,
-      html: `
+      html: useRawHtml
+        ? message
+        : `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
           <h2 style="color: #333;">Email de Prueba</h2>
-          <p>${message}</p>
+          <div>${message}</div>
           <hr style="margin: 20px 0; border: none; border-top: 1px solid #eee;">
           <p style="font-size: 12px; color: #666;">
             Enviado desde la aplicación de cotizaciones usando Gmail.
@@ -41,16 +49,23 @@ export async function sendGmailTest({
       `
     };
 
-    // Agregar adjunto si se proporciona
+    // Construir adjuntos (PDF + adjuntos extra como imágenes inline con cid)
+    const attachments: NonNullable<SendMailOptions['attachments']> = [];
     if (attachmentContent && attachmentName) {
-      mailOptions.attachments = [
-        {
-          filename: attachmentName,
-          content: isBase64 
-            ? Buffer.from(attachmentContent, 'base64')
-            : Buffer.from(attachmentContent, 'utf-8'),
-        }
-      ];
+      attachments.push({
+        filename: attachmentName,
+        content: isBase64
+          ? Buffer.from(attachmentContent, 'base64')
+          : Buffer.from(attachmentContent, 'utf-8'),
+      });
+    }
+
+    if (extraAttachments && Array.isArray(extraAttachments) && extraAttachments.length > 0) {
+      attachments.push(...extraAttachments);
+    }
+
+    if (attachments.length > 0) {
+      mailOptions.attachments = attachments;
     }
 
     const result = await transporter.sendMail(mailOptions);

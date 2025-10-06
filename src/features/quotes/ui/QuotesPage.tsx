@@ -39,6 +39,7 @@ import { downloadFileFromResponse } from '@/lib/download';
 import { Toast } from '@/shared/ui/Toast';
 import { ConfirmDialog } from '@/shared/ui/ConfirmDialog';
 import { HelpGuide } from '@/shared/ui/HelpGuide';
+import { SendEmailModal } from './components/SendEmailModal';
 
 interface QuoteCardProps {
   quote: Quote;
@@ -48,6 +49,7 @@ interface QuoteCardProps {
   onCancel: (id: string) => void;
   onDuplicate: (id: string) => void;
   onChangeStatus: (id: string, status: QuoteStatus) => void;
+  onSendEmail: (quote: Quote) => void;
   formatMoney: (amount: number) => string;
   getStatusColor: (status: QuoteStatus) => { bg: string; text: string };
   canEdit: (quote: Quote) => boolean;
@@ -63,6 +65,7 @@ interface QuotesTableProps {
   onCancel: (id: string) => void;
   onDuplicate: (id: string) => void;
   onChangeStatus: (id: string, status: QuoteStatus) => void;
+  onSendEmail: (quote: Quote) => void;
   formatMoney: (amount: number) => string;
   getStatusColor: (status: QuoteStatus) => { bg: string; text: string };
   canEdit: (quote: Quote) => boolean;
@@ -109,6 +112,7 @@ export function QuotesPage() {
   const [deleteDialog, setDeleteDialog] = useState<{ isOpen: boolean; quoteId: string | null }>({ isOpen: false, quoteId: null });
   const [cancelDialog, setCancelDialog] = useState<{ isOpen: boolean; quoteId: string | null }>({ isOpen: false, quoteId: null });
   const [showHelpGuide, setShowHelpGuide] = useState(false);
+  const [sendEmailModal, setSendEmailModal] = useState<{ isOpen: boolean; quote: Quote | null }>({ isOpen: false, quote: null });
 
   // Verificar si el usuario es vendedor (no admin)
   const isVendedor = user && !isAdmin && user.role?.toLowerCase() === 'vendedor';
@@ -191,6 +195,39 @@ export function QuotesPage() {
     if (success) {
       // Podrías mostrar un toast de éxito aquí
     }
+  };
+
+  const handleSendEmail = async (email: string, name: string, message?: string) => {
+    if (!sendEmailModal.quote) return;
+    try {
+      const response = await fetch('/api/cotizaciones/send-email', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          quoteData: sendEmailModal.quote,
+          recipientEmail: email,
+          recipientName: name,
+          message: message || undefined,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        Toast.success('Cotización enviada por email exitosamente');
+      } else {
+        Toast.error(`Error al enviar email: ${result.error}`);
+      }
+    } catch (error) {
+      console.error('Error enviando email:', error);
+      Toast.error('Error al enviar la cotización por email');
+    }
+  };
+
+  const handleOpenSendEmailModal = (quote: Quote) => {
+    setSendEmailModal({ isOpen: true, quote });
   };
 
   const handleExport = async () => {
@@ -560,11 +597,12 @@ export function QuotesPage() {
               onCancel={handleCancel}
               onDuplicate={handleDuplicate}
               onChangeStatus={handleChangeStatus}
+              onSendEmail={handleOpenSendEmailModal}
               formatMoney={formatMoney}
               getStatusColor={getStatusColor}
               canEdit={canEdit}
               canDelete={canDelete}
-        onConvert={handleConvert}
+              onConvert={handleConvert}
             />
           ))}
         </div>
@@ -577,6 +615,7 @@ export function QuotesPage() {
           onCancel={handleCancel}
           onDuplicate={handleDuplicate}
           onChangeStatus={handleChangeStatus}
+          onSendEmail={handleOpenSendEmailModal}
           formatMoney={formatMoney}
           getStatusColor={getStatusColor}
           canEdit={canEdit}
@@ -704,6 +743,16 @@ export function QuotesPage() {
         isOpen={showHelpGuide}
         onClose={() => setShowHelpGuide(false)}
       />
+
+      {/* Modal de envío de email */}
+      {sendEmailModal.quote && (
+        <SendEmailModal
+          isOpen={sendEmailModal.isOpen}
+          onClose={() => setSendEmailModal({ isOpen: false, quote: null })}
+          quote={sendEmailModal.quote}
+          onSend={handleSendEmail}
+        />
+      )}
     </div>
   );
 }
@@ -717,6 +766,7 @@ function QuoteCard({
   onCancel,
   onDuplicate, 
   onChangeStatus,
+  onSendEmail,
   formatMoney, 
   getStatusColor, 
   canEdit, 
@@ -827,6 +877,16 @@ function QuoteCard({
             <button
               onClick={(e) => {
                 e.stopPropagation();
+                onSendEmail(quote);
+              }}
+              className="p-2 rounded-lg hover:bg-blue-100 transition-colors"
+              title="Enviar por email"
+            >
+              <FiSend className="w-4 h-4 text-blue-500" />
+            </button>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
                 onConvert(quote);
               }}
               className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
@@ -834,18 +894,6 @@ function QuoteCard({
             >
               <FiShoppingCart className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />
             </button>
-            {canEdit(quote) && quote.estado !== 'aceptada' && (
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onEdit(quote);
-                }}
-                className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
-                title="Editar"
-              >
-                <FiEdit2 className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />
-              </button>
-            )}
             {quote.estado !== 'aceptada' && (
               <button
                 onClick={(e) => {
@@ -856,6 +904,18 @@ function QuoteCard({
                 title="Duplicar"
               >
                 <FiCopy className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />
+              </button>
+            )}
+            {canEdit(quote) && quote.estado !== 'aceptada' && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onEdit(quote);
+                }}
+                className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
+                title="Editar"
+              >
+                <FiEdit2 className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />
               </button>
             )}
           </div>
@@ -924,6 +984,7 @@ function QuotesTable({
   onCancel,
   onDuplicate, 
   onChangeStatus,
+  onSendEmail,
   formatMoney, 
   getStatusColor, 
   canEdit, 
@@ -948,6 +1009,29 @@ function QuotesTable({
       setSortedQuotes(quotes);
     }
   }, [quotes, isVendedor]);
+
+  // Estado para controlar el menú desplegable de acciones
+  const [openMenuId, setOpenMenuId] = React.useState<string | null>(null);
+
+  const toggleMenu = (quoteId: string, event: React.MouseEvent) => {
+    event.stopPropagation();
+    setOpenMenuId(openMenuId === quoteId ? null : quoteId);
+  };
+
+  // Cerrar menú al hacer click fuera
+  React.useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      if (!target.closest('.actions-menu-container')) {
+        setOpenMenuId(null);
+      }
+    };
+    
+    if (openMenuId) {
+      document.addEventListener('click', handleClickOutside);
+      return () => document.removeEventListener('click', handleClickOutside);
+    }
+  }, [openMenuId]);
 
   const handleMoveUp = async (quote: Quote, currentIndex: number) => {
     if (currentIndex === 0) return;
@@ -1145,6 +1229,13 @@ function QuotesTable({
                         <FiEye className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />
                       </button>
                       <button
+                        onClick={() => onSendEmail(quote)}
+                        className="p-1 rounded hover:bg-blue-100"
+                        title="Enviar por email"
+                      >
+                        <FiSend className="w-4 h-4 text-blue-500" />
+                      </button>
+                      <button
                         onClick={() => onConvert(quote)}
                         className="p-1 rounded hover:bg-gray-100"
                         title="Convertir a nota de venta"
@@ -1153,15 +1244,6 @@ function QuotesTable({
                       >
                         <FiShoppingCart className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />
                       </button>
-                      {canEdit(quote) && quote.estado !== 'aceptada' && (
-                        <button
-                          onClick={() => onEdit(quote)}
-                          className="p-1 rounded hover:bg-gray-100"
-                          title="Editar"
-                        >
-                          <FiEdit2 className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />
-                        </button>
-                      )}
                       {quote.estado !== 'aceptada' && (
                         <button
                           onClick={() => onDuplicate(quote.id)}
@@ -1180,15 +1262,53 @@ function QuotesTable({
                           Aceptar
                         </button>
                       )}
-                      {canDelete(quote) && (
+                      {/* Menú desplegable de Acciones */}
+                      <div className="relative actions-menu-container">
                         <button
-                          onClick={() => onDelete(quote.id)}
-                          className="p-1 rounded hover:bg-red-100 transition-colors group"
-                          title="Eliminar cotización"
+                          onClick={(e) => toggleMenu(quote.id, e)}
+                          className="p-1 rounded hover:bg-gray-100"
+                          title="Acciones"
                         >
-                          <FiTrash2 className="w-4 h-4 text-red-500 group-hover:text-red-700" />
+                          <FiHelpCircle className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />
                         </button>
-                      )}
+                        {openMenuId === quote.id && (
+                          <div 
+                            className="absolute right-0 mt-1 w-32 rounded-md shadow-lg z-50"
+                            style={{ 
+                              backgroundColor: 'var(--card-bg)', 
+                              border: '1px solid var(--border)' 
+                            }}
+                          >
+                            {canEdit(quote) && quote.estado !== 'aceptada' && (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  onEdit(quote);
+                                  setOpenMenuId(null);
+                                }}
+                                className="block w-full text-left px-3 py-2 text-sm hover:bg-gray-100"
+                                style={{ color: 'var(--text-primary)' }}
+                              >
+                                <FiEdit2 className="inline w-4 h-4 mr-2" />
+                                Editar
+                              </button>
+                            )}
+                            {canDelete(quote) && (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  onDelete(quote.id);
+                                  setOpenMenuId(null);
+                                }}
+                                className="block w-full text-left px-3 py-2 text-sm hover:bg-red-50 text-red-600"
+                              >
+                                <FiTrash2 className="inline w-4 h-4 mr-2" />
+                                Eliminar
+                              </button>
+                            )}
+                          </div>
+                        )}
+                      </div>
                       {quote.estado !== 'aceptada' && quote.estado !== 'rechazada' && (
                         <button
                           onClick={() => onCancel(quote.id)}

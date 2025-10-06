@@ -4,6 +4,8 @@ import { generatePDF } from '@/shared/lib/pdf/generator';
 import { verifyToken, type JWTPayload } from '@/lib/auth/tokens';
 import { AuditLogger } from '@/services/auditLogger';
 import type { Quote, QuoteItem } from '@/core/domain/quote/Quote';
+import fs from 'fs';
+import path from 'path';
 
 interface AuthenticatedUser {
   id: string;
@@ -133,10 +135,29 @@ export async function POST(request: NextRequest) {
     // Preparar el mensaje personalizado
     const clientName = recipientName || quote.cliente.razonSocial || quote.cliente.nombreFantasia || 'Cliente';
     const quoteNumber = quote.numero || 'Nueva';
-    
+
+    // Intentar cargar logo para inline CID
+    const logoPngPath = path.join(process.cwd(), 'public', 'logo.png');
+    let logoAttachment: { filename: string; content: Buffer; cid: string } | null = null;
+    try {
+      const logoBuffer = fs.readFileSync(logoPngPath);
+      logoAttachment = {
+        filename: 'logo.png',
+        content: logoBuffer,
+        cid: 'company-logo@cotizaciones'
+      };
+    } catch (e) {
+      console.warn('No se pudo adjuntar el logo PNG para inline CID:', e);
+    }
+
+    const logoImgTag = logoAttachment
+      ? `<img src="cid:${logoAttachment.cid}" alt="Logo Empresa" style="height: 60px; display: block;">`
+      : '';
+
     const htmlMessage = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; line-height: 1.6;">
-        <div style="background: linear-gradient(135deg, #f97316 0%, #ea580c 100%); color: white; padding: 20px; border-radius: 8px 8px 0 0;">
+        <div style="background: linear-gradient(135deg, #f97316 0%, #ea580c 100%); color: white; padding: 20px; border-radius: 8px 8px 0 0; text-align: center;">
+          ${logoImgTag ? `<div style="background: white; display: inline-block; padding: 10px; border-radius: 8px; margin-bottom: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">${logoImgTag}</div>` : ''}
           <h1 style="margin: 0; font-size: 24px;">¡Gracias por cotizar con nosotros!</h1>
         </div>
         
@@ -146,7 +167,7 @@ export async function POST(request: NextRequest) {
           </p>
           
           <p style="color: #374151; margin-bottom: 20px;">
-            Agradecemos tu interés en nuestros productos y servicios. Adjunto encontrarás la cotización <strong>#${quoteNumber}</strong> con todos los detalles solicitados.
+            Junto con saludar, agradecemos su preferencia en nuestros productos y servicios. Adjunto encontrarás la cotización y un enlace mediante un icono para la descarga de la ficha técnica de cada producto. <strong>#${quoteNumber}</strong> con todos los detalles solicitados.
           </p>
           
           ${message ? `
@@ -186,7 +207,9 @@ export async function POST(request: NextRequest) {
       message: htmlMessage,
       attachmentContent: pdfBase64,
       attachmentName: `cotizacion-${quoteNumber}.pdf`,
-      isBase64: true
+      isBase64: true,
+      useRawHtml: true,
+      extraAttachments: logoAttachment ? [logoAttachment] : undefined
     });
 
     // Registrar en audit log que se envió la cotización
