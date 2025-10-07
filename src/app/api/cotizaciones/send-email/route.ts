@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { sendGmailTest } from '@/services/gmailService';
+import { sendSMTPEmail } from '@/services/smtpService';
 import { generatePDF } from '@/shared/lib/pdf/generator';
 import { verifyToken, type JWTPayload } from '@/lib/auth/tokens';
 import { AuditLogger } from '@/services/auditLogger';
@@ -73,8 +73,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Verificar configuración de Gmail
-    if (!process.env.GMAIL_USER || !process.env.GMAIL_APP_PASSWORD) {
+    // Verificar configuración de SMTP
+    if (!process.env.SMTP_USER || !process.env.SMTP_PASSWORD) {
       return NextResponse.json(
         { success: false, error: 'Servicio de email no configurado' },
         { status: 500 }
@@ -201,7 +201,7 @@ export async function POST(request: NextRequest) {
     `;
 
     // Enviar email con la cotización
-    const result = await sendGmailTest({
+    const result = await sendSMTPEmail({
       toEmail: recipientEmail,
       subject: `Cotización #${quoteNumber} - Gracias por cotizar con nosotros`,
       message: htmlMessage,
@@ -248,10 +248,10 @@ export async function POST(request: NextRequest) {
       success: true,
       message: 'Cotización enviada exitosamente',
       emailId: result.data?.messageId || 'N/A',
-      service: 'Gmail (Nodemailer)',
+      service: 'SMTP (Mailhostbox)',
       recipientEmail,
       quoteNumber,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toLocaleString('es-CL', { timeZone: 'America/Santiago' })
     });
 
   } catch (error) {
@@ -263,7 +263,7 @@ export async function POST(request: NextRequest) {
       { 
         success: false, 
         error: `Error al enviar cotización: ${errorMessage}`,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toLocaleString('es-CL', { timeZone: 'America/Santiago' })
       },
       { status: 500 }
     );
