@@ -5,7 +5,7 @@ import { useRouter, useParams } from "next/navigation";
 import { useUsuarios } from "@/hooks/useSupabase";
 import { supabase } from "@/lib/supabase";
 import bcrypt from "bcryptjs";
-import { FiMail, FiUser, FiLock, FiEye, FiEyeOff, FiCheck, FiAlertCircle, FiArrowLeft, FiEdit3, FiCheckCircle, FiXCircle } from "react-icons/fi";
+import { FiMail, FiUser, FiLock, FiEye, FiEyeOff, FiCheck, FiAlertCircle, FiArrowLeft, FiEdit3, FiCheckCircle, FiXCircle, FiShield } from "react-icons/fi";
 import { useAuth } from "@/contexts/AuthContext";
 
 type DbUser = {
@@ -328,34 +328,34 @@ export function EditUserForm() {
   return (
     <div className="min-h-screen" style={{ backgroundColor: 'var(--bg-primary)' }}>
       {/* Header */}
-      <div className="sticky top-0 z-10 border-b" style={{ backgroundColor: 'var(--bg-primary)', borderColor: 'var(--border)' }}>
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center gap-4">
-              <button
-                onClick={() => router.back()}
-                className="p-2 rounded-lg transition-all duration-200 hover:scale-105"
+      <div className="sticky top-0 z-10 border-b shadow-sm" style={{ backgroundColor: 'var(--bg-primary)', borderColor: 'var(--border)' }}>
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center gap-3 md:gap-4 py-4">
+            <button
+              onClick={() => router.push('/admin/usuarios')}
+              className="p-2 rounded-lg transition-all duration-200 hover:scale-105 flex-shrink-0"
+              style={{
+                backgroundColor: 'var(--bg-secondary)',
+                color: 'var(--text-primary)'
+              }}
+            >
+              <FiArrowLeft className="w-5 h-5" />
+            </button>
+            <div className="flex items-center gap-2 md:gap-3 min-w-0">
+              <div
+                className="p-2 rounded-lg flex-shrink-0"
                 style={{
-                  backgroundColor: 'var(--bg-secondary)',
-                  color: 'var(--text-primary)'
+                  background: 'linear-gradient(135deg, #ff5600, #e6004d)',
+                  color: 'white'
                 }}
               >
-                <FiArrowLeft className="w-5 h-5" />
-              </button>
-              <div>
-                <h1 className="text-xl md:text-2xl font-bold flex items-center gap-3" style={{ color: 'var(--text-primary)' }}>
-                  <div
-                    className="p-2 rounded-lg"
-                    style={{
-                      background: 'linear-gradient(135deg, #ff5600, #e6004d)',
-                      color: 'white'
-                    }}
-                  >
-                    <FiEdit3 className="w-5 h-5 md:w-6 md:h-6" />
-                  </div>
+                <FiEdit3 className="w-5 h-5 md:w-6 md:h-6" />
+              </div>
+              <div className="min-w-0">
+                <h1 className="text-lg sm:text-xl md:text-2xl font-bold truncate" style={{ color: 'var(--text-primary)' }}>
                   Editar Usuario
                 </h1>
-                <p className="mt-1 text-sm" style={{ color: 'var(--text-secondary)' }}>
+                <p className="text-xs sm:text-sm truncate" style={{ color: 'var(--text-secondary)' }}>
                   {currentUser.nombre} {currentUser.apellido}
                 </p>
               </div>
@@ -365,14 +365,14 @@ export function EditUserForm() {
       </div>
 
       {/* Form Container */}
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8">
         <div
           className="rounded-xl shadow-lg overflow-hidden"
           style={{ backgroundColor: 'var(--card-bg)', border: '1px solid var(--border)' }}
         >
-          <form onSubmit={handleSubmit} className="p-6 md:p-8">
+          <form onSubmit={handleSubmit} className="p-4 sm:p-6 md:p-8">
             {/* User Info Header */}
-            <div className="text-center mb-8">
+            <div className="text-center mb-6 md:mb-8">
               <div
                 className="w-20 h-20 mx-auto rounded-full flex items-center justify-center text-2xl font-bold text-white shadow-lg mb-4"
                 style={{ background: 'linear-gradient(135deg, #ff5600, #e6004d)' }}
@@ -394,12 +394,13 @@ export function EditUserForm() {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
               {/* Rol (solo visible para Dueño) */}
               {isOwner && (
                 <div className="md:col-span-2">
-                  <label className="block text-sm font-semibold mb-2" style={{ color: 'var(--text-primary)' }}>
-                    Rol del usuario
+                  <label className="flex items-center gap-2 text-sm font-semibold mb-3" style={{ color: 'var(--text-primary)' }}>
+                    <FiShield className="w-4 h-4" />
+                    <span>Rol del usuario</span>
                   </label>
                   <select
                     value={formData.role}
@@ -415,9 +416,9 @@ export function EditUserForm() {
               )}
               {/* Email */}
               <div className="md:col-span-2">
-                <label className="block text-sm font-semibold mb-2" style={{ color: 'var(--text-primary)' }}>
-                  <FiMail className="w-4 h-4 inline mr-2" />
-                  Email
+                <label className="flex items-center gap-2 text-sm font-semibold mb-3" style={{ color: 'var(--text-primary)' }}>
+                  <FiMail className="w-4 h-4" />
+                  <span>Email</span>
                 </label>
                 <input
                   type="email"
@@ -442,9 +443,9 @@ export function EditUserForm() {
 
               {/* Nombre */}
               <div>
-                <label className="block text-sm font-semibold mb-2" style={{ color: 'var(--text-primary)' }}>
-                  <FiUser className="w-4 h-4 inline mr-2" />
-                  Nombre
+                <label className="flex items-center gap-2 text-sm font-semibold mb-3" style={{ color: 'var(--text-primary)' }}>
+                  <FiUser className="w-4 h-4" />
+                  <span>Nombre</span>
                 </label>
                 <input
                   type="text"
@@ -469,9 +470,9 @@ export function EditUserForm() {
 
               {/* Apellido */}
               <div>
-                <label className="block text-sm font-semibold mb-2" style={{ color: 'var(--text-primary)' }}>
-                  <FiUser className="w-4 h-4 inline mr-2" />
-                  Apellido
+                <label className="flex items-center gap-2 text-sm font-semibold mb-3" style={{ color: 'var(--text-primary)' }}>
+                  <FiUser className="w-4 h-4" />
+                  <span>Apellido</span>
                 </label>
                 <input
                   type="text"
@@ -496,9 +497,9 @@ export function EditUserForm() {
 
               {/* Nueva contraseña */}
               <div className="md:col-span-2">
-                <label className="block text-sm font-semibold mb-2" style={{ color: 'var(--text-primary)' }}>
-                  <FiLock className="w-4 h-4 inline mr-2" />
-                  Nueva contraseña (opcional)
+                <label className="flex items-center gap-2 text-sm font-semibold mb-3" style={{ color: 'var(--text-primary)' }}>
+                  <FiLock className="w-4 h-4" />
+                  <span>Nueva contraseña (opcional)</span>
                 </label>
                 <div className="relative">
                   <input
@@ -631,9 +632,9 @@ export function EditUserForm() {
 
               {/* Confirmar nueva contraseña */}
               <div className="md:col-span-2">
-                <label className="block text-sm font-semibold mb-2" style={{ color: 'var(--text-primary)' }}>
-                  <FiLock className="w-4 h-4 inline mr-2" />
-                  Confirmar nueva contraseña
+                <label className="flex items-center gap-2 text-sm font-semibold mb-3" style={{ color: 'var(--text-primary)' }}>
+                  <FiLock className="w-4 h-4" />
+                  <span>Confirmar nueva contraseña</span>
                 </label>
                 <div className="relative">
                   <input
@@ -672,10 +673,10 @@ export function EditUserForm() {
             </div>
 
             {/* Form Actions */}
-            <div className="flex flex-col sm:flex-row gap-3 justify-end pt-8 mt-8 border-t" style={{ borderColor: 'var(--border-subtle)' }}>
+            <div className="flex flex-col sm:flex-row gap-3 justify-end pt-6 mt-6 border-t" style={{ borderColor: 'var(--border-subtle)' }}>
               <button
                 type="button"
-                onClick={() => router.back()}
+                onClick={() => router.push('/admin/usuarios')}
                 className="px-6 py-3 rounded-lg border transition-all duration-200 font-medium"
                 style={{
                   backgroundColor: 'var(--bg-secondary)',

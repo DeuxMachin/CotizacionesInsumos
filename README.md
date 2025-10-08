@@ -99,6 +99,3 @@ Para soporte técnico o consultas sobre el proyecto, contacta al Scrum Master.
 
 ---
 
-**Versión**: 1.0.0  
-**Última actualización**: Octubre 2025  
-**Estado**: En desarrollo activo
