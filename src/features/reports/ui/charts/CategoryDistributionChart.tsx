@@ -37,37 +37,7 @@ interface CategoryData {
 // Colores para las categorías
 const categoryColors = ["#8b5cf6", "#06b6d4", "#10b981", "#f59e0b", "#ef4444", "#3b82f6", "#ec4899"];
 
-// Datos mock para el gráfico de donut (fallback si la API falla)
-const mockCategoryData: CategoryData[] = [
-  { 
-    category: "Servicios de Consultoría", 
-    value: 35, 
-    color: "#8b5cf6",
-    amount: "$115,500",
-    description: "Consultoría estratégica y asesoramiento"
-  },
-  { 
-    category: "Desarrollo de Software", 
-    value: 28, 
-    color: "#06b6d4",
-    amount: "$91,840",
-    description: "Desarrollo web y aplicaciones"
-  },
-  { 
-    category: "Licencias de Software", 
-    value: 22, 
-    color: "#10b981",
-    amount: "$72,160",
-    description: "Office 365, Windows, etc."
-  },
-  { 
-    category: "Equipos y Hardware", 
-    value: 15, 
-    color: "#f59e0b",
-    amount: "$49,200",
-    description: "Computadores, servidores, etc."
-  }
-];
+// Mock data eliminado - ahora solo se muestran datos reales de la base de datos
 
 export function CategoryDistributionChart({ period, reportType }: CategoryDistributionChartProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -76,7 +46,7 @@ export function CategoryDistributionChart({ period, reportType }: CategoryDistri
   const [categoryData, setCategoryData] = useState<CategoryData[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const dataArr = categoryData.length > 0 ? categoryData : mockCategoryData;
+  const dataArr = categoryData; // Usar solo datos reales, sin fallback a mock
   
   // Cargar datos reales directamente desde Supabase
   useEffect(() => {
@@ -91,28 +61,32 @@ export function CategoryDistributionChart({ period, reportType }: CategoryDistri
         
         switch (period) {
           case 'Última semana':
-            startDate.setDate(now.getDate() - 6);
+            startDate.setDate(now.getDate() - 7);
             break;
           case 'Último mes':
-            startDate.setDate(now.getDate() - 29);
+            startDate.setMonth(now.getMonth() - 1);
             break;
           case 'Últimos 3 meses':
-            startDate.setDate(now.getDate() - 89);
+            startDate.setMonth(now.getMonth() - 3);
             break;
           case 'Últimos 6 meses':
-            startDate.setDate(now.getDate() - 179);
+            startDate.setMonth(now.getMonth() - 6);
             break;
           case 'Último año':
-            startDate.setDate(now.getDate() - 364);
+            startDate.setFullYear(now.getFullYear() - 1);
             break;
           default:
-            startDate.setDate(now.getDate() - 179);
+            startDate.setMonth(now.getMonth() - 6);
         }
+        
+        console.log(`🔍 [CategoryDistributionChart] Iniciando carga para ${reportType}, período: ${period}`);
+        console.log(`📅 Rango de fechas: ${startDate.toISOString().split('T')[0]} a ${now.toISOString().split('T')[0]}`);
         
         // Obtener identificadores y items segun tipo de reporte
         let items: ItemRecord[] = [];
         if (reportType === 'cotizaciones') {
           // 1) Cotizaciones dentro del periodo
+          console.log('📋 Buscando cotizaciones...');
           const { data: cotizacionesData, error: cotError } = await supabase
             .from('cotizaciones')
             .select('id')
@@ -121,10 +95,12 @@ export function CategoryDistributionChart({ period, reportType }: CategoryDistri
           if (cotError) throw new Error(`Error al obtener cotizaciones: ${cotError.message}`);
           const cotizacionIds = (cotizacionesData || []).map(c => c.id);
           if (cotizacionIds.length === 0) {
-            setCategoryData(mockCategoryData);
+            console.log('⚠️ No hay cotizaciones en el período');
+            setCategoryData([]);
             setLoading(false);
             return;
           }
+          console.log('📊 Cotizaciones encontradas:', cotizacionIds.length);
           const { data: cotizacionItems, error: itemsError } = await supabase
             .from('cotizacion_items')
             .select('id, cantidad, total_neto, producto_id')
@@ -132,48 +108,68 @@ export function CategoryDistributionChart({ period, reportType }: CategoryDistri
           if (itemsError) throw new Error(`Error al obtener items: ${itemsError.message}`);
           items = cotizacionItems || [];
         } else {
-          // 1) Notas de venta dentro del periodo (usar fecha_emision)
+          // 1) Notas de venta dentro del periodo (usar created_at como en MonthlySalesChart)
+          console.log('🛒 Buscando notas de venta...');
           const { data: notasData, error: notasError } = await supabase
             .from('notas_venta')
             .select('id')
-            .gte('fecha_emision', startDate.toISOString())
-            .lt('fecha_emision', now.toISOString());
+            .gte('created_at', startDate.toISOString())
+            .lt('created_at', now.toISOString());
           if (notasError) throw new Error(`Error al obtener notas de venta: ${notasError.message}`);
           const notasIds = (notasData || []).map(n => n.id);
           if (notasIds.length === 0) {
-            setCategoryData(mockCategoryData);
+            console.log('⚠️ No hay notas de venta en el período');
+            setCategoryData([]);
             setLoading(false);
             return;
           }
+          console.log('📊 Notas de venta encontradas:', notasIds.length);
           const { data: ventaItems, error: itemsError } = await supabase
             .from('nota_venta_items')
             .select('id, cantidad, total_neto, producto_id')
             .in('nota_venta_id', notasIds);
           if (itemsError) throw new Error(`Error al obtener items de ventas: ${itemsError.message}`);
           items = ventaItems || [];
+          console.log('📦 Items de nota_venta_items obtenidos:', items.length);
+          if (items.length > 0) {
+            console.log('📦 Primeros 5 items:', items.slice(0, 5));
+            console.log('📦 IDs de notas de venta usados:', notasIds.slice(0, 5));
+          } else {
+            console.log('⚠️ No se encontraron items para las notas de venta encontradas');
+          }
         }
 
         // 3) Obtener los productos únicos para mapear a su tipo (producto_tipos)
-  const productIds = Array.from(new Set((items || []).map((i: ItemRecord) => i.producto_id).filter(Boolean)));
-        console.log('📦 Product IDs:', productIds.length);
+        const productIds = Array.from(new Set((items || []).map((i: ItemRecord) => i.producto_id).filter(Boolean)));
+        console.log('📦 Product IDs encontrados:', productIds.length, productIds.slice(0, 10)); // Mostrar primeros 10
+
+        if (productIds.length === 0) {
+          console.log('⚠️ No hay productos en los items');
+          setCategoryData([]);
+          setLoading(false);
+          return;
+        }
 
         let productosById: Record<number, { nombre: string; tipo_id: number | null }> = {};
-        if (productIds.length > 0) {
-          const { data: productos, error: prodError } = await supabase
-            .from('productos')
-            .select('id, nombre, tipo_id')
-            .in('id', productIds as number[]);
-          if (prodError) throw new Error(`Error al obtener productos: ${prodError.message}`);
-          console.log('🏷️ Productos:', productos?.length || 0);
-          productosById = (productos || []).reduce((acc: Record<number, { nombre: string; tipo_id: number | null }>, p: ProductoRecord) => {
-            acc[p.id] = { nombre: p.nombre, tipo_id: p.tipo_id };
-            return acc;
-          }, {});
+        const { data: productos, error: prodError } = await supabase
+          .from('productos')
+          .select('id, nombre, tipo_id')
+          .in('id', productIds as number[]);
+        if (prodError) throw new Error(`Error al obtener productos: ${prodError.message}`);
+        console.log('🏷️ Productos obtenidos:', productos?.length || 0);
+        if (productos && productos.length > 0) {
+          console.log('🏷️ Primeros 5 productos:', productos.slice(0, 5));
         }
+        productosById = (productos || []).reduce((acc: Record<number, { nombre: string; tipo_id: number | null }>, p: ProductoRecord) => {
+          acc[p.id] = { nombre: p.nombre, tipo_id: p.tipo_id };
+          return acc;
+        }, {});
 
         // 4) Obtener los nombres de tipos de producto
         const tipoIds = Array.from(new Set(Object.values(productosById).map(p => p.tipo_id).filter(Boolean))) as number[];
-        console.log('🏗️ Tipo IDs:', tipoIds);
+        console.log('🏗️ Tipo IDs encontrados:', tipoIds.length, tipoIds);
+        console.log('🏗️ Productos con tipo_id null:', Object.values(productosById).filter(p => p.tipo_id === null).length);
+        
         let tiposById: Record<number, string> = {};
         if (tipoIds.length > 0) {
           const { data: tipos, error: tiposError } = await supabase
@@ -181,19 +177,38 @@ export function CategoryDistributionChart({ period, reportType }: CategoryDistri
             .select('id, nombre')
             .in('id', tipoIds);
           if (tiposError) throw new Error(`Error al obtener tipos: ${tiposError.message}`);
-          console.log('📂 Tipos:', tipos);
+          console.log('📂 Tipos obtenidos:', tipos?.length || 0, tipos);
           tiposById = (tipos || []).reduce((acc: Record<number, string>, t: TipoRecord) => {
             acc[t.id] = t.nombre;
             return acc;
           }, {});
+        } else {
+          console.log('⚠️ No hay tipos de producto asignados a los productos');
         }
 
         // 5) Agrupar por tipo de producto (categoría)
         const categoriesMap: Record<string, { total: number; count: number; categoryName: string }> = {};
-        (items || []).forEach((item: ItemRecord) => {
+        console.log(`🔄 Procesando ${items.length} items para agrupar por categoría`);
+        
+        (items || []).forEach((item: ItemRecord, idx: number) => {
           const prod = productosById[item.producto_id];
+          if (!prod) {
+            console.log(`⚠️ Item ${idx}: producto_id ${item.producto_id} no encontrado en productosById`);
+            console.log(`   Productos disponibles:`, Object.keys(productosById));
+          }
           const typeName = prod?.tipo_id ? (tiposById[prod.tipo_id] || 'Sin Categoría') : 'Sin Categoría';
           const total = item.total_neto || 0;
+          
+          if (idx < 3) { // Log los primeros 3 items para debugging
+            console.log(`📦 Item ${idx}:`, {
+              producto_id: item.producto_id,
+              producto: prod?.nombre || 'N/A',
+              tipo_id: prod?.tipo_id || 'N/A',
+              categoria: typeName,
+              total_neto: total
+            });
+          }
+          
           if (!categoriesMap[typeName]) {
             categoriesMap[typeName] = { total: 0, count: 0, categoryName: typeName };
           }
@@ -209,7 +224,11 @@ export function CategoryDistributionChart({ period, reportType }: CategoryDistri
         console.log('💰 Total amount:', totalAmount, 'Categories:', categoriesArray.length);
         
         if (totalAmount === 0 || categoriesArray.length === 0) {
-          setCategoryData(mockCategoryData);
+          console.log('⚠️ No hay categorías con datos para mostrar');
+          console.log('   Total amount:', totalAmount);
+          console.log('   Categories found:', categoriesArray.length);
+          console.log('   Categories map:', categoriesMap);
+          setCategoryData([]);
           setLoading(false);
           return;
         }
@@ -240,11 +259,13 @@ export function CategoryDistributionChart({ period, reportType }: CategoryDistri
           formattedData[0].value = parseFloat((formattedData[0].value + diff).toFixed(2));
         }
 
+        console.log('✅ Categorías formateadas para el gráfico:', formattedData.length);
+        console.log('📊 Datos finales:', formattedData);
         setCategoryData(formattedData);
       } catch (err) {
         console.error('Error cargando distribución de categorías:', err);
         setError(err instanceof Error ? err.message : 'Error al cargar datos');
-        setCategoryData(mockCategoryData); // Fallback a datos mock
+        setCategoryData([]);
       } finally {
         setLoading(false);
       }
@@ -298,8 +319,19 @@ export function CategoryDistributionChart({ period, reportType }: CategoryDistri
       return;
     }
 
-  // Si no hay datos, usar mock
-  const dataToUse = categoryData.length > 0 ? categoryData : mockCategoryData;
+    // Si no hay datos, mostrar mensaje
+    if (categoryData.length === 0) {
+      ctx.font = '14px Arial';
+      ctx.fillStyle = '#6b7280';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('No hay datos', centerX, centerY - 10);
+      ctx.font = '12px Arial';
+      ctx.fillText('en el período', centerX, centerY + 10);
+      return;
+    }
+
+    const dataToUse = categoryData;
     
     // Dibujar cada segmento con efectos mejorados
     dataToUse.forEach((segment, index) => {
@@ -356,14 +388,14 @@ export function CategoryDistributionChart({ period, reportType }: CategoryDistri
     ctx.stroke();
 
     // Texto central mejorado
-    const totalValue = (categoryData.length > 0 ? categoryData : mockCategoryData)
-      .reduce((sum, item) => sum + parseFloat(item.amount.replace(/[$,]/g, '')), 0);
+    const totalValue = categoryData.reduce((sum, item) => sum + parseFloat(item.amount.replace(/[$,]/g, '')), 0);
     
     ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--text-primary') || '#000000';
     ctx.font = 'bold 14px system-ui, -apple-system, sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-  ctx.fillText('Total Cotizado', centerX, centerY - 12);
+    const centerLabel = reportType === 'cotizaciones' ? 'Total Cotizado' : 'Total Vendido';
+    ctx.fillText(centerLabel, centerX, centerY - 12);
 
     ctx.font = 'bold 18px system-ui, -apple-system, sans-serif';
     ctx.fillStyle = '#8b5cf6';
@@ -377,7 +409,7 @@ export function CategoryDistributionChart({ period, reportType }: CategoryDistri
     ctx.lineTo(centerX + 25, centerY - 2);
     ctx.stroke();
 
-  }, [period, hoveredSegment]);
+  }, [categoryData, loading, error, hoveredSegment, reportType]);
 
   // Manejar interacciones del mouse
   const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
@@ -460,7 +492,24 @@ export function CategoryDistributionChart({ period, reportType }: CategoryDistri
 
       {/* Leyenda mejorada */}
       <div className="flex-1 space-y-3">
-        {dataArr.map((item, index) => (
+        {categoryData.length === 0 ? (
+          <div className="text-center p-8">
+            <div className="mb-4">
+              <svg className="w-16 h-16 mx-auto" style={{ color: 'var(--text-secondary)' }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+              </svg>
+            </div>
+            <h3 className="text-base font-semibold mb-2" style={{ color: 'var(--text-primary)' }}>
+              No hay datos en el período
+            </h3>
+            <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+              {reportType === 'cotizaciones' 
+                ? 'Crea cotizaciones para ver la distribución por categorías'
+                : 'Genera notas de venta para ver la distribución por categorías'}
+            </p>
+          </div>
+        ) : (
+          dataArr.map((item, index) => (
           <div 
             key={index} 
             className={`group p-4 rounded-lg transition-all duration-200 cursor-pointer ${
@@ -514,9 +563,11 @@ export function CategoryDistributionChart({ period, reportType }: CategoryDistri
               </div>
             </div>
           </div>
-        ))}
+        ))
+        )}
 
         {/* Resumen total mejorado */}
+        {categoryData.length > 0 && (
         <div className="mt-6 pt-4 border-t" style={{ borderColor: 'var(--border-subtle)' }}>
           <div 
             className="p-4 rounded-lg"
@@ -525,34 +576,26 @@ export function CategoryDistributionChart({ period, reportType }: CategoryDistri
             <div className="flex items-center justify-between">
               <div>
                 <span className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
-                  Total de ventas por categoría
+                  {reportType === 'cotizaciones' ? 'Total cotizado por categoría' : 'Total vendido por categoría'}
                 </span>
                 <div className="mt-1">
                   <span className="text-xl font-bold" style={{ color: 'var(--text-primary)' }}>
-                    $328,700
-                  </span>
-                  <span className="text-sm ml-2 text-green-600 dark:text-green-400">
-                    +12% vs período anterior
+                    {new Intl.NumberFormat('es-CL', { 
+                      style: 'currency', 
+                      currency: 'CLP',
+                      maximumFractionDigits: 0
+                    }).format(categoryData.reduce((sum, cat) => {
+                      const amount = parseFloat(cat.amount.replace(/[$.]/g, '').replace(/\./g, '')) || 0;
+                      return sum + amount;
+                    }, 0))}
                   </span>
                 </div>
               </div>
             </div>
           </div>
         </div>
+        )}
       </div>
-      
-      {/* Indicador de datos mock */}
-      {categoryData.length === 0 && (
-        <div className="mt-2 text-center">
-          <span className="text-xs px-2 py-1 rounded-full" 
-                style={{ 
-                  backgroundColor: 'var(--warning-bg)', 
-                  color: 'var(--warning-text)' 
-                }}>
-            📊 Datos de demostración - Requiere categorías de productos
-          </span>
-        </div>
-      )}
     </div>
   );
 }

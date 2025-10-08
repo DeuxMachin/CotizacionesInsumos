@@ -56,70 +56,129 @@ export function ClientStatusChart({ period }: ClientStatusChartProps) {
         setLoading(true);
         setError(null);
         
-        // Obtener todos los clientes
-        const { data: clientes, error: clientesError } = await supabase
+        // Determinar rango de fechas según el período
+        const now = new Date();
+        const startDate = new Date();
+        
+        switch (period) {
+          case 'Última semana':
+            startDate.setDate(now.getDate() - 7);
+            break;
+          case 'Último mes':
+            startDate.setMonth(now.getMonth() - 1);
+            break;
+          case 'Últimos 3 meses':
+            startDate.setMonth(now.getMonth() - 3);
+            break;
+          case 'Últimos 6 meses':
+            startDate.setMonth(now.getMonth() - 6);
+            break;
+          case 'Último año':
+            startDate.setFullYear(now.getFullYear() - 1);
+            break;
+          default:
+            startDate.setMonth(now.getMonth() - 6);
+        }
+        
+        // Obtener cotizaciones del período
+        const { data: cotizaciones, error: cotError } = await supabase
+          .from('cotizaciones')
+          .select('cliente_principal_id')
+          .gte('created_at', startDate.toISOString())
+          .lte('created_at', now.toISOString());
+        
+        if (cotError) throw new Error(`Error al obtener cotizaciones: ${cotError.message}`);
+        
+        // Obtener notas de venta del período
+        const { data: notasVenta, error: notasError } = await supabase
+          .from('notas_venta')
+          .select('cliente_principal_id')
+          .gte('fecha_emision', startDate.toISOString())
+          .lte('fecha_emision', now.toISOString());
+        
+        if (notasError) throw new Error(`Error al obtener notas de venta: ${notasError.message}`);
+        
+        // Obtener IDs únicos de clientes con actividad en el período
+        const clientesConActividad = new Set<number>();
+        (cotizaciones || []).forEach(cot => {
+          if (cot.cliente_principal_id) clientesConActividad.add(cot.cliente_principal_id);
+        });
+        (notasVenta || []).forEach(nota => {
+          if (nota.cliente_principal_id) clientesConActividad.add(nota.cliente_principal_id);
+        });
+        
+        // Obtener información de clientes
+        const { data: todosClientes, error: clientesError } = await supabase
           .from('clientes')
-          .select('id, estado, created_at');
+          .select('id, estado');
         
         if (clientesError) throw new Error(`Error al obtener clientes: ${clientesError.message}`);
         
-        // Mapear estados a categorías fijas
+        // Categorizar clientes
         const estadosCount: Record<string, number> = {
           'Activos': 0,
           'Prospectos': 0,
-          'Inactivos': 0
+          'Sin Actividad': 0
         };
         
-        (clientes || []).forEach(cliente => {
-          if (cliente.estado === 'vigente') {
+        (todosClientes || []).forEach(cliente => {
+          // Cliente activo = tiene actividad en el período
+          if (clientesConActividad.has(cliente.id)) {
             estadosCount['Activos']++;
-          } else if (cliente.estado === 'prospecto') {
+          } 
+          // Prospecto = no tiene actividad pero su estado es prospecto
+          else if (cliente.estado === 'prospecto') {
             estadosCount['Prospectos']++;
-          } else {
-            estadosCount['Inactivos']++;
+          } 
+          // Sin actividad = no tiene actividad en el período
+          else {
+            estadosCount['Sin Actividad']++;
           }
         });
         
         // Calcular total
         const total = Object.values(estadosCount).reduce((sum, count) => sum + count, 0);
         
-        // Formatear datos
-        if (total > 0) {
-          const formattedData: ClientStatusData[] = [
-            {
-              status: 'Activos',
-              count: estadosCount['Activos'],
-              percentage: Math.round((estadosCount['Activos'] / total) * 100),
-              color: '#10b981',
-              description: 'Clientes con actividad reciente',
-              icon: '✓'
-            },
-            {
-              status: 'Prospectos',
-              count: estadosCount['Prospectos'],
-              percentage: Math.round((estadosCount['Prospectos'] / total) * 100),
-              color: '#06b6d4',
-              description: 'Clientes potenciales en proceso',
-              icon: '◐'
-            },
-            {
-              status: 'Inactivos',
-              count: estadosCount['Inactivos'],
-              percentage: Math.round((estadosCount['Inactivos'] / total) * 100),
-              color: '#6b7280',
-              description: 'Sin actividad en el período',
-              icon: '○'
-            }
-          ];
-          
-          setClientStatusData(formattedData);
-        } else {
-          setClientStatusData(mockClientStatusData);
+        // Si no hay clientes, mostrar mensaje apropiado
+        if (total === 0) {
+          setClientStatusData([]);
+          setLoading(false);
+          return;
         }
+        
+        // Formatear datos
+        const formattedData: ClientStatusData[] = [
+          {
+            status: 'Activos',
+            count: estadosCount['Activos'],
+            percentage: Math.round((estadosCount['Activos'] / total) * 100),
+            color: '#10b981',
+            description: `Con ${clientesConActividad.size > 0 ? 'cotizaciones o ventas' : 'actividad'} en el período`,
+            icon: '✓'
+          },
+          {
+            status: 'Prospectos',
+            count: estadosCount['Prospectos'],
+            percentage: Math.round((estadosCount['Prospectos'] / total) * 100),
+            color: '#06b6d4',
+            description: 'Sin actividad, marcados como prospectos',
+            icon: '◐'
+          },
+          {
+            status: 'Sin Actividad',
+            count: estadosCount['Sin Actividad'],
+            percentage: Math.round((estadosCount['Sin Actividad'] / total) * 100),
+            color: '#6b7280',
+            description: 'Sin cotizaciones ni ventas en el período',
+            icon: '○'
+          }
+        ];
+        
+        setClientStatusData(formattedData);
       } catch (err) {
         console.error('Error cargando estado de clientes:', err);
         setError(err instanceof Error ? err.message : 'Error al cargar datos');
-        setClientStatusData(mockClientStatusData);
+        setClientStatusData([]);
       } finally {
         setLoading(false);
       }
@@ -151,12 +210,30 @@ export function ClientStatusChart({ period }: ClientStatusChartProps) {
     return (
       <div className="text-center p-4">
         <p style={{ color: 'var(--text-danger)' }}>Error: {error}</p>
-        <p style={{ color: 'var(--text-secondary)' }}>Mostrando datos de ejemplo</p>
       </div>
     );
   }
 
-  const dataToShow = clientStatusData.length > 0 ? clientStatusData : mockClientStatusData;
+  // Si no hay datos reales, mostrar mensaje
+  if (clientStatusData.length === 0) {
+    return (
+      <div className="text-center p-8">
+        <div className="mb-4">
+          <svg className="w-16 h-16 mx-auto" style={{ color: 'var(--text-secondary)' }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+          </svg>
+        </div>
+        <h3 className="text-base font-semibold mb-2" style={{ color: 'var(--text-primary)' }}>
+          No hay clientes registrados
+        </h3>
+        <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+          Agrega clientes para ver estadísticas de actividad
+        </p>
+      </div>
+    );
+  }
+
+  const dataToShow = clientStatusData;
   const totalClients = dataToShow.reduce((sum, item) => sum + item.count, 0);
 
   return (

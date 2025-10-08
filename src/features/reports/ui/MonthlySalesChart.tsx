@@ -111,23 +111,22 @@ export function MonthlySalesChart({ period }: MonthlySalesChartProps) {
         const dailySales: MonthlySalesData[] = [];
         const salesByDay: Map<string, { total: number; count: number; dateObj: Date }> = new Map();
 
-        // Obtener la fecha actual en zona horaria local
-        const today = new Date();
-        today.setHours(12, 0, 0, 0); // Mediodía para evitar problemas
+        // Calcular días reales entre las fechas
+        const daysToShow = Math.ceil((now.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
 
-        // Inicializar los últimos 31 días manteniendo el orden
+        // Inicializar todos los días en el rango desde startDate hasta now
         const datesArray: string[] = [];
-        for (let i = 30; i >= 0; i--) {
-          const date = new Date(today);
-          date.setDate(today.getDate() - i);
-          
-          const year = date.getFullYear();
-          const month = String(date.getMonth() + 1).padStart(2, '0');
-          const day = String(date.getDate()).padStart(2, '0');
+        const currentDate = new Date(startDate);
+        while (currentDate <= now) {
+          const year = currentDate.getFullYear();
+          const month = String(currentDate.getMonth() + 1).padStart(2, '0');
+          const day = String(currentDate.getDate()).padStart(2, '0');
           const dayKey = `${year}-${month}-${day}`;
           
           datesArray.push(dayKey);
-          salesByDay.set(dayKey, { total: 0, count: 0, dateObj: date });
+          salesByDay.set(dayKey, { total: 0, count: 0, dateObj: new Date(currentDate) });
+          
+          currentDate.setDate(currentDate.getDate() + 1);
         }
 
         // Sumar las ventas por día y contar transacciones
@@ -151,10 +150,21 @@ export function MonthlySalesChart({ period }: MonthlySalesChartProps) {
           }
         });
 
-        // Convertir a array para el gráfico en el orden correcto
+        // Convertir a array para el gráfico en el orden correcto, pero solo días con datos
+        const salesDataWithValues = datesArray
+          .map((dateKey) => {
+            const data = salesByDay.get(dateKey)!;
+            return {
+              dateKey,
+              data,
+              hasData: data.count > 0
+            };
+          })
+          .filter(item => item.hasData); // Solo días con ventas
+
         let dayIndex = 1;
-        datesArray.forEach((dateKey) => {
-          const data = salesByDay.get(dateKey)!;
+        salesDataWithValues.forEach((item) => {
+          const data = item.data;
           const dateObj = data.dateObj;
           
           // Crear etiqueta con mes para evitar confusión
@@ -166,7 +176,7 @@ export function MonthlySalesChart({ period }: MonthlySalesChartProps) {
             sales: data.total,
             count: data.count,
             label: `${dayNum}/${monthShort}`, // Formato: 05/OCT, 24/SEP
-            fullDate: dateKey
+            fullDate: item.dateKey
           });
           dayIndex++;
         });
@@ -225,13 +235,13 @@ export function MonthlySalesChart({ period }: MonthlySalesChartProps) {
       const isMobile = rect.width < 640;
       const margin = isMobile 
         ? { top: 15, right: 15, bottom: 45, left: 50 }
-        : { top: 20, right: 30, bottom: 60, left: 80 };
+        : { top: 40, right: 30, bottom: 60, left: 80 };
       const chartWidth = rect.width - margin.left - margin.right;
       const chartHeight = rect.height - margin.top - margin.bottom;
       
       // Pre-calcular valores comunes para optimización
       const maxSales = Math.max(...salesData.map(d => d.sales));
-      const minSales = Math.min(...salesData.map(d => d.sales));
+      const minSales = 0; // Usar 0 como en la función de dibujo
       const salesRange = maxSales - minSales;
       
       // Buscar punto más cercano al mouse
@@ -240,7 +250,7 @@ export function MonthlySalesChart({ period }: MonthlySalesChartProps) {
       const detectionRadius = isMobile ? 30 : 20; // Radio más grande en móvil
       
       for (const data of salesData) {
-        const pointX = margin.left + (data.day - 1) * (chartWidth / (salesData.length - 1));
+        const pointX = margin.left + chartWidth - (data.day - 1) * (chartWidth / (salesData.length - 1));
         const pointY = margin.top + chartHeight - ((data.sales - minSales) / salesRange) * chartHeight;
         
         const distance = Math.sqrt((x - pointX) ** 2 + (y - pointY) ** 2);
@@ -301,12 +311,12 @@ export function MonthlySalesChart({ period }: MonthlySalesChartProps) {
       const isMobile = rect.width < 640;
       const margin = isMobile 
         ? { top: 15, right: 15, bottom: 45, left: 50 }
-        : { top: 20, right: 30, bottom: 60, left: 80 };
+        : { top: 40, right: 30, bottom: 60, left: 80 };
       const chartWidth = rect.width - margin.left - margin.right;
       const chartHeight = rect.height - margin.top - margin.bottom;
       
       const maxSales = Math.max(...salesData.map(d => d.sales));
-      const minSales = Math.min(...salesData.map(d => d.sales));
+      const minSales = 0; // Usar 0 como en la función de dibujo
       const salesRange = maxSales - minSales;
       
       let closestPoint = null;
@@ -314,7 +324,7 @@ export function MonthlySalesChart({ period }: MonthlySalesChartProps) {
       const detectionRadius = 40; // Radio más grande para touch
       
       for (const data of salesData) {
-        const pointX = margin.left + (data.day - 1) * (chartWidth / (salesData.length - 1));
+        const pointX = margin.left + chartWidth - (data.day - 1) * (chartWidth / (salesData.length - 1));
         const pointY = margin.top + chartHeight - ((data.sales - minSales) / salesRange) * chartHeight;
         
         const distance = Math.sqrt((x - pointX) ** 2 + (y - pointY) ** 2);
@@ -407,16 +417,16 @@ export function MonthlySalesChart({ period }: MonthlySalesChartProps) {
     // Márgenes adaptables según el tamaño de pantalla
     const margin = isMobile 
       ? { top: 15, right: 15, bottom: 45, left: 50 }  // Márgenes reducidos para móvil
-      : { top: 20, right: 30, bottom: 60, left: 80 }; // Márgenes normales para desktop
+      : { top: 40, right: 30, bottom: 60, left: 80 }; // Márgenes normales para desktop
     const chartWidth = width - margin.left - margin.right;
     const chartHeight = height - margin.top - margin.bottom;
 
     // Escalas
     const maxSales = Math.max(...salesData.map(d => d.sales));
-    const minSales = Math.min(...salesData.map(d => d.sales));
+    const minSales = 0; // Siempre comenzar desde 0 para mejor visualización
     const salesRange = maxSales - minSales;
     
-    const xScale = (day: number) => margin.left + (day - 1) * (chartWidth / (salesData.length - 1));
+    const xScale = (day: number) => margin.left + chartWidth - (day - 1) * (chartWidth / (salesData.length - 1));
     const yScale = (sales: number) => margin.top + chartHeight - ((sales - minSales) / salesRange) * chartHeight;
 
     // Líneas de cuadrícula horizontal

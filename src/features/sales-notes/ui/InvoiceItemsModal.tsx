@@ -394,10 +394,7 @@ export function InvoiceItemsModal({
             <button
               onClick={handleConfirm}
               disabled={isSubmitting}
-              className="px-4 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed order-1 sm:order-2"
-              style={{ backgroundColor: 'var(--primary)', color: 'white' }}
-              onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'var(--primary-hover)')}
-              onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'var(--primary)')}
+              className="px-4 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed order-1 sm:order-2 bg-blue-600 text-white hover:bg-blue-700"
             >
               {isSubmitting ? 'Procesando...' : 'Confirmar Facturación'}
             </button>

@@ -1,14 +1,15 @@
 "use client";
 
-import { ReportPeriod } from "@/app/dashboard/reportes/page";
+import { ReportPeriod, ReportType } from "@/app/dashboard/reportes/page";
 import { TopProductsReport } from "./detailed/TopProductsReport";
 import { ClientStatusReport } from "./detailed/ClientStatusReport";
 
 interface DetailedReportsProps {
   period: ReportPeriod;
+  reportType: ReportType;
 }
 
-export function DetailedReports({ period }: DetailedReportsProps) {
+export function DetailedReports({ period, reportType }: DetailedReportsProps) {
   return (
     <div className="grid lg:grid-cols-2 gap-4 sm:gap-6">
       {/* Productos más vendidos */}
@@ -27,7 +28,7 @@ export function DetailedReports({ period }: DetailedReportsProps) {
             Top 5 productos por ingresos generados
           </p>
         </div>
-        <TopProductsReport period={period} />
+        <TopProductsReport period={period} reportType={reportType} />
       </div>
 
       {/* Estado de clientes */}

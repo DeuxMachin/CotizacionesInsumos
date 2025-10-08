@@ -59,6 +59,9 @@ export function ClientStatusReport({ period }: ClientStatusReportProps) {
         const startDate = new Date();
         
         switch (period) {
+          case 'Última semana':
+            startDate.setDate(now.getDate() - 7);
+            break;
           case 'Último mes':
             startDate.setMonth(now.getMonth() - 1);
             break;

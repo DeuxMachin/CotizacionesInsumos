@@ -51,20 +51,22 @@ export function SalesFinancialSummary({ period, reportType }: SalesFinancialSumm
 
         switch (period) {
           case 'Última semana':
-            startDate.setDate(now.getDate() - 6);
+            startDate.setDate(now.getDate() - 7);
             break;
           case 'Último mes':
-            startDate.setDate(now.getDate() - 29);
+            startDate.setMonth(now.getMonth() - 1);
             break;
           case 'Últimos 3 meses':
-            startDate.setDate(now.getDate() - 89);
+            startDate.setMonth(now.getMonth() - 3);
             break;
           case 'Últimos 6 meses':
-            startDate.setDate(now.getDate() - 179);
+            startDate.setMonth(now.getMonth() - 6);
             break;
           case 'Último año':
-            startDate.setDate(now.getDate() - 364);
+            startDate.setFullYear(now.getFullYear() - 1);
             break;
+          default:
+            startDate.setMonth(now.getMonth() - 6);
         }
 
         // Query cotizaciones o notas_venta según el tipo, con columnas existentes

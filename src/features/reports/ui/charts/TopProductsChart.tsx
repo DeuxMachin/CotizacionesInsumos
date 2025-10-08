@@ -82,40 +82,68 @@ export function TopProductsChart({ period, reportType }: TopProductsChartProps) 
         const now = new Date();
         const startDate = new Date();
         switch (period) {
-          case 'Última semana': startDate.setDate(now.getDate() - 6); break;
-          case 'Último mes': startDate.setDate(now.getDate() - 29); break;
-          case 'Últimos 3 meses': startDate.setDate(now.getDate() - 89); break;
-          case 'Últimos 6 meses': startDate.setDate(now.getDate() - 179); break;
-          case 'Último año': startDate.setDate(now.getDate() - 364); break;
-          default: startDate.setDate(now.getDate() - 179);
+          case 'Última semana': startDate.setDate(now.getDate() - 7); break;
+          case 'Último mes': startDate.setMonth(now.getMonth() - 1); break;
+          case 'Últimos 3 meses': startDate.setMonth(now.getMonth() - 3); break;
+          case 'Últimos 6 meses': startDate.setMonth(now.getMonth() - 6); break;
+          case 'Último año': startDate.setFullYear(now.getFullYear() - 1); break;
+          default: startDate.setMonth(now.getMonth() - 6);
         }
 
         // Traer items según tipo
         let items: ItemRecord[] = [];
         if (reportType === 'cotizaciones') {
+          // Primero obtenemos las cotizaciones del periodo
+          const { data: cotizaciones, error: cotError } = await supabase
+            .from('cotizaciones')
+            .select('id')
+            .gte('created_at', startDate.toISOString())
+            .lte('created_at', now.toISOString());
+          if (cotError) throw new Error(cotError.message);
+          
+          const cotizacionIds = (cotizaciones || []).map(c => c.id);
+          if (cotizacionIds.length === 0) {
+            setTopProducts([]);
+            setLoading(false);
+            return;
+          }
+          
+          // Ahora obtenemos los items de esas cotizaciones
           const { data, error: itemsError } = await supabase
             .from('cotizacion_items')
             .select(`
               cantidad,
               total_neto,
-              productos ( id, nombre ),
-              cotizaciones!inner (created_at)
+              productos ( id, nombre )
             `)
-            .gte('cotizaciones.created_at', startDate.toISOString())
-            .lte('cotizaciones.created_at', now.toISOString());
+            .in('cotizacion_id', cotizacionIds);
           if (itemsError) throw new Error(itemsError.message);
           items = data || [];
         } else {
+          // Primero obtenemos las notas de venta del periodo
+          const { data: notas, error: notasError } = await supabase
+            .from('notas_venta')
+            .select('id')
+            .gte('fecha_emision', startDate.toISOString())
+            .lte('fecha_emision', now.toISOString());
+          if (notasError) throw new Error(notasError.message);
+          
+          const notaIds = (notas || []).map(n => n.id);
+          if (notaIds.length === 0) {
+            setTopProducts([]);
+            setLoading(false);
+            return;
+          }
+          
+          // Ahora obtenemos los items de esas notas
           const { data, error: itemsError } = await supabase
             .from('nota_venta_items')
             .select(`
               cantidad,
               total_neto,
-              productos ( id, nombre ),
-              notas_venta:notas_venta!nota_venta_items_nota_venta_id_fkey (fecha_emision)
+              productos ( id, nombre )
             `)
-            .gte('notas_venta.fecha_emision', startDate.toISOString())
-            .lte('notas_venta.fecha_emision', now.toISOString());
+            .in('nota_venta_id', notaIds);
           if (itemsError) throw new Error(itemsError.message);
           items = data || [];
         }
@@ -147,7 +175,7 @@ export function TopProductsChart({ period, reportType }: TopProductsChartProps) 
         setTopProducts(products);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Error al cargar datos');
-        setTopProducts(mockProductsData); // Fallback a datos mock
+        setTopProducts([]);
       } finally {
         setLoading(false);
       }
@@ -188,12 +216,31 @@ export function TopProductsChart({ period, reportType }: TopProductsChartProps) 
     return (
       <div className="text-center p-4">
         <p style={{ color: 'var(--text-danger)' }}>Error: {error}</p>
-        <p style={{ color: 'var(--text-secondary)' }}>Mostrando datos de ejemplo</p>
       </div>
     );
   }
 
-  const productsToShow = topProducts.length > 0 ? topProducts : mockProductsData;
+  if (topProducts.length === 0) {
+    return (
+      <div className="text-center p-8">
+        <div className="mb-4">
+          <svg className="w-16 h-16 mx-auto" style={{ color: 'var(--text-secondary)' }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+          </svg>
+        </div>
+        <h3 className="text-base font-semibold mb-2" style={{ color: 'var(--text-primary)' }}>
+          No hay productos en el período
+        </h3>
+        <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+          {reportType === 'cotizaciones' 
+            ? 'Crea cotizaciones con productos para ver estadísticas'
+            : 'Genera notas de venta con productos para ver estadísticas'}
+        </p>
+      </div>
+    );
+  }
+
+  const productsToShow = topProducts;
   
   // Calcular totales dinámicos
   const totalIngresos = productsToShow.reduce((sum, product) => {

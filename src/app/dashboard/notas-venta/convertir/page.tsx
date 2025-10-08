@@ -400,22 +400,12 @@ function ConvertQuoteContent() {
               <button
                 onClick={handleConvert}
                 disabled={isConverting || selectedItems.length === 0}
-                className="px-6 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                style={{
-                  backgroundColor: 'var(--primary)',
-                  color: 'var(--button-text)',
-                  border: 'none'
-                }}
+                className="px-6 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed bg-green-500 text-white hover:bg-green-600"
               >
                 {isConverting ? (
                   <>
                     <div
-                      className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 mr-2 inline-block"
-                      style={{
-                        borderLeftColor: 'var(--button-text)',
-                        borderRightColor: 'var(--button-text)',
-                        borderBottomColor: 'var(--button-text)'
-                      }}
+                      className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 mr-2 inline-block border-white"
                     />
                     Creando Nota de Venta...
                   </>

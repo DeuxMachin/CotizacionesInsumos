@@ -21,16 +21,11 @@ interface CotizacionRecord {
 }
 
 interface NotaVentaRecord {
-  created_at: string;
+  fecha_emision: string;
   total: number;
 }
 
-const mockMonthlyQuotesData: MonthlyQuotesData[] = Array.from({ length: 30 }, (_, i) => ({
-  day: i + 1,
-  amount: Math.floor(200000 + Math.random() * 600000),
-  count: Math.floor(Math.random() * 8) + 1,
-  label: `D${String(i + 1).padStart(2, '0')}`
-}));
+// Mock data eliminado - ahora solo se muestran datos reales de la base de datos
 
 export function MonthlyQuotesChart({ period, reportType }: MonthlyQuotesChartProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -50,86 +45,69 @@ export function MonthlyQuotesChart({ period, reportType }: MonthlyQuotesChartPro
         setClickedPoint(null); // Reset clicked point when changing report type or period
         const now = new Date();
         const startDate = new Date();
-        let daysToShow = 30; // Default para la mayoría de casos
         
         switch (period) {
           case 'Última semana':
-            startDate.setDate(now.getDate() - 6); // Los últimos 7 días (incluyendo hoy)
-            daysToShow = 7;
+            startDate.setDate(now.getDate() - 7);
             break;
           case 'Último mes':
-            startDate.setDate(now.getDate() - 29); // Los últimos 30 días
-            daysToShow = 30;
+            startDate.setMonth(now.getMonth() - 1);
             break;
           case 'Últimos 3 meses':
-            startDate.setDate(now.getDate() - 89); // Los últimos 90 días
-            daysToShow = 90;
+            startDate.setMonth(now.getMonth() - 3);
             break;
           case 'Últimos 6 meses':
-            startDate.setDate(now.getDate() - 179); // Los últimos 180 días
-            daysToShow = 180;
+            startDate.setMonth(now.getMonth() - 6);
             break;
           case 'Último año':
-            startDate.setDate(now.getDate() - 364); // Los últimos 365 días
-            daysToShow = 365;
+            startDate.setFullYear(now.getFullYear() - 1);
             break;
           default:
-            startDate.setDate(now.getDate() - 29);
-            daysToShow = 30;
+            startDate.setMonth(now.getMonth() - 1);
         }
+        
+        // Calcular días reales entre las fechas
+        const daysToShow = Math.ceil((now.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
 
         // Traer datos del período según el tipo de reporte
         const tableName = reportType === 'cotizaciones' ? 'cotizaciones' : 'notas_venta';
         const amountField = reportType === 'cotizaciones' ? 'total_final' : 'total';
+        const dateField = reportType === 'cotizaciones' ? 'created_at' : 'fecha_emision';
         
         const { data: records, error: fetchError } = await supabase
           .from(tableName)
-          .select(`created_at, ${amountField}`)
-          .gte('created_at', startDate.toISOString())
-          .lte('created_at', now.toISOString())
-          .order('created_at', { ascending: true });
+          .select(`${dateField}, ${amountField}`)
+          .gte(dateField, startDate.toISOString())
+          .lte(dateField, now.toISOString())
+          .order(dateField, { ascending: true });
         if (fetchError) throw new Error(`Error al obtener datos: ${fetchError.message}`);
 
-        // Para períodos largos (3+ meses), solo mostrar días con cotizaciones
-        const showOnlyDaysWithQuotes = period === 'Últimos 3 meses' || period === 'Últimos 6 meses' || period === 'Último año';
+        // Determinar si agrupar por semanas para períodos largos
+        const shouldGroupByWeeks = daysToShow > 31; // Más de un mes
+        const groupSize = shouldGroupByWeeks ? 7 : 1; // Semanas o días
         
-        // Inicializar días según el período seleccionado
+        // Solo agregar días que tienen datos reales (no mostrar días en $0)
         type DayAgg = { amount: number; count: number; fullDate: string };
         const quotesByDay: Record<string, DayAgg> = {};
         const dateMap: string[] = []; // Para mantener el orden de las fechas
-        
-        if (!showOnlyDaysWithQuotes) {
-          // Para períodos cortos (semana, mes), mostrar todos los días
-          for (let i = daysToShow - 1; i >= 0; i--) {
-            const date = new Date();
-            date.setDate(date.getDate() - i);
-            const dayKey = date.toISOString().split('T')[0];
-            quotesByDay[dayKey] = { amount: 0, count: 0, fullDate: dayKey };
-            dateMap.push(dayKey);
-          }
-        }
 
         const typedRecords = reportType === 'cotizaciones' ? (records as CotizacionRecord[]) : (records as NotaVentaRecord[]);
 
+        // Agregar solo los días que tienen datos de la BD
         typedRecords.forEach(record => {
-          const dateStr = new Date(record.created_at).toISOString().split('T')[0];
+          const recordDate = reportType === 'cotizaciones' 
+            ? (record as CotizacionRecord).created_at 
+            : (record as NotaVentaRecord).fecha_emision;
+          const dateStr = new Date(recordDate).toISOString().split('T')[0];
           const amount = reportType === 'cotizaciones' ? (record as CotizacionRecord).total_final : (record as NotaVentaRecord).total;
           
-          if (showOnlyDaysWithQuotes) {
-            // Solo agregar días que tienen datos
-            if (!quotesByDay[dateStr]) {
-              quotesByDay[dateStr] = { amount: 0, count: 0, fullDate: dateStr };
-              dateMap.push(dateStr);
-            }
-            quotesByDay[dateStr].count += 1;
-            quotesByDay[dateStr].amount += amount || 0;
-          } else {
-            // Para períodos cortos, agregar a días existentes
-            if (quotesByDay[dateStr] !== undefined) {
-              quotesByDay[dateStr].count += 1;
-              quotesByDay[dateStr].amount += amount || 0;
-            }
+          // Solo agregar días que tienen transacciones
+          if (!quotesByDay[dateStr]) {
+            quotesByDay[dateStr] = { amount: 0, count: 0, fullDate: dateStr };
+            dateMap.push(dateStr);
           }
+          quotesByDay[dateStr].count += 1;
+          quotesByDay[dateStr].amount += amount || 0;
         });
 
         // Convertir a arreglo manteniendo el orden de fechas
@@ -150,10 +128,14 @@ export function MonthlyQuotesChart({ period, reportType }: MonthlyQuotesChartPro
           };
         });
 
-        setQuotesData(dailyQuotes.length > 0 ? dailyQuotes : mockMonthlyQuotesData);
+        if (dailyQuotes.length === 0) {
+          console.error('❌ No se generaron puntos para el gráfico');
+        }
+
+        setQuotesData(dailyQuotes);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Error al cargar datos');
-        setQuotesData(mockMonthlyQuotesData);
+        setQuotesData([]);
       } finally {
         setLoading(false);
       }
@@ -181,7 +163,7 @@ export function MonthlyQuotesChart({ period, reportType }: MonthlyQuotesChartPro
       const rect = canvas.getBoundingClientRect();
       const x = event.clientX - rect.left;
       const y = event.clientY - rect.top;
-      const margin = { top: 20, right: 30, bottom: 60, left: 80 };
+      const margin = { top: 40, right: 30, bottom: 60, left: 80 };
       const chartWidth = rect.width - margin.left - margin.right;
       const chartHeight = rect.height - margin.top - margin.bottom;
 
@@ -189,10 +171,11 @@ export function MonthlyQuotesChart({ period, reportType }: MonthlyQuotesChartPro
       let minDistance = Infinity;
       let foundTooltipData: { x: number; y: number; data: MonthlyQuotesData } | null = null;
       
+      const xDivisor = Math.max(1, quotesData.length - 1);
       quotesData.forEach((data) => {
-        const pointX = margin.left + (data.day - 1) * (chartWidth / (quotesData.length - 1));
+        const pointX = margin.left + chartWidth - (data.day - 1) * (chartWidth / xDivisor);
         const maxVal = Math.max(...quotesData.map(d => d.amount));
-        const minVal = Math.min(...quotesData.map(d => d.amount));
+        const minVal = 0; // Usar 0 como en la función de dibujo
         const range = Math.max(1, maxVal - minVal);
         const pointY = margin.top + chartHeight - ((data.amount - minVal) / range) * chartHeight;
         const distance = Math.sqrt((x - pointX) ** 2 + (y - pointY) ** 2);
@@ -215,9 +198,10 @@ export function MonthlyQuotesChart({ period, reportType }: MonthlyQuotesChartPro
           // Mantener el tooltip del punto clickeado
           const clickedData = quotesData.find(d => d.day === clickedPoint);
           if (clickedData) {
-            const pointX = margin.left + (clickedData.day - 1) * (chartWidth / (quotesData.length - 1));
+            const xDivisor = Math.max(1, quotesData.length - 1);
+            const pointX = margin.left + chartWidth - (clickedData.day - 1) * (chartWidth / xDivisor);
             const maxVal = Math.max(...quotesData.map(d => d.amount));
-            const minVal = Math.min(...quotesData.map(d => d.amount));
+            const minVal = 0; // Usar 0 como en la función de dibujo
             const range = Math.max(1, maxVal - minVal);
             const pointY = margin.top + chartHeight - ((clickedData.amount - minVal) / range) * chartHeight;
             setTooltip({ x: pointX, y: pointY, data: clickedData });
@@ -250,14 +234,15 @@ export function MonthlyQuotesChart({ period, reportType }: MonthlyQuotesChartPro
       // Si hay un punto clickeado, mantener su tooltip visible
       if (clickedPoint) {
         const rect = canvas.getBoundingClientRect();
-        const margin = { top: 20, right: 30, bottom: 60, left: 80 };
+        const margin = { top: 40, right: 30, bottom: 60, left: 80 };
         const chartWidth = rect.width - margin.left - margin.right;
         const chartHeight = rect.height - margin.top - margin.bottom;
         const clickedData = quotesData.find(d => d.day === clickedPoint);
         if (clickedData) {
-          const pointX = margin.left + (clickedData.day - 1) * (chartWidth / (quotesData.length - 1));
+          const xDivisor = Math.max(1, quotesData.length - 1);
+          const pointX = margin.left + chartWidth - (clickedData.day - 1) * (chartWidth / xDivisor);
           const maxVal = Math.max(...quotesData.map(d => d.amount));
-          const minVal = Math.min(...quotesData.map(d => d.amount));
+          const minVal = 0; // Usar 0 como en la función de dibujo
           const range = Math.max(1, maxVal - minVal);
           const pointY = margin.top + chartHeight - ((clickedData.amount - minVal) / range) * chartHeight;
           setTooltip({ x: pointX, y: pointY, data: clickedData });
@@ -280,7 +265,13 @@ export function MonthlyQuotesChart({ period, reportType }: MonthlyQuotesChartPro
 
   // Dibujar gráfico
   useEffect(() => {
-    if (loading || quotesData.length === 0) return;
+    if (loading) {
+      return;
+    }
+    if (quotesData.length === 0) {
+      return;
+    }
+    
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
@@ -313,14 +304,17 @@ export function MonthlyQuotesChart({ period, reportType }: MonthlyQuotesChartPro
     ctx.fillStyle = colors.background;
     ctx.fillRect(0, 0, width, height);
 
-    const margin = { top: 20, right: 30, bottom: 60, left: 80 };
+    const margin = { top: 40, right: 30, bottom: 60, left: 80 };
     const chartWidth = width - margin.left - margin.right;
     const chartHeight = height - margin.top - margin.bottom;
 
     const maxVal = Math.max(...quotesData.map(d => d.amount));
-    const minVal = Math.min(...quotesData.map(d => d.amount));
+    const minVal = 0; // Siempre comenzar desde 0 para mejor visualización
     const range = Math.max(1, maxVal - minVal);
-    const xScale = (day: number) => margin.left + (day - 1) * (chartWidth / (quotesData.length - 1));
+    
+    // Protección contra división por cero para un solo punto
+    const xDivisor = Math.max(1, quotesData.length - 1);
+    const xScale = (day: number) => margin.left + chartWidth - (day - 1) * (chartWidth / xDivisor);
     const yScale = (val: number) => margin.top + chartHeight - ((val - minVal) / range) * chartHeight;
 
     // Grid horizontal
@@ -414,13 +408,28 @@ export function MonthlyQuotesChart({ period, reportType }: MonthlyQuotesChartPro
       }
     });
 
-    // Etiquetas eje X
+    // Etiquetas eje X - adaptativo según número de puntos
     ctx.fillStyle = colors.textSecondary;
     ctx.font = '10px system-ui';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'top';
+    
+    // Determinar cuántas etiquetas mostrar según el número de puntos
+    let labelInterval = 1;
+    if (quotesData.length > 180) {
+      labelInterval = Math.ceil(quotesData.length / 10); // ~10 etiquetas para períodos muy largos
+    } else if (quotesData.length > 90) {
+      labelInterval = Math.ceil(quotesData.length / 12); // ~12 etiquetas para 3-6 meses
+    } else if (quotesData.length > 30) {
+      labelInterval = Math.ceil(quotesData.length / 15); // ~15 etiquetas para 1-3 meses
+    } else if (quotesData.length > 7) {
+      labelInterval = 5; // Cada 5 días para un mes
+    } else {
+      labelInterval = 1; // Todos los días para una semana
+    }
+    
     quotesData.forEach((data, index) => {
-      if (index % 5 === 0) {
+      if (index % labelInterval === 0 || index === quotesData.length - 1) {
         const x = xScale(data.day);
         const y = margin.top + chartHeight + 10;
         ctx.fillText(data.label, x, y);
@@ -474,6 +483,38 @@ export function MonthlyQuotesChart({ period, reportType }: MonthlyQuotesChartPro
         </div>
         <div className="h-64 flex items-center justify-center">
           <p style={{ color: 'var(--text-secondary)' }}>Los datos no pudieron cargarse</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (quotesData.length === 0) {
+    return (
+      <div className="p-6 rounded-xl border" style={{ backgroundColor: 'var(--bg-primary)', borderColor: 'var(--border-subtle)' }}>
+        <div className="mb-4">
+          <h3 className="text-lg font-semibold mb-1" style={{ color: 'var(--text-primary)' }}>
+            {reportType === 'cotizaciones' ? 'Cotizaciones a lo Largo del Tiempo' : 'Ventas a lo Largo del Tiempo'}
+          </h3>
+          <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+            {reportType === 'cotizaciones' 
+              ? 'Evolución del monto cotizado día a día - visualiza las propuestas generadas'
+              : 'Evolución del monto vendido día a día - visualiza los ingresos reales'}
+          </p>
+        </div>
+        <div className="text-center p-12">
+          <div className="mb-4">
+            <svg className="w-20 h-20 mx-auto" style={{ color: 'var(--text-secondary)' }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z" />
+            </svg>
+          </div>
+          <h3 className="text-lg font-semibold mb-2" style={{ color: 'var(--text-primary)' }}>
+            No hay datos en el período seleccionado
+          </h3>
+          <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+            {reportType === 'cotizaciones' 
+              ? 'Crea cotizaciones para ver la evolución a lo largo del tiempo'
+              : 'Genera notas de venta para ver la evolución de tus ventas'}
+          </p>
         </div>
       </div>
     );
