@@ -229,19 +229,19 @@ function ConvertQuoteContent() {
       <div className="border-b" style={{ borderColor: 'var(--border)', backgroundColor: 'var(--bg-secondary)' }}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
-            <div className="flex items-center">
+            <div className="flex items-center min-w-0 flex-1">
               <button
                 onClick={() => router.back()}
-                className="p-2 rounded-lg hover:bg-opacity-80 transition-colors mr-4"
+                className="p-2 rounded-lg hover:bg-opacity-80 transition-colors mr-2 sm:mr-4 flex-shrink-0"
                 style={{ color: 'var(--text-secondary)' }}
               >
                 <FiArrowLeft className="w-5 h-5" />
               </button>
-              <div>
-                <h1 className="text-xl font-semibold" style={{ color: 'var(--text-primary)' }}>
+              <div className="min-w-0 flex-1">
+                <h1 className="text-lg sm:text-xl md:text-2xl font-semibold truncate" style={{ color: 'var(--text-primary)' }}>
                   Convertir Cotización a Nota de Venta
                 </h1>
-                <p style={{ color: 'var(--text-secondary)' }}>
+                <p className="text-sm sm:text-base truncate" style={{ color: 'var(--text-secondary)' }}>
                   Cotización {quote.id} - Convierte los productos seleccionados en una nota de venta
                 </p>
               </div>
@@ -383,10 +383,10 @@ function ConvertQuoteContent() {
             )}
 
             {/* Action Buttons */}
-            <div className="flex justify-end space-x-4 mt-6 pt-6 border-t" style={{ borderColor: 'var(--border)' }}>
+            <div className="flex flex-col space-y-2 sm:flex-row sm:space-y-0 sm:space-x-4 sm:justify-end mt-6 pt-6 border-t" style={{ borderColor: 'var(--border)' }}>
               <button
                 onClick={() => router.back()}
-                className="px-4 py-2 rounded-lg transition-colors"
+                className="px-4 py-2 rounded-lg transition-colors order-2 sm:order-1"
                 style={{
                   color: 'var(--text-secondary)',
                   border: '1px solid var(--border)',
@@ -400,7 +400,7 @@ function ConvertQuoteContent() {
               <button
                 onClick={handleConvert}
                 disabled={isConverting || selectedItems.length === 0}
-                className="px-6 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed bg-green-500 text-white hover:bg-green-600"
+                className="px-6 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed bg-green-500 text-white hover:bg-green-600 order-1 sm:order-2"
               >
                 {isConverting ? (
                   <>

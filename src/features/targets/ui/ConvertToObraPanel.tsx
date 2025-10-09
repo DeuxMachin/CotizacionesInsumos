@@ -10,7 +10,17 @@ import { REQUIRED_CARGOS } from "@/features/obras/types/obras";
 import { supabase } from "@/lib/supabase";
 import { useTargets } from "../model/useTargets";
 
-type SimpleCliente = { id: number; nombre_razon_social: string; rut: string | null };
+type SimpleCliente = { 
+  id: number; 
+  nombre_razon_social: string; 
+  rut: string | null;
+  telefono?: string;
+  celular?: string;
+  email_pago?: string;
+  direccion?: string;
+  comuna?: string;
+  ciudad?: string;
+};
 type Vendedor = { id: string; nombre: string | null; apellido: string | null; email: string };
 type OpcionCatalogo = { id: number; nombre: string };
 
@@ -41,6 +51,13 @@ export function ConvertToObraPanel({ targetId, defaultDireccion, onClose, onConv
   const [clientesSugeridos, setClientesSugeridos] = useState<SimpleCliente[]>([]);
   const [fechaInicio, setFechaInicio] = useState<string>("");
   const [valorEstimado, setValorEstimado] = useState<string>("");
+
+  // Constructora fields
+  const [constructoraNombre, setConstructoraNombre] = useState("");
+  const [constructoraRut, setConstructoraRut] = useState("");
+  const [constructoraTelefono, setConstructoraTelefono] = useState("");
+  const [constructoraEmail, setConstructoraEmail] = useState("");
+  const [constructoraDireccion, setConstructoraDireccion] = useState("");
 
   // Contactos obligatorios (5 cargos fijos)
   const [contacts, setContacts] = useState<ObraContacto[]>(
@@ -77,12 +94,48 @@ export function ConvertToObraPanel({ targetId, defaultDireccion, onClose, onConv
         return;
       }
       try {
-        const all = await ClientesService.search(clienteQuery);
-        type RawClient = { id: number; nombre_razon_social?: string; rut?: string };
-        const flat = (all || []).map((c: RawClient) => ({ id: c.id, nombre_razon_social: c.nombre_razon_social || '', rut: c.rut || '' }));
+        const term = clienteQuery.trim();
+        const normalizeRut = (v: string) => (v || '').replace(/[.\-\s]/g, '').toUpperCase();
+        const searchNormalized = normalizeRut(term);
+        
+        let results;
+        if (/^\d+$/.test(searchNormalized)) {
+          // Si parece ser un RUT (solo números), buscar por RUT del lado del cliente
+          const allClients = await ClientesService.getAll();
+          results = (allClients || []).filter(client => {
+            const rutNormalized = normalizeRut(client.rut || '');
+            return rutNormalized.includes(searchNormalized);
+          });
+        } else {
+          // Búsqueda normal por nombre
+          results = await ClientesService.search(term);
+        }
+
+        type RawClient = { 
+          id: number; 
+          nombre_razon_social?: string; 
+          rut?: string;
+          telefono?: string;
+          celular?: string;
+          email_pago?: string;
+          direccion?: string;
+          comuna?: string;
+          ciudad?: string;
+        };
+        const flat = (results || []).map((c: RawClient) => ({ 
+          id: c.id, 
+          nombre_razon_social: c.nombre_razon_social || '', 
+          rut: c.rut || '',
+          telefono: c.telefono || '',
+          celular: c.celular || '',
+          email_pago: c.email_pago || '',
+          direccion: c.direccion || '',
+          comuna: c.comuna || '',
+          ciudad: c.ciudad || ''
+        }));
         setClientesSugeridos(flat.slice(0, 8));
       } catch (e) {
-        // ignore
+        console.error('Error searching clients:', e);
       }
     }, 300);
     return () => { clearTimeout(h); ctrl.abort(); };
@@ -93,12 +146,38 @@ export function ConvertToObraPanel({ targetId, defaultDireccion, onClose, onConv
     return [v?.nombre, v?.apellido].filter(Boolean).join(' ') || v?.email || '';
   }, [vendedores, vendedorId]);
 
+  const selectCliente = (cliente: SimpleCliente) => {
+    setClienteSel(cliente);
+    setClienteQuery('');
+    setClientesSugeridos([]);
+    setConstructoraNombre(cliente.nombre_razon_social);
+    setConstructoraRut(cliente.rut || '');
+    setConstructoraTelefono(cliente.telefono || cliente.celular || '');
+    setConstructoraEmail(cliente.email_pago || '');
+    setConstructoraDireccion(cliente.direccion || '');
+  };
+
+  const clearCliente = () => {
+    setClienteSel(null);
+    setClienteQuery('');
+    setClientesSugeridos([]);
+    setConstructoraNombre('');
+    setConstructoraRut('');
+    setConstructoraTelefono('');
+    setConstructoraEmail('');
+    setConstructoraDireccion('');
+  };
+
   async function onSubmit() {
+    console.log('onSubmit called');
     setError(null);
     setLoading(true);
     try {
+      console.log('Validating form...');
       if (!nombreObra.trim()) throw new Error('Ingresa el nombre de la obra');
       if (!vendedorId) throw new Error('Selecciona el vendedor a cargo');
+      if (!contacts[0].nombre.trim()) throw new Error('Ingresa el nombre del contacto principal');
+      console.log('Form validation passed');
 
       // Construir contactos (5 cargos fijos)
       const contactos: ObraContacto[] = contacts.map((c, idx) => ({
@@ -108,13 +187,14 @@ export function ConvertToObraPanel({ targetId, defaultDireccion, onClose, onConv
         email: (c.email || '').trim(),
         es_principal: idx === 0,
       }));
+      console.log('Contactos built:', contactos);
 
       const obraPayload: Omit<Obra, 'id' | 'fechaCreacion' | 'fechaActualizacion' | 'fechaUltimoContacto'> = {
         nombreEmpresa: nombreObra.trim(),
         constructora: {
-          nombre: clienteSel?.nombre_razon_social || '',
-          rut: clienteSel?.rut || '',
-          telefono: '',
+          nombre: constructoraNombre || clienteSel?.nombre_razon_social || '',
+          rut: constructoraRut || clienteSel?.rut || '',
+          telefono: constructoraTelefono || '',
           contactoPrincipal: { nombre: contactos[0].nombre, cargo: contactos[0].cargo, telefono: contactos[0].telefono, email: contactos[0].email }
         },
         vendedorAsignado: vendedorId,
@@ -138,20 +218,30 @@ export function ConvertToObraPanel({ targetId, defaultDireccion, onClose, onConv
         tamanoObraId: tamanoObraId,
         contactos,
       };
+      console.log('Obra payload:', obraPayload);
 
       // Crear obra vinculada al target y obtener ID
-      const newObraId = await obrasService.crearObraDesdeTarget(obraPayload, user?.id, targetId);
+      console.log('Calling obrasService.crearObraDesdeTarget...');
+      const newObraId = await obrasService.crearObraDesdeTarget(obraPayload, vendedorId, targetId);
+      console.log('crearObraDesdeTarget returned:', newObraId);
       if (!newObraId) throw new Error('No se pudo crear la obra');
 
       // Registrar evento y cerrar target, actualizando cliente si corresponde
+      console.log('Inserting target event...');
       await supabase.from('target_eventos').insert({ target_id: targetId, tipo: 'convertido', detalle: `Convertido a Obra #${newObraId}` });
+      console.log('Updating target...');
       await updateTarget(targetId, { estado: 'cerrado', clienteId: clienteSel?.id });
+      console.log('Fetching targets...');
       await fetchTargets();
 
+      console.log('Calling onConverted...');
       onConverted?.(newObraId);
+      console.log('Calling onClose...');
       onClose();
+      console.log('onSubmit completed successfully');
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : 'Error al convertir a obra';
+      console.error('onSubmit error:', e);
       setError(msg);
     } finally {
       setLoading(false);
@@ -226,11 +316,11 @@ export function ConvertToObraPanel({ targetId, defaultDireccion, onClose, onConv
           </select>
         </div>
         <div className="md:col-span-2">
-          <label className="form-label">Cliente (opcional)</label>
+          <label className="form-label">Cliente (Solo si es socio)</label>
           {clienteSel ? (
             <div className="flex items-center gap-2">
               <span className="text-sm" style={{ color: 'var(--text-primary)' }}>{clienteSel.nombre_razon_social} {clienteSel.rut ? `(${clienteSel.rut})` : ''}</span>
-              <button className="btn-secondary text-xs" onClick={() => { setClienteSel(null); setClienteQuery(''); }}>Cambiar</button>
+              <button className="btn-secondary text-xs" onClick={clearCliente}>Cambiar</button>
             </div>
           ) : (
             <div>
@@ -244,7 +334,7 @@ export function ConvertToObraPanel({ targetId, defaultDireccion, onClose, onConv
                     <button
                       key={c.id}
                       className="w-full text-left px-3 py-2 rounded"
-                      onClick={() => { setClienteSel(c); setClientesSugeridos([]); }}
+                      onClick={() => selectCliente(c)}
                       onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'var(--bg-hover)')}
                       onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = '')}
                     >
@@ -256,6 +346,52 @@ export function ConvertToObraPanel({ targetId, defaultDireccion, onClose, onConv
               )}
             </div>
           )}
+        </div>
+        <div className="md:col-span-2">
+          <label className="form-label">Nombre de la Constructora</label>
+          <input 
+            className="form-input mt-1" 
+            value={constructoraNombre} 
+            onChange={(e) => setConstructoraNombre(e.target.value)} 
+            placeholder="Nombre de la empresa constructora" 
+          />
+        </div>
+        <div>
+          <label className="form-label">RUT de la Constructora</label>
+          <input 
+            className="form-input mt-1" 
+            value={constructoraRut} 
+            onChange={(e) => setConstructoraRut(e.target.value)} 
+            placeholder="RUT de la constructora" 
+          />
+        </div>
+        <div>
+          <label className="form-label">Teléfono de la Constructora</label>
+          <input 
+            className="form-input mt-1" 
+            value={constructoraTelefono} 
+            onChange={(e) => setConstructoraTelefono(e.target.value)} 
+            placeholder="Teléfono de la constructora" 
+          />
+        </div>
+        <div>
+          <label className="form-label">Email de la Constructora</label>
+          <input 
+            type="email"
+            className="form-input mt-1" 
+            value={constructoraEmail} 
+            onChange={(e) => setConstructoraEmail(e.target.value)} 
+            placeholder="Email de la constructora" 
+          />
+        </div>
+        <div className="md:col-span-2">
+          <label className="form-label">Dirección de la Constructora</label>
+          <input 
+            className="form-input mt-1" 
+            value={constructoraDireccion} 
+            onChange={(e) => setConstructoraDireccion(e.target.value)} 
+            placeholder="Dirección de la constructora" 
+          />
         </div>
         <div className="md:col-span-2">
           <label className="form-label">Dirección de la obra</label>
@@ -353,7 +489,7 @@ export function ConvertToObraPanel({ targetId, defaultDireccion, onClose, onConv
           <button 
             className="btn-primary" 
             onClick={onSubmit} 
-            disabled={loading || !nombreObra.trim() || !vendedorId || !contacts[0].nombre.trim()}
+            disabled={loading || !nombreObra.trim() || !vendedorId}
           >
             {loading ? 'Creando Obra…' : 'Crear Obra'}
           </button>

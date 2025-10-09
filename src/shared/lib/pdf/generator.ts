@@ -1,9 +1,10 @@
 /**
  * Generador principal de PDF para cotizaciones
  * Implementa la estrategia de fondo rasterizado con coordenadas absolutas
+ * Optimizado para entornos serverless (Vercel) usando puppeteer-core + @sparticuz/chromium
  */
 
-import puppeteer from 'puppeteer';
+import type { Browser } from 'puppeteer-core';
 import fs from 'fs';
 import path from 'path';
 import type { Quote } from '@/core/domain/quote/Quote';
@@ -262,7 +263,86 @@ function generateCondensedHTML(quote: Quote, quoteNumber: string, quoteDate: Dat
 
 
 /**
- * Genera PDF usando Puppeteer
+ * Lanza el navegador compatible con serverless
+ * Intenta diferentes estrategias de lanzamiento según el entorno
+ */
+async function launchBrowser(): Promise<Browser> {
+  const isServerless = !!process.env.VERCEL || !!process.env.AWS_LAMBDA_FUNCTION_NAME;
+  
+  // Args más restrictivos para serverless, más permisivos para local
+  const serverlessArgs = [
+    '--no-sandbox',
+    '--disable-setuid-sandbox',
+    '--disable-dev-shm-usage',
+    '--disable-gpu',
+    '--single-process',
+    '--no-zygote',
+    '--disable-web-security',
+    '--hide-scrollbars',
+    '--disable-accelerated-2d-canvas',
+    '--disable-extensions',
+    '--disable-software-rasterizer'
+  ];
+
+  const localArgs = [
+    '--no-sandbox',
+    '--disable-setuid-sandbox',
+    '--disable-web-security',
+    '--hide-scrollbars',
+    '--disable-extensions'
+  ];
+
+  // En Vercel/serverless, usar puppeteer-core + @sparticuz/chromium
+  if (isServerless) {
+    try {
+      const puppeteerCore = await import('puppeteer-core');
+      const chromium = await import('@sparticuz/chromium');
+      
+      const executablePath = await chromium.default.executablePath();
+      
+      return await puppeteerCore.default.launch({
+        args: [...chromium.default.args, ...serverlessArgs],
+        executablePath,
+        headless: true,
+        defaultViewport: { width: 1920, height: 1080 },
+      });
+    } catch (error) {
+      console.error('[PDF] Error launching with @sparticuz/chromium:', error);
+      throw new Error('No se pudo iniciar Chromium en entorno serverless: ' + (error instanceof Error ? error.message : 'Error desconocido'));
+    }
+  }
+
+  // En desarrollo/local, usar puppeteer estándar con fallbacks
+  try {
+    const puppeteer = await import('puppeteer');
+    
+    // 1) Intentar con Chromium bundled primero (más confiable)
+    try {
+      return await puppeteer.default.launch({
+        headless: true,
+        args: localArgs,
+        protocolTimeout: 120000,
+        dumpio: false,
+      });
+    } catch (chromiumError) {
+      // 2) Fallback a Chrome del sistema
+      return await puppeteer.default.launch({
+        headless: true,
+        channel: 'chrome',
+        args: localArgs,
+        protocolTimeout: 120000,
+        dumpio: false,
+      });
+    }
+  } catch (error) {
+    console.error('[PDF] Error launching browser:', error);
+    throw new Error('No se pudo iniciar un navegador para generar el PDF. Verifique instalación de Puppeteer/Chrome: ' + (error instanceof Error ? error.message : ''));
+  }
+}
+
+/**
+ * Genera PDF usando Puppeteer/Puppeteer-core según el entorno
+ * Optimizado para entornos serverless (Vercel) y desarrollo local
  */
 export async function generatePDF(
   quote: Quote, 
@@ -271,59 +351,16 @@ export async function generatePDF(
 ): Promise<Buffer> {
   const html = generateQuoteHTML(quote, backgroundImagePath, options);
   
-  let browser: Awaited<ReturnType<typeof puppeteer.launch>> | null = null;
-  try {
-
+  let browser: Browser | null = null;
+  let page = null;
+  let pageClosed = false;
   
-
-    // Preferimos headless por defecto
-    const commonArgs = ['--no-sandbox', '--disable-setuid-sandbox', '--disable-web-security', '--hide-scrollbars'];
-
-    // 1) Chrome canal
-    if (!browser) {
-      try {
-        browser = await puppeteer.launch({
-          headless: true,
-          channel: 'chrome',
-          args: commonArgs,
-        });
-      } catch {}
-    }
-
-    // 2) Chromium descargado por puppeteer
-    if (!browser) {
-      try {
-        browser = await puppeteer.launch({
-          headless: true,
-          args: commonArgs,
-        });
-      } catch {}
-    }
-
-    // 3) Serverless: @sparticuz/chromium
-    if (!browser) {
-      try {
-        const chromium = await import('@sparticuz/chromium');
-        const executablePath = await chromium.default.executablePath();
-        browser = await puppeteer.launch({
-          headless: true,
-          args: commonArgs,
-          executablePath,
-          defaultViewport: { width: 1920, height: 1080 },
-        });
-      } catch (e) {
-        console.warn('Falling back failed for @sparticuz/chromium as well:', e);
-      }
-    }
-
-    if (!browser) {
-      throw new Error('No se pudo iniciar un navegador para generar el PDF. Verifique instalación de Puppeteer/Chrome.');
-    }
+  try {
+    browser = await launchBrowser();
+    page = await browser.newPage();
     
-    const page = await browser.newPage();
-    
-    // Configurar viewport: si condensed usamos dimensiones CSS aproximadas (96dpi) para A4
-  if (options.condensed !== false) { // still honor viewport sizing path; condensed always true currently
+    // Configurar viewport manualmente (NO usar page.emulate para evitar errores en serverless)
+    if (options.condensed !== false) {
       const MM_TO_PX = 96/25.4;
       await page.setViewport({
         width: Math.round(210 * MM_TO_PX),
@@ -338,50 +375,69 @@ export async function generatePDF(
       });
     }
     
-    // Listeners para depuración (ayuda a detectar cuelgues)
-    page.on('pageerror', (err) => console.error('[PDF][pageerror]', err));
-    page.on('console', (msg) => {
-      const type = msg.type();
-      if (['error', 'warning'].includes(type)) {
-        console[type === 'error' ? 'error' : 'warn']('[PDF][console]', msg.text());
-      }
+    // Detectar si la página se cierra inesperadamente
+    page.on('close', () => {
+      pageClosed = true;
     });
 
-    // Cargar contenido HTML. Evitamos 'networkidle0' (puede no resolverse si hay listeners abiertos)
-    // porque todo el HTML es inline. Esto reduce riesgos de timeout.
+    // Listeners para errores críticos
+    page.on('pageerror', (err: Error) => console.error('[PDF] Page error:', err));
+
+    // Cargar contenido HTML
     await page.setContent(html, {
       waitUntil: 'domcontentloaded',
-      timeout: 20000
+      timeout: 30000
     });
 
-    // Forzar media screen para que respeten estilos @media print/screen si existen
-    try { await page.emulateMediaType('screen'); } catch {}
-
-    // Pequeña espera opcional para asegurar layout estable (fuentes / render)
-  // Espera micro (100ms) para asegurar cálculo de layout; usamos evaluate + setTimeout para evitar dependencias de métodos no tipados
-  await page.evaluate(() => new Promise(res => setTimeout(res, 100)));
+    // Espera para estabilizar layout
+    await page.evaluate(() => new Promise(res => setTimeout(res, 300)));
     
-    // Generar PDF
-  // Aumentamos timeout de operación de PDF si el entorno es lento
-  page.setDefaultTimeout(45000);
+    // Verificar que la página sigue conectada
+    if (pageClosed) {
+      throw new Error('La página se cerró antes de generar el PDF');
+    }
 
-  const pdfBuffer = await page.pdf({
+    // Generar PDF
+    page.setDefaultTimeout(120000);
+
+    const pdfBuffer = await page.pdf({
       format: options.format,
       margin: options.margin,
       printBackground: options.printBackground,
       displayHeaderFooter: options.displayHeaderFooter,
       preferCSSPageSize: true,
-  ...(options.condensed === false ? { width: `${A4_WIDTH_PX}px`, height: `${A4_HEIGHT_PX}px` } : {})
+      ...(options.condensed === false ? { width: `${A4_WIDTH_PX}px`, height: `${A4_HEIGHT_PX}px` } : {}),
+      timeout: 120000
     });
     
-  return Buffer.from(pdfBuffer);
+    // Marcar que vamos a cerrar la página para evitar el doble cierre
+    pageClosed = true;
+    await page.close();
+    page = null; // Marcar como null para evitar intentar cerrarla en finally
+    
+    return Buffer.from(pdfBuffer);
     
   } catch (error) {
-    console.error('Error generating PDF:', error);
-    throw error;
+    console.error('[PDF] Error generating PDF:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
+    throw new Error('Error al generar el PDF: ' + errorMessage);
   } finally {
+    // Cerrar página solo si no se cerró antes y aún existe
+    if (page && !pageClosed) {
+      try {
+        await page.close();
+      } catch (e) {
+        // Ignorar errores al cerrar página ya cerrada
+      }
+    }
+    
+    // Cerrar el navegador
     if (browser) {
-      try { await browser.close(); } catch {}
+      try { 
+        await browser.close(); 
+      } catch (e) {
+        console.error('[PDF] Error closing browser:', e);
+      }
     }
   }
 }

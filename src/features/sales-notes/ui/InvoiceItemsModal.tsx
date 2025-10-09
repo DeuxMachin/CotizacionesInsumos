@@ -156,16 +156,16 @@ export function InvoiceItemsModal({
       {/* Modal */}
       <div className="fixed inset-0 z-[9999] overflow-y-auto pointer-events-none">
         <div className="flex min-h-full items-center justify-center p-3 sm:p-4">
-          <div className="relative w-full max-w-2xl rounded-lg shadow-2xl pointer-events-auto max-h-[90vh] overflow-hidden"
+          <div className="relative w-full max-w-2xl rounded-lg shadow-2xl pointer-events-auto flex flex-col max-h-[80vh] sm:max-h-[85vh] lg:max-h-[90vh]"
             style={{ backgroundColor: 'var(--card-bg)' }}
             onClick={(e) => e.stopPropagation()}>
           
           {/* Header */}
-          <div className="px-4 sm:px-6 py-3 sm:py-4 border-b" style={{ backgroundColor: 'var(--bg-secondary)', borderColor: 'var(--border)' }}>
+          <div className="px-3 sm:px-6 py-2 sm:py-4 border-b" style={{ backgroundColor: 'var(--bg-secondary)', borderColor: 'var(--border)' }}>
             <div className="flex items-center justify-between">
               <div className="flex items-center min-w-0 flex-1">
                 <FiPackage className="w-5 h-5 sm:w-6 sm:h-6 mr-2 sm:mr-3 text-blue-600 flex-shrink-0" />
-                <h3 className="text-base sm:text-lg font-semibold truncate" style={{ color: 'var(--text-primary)' }}>
+                <h3 className="text-base sm:text-lg lg:text-xl font-semibold truncate" style={{ color: 'var(--text-primary)' }}>
                   Seleccionar Productos Facturados
                 </h3>
               </div>
@@ -182,7 +182,7 @@ export function InvoiceItemsModal({
           </div>
 
           {/* Content */}
-          <div className="px-4 sm:px-6 py-3 sm:py-4 flex-1 overflow-y-auto">
+          <div className="px-3 sm:px-6 py-2 sm:py-4 flex-1 overflow-y-auto min-h-0">
             <p className="mb-3 sm:mb-4 text-xs sm:text-sm" style={{ color: 'var(--text-secondary)' }}>
               Seleccione los productos facturados y ajuste las cantidades si es necesario.
               Si todos los productos están completamente facturados, la nota pasará a <strong>&quot;Facturada&quot;</strong>.
@@ -380,11 +380,11 @@ export function InvoiceItemsModal({
           </div>
 
           {/* Footer */}
-          <div className="px-4 sm:px-6 py-3 sm:py-4 border-t flex flex-col sm:flex-row justify-end gap-3" style={{ backgroundColor: 'var(--bg-secondary)', borderColor: 'var(--border)' }}>
+          <div className="px-3 sm:px-6 py-2 sm:py-4 border-t flex flex-col sm:flex-row justify-end gap-2 sm:gap-3 flex-shrink-0" style={{ backgroundColor: 'var(--bg-secondary)', borderColor: 'var(--border)' }}>
             <button
               onClick={onClose}
               disabled={isSubmitting}
-              className="px-4 py-2 rounded-lg transition-colors border disabled:opacity-50 disabled:cursor-not-allowed order-2 sm:order-1"
+              className="px-3 py-2 sm:px-4 sm:py-2 rounded-lg transition-colors border disabled:opacity-50 disabled:cursor-not-allowed order-2 sm:order-1 text-sm sm:text-base"
               style={{ borderColor: 'var(--border)', backgroundColor: 'var(--card-bg)', color: 'var(--text-primary)' }}
               onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'var(--bg-hover)')}
               onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'var(--card-bg)')}
@@ -394,7 +394,7 @@ export function InvoiceItemsModal({
             <button
               onClick={handleConfirm}
               disabled={isSubmitting}
-              className="px-4 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed order-1 sm:order-2 bg-blue-600 text-white hover:bg-blue-700"
+              className="px-3 py-2 sm:px-4 sm:py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed order-1 sm:order-2 bg-blue-600 text-white hover:bg-blue-700 text-sm sm:text-base"
             >
               {isSubmitting ? 'Procesando...' : 'Confirmar Facturación'}
             </button>

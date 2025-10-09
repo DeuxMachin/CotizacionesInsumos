@@ -5,7 +5,7 @@ import { getCurrentUser } from '@/lib/auth-helpers';
 
 // ----- Utilidades de cálculo -----
 async function recalcSaldos(clienteId: number) {
-  // Total pagos
+  // Total pagos registrados
   const { data: pagos, error: pagosErr } = await supabase
     .from('cxc_pagos')
     .select('monto_total')
@@ -21,7 +21,7 @@ async function recalcSaldos(clienteId: number) {
   if (notasErr) throw notasErr;
   const totalNotas = (notas || []).reduce((s, n) => s + (n.total || 0), 0);
 
-  // Documentos abiertos (estado != pagado) para pendiente y vencido
+  // Documentos abiertos (estado != pagado) para calcular deuda de documentos CXC
   const { data: docs, error: docsErr } = await supabase
     .from('cxc_documentos')
     .select('saldo_pendiente, fecha_vencimiento, estado')
@@ -30,13 +30,17 @@ async function recalcSaldos(clienteId: number) {
   if (docsErr) throw docsErr;
 
   const hoy = new Date().toISOString().split('T')[0];
-  let pendiente = 0;
+  let deudaDocumentos = 0;
   let vencido = 0;
   for (const d of docs || []) {
     const saldo = d.saldo_pendiente || 0;
-    pendiente += saldo;
+    deudaDocumentos += saldo;
     if (d.fecha_vencimiento && d.fecha_vencimiento < hoy) vencido += saldo;
   }
+
+  // LÓGICA CORREGIDA: Pendiente = Deuda total de documentos, Pagado = Total pagos realizados
+  const pendiente = deudaDocumentos;
+  const pagado = totalPagos;
 
   // Snapshot existente (sin upsert por falta de unique constraint)
   const { data: existente, error: selErr } = await supabase
@@ -48,14 +52,22 @@ async function recalcSaldos(clienteId: number) {
 
   const payload = {
     cliente_id: clienteId,
-    pagado: totalNotas, // regla: suma total de todas las notas de venta (sin incluir pagos)
-    pendiente,
+    pagado, // total pagos realizados
+    pendiente, // total deuda de documentos
     vencido,
     dinero_cotizado: existente?.dinero_cotizado || 0,
     snapshot_date: new Date().toISOString().split('T')[0]
   };
 
-  console.log('[recalcSaldos] Calculando para cliente', clienteId, { totalPagos, totalNotas, pendiente, vencido, payload });
+  console.log('[recalcSaldos] Calculando para cliente', clienteId, { 
+    totalPagos, 
+    totalNotas, 
+    deudaDocumentos, 
+    pendiente: `Deuda total: ${deudaDocumentos}`,
+    pagado: `Pagos totales: ${pagado}`,
+    vencido, 
+    payload 
+  });
 
   if (existente) {
     const { error: updErr } = await supabase

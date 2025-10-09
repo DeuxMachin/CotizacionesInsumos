@@ -160,7 +160,7 @@ export function UsersManagementPage() {
         </div>
         <button
           onClick={() => router.push('/admin/usuarios/crear')}
-          className="flex items-center gap-1.5 md:gap-2 px-4 md:px-6 py-2 md:py-3 rounded-lg font-medium text-white transition-all duration-200 shadow-md md:shadow-lg hover:shadow-xl hover:scale-105 text-sm md:text-base w-full sm:w-auto justify-center sm:justify-start"
+          className="flex items-center gap-1.5 md:gap-2 px-4 md:px-6 py-3 md:py-3 rounded-lg font-medium text-white transition-all duration-200 shadow-md md:shadow-lg hover:shadow-xl hover:scale-105 text-sm md:text-base w-full sm:w-auto justify-center sm:justify-start"
           style={{ background: 'linear-gradient(135deg, #ff5600, #e6004d)' }}
         >
           <FiPlus className="w-3.5 h-3.5 md:w-4 md:h-4" />
@@ -326,9 +326,114 @@ export function UsersManagementPage() {
         </div>
       </div>
 
-      {/* Tabla de usuarios */}
+      {/* Vista móvil - Cards */}
+      <div className="block sm:hidden space-y-3">
+        {users.map((user) => (
+          <div
+            key={user.id}
+            className="rounded-lg p-3 shadow-sm border"
+            style={{
+              backgroundColor: 'var(--card-bg)',
+              borderColor: 'var(--border-subtle)'
+            }}
+          >
+            <div className="flex items-start gap-3 mb-3">
+              <div
+                className="h-10 w-10 rounded-full flex items-center justify-center font-medium text-white shadow-md text-sm flex-shrink-0"
+                style={{ background: 'linear-gradient(135deg, #ff5600, #e6004d)' }}
+              >
+                {user.name[0].toUpperCase()}{user.lastName[0].toUpperCase()}
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center justify-between mb-1">
+                  <div className="font-semibold text-sm truncate" style={{ color: 'var(--text-primary)' }}>
+                    {user.name} {user.lastName}
+                  </div>
+                  <span className={`badge ${getRoleBadgeColor(user.role)} text-xs px-1.5 py-0.5 ml-2 flex-shrink-0`}>
+                    {getRoleDisplayName(user.role)}
+                  </span>
+                </div>
+                <div className="text-xs flex items-center gap-1 mb-2" style={{ color: 'var(--text-secondary)' }}>
+                  <FiMail className="w-3 h-3 flex-shrink-0" />
+                  <span className="truncate">{user.email}</span>
+                </div>
+                <div className="flex items-center gap-2 text-xs">
+                  <span className={`badge ${user.isActive ? 'badge-green' : 'badge-gray'} text-xs px-1.5 py-0.5`}>
+                    {user.isActive ? 'Activo' : 'Inactivo'}
+                  </span>
+                  <span style={{ color: 'var(--text-secondary)' }}>
+                    Creado: {user.createdAt.toLocaleDateString()}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between">
+              <div className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+                Último: {user.lastLogin ? user.lastLogin.toLocaleDateString() : 'Nunca'}
+              </div>
+              <div className="flex items-center gap-1">
+                {canManageUser(user) && (
+                  <button
+                    onClick={() => router.push(`/admin/usuarios/${user.id}/editar`)}
+                    className="p-2 rounded-lg transition-all duration-200 hover:scale-105"
+                    style={{
+                      backgroundColor: 'var(--info-bg)',
+                      color: 'var(--info-text)'
+                    }}
+                    title="Editar usuario"
+                  >
+                    <FiEdit3 className="w-4 h-4" />
+                  </button>
+                )}
+                {user.id !== currentUser?.id && (
+                  <>
+                    <button
+                      onClick={() => handleToggleStatus(user.id)}
+                      className="px-3 py-1.5 rounded-lg transition-all duration-200 hover:scale-[1.02] flex items-center gap-1.5 text-xs font-medium"
+                      style={{
+                        backgroundColor: user.isActive ? 'var(--warning-bg)' : 'var(--success-bg)',
+                        color: user.isActive ? 'var(--warning-text)' : 'var(--success-text)'
+                      }}
+                      title={user.isActive ? 'Desactivar usuario' : 'Activar usuario'}
+                      aria-label={user.isActive ? 'Desactivar usuario' : 'Activar usuario'}
+                    >
+                      {user.isActive ? (
+                        <>
+                          <FiUserX className="w-3 h-3" />
+                          <span>Desactivar</span>
+                        </>
+                      ) : (
+                        <>
+                          <FiUserCheck className="w-3 h-3" />
+                          <span>Activar</span>
+                        </>
+                      )}
+                    </button>
+                    {canManageUser(user) && (
+                      <button
+                        onClick={() => handleDeleteUser(user.id)}
+                        className="p-2 rounded-lg transition-all duration-200 hover:scale-105"
+                        style={{
+                          backgroundColor: 'var(--danger-bg)',
+                          color: 'var(--danger-text)'
+                        }}
+                        title="Eliminar usuario"
+                      >
+                        <FiTrash2 className="w-4 h-4" />
+                      </button>
+                    )}
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Vista desktop - Tabla */}
       <div 
-        className="rounded-lg overflow-hidden"
+        className="hidden sm:block rounded-lg overflow-hidden"
         style={{ backgroundColor: 'var(--card-bg)', border: '1px solid var(--border)' }}
       >
         <div className="overflow-x-auto w-full" style={{ WebkitOverflowScrolling: 'touch' }}>
@@ -336,37 +441,37 @@ export function UsersManagementPage() {
             <thead style={{ backgroundColor: 'var(--bg-secondary)' }}>
               <tr>
                 <th 
-                  className="px-1.5 sm:px-2 md:px-4 py-2 md:py-3 text-left text-xs md:text-sm font-medium"
+                  className="px-2 sm:px-2 md:px-4 py-2 md:py-3 text-left text-xs md:text-sm font-medium"
                   style={{ color: 'var(--text-secondary)' }}
                 >
                   Usuario
                 </th>
                 <th 
-                  className="px-1.5 sm:px-2 md:px-4 py-2 md:py-3 text-left text-xs md:text-sm font-medium"
+                  className="px-2 sm:px-2 md:px-4 py-2 md:py-3 text-left text-xs md:text-sm font-medium"
                   style={{ color: 'var(--text-secondary)' }}
                 >
                   Rol
                 </th>
                 <th 
-                  className="px-1.5 sm:px-2 md:px-4 py-2 md:py-3 text-left text-xs md:text-sm font-medium hidden sm:table-cell"
+                  className="px-2 sm:px-2 md:px-4 py-2 md:py-3 text-left text-xs md:text-sm font-medium hidden sm:table-cell"
                   style={{ color: 'var(--text-secondary)' }}
                 >
                   Estado
                 </th>
                 <th 
-                  className="px-1.5 sm:px-2 md:px-4 py-2 md:py-3 text-left text-xs md:text-sm font-medium hidden md:table-cell"
+                  className="px-2 sm:px-2 md:px-4 py-2 md:py-3 text-left text-xs md:text-sm font-medium hidden md:table-cell"
                   style={{ color: 'var(--text-secondary)' }}
                 >
                   Creado
                 </th>
                 <th 
-                  className="px-1.5 sm:px-2 md:px-4 py-2 md:py-3 text-left text-xs md:text-sm font-medium hidden lg:table-cell"
+                  className="px-2 sm:px-2 md:px-4 py-2 md:py-3 text-left text-xs md:text-sm font-medium hidden lg:table-cell"
                   style={{ color: 'var(--text-secondary)' }}
                 >
                   Último Acceso
                 </th>
                 <th 
-                  className="px-1.5 sm:px-2 md:px-4 py-2 md:py-3 text-left text-xs md:text-sm font-medium"
+                  className="px-2 sm:px-2 md:px-4 py-2 md:py-3 text-left text-xs md:text-sm font-medium"
                   style={{ color: 'var(--text-secondary)' }}
                 >
                   Acciones
@@ -383,7 +488,7 @@ export function UsersManagementPage() {
                     backgroundColor: 'var(--bg-primary)'
                   }}
                 >
-                  <td className="px-1.5 sm:px-2 md:px-4 py-2 md:py-3">
+                  <td className="px-2 sm:px-2 md:px-4 py-2 md:py-3">
                     <div className="flex items-center gap-1.5 sm:gap-2 md:gap-3">
                       <div 
                         className="h-8 w-8 md:h-10 md:w-10 rounded-full flex items-center justify-center font-medium text-white shadow-md text-xs md:text-base"
@@ -407,15 +512,15 @@ export function UsersManagementPage() {
                       {getRoleDisplayName(user.role)}
                     </span>
                   </td>
-                  <td className="px-1.5 sm:px-2 md:px-4 py-2 md:py-3 hidden sm:table-cell">
+                  <td className="px-2 sm:px-2 md:px-4 py-2 md:py-3 hidden sm:table-cell">
                     <span className={`badge ${user.isActive ? 'badge-green' : 'badge-gray'} text-xs`}>
                       {user.isActive ? 'Activo' : 'Inactivo'}
                     </span>
                   </td>
-                  <td className="px-1.5 sm:px-2 md:px-4 py-2 md:py-3 text-xs hidden md:table-cell" style={{ color: 'var(--text-secondary)' }}>
+                  <td className="px-2 sm:px-2 md:px-4 py-2 md:py-3 text-xs hidden md:table-cell" style={{ color: 'var(--text-secondary)' }}>
                     {user.createdAt.toLocaleDateString()}
                   </td>
-                  <td className="px-1.5 sm:px-2 md:px-4 py-2 md:py-3 text-xs hidden lg:table-cell" style={{ color: 'var(--text-secondary)' }}>
+                  <td className="px-2 sm:px-2 md:px-4 py-2 md:py-3 text-xs hidden lg:table-cell" style={{ color: 'var(--text-secondary)' }}>
                     {user.lastLogin ? user.lastLogin.toLocaleDateString() : 'Nunca'}
                   </td>
                   <td className="px-2 md:px-4 py-2 md:py-3">
@@ -423,7 +528,7 @@ export function UsersManagementPage() {
                       {canManageUser(user) && (
                         <button
                           onClick={() => router.push(`/admin/usuarios/${user.id}/editar`)}
-                          className="p-1.5 md:p-2 rounded-lg transition-all duration-200 hover:scale-105"
+                          className="p-2 md:p-2 rounded-lg transition-all duration-200 hover:scale-105"
                           style={{ 
                             backgroundColor: 'var(--info-bg)',
                             color: 'var(--info-text)'
@@ -437,7 +542,7 @@ export function UsersManagementPage() {
                         <>
                           <button
                             onClick={() => handleToggleStatus(user.id)}
-                            className="px-2.5 md:px-3 py-1.5 md:py-2 rounded-lg transition-all duration-200 hover:scale-[1.02] flex items-center gap-1.5 md:gap-2 text-xs md:text-sm"
+                            className="px-3 md:px-3 py-2 md:py-2 rounded-lg transition-all duration-200 hover:scale-[1.02] flex items-center gap-1.5 md:gap-2 text-xs md:text-sm"
                             style={{ 
                               backgroundColor: user.isActive ? 'var(--warning-bg)' : 'var(--success-bg)',
                               color: user.isActive ? 'var(--warning-text)' : 'var(--success-text)'
@@ -460,7 +565,7 @@ export function UsersManagementPage() {
                           {canManageUser(user) && (
                             <button
                               onClick={() => handleDeleteUser(user.id)}
-                              className="p-1.5 md:p-2 rounded-lg transition-all duration-200 hover:scale-105"
+                              className="p-2 md:p-2 rounded-lg transition-all duration-200 hover:scale-105"
                               style={{ 
                                 backgroundColor: 'var(--danger-bg)',
                                 color: 'var(--danger-text)'

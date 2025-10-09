@@ -7,6 +7,7 @@ import type { ClienteRowWithType } from '../model/clients';
 import { Toast } from "@/shared/ui/Toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { useActionAuthorization } from "@/middleware/AuthorizationMiddleware";
+import { useAuthHeaders } from "@/hooks/useAuthHeaders";
 import { ClientFiltersPanel } from "./ClientFiltersPanel";
 import { downloadFileFromResponse } from "@/lib/download";
 import { 
@@ -66,6 +67,7 @@ export function ClientsPage() {
   const router = useRouter();
   const { user } = useAuth();
   const { canCreate, canDelete } = useActionAuthorization();
+  const { createHeaders } = useAuthHeaders();
   
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedStates, setSelectedStates] = useState<ClientStatus[]>([]);
@@ -84,30 +86,30 @@ export function ClientsPage() {
   const [ventasMethod, setVentasMethod] = useState<'rpc' | 'fallback' | 'error' | null>(null);
 
   // Fetch de clientes
-  useEffect(() => {
+  const loadClients = async () => {
     const controller = new AbortController();
-    async function load() {
-      try {
-        setLoading(true); setError(null);
-        // Si el término de búsqueda parece un RUT (contiene puntos o guión) o es numérico
-        // recuperamos todo y filtramos client-side para poder ignorar los puntos
-        const isRutLike = /[.\-]/.test(searchTerm) || /^\d+$/.test(searchTerm);
-        const url = searchTerm.length > 1 && !isRutLike
-          ? `/api/clientes?search=${encodeURIComponent(searchTerm)}`
-          : '/api/clientes';
-        const res = await fetch(url, { signal: controller.signal });
-        if (!res.ok) throw new Error('Error al cargar clientes');
-        const body = await res.json();
-  const rows = (body.data || []) as ClienteRowWithType[];
-  setClients(rows.map(r => mapRowToClientExtended(r)));
-      } catch (e: unknown) {
-        if (e instanceof DOMException && e.name === 'AbortError') return;
-        const msg = e instanceof Error ? e.message : 'Error desconocido';
-        console.error(e); setError(msg); Toast.error('No se pudieron cargar los clientes');
-      } finally { setLoading(false); }
-    }
-    load();
-    return () => controller.abort();
+    try {
+      setLoading(true); setError(null);
+      // Si el término de búsqueda parece un RUT (contiene puntos o guión) o es numérico
+      // recuperamos todo y filtramos client-side para poder ignorar los puntos
+      const isRutLike = /[.\-]/.test(searchTerm) || /^\d+$/.test(searchTerm);
+      const url = searchTerm.length > 1 && !isRutLike
+        ? `/api/clientes?search=${encodeURIComponent(searchTerm)}`
+        : '/api/clientes';
+      const res = await fetch(url, { signal: controller.signal });
+      if (!res.ok) throw new Error('Error al cargar clientes');
+      const body = await res.json();
+      const rows = (body.data || []) as ClienteRowWithType[];
+      setClients(rows.map(r => mapRowToClientExtended(r)));
+    } catch (e: unknown) {
+      if (e instanceof DOMException && e.name === 'AbortError') return;
+      const msg = e instanceof Error ? e.message : 'Error desconocido';
+      console.error(e); setError(msg); Toast.error('No se pudieron cargar los clientes');
+    } finally { setLoading(false); }
+  };
+
+  useEffect(() => {
+    loadClients();
   }, [searchTerm]);
 
   // Cargar agregados de cotizaciones (suma total_final y por estado) para todos los clientes visibles (simple: traer todas y agrupar client-side)
@@ -323,15 +325,39 @@ export function ClientsPage() {
   };
 
   // Handlers
-  const handleEliminar = async () => {
+  const handleEliminar = async (clientId: number) => {
     if (!canDelete('clients')) {
       Toast.error('No tienes permisos para eliminar clientes');
       return;
     }
     
     if (confirm('¿Estás seguro de que deseas eliminar este cliente?')) {
-      // Aquí iría la lógica real de eliminación
-      Toast.success('Cliente eliminado exitosamente');
+      try {
+        const userId = user?.id;
+        if (!userId) {
+          Toast.error('Usuario no identificado');
+          return;
+        }
+
+        const response = await fetch(`/api/clientes/${clientId}`, {
+          method: 'DELETE',
+          headers: createHeaders(),
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.error || 'Error al eliminar el cliente');
+        }
+
+        Toast.success('Cliente eliminado exitosamente');
+        
+        // Refresh the clients list
+        await loadClients();
+        
+      } catch (error) {
+        console.error('Error eliminando cliente:', error);
+        Toast.error('Error al eliminar el cliente');
+      }
     }
   };
 

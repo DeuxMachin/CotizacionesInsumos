@@ -34,10 +34,9 @@ export async function POST(request: NextRequest) {
       }, { status: 401 })
     }
 
-    // Actualizar directamente cliente_saldos para el préstamo
-    console.log('[API Loan] Actualizando saldos del cliente para préstamo:', cliente_id, 'monto:', monto)
+    console.log('[API Loan] Registrando préstamo como cargo manual CXC:', cliente_id, 'monto:', monto)
 
-    // Obtener el saldo actual del cliente
+    // Obtener el saldo actual del cliente ANTES del préstamo
     const { data: saldoActual, error: saldoError } = await supabase
       .from('cliente_saldos')
       .select('id, pagado, pendiente, vencido, dinero_cotizado')
@@ -54,7 +53,75 @@ export async function POST(request: NextRequest) {
       }, { status: 500 })
     }
 
-    const nuevoPendiente = (saldoActual?.pendiente || 0) + monto
+    // Crear un documento CXC tipo "cargo_manual" para el préstamo
+    const { data: documento, error: docError } = await supabase
+      .from('cxc_documentos')
+      .insert({
+        cliente_id: cliente_id,
+        doc_tipo: 'cargo_manual',
+        nota_venta_id: null,
+        moneda: 'CLP',
+        fecha_emision: new Date().toISOString().split('T')[0],
+        fecha_vencimiento: fecha_vencimiento || null,
+        monto_total: monto,
+        saldo_pendiente: monto,
+        estado: 'pendiente',
+        observacion: `PRÉSTAMO: ${descripcion}${notas ? ` - ${notas}` : ''}${tasa_interes ? ` (Tasa: ${tasa_interes}%)` : ''}`
+      })
+      .select()
+      .single()
+
+    if (docError || !documento) {
+      console.error('[API Loan] Error creando documento CXC:', docError)
+      return NextResponse.json({
+        success: false,
+        error: `Error al crear préstamo: ${docError?.message || 'Error desconocido'}`
+      }, { status: 500 })
+    }
+
+    console.log('[API Loan] Documento CXC (cargo_manual) creado exitosamente:', documento.id)
+
+    // Recalcular saldos sumando todos los documentos CXC pendientes y restando pagos
+    const { data: docs, error: docsErr } = await supabase
+      .from('cxc_documentos')
+      .select('saldo_pendiente, fecha_vencimiento')
+      .eq('cliente_id', cliente_id)
+      .neq('estado', 'pagado')
+
+    if (docsErr) {
+      console.error('[API Loan] Error obteniendo documentos:', docsErr)
+      return NextResponse.json({
+        success: false,
+        error: `Error al recalcular saldos: ${docsErr.message}`
+      }, { status: 500 })
+    }
+
+    // Total pagos
+    const { data: pagos, error: pagosErr } = await supabase
+      .from('cxc_pagos')
+      .select('monto_total')
+      .eq('cliente_id', cliente_id)
+    if (pagosErr) {
+      console.error('[API Loan] Error obteniendo pagos:', pagosErr)
+      return NextResponse.json({
+        success: false,
+        error: `Error al recalcular saldos: ${pagosErr.message}`
+      }, { status: 500 })
+    }
+
+    const totalPagos = (pagos || []).reduce((s, p) => s + (p.monto_total || 0), 0)
+    const hoy = new Date().toISOString().split('T')[0]
+    let deudaDocumentos = 0
+    let vencido = 0
+
+    for (const d of docs || []) {
+      const saldo = d.saldo_pendiente || 0
+      deudaDocumentos += saldo
+      if (d.fecha_vencimiento && d.fecha_vencimiento < hoy) vencido += saldo
+    }
+
+    const nuevoPendiente = deudaDocumentos
+    const newPagado = totalPagos
     const snapshotDate = new Date().toISOString().split('T')[0]
 
     if (saldoActual) {
@@ -63,6 +130,8 @@ export async function POST(request: NextRequest) {
         .from('cliente_saldos')
         .update({
           pendiente: nuevoPendiente,
+          pagado: newPagado,
+          vencido: vencido,
           snapshot_date: snapshotDate
         })
         .eq('id', saldoActual.id)
@@ -78,7 +147,11 @@ export async function POST(request: NextRequest) {
       console.log('[API Loan] cliente_saldos actualizado exitosamente:', {
         id: saldoActual.id,
         pendiente_anterior: saldoActual.pendiente,
-        pendiente_nuevo: nuevoPendiente
+        pendiente_nuevo: nuevoPendiente,
+        pagado_anterior: saldoActual.pagado,
+        pagado_nuevo: newPagado,
+        deudaDocumentos,
+        totalPagos
       })
     } else {
       // Crear nuevo registro de saldos
@@ -87,9 +160,9 @@ export async function POST(request: NextRequest) {
         .insert({
           cliente_id: cliente_id,
           snapshot_date: snapshotDate,
-          pagado: 0,
+          pagado: newPagado,
           pendiente: nuevoPendiente,
-          vencido: 0,
+          vencido: vencido,
           dinero_cotizado: 0
         })
 
@@ -118,7 +191,9 @@ export async function POST(request: NextRequest) {
           tasa_interes,
           notas,
           pendiente_anterior: saldoActual?.pendiente || 0,
-          pendiente_nuevo: nuevoPendiente
+          pendiente_nuevo: nuevoPendiente,
+          pagado_anterior: saldoActual?.pagado || 0,
+          pagado_nuevo: newPagado
         },
         tabla_afectada: 'cliente_saldos',
         registro_id: cliente_id.toString()
@@ -137,7 +212,9 @@ export async function POST(request: NextRequest) {
           notas,
           fecha_registro: snapshotDate,
           pendiente_anterior: saldoActual?.pendiente || 0,
-          pendiente_nuevo: nuevoPendiente
+          pendiente_nuevo: nuevoPendiente,
+          pagado_anterior: saldoActual?.pagado || 0,
+          pagado_nuevo: newPagado
         }
       }
     })

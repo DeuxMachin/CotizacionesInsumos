@@ -40,8 +40,15 @@ export const PagoModal: React.FC<PagoModalProps> = ({
     }
 
     const montoNum = Number(monto);
+    
+    // Validación adicional: verificar que pendienteActual sea un número válido
+    if (typeof pendienteActual !== 'number' || isNaN(pendienteActual)) {
+      alert('Error: No se pudo determinar el monto pendiente. Por favor recargue la página.');
+      return;
+    }
+    
     if (montoNum > pendienteActual) {
-      alert(`El monto del pago no puede ser mayor al pendiente actual de $${pendienteActual.toLocaleString()}`);
+      alert(`El monto del pago ($${montoNum.toLocaleString()}) no puede ser mayor al pendiente actual ($${pendienteActual.toLocaleString()})`);
       return;
     }
 
@@ -58,7 +65,8 @@ export const PagoModal: React.FC<PagoModalProps> = ({
       }, 1500);
     } catch (error) {
       console.error('Error:', error);
-      alert('Error al registrar el pago');
+      const errorMessage = error instanceof Error ? error.message : 'Error al registrar el pago';
+      alert(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -122,7 +130,41 @@ export const PagoModal: React.FC<PagoModalProps> = ({
                   <input
                     type="number"
                     value={monto}
-                    onChange={(e) => setMonto(e.target.value)}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      // Permitir campo vacío
+                      if (value === '') {
+                        setMonto('');
+                        return;
+                      }
+                      
+                      const numValue = Number(value);
+                      
+                      // Validar que sea un número válido
+                      if (isNaN(numValue)) {
+                        return;
+                      }
+                      
+                      // Si el valor es mayor al pendiente, limitar al máximo
+                      if (numValue > pendienteActual && pendienteActual > 0) {
+                        setMonto(pendienteActual.toString());
+                        return;
+                      }
+                      
+                      // Si el valor es negativo, no permitir
+                      if (numValue < 0) {
+                        return;
+                      }
+                      
+                      setMonto(value);
+                    }}
+                    onBlur={(e) => {
+                      // Al perder el foco, validar y corregir si es necesario
+                      const numValue = Number(e.target.value);
+                      if (!isNaN(numValue) && numValue > pendienteActual) {
+                        setMonto(pendienteActual.toString());
+                      }
+                    }}
                     className="w-full pl-8 pr-3 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-colors"
                     placeholder="0"
                     min="0"

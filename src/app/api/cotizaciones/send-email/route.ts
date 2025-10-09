@@ -7,6 +7,10 @@ import type { Quote, QuoteItem } from '@/core/domain/quote/Quote';
 import fs from 'fs';
 import path from 'path';
 
+// Configuración para Vercel: usar runtime Node.js y aumentar timeout
+export const runtime = 'nodejs';
+export const maxDuration = 60;
+
 interface AuthenticatedUser {
   id: string;
   email: string;

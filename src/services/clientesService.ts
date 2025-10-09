@@ -18,9 +18,9 @@ export interface ClienteConContactosUpdate extends ClienteUpdate {
 }
 
 export class ClientesService {
-  // Obtener todos los clientes
-  static async getAll() {
-    const { data, error } = await supabase
+  // Obtener todos los clientes (solo activos por defecto)
+  static async getAll(includeInactive: boolean = false) {
+    let query = supabase
       .from('clientes')
       .select(`
         *,
@@ -35,6 +35,13 @@ export class ClientesService {
           id, tipo, nombre, cargo, email, telefono, celular, es_principal, activo
         )
       `)
+    
+    // Por defecto, solo mostrar clientes activos (excluir inactivos)
+    if (!includeInactive) {
+      query = query.neq('estado', 'inactivo')
+    }
+    
+    const { data, error } = await query
       // Orden raíz
       .order('nombre_razon_social')
       // Orden anidado en tablas relacionadas
@@ -73,15 +80,15 @@ export class ClientesService {
     return data
   }
 
-  // Buscar clientes por término
-  static async search(searchTerm: string) {
+  // Buscar clientes por término (solo activos por defecto)
+  static async search(searchTerm: string, includeInactive: boolean = false) {
     // Normalizar el término de búsqueda para RUT (eliminar puntos, guiones y espacios)
     const normalizedSearchTerm = searchTerm.replace(/[.\-\s]/g, '');
 
     // Si el término parece ser un RUT (solo números después de normalizar)
     if (/^\d+$/.test(normalizedSearchTerm)) {
       // Para RUTs, usar una consulta SQL directa que normalice el RUT
-      const { data, error } = await supabase
+      let query = supabase
         .from('clientes')
         .select(`
           *,
@@ -94,12 +101,18 @@ export class ClientesService {
           )
         `)
         .or(`replace(replace(replace(rut, '.', ''), '-', ''), ' ', '')::text.ilike.%${normalizedSearchTerm}%`)
-        .order('nombre_razon_social');
+      
+      // Filtrar inactivos si no se solicita incluirlos
+      if (!includeInactive) {
+        query = query.neq('estado', 'inactivo')
+      }
+      
+      const { data, error } = await query.order('nombre_razon_social');
 
       if (error) {
         console.error('Error en búsqueda de RUT:', error);
         // Fallback: búsqueda simple
-        const { data: fallbackData, error: fallbackError } = await supabase
+        let fallbackQuery = supabase
           .from('clientes')
           .select(`
             *,
@@ -112,7 +125,13 @@ export class ClientesService {
             )
           `)
           .ilike('rut', `%${normalizedSearchTerm}%`)
-          .order('nombre_razon_social');
+        
+        // Filtrar inactivos en fallback también
+        if (!includeInactive) {
+          fallbackQuery = fallbackQuery.neq('estado', 'inactivo')
+        }
+        
+        const { data: fallbackData, error: fallbackError } = await fallbackQuery.order('nombre_razon_social');
 
         if (fallbackError) throw fallbackError;
         return fallbackData;
@@ -120,7 +139,7 @@ export class ClientesService {
       return data;
     } else {
       // Búsqueda normal por nombre/razón social y nombre fantasia
-      const { data, error } = await supabase
+      let query = supabase
         .from('clientes')
         .select(`
           *,
@@ -133,7 +152,13 @@ export class ClientesService {
           )
         `)
         .or(`nombre_razon_social.ilike.%${searchTerm}%,nombre_fantasia.ilike.%${searchTerm}%`)
-        .order('nombre_razon_social');
+      
+      // Filtrar inactivos si no se solicita incluirlos
+      if (!includeInactive) {
+        query = query.neq('estado', 'inactivo')
+      }
+      
+      const { data, error } = await query.order('nombre_razon_social');
 
       if (error) throw error;
       return data;
@@ -209,6 +234,9 @@ export class ClientesService {
 
   // Actualizar cliente
   static async update(id: number, clienteData: ClienteConContactosUpdate, userInfo?: { id: string; email: string; name?: string }) {
+    console.log('🔍 ClientesService.update - Iniciando actualización del cliente:', id);
+    console.log('🔍 ClientesService.update - Datos recibidos:', clienteData);
+    
     // Obtener información del cliente antes de actualizarlo para el audit log
     let clienteAntes: { id: number; nombre_razon_social: string; rut: string; nombre_fantasia?: string; direccion?: string } | null = null;
     try {
@@ -227,19 +255,21 @@ export class ClientesService {
     // Extraer contactos del objeto
     const { contactos, ...cliente } = clienteData;
 
+    console.log('🔍 ClientesService.update - Datos a actualizar en DB:', cliente);
+
+    // Realizar la actualización sin seleccionar datos relacionados para evitar problemas con triggers
     const { data, error } = await supabase.from('clientes')
       .update(cliente)
       .eq('id', id)
-      .select(`
-        *,
-        cliente_tipos:cliente_tipo_id (
-          id,
-          nombre
-        )
-      `)
+      .select()
       .single()
 
-    if (error) throw error
+    console.log('🔍 ClientesService.update - Respuesta de Supabase:', { data, error });
+
+    if (error) {
+      console.error('🔍 ClientesService.update - Error en actualización:', error);
+      throw error;
+    }
 
     // Actualizar contactos si se proporcionaron
     if (contactos && data) {
@@ -286,6 +316,8 @@ export class ClientesService {
 
   // Eliminar cliente (cambiar estado)
   static async delete(id: number, userInfo?: { id: string; email: string; name?: string }) {
+    console.log('🔍 ClientesService.delete - Iniciando eliminación del cliente:', id);
+    
     // Obtener información del cliente antes de eliminarlo para el audit log
     let clienteAntes: { id: number; nombre_razon_social: string; rut: string } | null = null;
     try {
@@ -301,13 +333,20 @@ export class ClientesService {
       console.warn('No se pudo obtener información del cliente para audit log:', err);
     }
     
+    console.log('🔍 ClientesService.delete - Actualizando estado a inactivo');
+    
     const { data, error } = await supabase.from('clientes')
       .update({ estado: 'inactivo' })
       .eq('id', id)
       .select()
       .single()
 
-    if (error) throw error
+    console.log('🔍 ClientesService.delete - Respuesta de Supabase:', { data, error });
+
+    if (error) {
+      console.error('🔍 ClientesService.delete - Error en eliminación:', error);
+      throw error;
+    }
 
     // Registrar en audit log si se proporciona información del usuario
     if (userInfo && data && clienteAntes) {

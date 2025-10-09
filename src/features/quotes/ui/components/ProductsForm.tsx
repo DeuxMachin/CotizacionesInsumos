@@ -76,7 +76,7 @@ const Toast: React.FC<ToastProps> = ({ message, type, onClose }) => {
 
   return (
     <div
-      className="fixed top-20 right-4 z-50 animate-in slide-in-from-right-2 duration-300"
+      className="fixed top-16 sm:top-20 right-2 sm:right-4 z-50 animate-in slide-in-from-right-2 duration-300"
       style={{
         backgroundColor: styles.bg,
         border: `2px solid ${styles.border}`,
@@ -84,7 +84,8 @@ const Toast: React.FC<ToastProps> = ({ message, type, onClose }) => {
         borderRadius: '8px',
         padding: '12px 16px',
         boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-        minWidth: '300px'
+        minWidth: '280px',
+        maxWidth: '90vw'
       }}
     >
       <div className="flex items-center gap-3">

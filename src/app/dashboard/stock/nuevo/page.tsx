@@ -7,11 +7,13 @@ import { FiArrowLeft, FiPackage } from "react-icons/fi";
 import { getCategories } from "@/features/stock/model/inventory";
 import type { Database } from "@/lib/supabase";
 import Link from "next/link";
+import { useAuthHeaders } from "@/hooks/useAuthHeaders";
 
 type Category = Database['public']['Tables']['producto_tipos']['Row'];
 
 export default function NuevoProductoPage() {
   const router = useRouter();
+  const { createHeaders } = useAuthHeaders();
   const [saving, setSaving] = useState(false);
   const [categories, setCategories] = useState<Category[]>([]);
 
@@ -23,7 +25,7 @@ export default function NuevoProductoPage() {
     unidad: '',
     tipo_id: null as number | null,
     afecto_iva: false,
-    moneda: '',
+    moneda: 'CLP',
     costo_unitario: null as number | null,
     precio_neto: null as number | null,
     precio_venta: null as number | null,
@@ -69,9 +71,7 @@ export default function NuevoProductoPage() {
 
       const response = await fetch('/api/productos', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: createHeaders(),
         body: JSON.stringify({
           ...formData,
           sku: formData.sku || null,
@@ -217,7 +217,7 @@ export default function NuevoProductoPage() {
           {/* Información de precios */}
           <div>
             <h2 className="text-xl font-semibold text-theme-text-primary mb-6">
-              Información de Precios
+              💰 Información de Precios
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
@@ -229,8 +229,11 @@ export default function NuevoProductoPage() {
                   className="form-input w-full"
                   value={formData.moneda}
                   onChange={(e) => handleInputChange('moneda', e.target.value)}
-                  placeholder="ej: CLP, USD (opcional)"
+                  placeholder="ej: CLP, USD"
                 />
+                <p className="text-xs text-theme-text-muted mt-1">
+                  Moneda en la que se expresan los precios (CLP por defecto)
+                </p>
               </div>
 
               <div>
@@ -243,8 +246,11 @@ export default function NuevoProductoPage() {
                   className="form-input w-full"
                   value={formData.costo_unitario || ''}
                   onChange={(e) => handleInputChange('costo_unitario', e.target.value ? parseFloat(e.target.value) : null)}
-                  placeholder="Costo de adquisición (opcional)"
+                  placeholder="Costo de adquisición por unidad"
                 />
+                <p className="text-xs text-theme-text-muted mt-1">
+                  💡 Costo real de compra o producción por unidad del producto
+                </p>
               </div>
 
               <div>
@@ -257,8 +263,11 @@ export default function NuevoProductoPage() {
                   className="form-input w-full"
                   value={formData.precio_neto || ''}
                   onChange={(e) => handleInputChange('precio_neto', e.target.value ? parseFloat(e.target.value) : null)}
-                  placeholder="Precio neto (opcional)"
+                  placeholder="Precio base sin IVA"
                 />
+                <p className="text-xs text-theme-text-muted mt-1">
+                  Precio base del producto antes de aplicar IVA u otros impuestos
+                </p>
               </div>
 
               <div>
@@ -271,8 +280,11 @@ export default function NuevoProductoPage() {
                   className="form-input w-full"
                   value={formData.precio_venta || ''}
                   onChange={(e) => handleInputChange('precio_venta', e.target.value ? parseFloat(e.target.value) : null)}
-                  placeholder="Precio de venta (opcional)"
+                  placeholder="Precio final al cliente"
                 />
+                <p className="text-xs text-theme-text-muted mt-1">
+                  Precio al que se venderá el producto (incluye márgen de ganancia)
+                </p>
               </div>
             </div>
           </div>

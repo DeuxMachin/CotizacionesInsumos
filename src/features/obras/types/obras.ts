@@ -50,7 +50,7 @@ export interface Obra {
   id: number;
   nombreEmpresa: string;           
   constructora: EmpresaConstructora;
-  vendedorAsignado: string;        
+  vendedorAsignado: string | null;        
   nombreVendedor: string;          
   // Contactos de la obra (siempre 5 cargos fijos). Si no existe, usar { nombre: 'No existe' } para ese cargo
   contactos?: ObraContacto[];

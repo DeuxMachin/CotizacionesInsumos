@@ -169,8 +169,7 @@ export function useObras() {
       // Simular API call
       await new Promise(resolve => setTimeout(resolve, 1000));
       
-      // En producción, aquí iría la llamada a la API
-      console.log(`Actualizando obra ${id} a estado ${nuevoEstado}`);
+   
       
       // Aquí se actualizaría el estado local o se refrescarían los datos
       return true;

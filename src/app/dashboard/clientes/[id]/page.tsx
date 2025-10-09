@@ -20,7 +20,7 @@ import {
   FiAlertCircle,
   FiDownload,
   FiCalendar,
-
+  FiInfo,
   FiChevronDown,
   FiChevronLeft,
   FiChevronRight,
@@ -529,7 +529,6 @@ function ClientDetailPage() {
     e.preventDefault();
     if (!client) return;
 
-    console.log('Iniciando registro de préstamo para cliente:', client.id);
     setSavingLoan(true);
     setLoanErrors({});
 
@@ -548,14 +547,6 @@ function ClientDetailPage() {
         return;
       }
 
-      console.log('Enviando datos de préstamo:', {
-        cliente_id: client.id,
-        monto: loanForm.amount,
-        descripcion: loanForm.description,
-        fecha_vencimiento: loanForm.dueDate || null,
-        tasa_interes: loanForm.interestRate || 0,
-        notas: loanForm.notes || null
-      });
 
       if (!user) {
         Toast.error('Tu sesión ha expirado. Inicia sesión nuevamente para registrar un préstamo.');
@@ -579,7 +570,7 @@ function ClientDetailPage() {
         })
       });
 
-      console.log('Respuesta de la API de préstamo:', response.status, response.statusText);
+      
 
       if (!response.ok) {
         const errorData = await response.json();
@@ -588,7 +579,7 @@ function ClientDetailPage() {
       }
 
       const result = await response.json();
-      console.log('Préstamo registrado exitosamente:', result);
+    
 
       // Recargar datos del cliente para actualizar financialTotals
       const clientRes = await fetch(`/api/clientes/${client.id}`, {
@@ -631,12 +622,13 @@ function ClientDetailPage() {
     if (!confirmDelete) return;
 
     try {
-      if (!user) {
+      if (!user || !legacyUser) {
         Toast.error('Tu sesión ha expirado. Inicia sesión nuevamente.');
         return;
       }
 
       const authHeaders = createAuthHeaders(legacyUser);
+ 
 
       const response = await fetch(`/api/clientes/${client.id}`, {
         method: 'DELETE',
@@ -644,15 +636,23 @@ function ClientDetailPage() {
         credentials: 'include'
       });
 
+
+      
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Error al eliminar el cliente');
+        const errorData = await response.json().catch(() => ({ error: 'Error desconocido' }));
+        console.error('🔍 Error del servidor:', errorData);
+        throw new Error(errorData.error || `Error ${response.status}: ${response.statusText}`);
       }
+
+      const result = await response.json();
+ 
 
       Toast.success('Cliente eliminado exitosamente');
       
-      // Redirigir a la lista de clientes
-      router.push('/dashboard/clientes');
+      // Pequeño delay para mostrar el toast antes de redirigir
+      setTimeout(() => {
+        router.push('/dashboard/clientes');
+      }, 1000);
 
     } catch (error) {
       console.error('Error eliminando cliente:', error);
@@ -664,16 +664,30 @@ function ClientDetailPage() {
     e.preventDefault();
     if (!client) return;
 
-    console.log('Iniciando registro de pago para cliente:', client.id);
+    
     setSavingPayment(true);
     setPaymentErrors({});
 
     try {
       // Validar el formulario
       const errors: Partial<Record<string, string>> = {};
+      
+      // Validar que el monto no exceda el pendiente del cliente cuando hay deuda
+      // Si pending < 0 (deuda), límite = Math.abs(pending)
+      // Si pending >= 0 (sin deuda o crédito), no hay límite superior
+      const tieneDeuda = (financialTotals.pending || 0) < 0;
+      const limitePago = tieneDeuda ? Math.abs(financialTotals.pending || 0) : Infinity;
+      
+
+      
+      if (tieneDeuda && paymentForm.amount > limitePago) {
+        errors.amount = `El monto del pago ($${paymentForm.amount.toLocaleString()}) no puede ser mayor al pendiente actual ($${limitePago.toLocaleString()})`;
+      }
+      
       if (paymentForm.amount <= 0) {
         errors.amount = 'El monto debe ser mayor a 0';
       }
+      
       if (!paymentForm.date) {
         errors.date = 'La fecha es requerida';
       }
@@ -686,6 +700,7 @@ function ClientDetailPage() {
 
       if (Object.keys(errors).length > 0) {
         setPaymentErrors(errors);
+        Toast.error('Por favor corrige los errores en el formulario');
         return;
       }
 
@@ -823,20 +838,55 @@ function ClientDetailPage() {
       return;
     }
 
+    // Verificar que el usuario esté autenticado
+    if (!user || !legacyUser) {
+      Toast.error('Tu sesión ha expirado. Por favor inicia sesión nuevamente.');
+      return;
+    }
+
     try {
       setSaving(true);
+      
+
+      // Filtrar campos válidos para evitar enviar campos null o undefined que puedan causar problemas
+      const updateData = {
+        nombre_razon_social: form.nombre_razon_social,
+        nombre_fantasia: form.nombre_fantasia || null,
+        giro: form.giro || null,
+        direccion: form.direccion || null,
+        ciudad: form.ciudad || null,
+        comuna: form.comuna || null,
+        telefono: form.telefono || null,
+        celular: form.celular || null,
+        linea_credito: form.linea_credito || 0,
+        descuento_cliente_pct: form.descuento_cliente_pct || 0,
+        forma_pago: form.forma_pago || null,
+        cliente_tipo_id: form.cliente_tipo_id,
+        estado: form.estado
+      };
+      
+    
+      
       const res = await fetch(`/api/clientes/${client.id}`, {
         method: 'PUT',
         headers: createAuthHeaders(legacyUser),
-        body: JSON.stringify(form)
+        credentials: 'include',
+        body: JSON.stringify(updateData)
       });
-      if (!res.ok) throw new Error('Error al actualizar');
+       
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({ error: 'Error desconocido' }));
+        console.error('🔍 Error del servidor:', errorData);
+        throw new Error(errorData.error || `Error ${res.status}: ${res.statusText}`);
+      }
       const body = await res.json();
+   
+      
       // Actualizar estado local del cliente
       setClient(mapRowToClientExtended(body.data));
       setEditing(false);
       setFormErrors({});
-      Toast.success('Actualizado');
+      Toast.success('Cliente actualizado exitosamente');
     } catch (err: unknown) {
       if (err instanceof Error) {
         console.error(err);
@@ -858,6 +908,7 @@ function ClientDetailPage() {
         const res = await fetch(`/api/clientes/${id}`);
         if (!res.ok) throw new Error('Error al obtener cliente');
         const body = await res.json();
+
         if (!cancelled) setClient(body.data ? mapRowToClientExtended(body.data) : null);
       } catch (e: unknown) {
         if (!cancelled) { setError(e instanceof Error ? e.message : 'Error desconocido'); }
@@ -964,9 +1015,9 @@ function ClientDetailPage() {
       try {
         setSalesNotesLoading(true);
         setSalesNotesError(null);
-        console.log('Cargando notas de venta para cliente ID:', client!.id);
+        
         const notes = await getSalesNotesByClient(client!.id);
-        console.log('Notas de venta obtenidas:', notes);
+      
         if (!cancelled) {
           setSalesNotes(notes);
         }
@@ -1040,8 +1091,7 @@ function ClientDetailPage() {
     // Total Pagado = suma de notas de venta + pagos acumulados (cliente_saldos.pagado)
     const totalPaid = totalSalesNotes + (client.paid || 0);
     
-    console.log('[financialTotals] Client:', client.id, 'paid:', client.paid, 'pending:', client.pending, 'salesNotes:', salesNotes.length, 'totalSalesNotes:', totalSalesNotes, 'totalPaid:', totalPaid);
-    
+
     return {
       paid: totalPaid,
       pending: client.pending || 0,
@@ -1050,6 +1100,18 @@ function ClientDetailPage() {
       movimientos: totalPaid + (client.pending || 0) + (client.partial || 0) + (client.overdue || 0)
     };
   }, [client, salesNotes]);
+
+  // Establecer el monto del pago por defecto cuando se abre el modal
+  React.useEffect(() => {
+    if (showPaymentModal) {
+      const pendienteActual = Math.abs(financialTotals.pending || 0);
+      // Solo establecer el monto si hay deuda pendiente
+      setPaymentForm(prev => ({
+        ...prev,
+        amount: pendienteActual > 0 ? pendienteActual : prev.amount
+      }));
+    }
+  }, [showPaymentModal, financialTotals.pending]);
 
   // Función para descargar PDF de cotización
   const handleDownloadQuotePDF = async (quoteNumero: string) => {
@@ -1177,10 +1239,7 @@ function ClientDetailPage() {
                 )}
                 <div className="flex items-center gap-2 border-l border-gray-300 dark:border-gray-600 pl-3">
                   <button
-                    onClick={() => {
-                      console.log('💰 Abriendo modal de PAGO - Cliente ID:', client.id);
-                      setShowPaymentModal(true);
-                    }}
+          
                     className="btn-success flex items-center gap-2 shadow-sm"
                     title="Registrar un pago recibido del cliente"
                   >
@@ -1188,10 +1247,7 @@ function ClientDetailPage() {
                     Registrar Pago
                   </button>
                   <button
-                    onClick={() => {
-                      console.log('💸 Abriendo modal de PRÉSTAMO - Cliente ID:', client.id);
-                      setShowLoanModal(true);
-                    }}
+                
                     className="btn-info flex items-center gap-2 shadow-sm"
                     title="Agregar un préstamo o deuda pendiente al cliente"
                   >
@@ -1224,10 +1280,7 @@ function ClientDetailPage() {
                 )}
                 <div className="flex items-center gap-1 border-l border-gray-300 dark:border-gray-600 pl-1">
                   <button
-                    onClick={() => {
-                      console.log('💰 Abriendo modal de PAGO (móvil) - Cliente ID:', client.id);
-                      setShowPaymentModal(true);
-                    }}
+                   
                     className="p-2 rounded-lg transition-colores shadow-sm"
                     style={{ backgroundColor: 'var(--success-bg)', color: 'var(--success-text)' }}
                     title="Registrar pago"
@@ -1235,10 +1288,7 @@ function ClientDetailPage() {
                     <FiCreditCard className="w-4 h-4" />
                   </button>
                   <button
-                    onClick={() => {
-                      console.log('💸 Abriendo modal de PRÉSTAMO (móvil) - Cliente ID:', client.id);
-                      setShowLoanModal(true);
-                    }}
+               
                     className="p-2 rounded-lg transition-colores shadow-sm"
                     style={{ backgroundColor: 'var(--info-bg)', color: 'var(--info-text)' }}
                     title="Agregar préstamo"
@@ -2202,10 +2252,10 @@ interface LoanModalProps {
 function PaymentModal({ open, onClose, onSubmit, form, onChange, saving, errors, financialTotals, client: _client }: PaymentModalProps) {
   if (!open) return null;
 
-  // Calcular el pendiente después del pago
-  const calculatePendingAfterPayment = () => {
-    return Math.max(0, financialTotals.pending - form.amount);
-  };
+
+
+  // Calcular el límite de pago: si hay deuda (pending < 0), límite = Math.abs(pending); si no hay deuda, no hay límite
+  const pendienteActual = Math.abs(financialTotals.pending || 0);
 
   // Helper para estilos de input
   const getInputStyles = (hasError: boolean) => ({
@@ -2235,43 +2285,30 @@ function PaymentModal({ open, onClose, onSubmit, form, onChange, saving, errors,
         <div className="flex items-center justify-between px-6 py-5 border-b"
              style={{
                borderColor: 'var(--border)',
-               backgroundColor: 'var(--success-bg)',
-               background: 'linear-gradient(135deg, var(--success-bg) 0%, var(--success-bg-secondary, var(--card-bg)) 100%)'
+               backgroundColor: 'var(--card-bg)'
              }}>
           <div className="flex items-center gap-4">
-            <div className="p-3 rounded-xl shadow-sm"
+            <div className="p-3 rounded-xl"
                  style={{
-                   backgroundColor: 'var(--success)',
-                   border: '2px solid var(--success-border)',
-                   boxShadow: 'var(--shadow-lg)'
+                   backgroundColor: 'var(--primary)',
+                   boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
                  }}>
-              <FiCreditCard className="w-6 h-6" style={{ color: 'var(--success-text)' }} />
+              <FiCreditCard className="w-6 h-6 text-white" />
             </div>
             <div>
-              <h2 className="text-2xl font-bold" style={{ color: 'var(--success-text)' }}>
+              <h2 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>
                 Registrar Pago
               </h2>
-              <p className="text-sm" style={{ color: 'var(--success-text-secondary, var(--text-secondary))' }}>
+              <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
                 Registra un nuevo pago para este cliente
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-2 rounded-lg transition-all duration-200 hover:scale-105"
+            className="p-2 rounded-lg transition-all duration-200 hover:bg-gray-100 dark:hover:bg-gray-700"
             style={{
-              color: 'var(--success-text)',
-              backgroundColor: 'var(--success-bg-hover, rgba(255,255,255,0.1))',
-              border: '1px solid var(--success-border)',
-              boxShadow: 'var(--shadow-sm)'
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = 'var(--success-hover)';
-              e.currentTarget.style.transform = 'scale(1.05)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = 'var(--success-bg-hover, rgba(255,255,255,0.1))';
-              e.currentTarget.style.transform = 'scale(1)';
+              color: 'var(--text-secondary)'
             }}
           >
             <FiX className="w-6 h-6" />
@@ -2284,11 +2321,25 @@ function PaymentModal({ open, onClose, onSubmit, form, onChange, saving, errors,
 
             {/* Monto Principal */}
             <div className="space-y-4">
-              <div className="flex items-center gap-3 pb-2 border-b" style={{ borderColor: 'var(--success)' }}>
-                <div className="p-2 rounded-lg" style={{ backgroundColor: 'var(--success)', border: '2px solid var(--success-border)' }}>
-                  <FiDollarSign className="w-5 h-5" style={{ color: 'var(--success-text)' }} />
+              <div className="flex items-center gap-3 pb-2 border-b" style={{ borderColor: 'var(--border)' }}>
+                <div className="p-2 rounded-lg" style={{ backgroundColor: 'var(--primary)' }}>
+                  <FiDollarSign className="w-5 h-5 text-white" />
                 </div>
-                <h3 className="text-lg font-semibold" style={{ color: 'var(--success-text)' }}>Monto del Pago</h3>
+                <h3 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>Monto del Pago</h3>
+              </div>
+
+              {/* Mostrar pendiente actual */}
+              <div className="rounded-lg p-4 border" style={{ backgroundColor: 'var(--info-bg)', borderColor: 'var(--info-border)' }}>
+                <div className="flex items-center gap-2 mb-2">
+                  <FiInfo className="w-4 h-4" style={{ color: 'var(--info-text)' }} />
+                  <span className="text-sm font-medium" style={{ color: 'var(--info-text)' }}>Estado Financiero</span>
+                </div>
+                <p className="text-2xl font-bold" style={{ color: 'var(--info-text)' }}>
+                  {formatCLP(pendienteActual)} {(financialTotals.pending || 0) < 0 ? 'deuda' : (financialTotals.pending || 0) > 0 ? 'crédito' : 'sin saldo'}
+                </p>
+                <p className="text-xs mt-1" style={{ color: 'var(--info-text-secondary)' }}>
+                  {(financialTotals.pending || 0) < 0 ? 'Este es el monto máximo que puedes registrar como pago' : 'Puedes registrar pagos sin límite superior'}
+                </p>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -2303,28 +2354,60 @@ function PaymentModal({ open, onClose, onSubmit, form, onChange, saving, errors,
                     <input
                       name="amount"
                       type="number"
-                      value={form.amount || ''}
+                      value={form.amount}
                       onChange={onChange}
                       required
                       min="0"
                       step="0.01"
-                      className={`w-full pl-8 pr-4 py-4 text-lg rounded-xl border-2 bg-transparent transition-all duration-200 focus:ring-2 hover:border-opacity-80 font-semibold ${
-                        errors.amount ? 'ring-2' : ''
+                      className={`w-full pl-8 pr-4 py-4 text-lg rounded-xl border-2 bg-transparent transition-all duration-200 focus:ring-2 hover:border-blue-400 font-semibold ${
+                        errors.amount ? 'ring-2 ring-red-500/20' : 'focus:border-blue-500'
                       }`}
                       style={{
-                        borderColor: form.amount > 0 ? 'var(--primary)' : 'var(--border)',
-                        backgroundColor: form.amount > 0 ? 'var(--primary-bg)' : 'var(--input-bg)',
-                        color: form.amount > 0 ? 'var(--primary-text)' : 'var(--text-primary)',
+                        borderColor: errors.amount ? '#ef4444' : 'var(--border)',
+                        color: 'var(--text-primary)',
                         ...getInputStyles(!!errors.amount)
                       }}
                       placeholder="0"
                     />
                   </div>
+                  
+                  {/* Mostrar el monto formateado siempre */}
+                  <div className="mt-2">
+                    {form.amount > 0 ? (
+                      <p className="text-sm font-medium text-blue-600 dark:text-blue-400">
+                        {formatCLP(form.amount)}
+                      </p>
+                    ) : (
+                      <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+                        Ingresa el monto a pagar
+                      </p>
+                    )}
+                  </div>
+
                   {errors.amount && (
                     <p className="text-sm flex items-center gap-1" style={{ color: 'var(--danger-text)' }}>
                       <FiAlertCircle className="w-4 h-4" />
                       {errors.amount}
                     </p>
+                  )}
+                  
+                  {/* Botón para pagar todo el pendiente */}
+                  {pendienteActual > 0 && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        // Crear un evento sintético para actualizar el formulario
+                        const syntheticEvent = {
+                          target: { name: 'amount', value: pendienteActual.toString() }
+                        } as React.ChangeEvent<HTMLInputElement>;
+                        onChange(syntheticEvent);
+                      }}
+                      className="px-3 py-1.5 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 text-green-700 dark:text-green-400 text-sm font-medium rounded-md hover:bg-green-100 dark:hover:bg-green-900/30 hover:border-green-300 dark:hover:border-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      disabled={saving}
+                    >
+                      Pagar todo ({formatCLP(pendienteActual)})
+                    </button>
                   )}
                 </div>
 
@@ -2338,22 +2421,20 @@ function PaymentModal({ open, onClose, onSubmit, form, onChange, saving, errors,
                          backgroundColor: 'var(--success-bg)',
                          color: 'var(--success-text)'
                        }}>
-                    {form.amount > 0 ? formatCLP(calculatePendingAfterPayment()) : 'Sin calcular'}
+                    {form.amount > 0 ? formatCLP(Math.max(0, pendienteActual - form.amount)) : 'Sin calcular'}
                   </div>
-                  {form.amount > 0 && (
-                    <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
-                      Monto del pago: {formatCLP(form.amount)}
-                    </p>
-                  )}
+                  <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+                    Monto que quedará pendiente después de registrar este pago
+                  </p>
                 </div>
               </div>
             </div>
 
             {/* Detalles del Pago */}
             <div className="space-y-4">
-              <div className="flex items-center gap-3 pb-2 border-b" style={{ borderColor: 'var(--info)' }}>
-                <FiCalendar className="w-5 h-5" style={{ color: 'var(--info-text)' }} />
-                <h3 className="text-lg font-semibold" style={{ color: 'var(--info-text)' }}>Detalles del Pago</h3>
+              <div className="flex items-center gap-3 pb-2 border-b" style={{ borderColor: 'var(--border)' }}>
+                <FiCalendar className="w-5 h-5" style={{ color: 'var(--text-secondary)' }} />
+                <h3 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>Detalles del Pago</h3>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -2367,13 +2448,12 @@ function PaymentModal({ open, onClose, onSubmit, form, onChange, saving, errors,
                     value={form.date}
                     onChange={onChange}
                     required
-                    className={`w-full px-4 py-3 rounded-xl border-2 bg-transparent transition-all duration-200 focus:ring-2 hover:border-opacity-80 font-medium ${
-                      errors.date ? 'ring-2' : ''
+                    className={`w-full px-4 py-3 rounded-xl border-2 bg-transparent transition-all duration-200 focus:ring-2 hover:border-blue-400 font-medium ${
+                      errors.date ? 'ring-2 ring-red-500/20' : 'focus:border-blue-500'
                     }`}
                     style={{
-                      borderColor: form.date ? 'var(--info)' : 'var(--border)',
-                      backgroundColor: form.date ? 'var(--info-bg)' : 'var(--input-bg)',
-                      color: form.date ? 'var(--info-text)' : 'var(--text-primary)',
+                      borderColor: errors.date ? '#ef4444' : 'var(--border)',
+                      color: 'var(--text-primary)',
                       ...getInputStyles(!!errors.date)
                     }}
                   />
@@ -2393,11 +2473,10 @@ function PaymentModal({ open, onClose, onSubmit, form, onChange, saving, errors,
                     name="paymentType"
                     value={form.paymentType}
                     onChange={onChange}
-                    className="w-full px-4 py-3 rounded-xl border-2 bg-transparent transition-all duration-200 focus:ring-2 hover:border-opacity-80 focus:border-opacity-100 font-medium"
+                    className="w-full px-4 py-3 rounded-xl border-2 bg-transparent transition-all duration-200 focus:ring-2 hover:border-blue-400 focus:border-blue-500 font-medium"
                     style={{
-                      borderColor: form.paymentType ? 'var(--warning)' : 'var(--border)',
-                      backgroundColor: form.paymentType ? 'var(--warning-bg)' : 'var(--input-bg)',
-                      color: form.paymentType ? 'var(--warning-text)' : 'var(--text-primary)',
+                      borderColor: 'var(--border)',
+                      color: 'var(--text-primary)',
                       ...getInputStyles(false)
                     }}
                   >
@@ -2417,11 +2496,10 @@ function PaymentModal({ open, onClose, onSubmit, form, onChange, saving, errors,
                     name="paymentMethod"
                     value={form.paymentMethod}
                     onChange={onChange}
-                    className="w-full px-4 py-3 rounded-xl border-2 bg-transparent transition-all duration-200 focus:ring-2 hover:border-opacity-80 focus:border-opacity-100 font-medium"
+                    className="w-full px-4 py-3 rounded-xl border-2 bg-transparent transition-all duration-200 focus:ring-2 hover:border-blue-400 focus:border-blue-500 font-medium"
                     style={{
-                      borderColor: form.paymentMethod ? 'var(--secondary)' : 'var(--border)',
-                      backgroundColor: form.paymentMethod ? 'var(--secondary-bg)' : 'var(--input-bg)',
-                      color: form.paymentMethod ? 'var(--secondary-text)' : 'var(--text-primary)',
+                      borderColor: 'var(--border)',
+                      color: 'var(--text-primary)',
                       ...getInputStyles(false)
                     }}
                   >
@@ -2442,11 +2520,10 @@ function PaymentModal({ open, onClose, onSubmit, form, onChange, saving, errors,
                     type="text"
                     value={form.reference}
                     onChange={onChange}
-                    className="w-full px-4 py-3 rounded-xl border-2 bg-transparent transition-all duration-200 focus:ring-2 hover:border-opacity-80 focus:border-opacity-100 font-medium"
+                    className="w-full px-4 py-3 rounded-xl border-2 bg-transparent transition-all duration-200 focus:ring-2 hover:border-blue-400 focus:border-blue-500 font-medium"
                     style={{
-                      borderColor: form.reference ? 'var(--neutral)' : 'var(--border)',
-                      backgroundColor: form.reference ? 'var(--neutral-bg)' : 'var(--input-bg)',
-                      color: form.reference ? 'var(--neutral-text)' : 'var(--text-primary)',
+                      borderColor: 'var(--border)',
+                      color: 'var(--text-primary)',
                       ...getInputStyles(false)
                     }}
                     placeholder="N° de comprobante, operación, etc."
@@ -2457,11 +2534,9 @@ function PaymentModal({ open, onClose, onSubmit, form, onChange, saving, errors,
 
             {/* Información Adicional */}
             <div className="space-y-4">
-              <div className="flex items-center gap-3 pb-2 border-b" style={{ borderColor: 'var(--warning)' }}>
-                <div className="p-2 rounded-lg" style={{ backgroundColor: 'var(--warning)', border: '2px solid var(--warning-border)' }}>
-                  <FiFileText className="w-5 h-5" style={{ color: 'var(--warning-text)' }} />
-                </div>
-                <h3 className="text-lg font-semibold" style={{ color: 'var(--warning-text)' }}>Información Adicional</h3>
+              <div className="flex items-center gap-3 pb-2 border-b" style={{ borderColor: 'var(--border)' }}>
+                <FiFileText className="w-5 h-5" style={{ color: 'var(--text-secondary)' }} />
+                <h3 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>Información Adicional</h3>
               </div>
 
               <div className="space-y-4">
@@ -2474,11 +2549,10 @@ function PaymentModal({ open, onClose, onSubmit, form, onChange, saving, errors,
                     value={form.description}
                     onChange={onChange}
                     rows={3}
-                    className="w-full px-4 py-3 rounded-xl border-2 bg-transparent transition-all duration-200 focus:ring-2 hover:border-opacity-80 focus:border-opacity-100 resize-none font-medium"
+                    className="w-full px-4 py-3 rounded-xl border-2 bg-transparent transition-all duration-200 focus:ring-2 hover:border-blue-400 focus:border-blue-500 resize-none font-medium"
                     style={{
-                      borderColor: form.description ? 'var(--info)' : 'var(--border)',
-                      backgroundColor: form.description ? 'var(--info-bg)' : 'var(--input-bg)',
-                      color: form.description ? 'var(--info-text)' : 'var(--text-primary)',
+                      borderColor: errors.description ? '#ef4444' : 'var(--border)',
+                      color: 'var(--text-primary)',
                       ...getInputStyles(!!errors.description)
                     }}
                     placeholder="Describe el motivo o detalles del pago..."
@@ -2494,11 +2568,10 @@ function PaymentModal({ open, onClose, onSubmit, form, onChange, saving, errors,
                     value={form.notes}
                     onChange={onChange}
                     rows={2}
-                    className="w-full px-4 py-3 rounded-xl border-2 bg-transparent transition-all duration-200 focus:ring-2 hover:border-opacity-80 focus:border-opacity-100 resize-none font-medium"
+                    className="w-full px-4 py-3 rounded-xl border-2 bg-transparent transition-all duration-200 focus:ring-2 hover:border-blue-400 focus:border-blue-500 resize-none font-medium"
                     style={{
-                      borderColor: form.notes ? 'var(--warning)' : 'var(--border)',
-                      backgroundColor: form.notes ? 'var(--warning-bg)' : 'var(--input-bg)',
-                      color: form.notes ? 'var(--warning-text)' : 'var(--text-primary)',
+                      borderColor: 'var(--border)',
+                      color: 'var(--text-primary)',
                       ...getInputStyles(false)
                     }}
                     placeholder="Notas internas (no visibles para el cliente)..."
@@ -2532,8 +2605,11 @@ function PaymentModal({ open, onClose, onSubmit, form, onChange, saving, errors,
           </div>
 
           {/* Footer */}
-          <div className="flex items-center justify-between px-6 py-4 border-t bg-gray-50/50 dark:bg-gray-800/50"
-               style={{ borderColor: 'var(--border)' }}>
+          <div className="flex items-center justify-between px-6 py-4 border-t"
+               style={{ 
+                 borderColor: 'var(--border)',
+                 backgroundColor: 'var(--bg-secondary)'
+               }}>
             <button
               type="button"
               onClick={onClose}
@@ -2552,11 +2628,11 @@ function PaymentModal({ open, onClose, onSubmit, form, onChange, saving, errors,
               )}
 
               <button
-                disabled={saving || form.amount <= 0}
+                disabled={saving || form.amount <= 0 || ((financialTotals.pending || 0) < 0 && form.amount > Math.abs(financialTotals.pending || 0))}
                 type="submit"
                 className="px-8 py-2.5 rounded-lg text-white transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2 hover:scale-105 shadow-lg hover:shadow-xl"
                 style={{
-                  background: 'linear-gradient(135deg, var(--primary) 0%, var(--primary-hover) 100%)',
+                  background: 'linear-gradient(135deg, var(--success) 0%, var(--success-hover, #16a34a) 100%)',
                 }}
               >
                 {saving && <span className="animate-spin h-4 w-4 border-2 border-white/40 border-t-white rounded-full"></span>}
@@ -2795,8 +2871,8 @@ function LoanModal({ open, onClose, onSubmit, form, onChange, saving, errors, cl
           </div>
 
           {/* Footer */}
-          <div className="flex items-center justify-between px-6 py-4 border-t bg-gray-50/50 dark:bg-gray-800/50"
-               style={{ borderColor: 'var(--border)' }}>
+          <div className="flex items-center justify-between px-6 py-4 border-t"
+               style={{ borderColor: 'var(--border)', backgroundColor: 'var(--bg-secondary)' }}>
             <button
               type="button"
               onClick={onClose}
@@ -2816,7 +2892,7 @@ function LoanModal({ open, onClose, onSubmit, form, onChange, saving, errors, cl
                 type="submit"
                 className="px-8 py-2.5 rounded-lg text-white transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2 hover:scale-105 shadow-lg hover:shadow-xl"
                 style={{
-                  background: 'linear-gradient(135deg, var(--warning) 0%, var(--warning-hover) 100%)',
+                  background: 'linear-gradient(135deg, var(--success) 0%, var(--success-hover) 100%)',
                 }}
               >
                 {saving && <span className="animate-spin h-4 w-4 border-2 border-white/40 border-t-white rounded-full"></span>}

@@ -36,6 +36,7 @@ import { ReunionPopup } from './components/ReunionPopup';
 import { useReuniones } from '@/hooks/useReuniones';
 import { useAuth } from '@/contexts/AuthContext';
 import { LocationData } from '@/lib/geolocation';
+import { supabase } from '@/lib/supabase';
 
 interface ObraDetailPageProps {
   obra: Obra;
@@ -72,6 +73,11 @@ export function ObraDetailPage({
   const [isPrestamoModalOpen, setIsPrestamoModalOpen] = useState(false);
   const [isPagoModalOpen, setIsPagoModalOpen] = useState(false);
 
+  // Estados para edición de vendedor (solo admins)
+  const [vendedores, setVendedores] = useState<Array<{id: string, nombre: string, apellido: string, email: string, rol: string}>>([]);
+  const [loadingVendedores, setLoadingVendedores] = useState(false);
+  const [selectedVendedorId, setSelectedVendedorId] = useState<string>('');
+
   // Estados para reuniones
   const [isReunionPopupOpen, setIsReunionPopupOpen] = useState(false);
   const [isStartingReunion, setIsStartingReunion] = useState(false);
@@ -82,6 +88,9 @@ export function ObraDetailPage({
   // Hooks para reuniones y auth
   const { user } = useAuth();
   const { checkin, checkout, reuniones } = useReuniones(obra.id);
+
+  // Verificar si el usuario es admin
+  const isAdmin = ['admin', 'dueño', 'dueno'].includes(user?.role?.toLowerCase() || '');
 
   // Obtener cotizaciones y estadísticas de la obra
   const { quotes,  stats, loading: quotesLoading, refetch: refetchObraData } = useObraQuotes(Number(obra.id));
@@ -104,6 +113,37 @@ export function ObraDetailPage({
       setIsEditPanelOpen(true);
     }
   }, [searchParams]);
+
+  // Función para cargar vendedores
+  const loadVendedores = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('usuarios')
+        .select('id, nombre, apellido, email, rol')
+        .order('nombre');
+      if (error) {
+        console.error('Error cargando vendedores:', error);
+        return;
+      }
+      setVendedores(data || []);
+    } catch (error) {
+      console.error('Error cargando vendedores:', error);
+    }
+  };
+
+  // Cargar vendedores cuando se abre el panel de edición y el usuario es admin
+  useEffect(() => {
+    if (isEditPanelOpen && isAdmin && !vendedores.length) {
+      loadVendedores();
+    }
+  }, [isEditPanelOpen, isAdmin, vendedores.length]);
+
+  // Inicializar selectedVendedorId cuando se carga la obra y los vendedores
+  useEffect(() => {
+    if (vendedores.length > 0) {
+      setSelectedVendedorId(obra.vendedorAsignado || '');
+    }
+  }, [obra.vendedorAsignado, vendedores.length]);
 
   // Función de prueba para verificar conectividad con la API
   const testApiConnection = async () => {
@@ -1430,7 +1470,41 @@ export function ObraDetailPage({
                     </div>
                     <div>
                       <label className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>Vendedor asignado</label>
-                      <input type="text" value={editedObra.nombreVendedor} onChange={(e) => setEditedObra({ ...editedObra, nombreVendedor: e.target.value })} className="mt-1 w-full px-2 py-2 rounded text-sm" style={{ backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)' }} />
+                      {isAdmin ? (
+                        <select
+                          value={selectedVendedorId}
+                          onChange={(e) => {
+                            const vendedorId = e.target.value;
+                            setSelectedVendedorId(vendedorId);
+                            // Encontrar el vendedor seleccionado para actualizar el nombre
+                            const vendedor = vendedores.find(v => v.id === vendedorId);
+                            const nombreCompleto = vendedor ? `${vendedor.nombre} ${vendedor.apellido || ''}`.trim() : '';
+                            setEditedObra({ 
+                              ...editedObra, 
+                              nombreVendedor: nombreCompleto, 
+                              vendedorAsignado: vendedorId || null // Convertir cadena vacía a null
+                            });
+                          }}
+                          className="mt-1 w-full px-2 py-2 rounded text-sm"
+                          style={{ backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)' }}
+                          disabled={loadingVendedores}
+                        >
+                          <option value="">Seleccionar vendedor...</option>
+                          {vendedores.map((vendedor) => (
+                            <option key={vendedor.id} value={vendedor.id}>
+                              {vendedor.nombre} {vendedor.apellido || ''} ({vendedor.rol})
+                            </option>
+                          ))}
+                        </select>
+                      ) : (
+                        <input
+                          type="text"
+                          value={editedObra.nombreVendedor}
+                          readOnly
+                          className="mt-1 w-full px-2 py-2 rounded text-sm"
+                          style={{ backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)' }}
+                        />
+                      )}
                     </div>
                   </div>
                 )}

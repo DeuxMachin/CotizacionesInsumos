@@ -11,6 +11,10 @@ import { supabase, type Database } from '@/lib/supabase';
 type CotizacionItemRow = Database['public']['Tables']['cotizacion_items']['Row'];
 type ProductoPartial = { id: number; sku: string | null; nombre: string; ficha_tecnica: string | null };
 
+// Configuración para Vercel: usar runtime Node.js y aumentar timeout
+export const runtime = 'nodejs';
+export const maxDuration = 60;
+
 export async function GET(
   request: NextRequest,
   context: { params: Promise<{ id: string }> }

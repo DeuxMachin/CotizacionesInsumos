@@ -42,11 +42,8 @@ import type {
   ReunionObra
 } from "../types/obras";
 import { getProgressByStage } from "../types/obras";
+import { CreateObraModal } from "./CreateObraModal";
 import dynamic from "next/dynamic";
-const CreateObraModal = dynamic(() => import("./CreateObraModal").then(m => m.CreateObraModal), {
-  loading: () => <div className="p-6">Cargando formulario…</div>,
-  ssr: false,
-});
 const ObraTiposManager = dynamic(() => import("./components/ObraTiposManager").then(m => m.ObraTiposManager), {
   loading: () => <div className="p-6">Cargando gestor de categorías…</div>,
   ssr: false,
@@ -319,6 +316,18 @@ export function ObrasPage() {
               </div>
             </div>
           </div>
+        )}
+
+        {/* Modal de Crear Obra */}
+        {isCreateModalOpen && (
+          <CreateObraModal
+            isOpen={isCreateModalOpen}
+            onClose={() => setIsCreateModalOpen(false)}
+            onSave={handleCreateObra}
+            currentUserId={userId || ''}
+            currentUserName={userName || ''}
+            isAdmin={isAdmin}
+          />
         )}
 
         {/* Búsqueda */}
@@ -679,15 +688,6 @@ export function ObrasPage() {
           </div>
         </div>
       )}
-
-      {/* Modal de Nueva Obra */}
-      <CreateObraModal
-        isOpen={isCreateModalOpen}
-        onClose={() => setIsCreateModalOpen(false)}
-        onSave={handleCreateObra}
-        currentUserId={userId || ''}
-        currentUserName={userName}
-      />
 
       {/* Modal de Gestión de Categorías */}
       <ObraTiposManager

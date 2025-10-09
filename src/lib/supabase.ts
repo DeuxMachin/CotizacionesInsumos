@@ -103,6 +103,7 @@ export type Database = {
           descuento_cliente_pct: number
           estado: string
           created_at: string
+          updated_at: string
           cliente_tipo_id: number | null
         }
         Insert: {
@@ -126,6 +127,7 @@ export type Database = {
           descuento_cliente_pct?: number
           estado?: string
           created_at?: string
+          updated_at?: string
           cliente_tipo_id?: number | null
         }
         Update: {
@@ -149,6 +151,7 @@ export type Database = {
           descuento_cliente_pct?: number
           estado?: string
           created_at?: string
+          updated_at?: string
           cliente_tipo_id?: number | null
         }
       }

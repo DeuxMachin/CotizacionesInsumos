@@ -27,10 +27,12 @@
   --accent-soft: #fed7aa;
   --accent-bg: #fff7ed;
   --accent-text: #ea580c;
+  --primary: #f97316;
 
   --success: #10b981;
   --success-bg: #d1fae5;
   --success-text: #065f46;
+  --success-hover: #059669;
   --warning: #f59e0b;
   --warning-bg: #fef3c7;
   --warning-text: #92400e;
@@ -40,6 +42,11 @@
   --info: #3b82f6;
   --info-bg: #dbeafe;
   --info-text: #1e40af;
+  --info-bg-secondary: #eff6ff;
+  --info-text-secondary: #1d4ed8;
+  --info-bg-hover: rgba(59, 130, 246, 0.1);
+  --info-hover: #2563eb;
+  --info-border: #93c5fd;
   --neutral-bg: #f3f4f6;
   --neutral-text: #374151;
   
@@ -66,6 +73,7 @@
   --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
   --shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
   --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
 
   color-scheme: light dark; /* mejora controles nativos */
 }
@@ -90,10 +98,12 @@
   --accent-soft: #7c2d12;
   --accent-bg: #431407;
   --accent-text: #fb923c;
+  --primary: #fb923c;
 
   --success: #10b981;
   --success-bg: #064e3b;
   --success-text: #6ee7b7;
+  --success-hover: #047857;
   --warning: #f59e0b;
   --warning-bg: #78350f;
   --warning-text: #fcd34d;
@@ -103,6 +113,11 @@
   --info: #3b82f6;
   --info-bg: #1e3a8a;
   --info-text: #93c5fd;
+  --info-bg-secondary: #1e40af;
+  --info-text-secondary: #bfdbfe;
+  --info-bg-hover: rgba(59, 130, 246, 0.2);
+  --info-hover: #3b82f6;
+  --info-border: #60a5fa;
   --neutral-bg: #374151;
   --neutral-text: #d1d5db;
   
@@ -129,6 +144,7 @@
   --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.2);
   --shadow: 0 1px 3px 0 rgb(0 0 0 / 0.3), 0 1px 2px -1px rgb(0 0 0 / 0.3);
   --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.3), 0 2px 4px -2px rgb(0 0 0 / 0.3);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.3), 0 4px 6px -4px rgb(0 0 0 / 0.3);
 }
 
 /* Estilos base del body y html */

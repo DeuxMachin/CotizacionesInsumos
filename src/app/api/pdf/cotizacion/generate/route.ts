@@ -7,6 +7,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { generatePDF } from '@/shared/lib/pdf/generator';
 import type { Quote, QuoteItem } from '@/core/domain/quote/Quote';
 
+// Configuración para Vercel: usar runtime Node.js y aumentar timeout
+export const runtime = 'nodejs';
+export const maxDuration = 60;
+
 export async function POST(request: NextRequest) {
   try {
     // Para generar PDF con datos enviados en el body (útil para cotizaciones en borrador)

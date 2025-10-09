@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { getCurrentUser } from '@/lib/auth-helpers';
+import type { Database } from '@/lib/supabase';
+
+type ProductoInsert = Database['public']['Tables']['productos']['Insert'];
 
 export async function POST(request: NextRequest) {
   try {
@@ -32,25 +35,29 @@ export async function POST(request: NextRequest) {
     }
 
     // Preparar datos para inserción
-    const productData = {
+    const productData: ProductoInsert = {
       nombre: data.nombre.trim(),
-      sku: data.sku || null,
-      descripcion: data.descripcion || null,
       unidad: data.unidad.trim(),
-      tipo_id: data.tipo_id || null,
       afecto_iva: data.afecto_iva || false,
-      moneda: data.moneda || null,
-      costo_unitario: data.costo_unitario || null,
-      precio_neto: data.precio_neto || null,
-      precio_venta: data.precio_venta || null,
       control_stock: data.control_stock || false,
-      ficha_tecnica: data.ficha_tecnica || null,
       estado: data.estado || 'disponible',
       activo: data.activo !== undefined ? data.activo : true
     };
 
+    // Solo incluir campos opcionales si tienen valor
+    if (data.sku) productData.sku = data.sku;
+    if (data.descripcion) productData.descripcion = data.descripcion;
+    if (data.tipo_id) productData.tipo_id = data.tipo_id;
+    if (data.moneda) productData.moneda = data.moneda;
+    if (data.costo_unitario !== null && data.costo_unitario !== undefined) productData.costo_unitario = data.costo_unitario;
+    if (data.precio_neto !== null && data.precio_neto !== undefined) productData.precio_neto = data.precio_neto;
+    if (data.precio_venta !== null && data.precio_venta !== undefined) productData.precio_venta = data.precio_venta;
+    if (data.ficha_tecnica) productData.ficha_tecnica = data.ficha_tecnica;
+
+    console.log('Product data to insert:', productData);
+
     // Insertar producto
-    const { data: product, error } = await supabase
+    const { data: product, error } = await supabaseAdmin
       .from('productos')
       .insert(productData)
       .select()
@@ -59,7 +66,7 @@ export async function POST(request: NextRequest) {
     if (error) {
       console.error('Error creando producto:', error);
       return NextResponse.json(
-        { error: 'Error al crear el producto' },
+        { error: `Error al crear el producto: ${error.message}` },
         { status: 500 }
       );
     }
@@ -87,7 +94,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Obtener todos los productos
-    const { data: products, error } = await supabase
+    const { data: products, error } = await supabaseAdmin
       .from('productos')
       .select(`
         *,

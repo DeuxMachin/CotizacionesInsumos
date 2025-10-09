@@ -523,12 +523,12 @@ export default function QuoteDetailPage() {
                         className={index !== quote.items.length - 1 ? 'border-b' : ''}
                         style={{ borderColor: 'var(--border)' }}
                       >
-                          <td className="py-3 sm:py-4 whitespace-nowrap">
+                        <td className="py-4 sm:py-4 whitespace-nowrap">
                           <span className="font-mono text-xs sm:text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
                             {item.codigo}
                           </span>
                         </td>
-                        <td className="py-3 sm:py-4">
+                        <td className="py-4 sm:py-4">
                           <span className="font-medium line-clamp-2" style={{ color: 'var(--text-primary)' }}>
                             {item.descripcion}
                           </span>
@@ -537,19 +537,19 @@ export default function QuoteDetailPage() {
                             {item.descuento ? ` | -${item.descuento}%` : ''}
                           </span>
                         </td>
-                        <td className="py-3 sm:py-4 text-center hidden sm:table-cell" style={{ color: 'var(--text-secondary)' }}>
+                        <td className="py-4 sm:py-4 text-center hidden sm:table-cell" style={{ color: 'var(--text-secondary)' }}>
                           {item.unidad}
                         </td>
-                        <td className="py-3 sm:py-4 text-right whitespace-nowrap" style={{ color: 'var(--text-primary)' }}>
+                        <td className="py-4 sm:py-4 text-center whitespace-nowrap" style={{ color: 'var(--text-primary)' }}>
                           {item.cantidad.toLocaleString('es-CL')}
                         </td>
-                        <td className="py-3 sm:py-4 text-right hidden md:table-cell whitespace-nowrap" style={{ color: 'var(--text-secondary)' }}>
+                        <td className="py-4 sm:py-4 text-right hidden md:table-cell whitespace-nowrap" style={{ color: 'var(--text-secondary)' }}>
                           {formatMoney(item.precioUnitario)}
                         </td>
-                        <td className="py-3 sm:py-4 text-right hidden md:table-cell whitespace-nowrap" style={{ color: item.descuento ? 'var(--success-text)' : 'var(--text-muted)' }}>
+                        <td className="py-4 sm:py-4 text-right hidden md:table-cell whitespace-nowrap" style={{ color: item.descuento ? 'var(--success-text)' : 'var(--text-muted)' }}>
                           {item.descuento ? `${item.descuento}%` : '-'}
                         </td>
-                        <td className="py-3 sm:py-4 text-right font-medium whitespace-nowrap" style={{ color: 'var(--text-primary)' }}>
+                        <td className="py-4 sm:py-4 text-right font-medium whitespace-nowrap" style={{ color: 'var(--text-primary)' }}>
                           {formatMoney(item.subtotal)}
                         </td>
                     </tr>

@@ -247,18 +247,8 @@ export function NewClientPage() {
       return;
     }
 
-    console.log('🔍 NewClientPage.handleSave - formData completo:', formData);
-    console.log('🔍 Campos de contacto:', {
-      contactoNombre: formData.contactoNombre,
-      contactoEmail: formData.contactoEmail,
-      contactoTelefono: formData.contactoTelefono,
-      paymentResponsible: formData.paymentResponsible,
-      paymentEmail: formData.paymentEmail,
-      paymentPhone: formData.paymentPhone,
-      contactName: formData.contactName,
-      email: formData.email,
-      contactPhone: formData.contactPhone
-    });
+    
+   
 
     const success = await crearCliente(formData as NewClientData);
     if (success) {

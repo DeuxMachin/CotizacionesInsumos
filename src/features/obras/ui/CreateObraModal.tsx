@@ -27,6 +27,7 @@ interface CreateObraModalProps {
   onSave: (obra: Omit<Obra, 'id' | 'fechaCreacion' | 'fechaActualizacion' | 'fechaUltimoContacto'>) => Promise<boolean>;
   currentUserId: string;
   currentUserName: string;
+  isAdmin: boolean;
 }
 
 interface FormErrors {
@@ -53,8 +54,14 @@ export function CreateObraModal({
   onClose, 
   onSave,
   currentUserId,
-  currentUserName
+  currentUserName,
+  isAdmin
 }: CreateObraModalProps) {
+  // Debug: verificar que isAdmin está llegando
+  useEffect(() => {
+    console.log('CreateObraModal - isAdmin:', isAdmin, 'currentUserId:', currentUserId);
+  }, [isAdmin, currentUserId]);
+
   // Estados del formulario
   const [loading, setSaving] = useState(false);
   const [errors, setErrors] = useState<FormErrors>({});
@@ -69,6 +76,7 @@ export function CreateObraModal({
   const [comuna, setComuna] = useState('');
   const [ciudad, setCiudad] = useState('');
   const [region, setRegion] = useState('');
+  const [selectedVendedorId, setSelectedVendedorId] = useState<string>(currentUserId);
   
   // Estados para geocoding
   const [direccionQuery, setDireccionQuery] = useState('');
@@ -94,6 +102,7 @@ export function CreateObraModal({
   const [notas, setNotas] = useState('');
   const [estado, setEstado] = useState<EstadoObra>('planificacion');
   const [etapaActual, setEtapaActual] = useState<EtapaObra>('fundacion');
+  const [vendedores, setVendedores] = useState<Array<{id: string, nombre: string, apellido: string, email: string}>>([]);
 
   // Datos de la constructora
   const [constructoraNombre, setConstructoraNombre] = useState('');
@@ -114,6 +123,33 @@ export function CreateObraModal({
     REQUIRED_CARGOS.map((cargo, idx) => ({ cargo, nombre: idx === 0 ? '' : '', telefono: '', email: '' }))
   );
   // WhatsApp se unifica con teléfono; no se maneja por separado
+
+  // Cargar vendedores si es admin
+  useEffect(() => {
+    if (isAdmin && isOpen) {
+      const loadVendedores = async () => {
+        try {
+          const { data, error } = await supabase
+            .from('usuarios')
+            .select('id, nombre, apellido, email')
+            .order('nombre');
+          if (error) {
+            console.error('Error cargando vendedores:', error);
+            return;
+          }
+          console.log('Vendedores cargados:', data);
+          setVendedores(data || []);
+          // Si no hay vendedor seleccionado, seleccionar el actual
+          if (data && data.length > 0 && !selectedVendedorId) {
+            setSelectedVendedorId(currentUserId);
+          }
+        } catch (error) {
+          console.error('Error cargando vendedores:', error);
+        }
+      };
+      loadVendedores();
+    }
+  }, [isAdmin, isOpen, currentUserId]);
 
   const estadosObra: { value: EstadoObra; label: string; color: string }[] = [
     { value: 'planificacion', label: 'Planificación', color: 'var(--info-text)' },
@@ -438,6 +474,7 @@ export function CreateObraModal({
     setNotas('');
     setEstado('planificacion');
     setEtapaActual('fundacion');
+    setSelectedVendedorId(currentUserId);
     setConstructoraNombre('');
     setConstructoraRut('');
     setConstructoraTelefono('');
@@ -511,12 +548,24 @@ export function CreateObraModal({
         etapasCompletadas: [],
         constructora,
         contactos,
-        vendedorAsignado: currentUserId,
-        nombreVendedor: currentUserName,
+        vendedorAsignado: isAdmin ? selectedVendedorId : currentUserId,
+        nombreVendedor: isAdmin 
+          ? (() => {
+              const vendedor = vendedores.find(v => v.id === selectedVendedorId);
+              return vendedor ? `${vendedor.nombre} ${vendedor.apellido}`.trim() : currentUserName;
+            })()
+          : currentUserName,
         clienteId: clienteId,
         tipoObraId: tipoObraId,
         tamanoObraId: tamanoObraId,
       };
+
+      console.log('Guardando obra con vendedor:', {
+        isAdmin,
+        selectedVendedorId,
+        vendedorAsignado: nuevaObra.vendedorAsignado,
+        nombreVendedor: nuevaObra.nombreVendedor
+      });
 
       const success = await onSave(nuevaObra);
 
@@ -550,10 +599,10 @@ export function CreateObraModal({
             className="absolute inset-0 z-50 flex items-center justify-center rounded-xl"
             style={{ backgroundColor: 'rgba(34, 197, 94, 0.95)' }}
           >
-            <div className="text-center">
-              <FiCheck className="w-20 h-20 text-white mx-auto mb-6" />
-              <h3 className="text-3xl font-bold text-white mb-2">¡Obra Creada!</h3>
-              <p className="text-xl text-white opacity-90">La nueva obra se ha registrado correctamente</p>
+            <div className="text-center px-4">
+              <FiCheck className="w-16 h-16 sm:w-20 sm:h-20 text-white mx-auto mb-4 sm:mb-6" />
+              <h3 className="text-2xl sm:text-3xl font-bold text-white mb-2">¡Obra Creada!</h3>
+              <p className="text-lg sm:text-xl text-white opacity-90">La nueva obra se ha registrado correctamente</p>
             </div>
           </div>
         )}
@@ -630,11 +679,35 @@ export function CreateObraModal({
             {/* Panel derecho */}
             <div className="flex-1 min-w-0">
               {/* Barra de progreso y resumen de errores */}
-              <div className="mb-3">
-                <div className="w-full h-2 rounded" style={{ backgroundColor: 'var(--border)' }}>
-                  <div className="h-2 rounded" style={{ width: `${(currentStep/4)*100}%`, backgroundColor: 'var(--accent-primary)' }} />
+              <div className="mb-4 sm:mb-3">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm sm:text-base font-medium" style={{ color: 'var(--text-primary)' }}>
+                    Progreso
+                  </span>
+                  <span className="text-xs sm:text-sm" style={{ color: 'var(--text-secondary)' }}>
+                    Paso {currentStep} de 4
+                  </span>
                 </div>
-                <div className="mt-1 text-xs" style={{ color: 'var(--text-secondary)' }}>Paso {currentStep} de 4</div>
+                <div className="w-full h-3 sm:h-2 rounded-full" style={{ backgroundColor: 'var(--border)' }}>
+                  <div 
+                    className="h-3 sm:h-2 rounded-full transition-all duration-300 ease-out" 
+                    style={{ 
+                      width: `${(currentStep/4)*100}%`, 
+                      backgroundColor: 'var(--accent-primary)',
+                      boxShadow: '0 0 10px rgba(var(--accent-primary-rgb), 0.3)'
+                    }} 
+                  />
+                </div>
+                <div className="flex justify-between mt-1">
+                  {[1, 2, 3, 4].map(step => (
+                    <div key={step} className="flex flex-col items-center">
+                      <div 
+                        className={`w-2 h-2 rounded-full ${step <= currentStep ? 'bg-accent-primary' : 'bg-border'}`}
+                        style={{ backgroundColor: step <= currentStep ? 'var(--accent-primary)' : 'var(--border)' }}
+                      />
+                    </div>
+                  ))}
+                </div>
               </div>
 
               {stepErrors.length > 0 && (
@@ -653,9 +726,17 @@ export function CreateObraModal({
                   style={{ backgroundColor: 'var(--card-bg)', border: '1px solid var(--border)' }}
                   hidden={currentStep !== 1}
                 >
-              <h3 className="text-base font-semibold flex items-center gap-2 mb-4" style={{ color: 'var(--text-primary)' }}>
-                <FiHome className="w-4 h-4" style={{ color: 'var(--accent-primary)' }} />
-                Información de la Obra
+              <h3 className="text-base sm:text-lg font-semibold flex flex-col sm:flex-row sm:items-center gap-2 mb-4" style={{ color: 'var(--text-primary)' }}>
+                <div className="flex items-center gap-2">
+                  <FiHome className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" style={{ color: 'var(--accent-primary)' }} />
+                  <span>Información de la Obra</span>
+                </div>
+                {isAdmin && (
+                  <span className="text-xs px-2 py-1 rounded-full font-medium self-start sm:self-center" style={{ backgroundColor: 'var(--accent-bg)', color: 'var(--accent-text)' }}>
+                    <span className="hidden sm:inline">Modo Administrador</span>
+                    <span className="sm:hidden">Admin</span>
+                  </span>
+                )}
               </h3>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -849,6 +930,54 @@ export function CreateObraModal({
                     }}
                   />
                 </div>
+
+                {/* Vendedor Asignado - Solo para admins */}
+                {isAdmin && (
+                  <div className="md:col-span-2">
+                    <label className="block text-sm sm:text-base font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>
+                      Vendedor Asignado *
+                    </label>
+                    {vendedores.length > 0 ? (
+                      <div className="relative">
+                        <select
+                          value={selectedVendedorId}
+                          onChange={(e) => setSelectedVendedorId(e.target.value)}
+                          className="w-full px-3 py-3 sm:py-2 rounded-lg border focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm sm:text-base appearance-none"
+                          style={{
+                            backgroundColor: 'var(--input-bg)',
+                            borderColor: 'var(--input-border)',
+                            color: 'var(--text-primary)'
+                          }}
+                        >
+                          {vendedores.map((vendedor) => (
+                            <option key={vendedor.id} value={vendedor.id}>
+                              {vendedor.nombre} {vendedor.apellido}
+                              <span className="hidden sm:inline"> ({vendedor.email})</span>
+                              <span className="sm:hidden block text-xs opacity-75 ml-2">
+                                {vendedor.email}
+                              </span>
+                            </option>
+                          ))}
+                        </select>
+                        {/* Icono de flecha personalizado */}
+                        <div className="absolute inset-y-0 right-0 flex items-center px-3 pointer-events-none">
+                          <svg className="w-4 h-4" style={{ color: 'var(--text-secondary)' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                          </svg>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="w-full px-3 py-3 sm:py-2 rounded-lg border flex items-center gap-3" style={{ backgroundColor: 'var(--input-bg)', borderColor: 'var(--input-border)', color: 'var(--text-secondary)' }}>
+                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 flex-shrink-0" style={{ borderColor: 'var(--accent-primary)' }}></div>
+                        <span className="text-sm sm:text-base">Cargando vendedores...</span>
+                      </div>
+                    )}
+                    <p className="text-xs sm:text-sm mt-2 leading-relaxed" style={{ color: 'var(--text-muted)' }}>
+                      <span className="hidden sm:inline">Como administrador, puedes asignar esta obra a cualquier vendedor del equipo.</span>
+                      <span className="sm:hidden">Como admin, puedes asignar esta obra a cualquier vendedor.</span>
+                    </p>
+                  </div>
+                )}
               </div>
                 </div>
 
@@ -1292,10 +1421,11 @@ export function CreateObraModal({
               type="button"
               onClick={handlePrevStep}
               disabled={currentStep===1 || loading}
-              className="px-4 py-2 rounded-lg border"
+              className="px-4 py-2 rounded-lg border transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               style={{ borderColor: 'var(--border)', color: 'var(--text-secondary)', opacity: currentStep===1 ? 0.6 : 1 }}
             >
-              Atrás
+              <span className="hidden sm:inline">Atrás</span>
+              <span className="sm:hidden">← Anterior</span>
             </button>
 
             {currentStep < 4 ? (
@@ -1303,10 +1433,11 @@ export function CreateObraModal({
                 type="button"
                 onClick={handleNextStep}
                 disabled={loading}
-                className="px-4 py-2 rounded-lg"
+                className="px-4 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 style={{ backgroundColor: 'var(--accent-primary)', color: 'white' }}
               >
-                Siguiente
+                <span className="hidden sm:inline">Siguiente</span>
+                <span className="sm:hidden">Siguiente →</span>
               </button>
             ) : (
               <button
@@ -1323,12 +1454,14 @@ export function CreateObraModal({
                 {loading ? (
                   <>
                     <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                    Guardando...
+                    <span className="hidden sm:inline">Guardando...</span>
+                    <span className="sm:hidden">Guardando...</span>
                   </>
                 ) : (
                   <>
                     <FiSave className="w-4 h-4" />
-                    Crear Obra
+                    <span className="hidden sm:inline">Crear Obra</span>
+                    <span className="sm:hidden">Crear</span>
                   </>
                 )}
               </button>

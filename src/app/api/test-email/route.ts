@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import nodemailer, { type SendMailOptions } from 'nodemailer';
 import Imap from 'imap';
 
+// Configuración para Vercel: usar runtime Node.js y aumentar timeout
+export const runtime = 'nodejs';
+export const maxDuration = 60;
+
 // Configuración SMTP para Mailhostbox
 const smtpTransporter = nodemailer.createTransport({
   host: process.env.SMTP_HOST,

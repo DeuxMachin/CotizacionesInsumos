@@ -243,11 +243,11 @@ export default function UnifiedAuditLog({
         ? `/api/audit-log/admin?${params}` 
         : `/api/audit-log?${params}`;
 
-      console.log('🔍 Fetching audit log:', { endpoint, mode, isAdmin: user?.isAdmin });
+      
 
       const response = await fetch(endpoint, { headers });
       
-      console.log('📡 Response status:', response.status);
+     
       
       if (response.ok) {
         const result = await response.json();

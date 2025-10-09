@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { FiX, FiPlus, FiTrash2, FiPackage, FiTruck, FiSave, FiSearch } from 'react-icons/fi';
 import type { Quote, QuoteItem, DeliveryInfo } from '@/core/domain/quote/Quote';
 import { useProducts, Product } from '../../model/useProducts';
+import { Toast } from '@/shared/ui/Toast';
 
 interface EditQuoteModalProps {
   isOpen: boolean;
@@ -97,22 +98,24 @@ export function EditQuoteModal({
   const { subtotal, descuentoTotal } = calcularTotales();
 
   return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-2 sm:p-4 animate-fadeIn overflow-y-auto">
+    <div className="fixed inset-0 z-[10000] flex items-center justify-center p-2 sm:p-4 animate-fadeIn">
       {/* Overlay */}
       <div 
-        className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
         onClick={onClose}
       />
       
-      {/* Modal */}
-      <div 
-        className="relative w-full max-w-5xl rounded-lg shadow-xl animate-slideUp my-4 sm:my-8 flex flex-col"
-        style={{ 
-          backgroundColor: 'var(--card-bg)', 
-          border: '1px solid var(--border)', 
-          maxHeight: 'calc(100vh - 2rem)'
-        }}
-      >
+      {/* Modal Container with proper scroll */}
+      <div className="relative w-full max-w-[95vw] sm:max-w-4xl lg:max-w-5xl max-h-[95vh] flex flex-col">
+        {/* Modal */}
+        <div 
+          className="relative w-full rounded-lg shadow-xl flex flex-col overflow-hidden"
+          style={{ 
+            backgroundColor: 'var(--card-bg)', 
+            border: '1px solid var(--border)',
+            maxHeight: 'calc(95vh - 1rem)'
+          }}
+        >
         {/* Header */}
         <div className="flex items-center justify-between p-4 sm:p-6 border-b sticky top-0 z-10" 
           style={{ borderColor: 'var(--border)', backgroundColor: 'var(--card-bg)' }}>
@@ -160,7 +163,7 @@ export function EditQuoteModal({
         </div>
 
         {/* Content */}
-        <div className="p-4 sm:p-6 overflow-y-auto flex-1">
+        <div className="p-3 sm:p-4 lg:p-6 overflow-y-auto flex-1">
           {activeTab === 'productos' ? (
             <div className="space-y-4">
               {/* Lista de productos */}
@@ -171,7 +174,7 @@ export function EditQuoteModal({
                     className="p-4 rounded-lg border"
                     style={{ borderColor: 'var(--border)', backgroundColor: 'var(--bg-secondary)' }}
                   >
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 gap-2 md:gap-3">
                       <div className="lg:col-span-2">
                         <label className="text-xs font-medium mb-1 block" style={{ color: 'var(--text-secondary)' }}>
                           Descripción
@@ -190,12 +193,28 @@ export function EditQuoteModal({
                         </label>
                         <input
                           type="number"
-                          value={item.cantidad}
-                          onChange={(e) => handleItemChange(index, 'cantidad', parseFloat(e.target.value) || 0)}
+                          value={item.cantidad === 0 ? '' : item.cantidad}
+                          onChange={(e) => {
+                            const raw = e.target.value;
+                            const parsed = raw === '' ? 0 : (parseFloat(raw) || 0);
+                            handleItemChange(index, 'cantidad', parsed);
+                          }}
+                          onFocus={(e) => {
+                            if (e.target.value === '0' || e.target.value === '') {
+                              e.target.value = '';
+                            }
+                          }}
+                          onBlur={(e) => {
+                            if (e.target.value === '' || parseFloat(e.target.value) < 1) {
+                              // Show error and reset to 1
+                              Toast.error('La cantidad no puede ser 0. Si deseas eliminar el producto, usa el botón de eliminar.');
+                              handleItemChange(index, 'cantidad', 1);
+                            }
+                          }}
                           className="w-full px-3 py-2 rounded-lg border-2 transition-all focus:border-orange-500 focus:ring-2 focus:ring-orange-200"
-                          min="0"
+                          min="1"
                           step="1"
-                          placeholder="0"
+                          placeholder="1"
                           style={{ 
                             backgroundColor: 'var(--bg-primary)',
                             color: 'var(--text-primary)',
@@ -428,6 +447,7 @@ export function EditQuoteModal({
             <FiSave className="w-4 h-4" />
             {saving ? 'Guardando...' : 'Guardar Cambios'}
           </button>
+        </div>
         </div>
       </div>
 

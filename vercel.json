@@ -1,0 +1,14 @@
+{
+  "buildCommand": "npm run build",
+  "functions": {
+    "src/app/api/pdf/**/*.ts": {
+      "maxDuration": 60
+    },
+    "src/app/api/cotizaciones/send-email/route.ts": {
+      "maxDuration": 60
+    },
+    "src/app/api/test-email/route.ts": {
+      "maxDuration": 60
+    }
+  }
+}

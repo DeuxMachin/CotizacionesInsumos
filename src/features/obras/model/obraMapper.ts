@@ -124,7 +124,7 @@ export function mapSupabaseObra(row: SupabaseJoinedObra): Obra {
         email: principal?.email,
       },
     },
-    vendedorAsignado: row.vendedor_id || '',
+    vendedorAsignado: row.vendedor_id,
     nombreVendedor,
     contactos,
     estado: normalizarEstado(row.estado),

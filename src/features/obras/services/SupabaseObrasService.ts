@@ -325,7 +325,7 @@ export class SupabaseObrasService implements IObrasService {
 
       if (updateError) throw updateError;
 
-      console.log(`Préstamo registrado en obra ${obraId}: ${pendienteActual} -> ${nuevoPendiente} (${descripcion || 'Sin descripción'})`);
+      
       return true;
     } catch (error) {
       console.error('Error registrando préstamo:', error);
@@ -334,6 +334,8 @@ export class SupabaseObrasService implements IObrasService {
   }
 
   async registrarPago(obraId: string, monto: number, descripcion?: string): Promise<boolean> {
+   
+    
     try {
       // Obtener el pendiente actual
       const { data: obra, error: fetchError } = await supabase
@@ -342,10 +344,23 @@ export class SupabaseObrasService implements IObrasService {
         .eq('id', obraId)
         .single();
 
-      if (fetchError) throw fetchError;
+      if (fetchError) {
+        console.error('Error obteniendo obra:', fetchError);
+        throw new Error(`Error al obtener información de la obra: ${fetchError.message}`);
+      }
 
       const pendienteActual = obra?.pendiente || 0;
+     
+      
+      // Validar que el pago no exceda el pendiente
+      if (monto > pendienteActual) {
+        const errorMsg = `El monto del pago ($${monto.toLocaleString()}) no puede ser mayor al pendiente actual ($${pendienteActual.toLocaleString()})`;
+        console.error(errorMsg);
+        throw new Error(errorMsg);
+      }
+
       const nuevoPendiente = Math.max(0, pendienteActual - monto); // No permitir negativo
+      
 
       // Actualizar el pendiente
       const { error: updateError } = await supabase
@@ -353,9 +368,12 @@ export class SupabaseObrasService implements IObrasService {
         .update({ pendiente: nuevoPendiente })
         .eq('id', obraId);
 
-      if (updateError) throw updateError;
+      if (updateError) {
+        console.error('Error actualizando pendiente:', updateError);
+        throw new Error(`Error al actualizar el pendiente: ${updateError.message}`);
+      }
 
-      console.log(`Pago registrado en obra ${obraId}: ${pendienteActual} -> ${nuevoPendiente} (${descripcion || 'Sin descripción'})`);
+      
       return true;
     } catch (error) {
       console.error('Error registrando pago:', error);

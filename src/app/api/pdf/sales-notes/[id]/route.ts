@@ -8,6 +8,10 @@ import { generatePDF } from '@/shared/lib/pdf/generator';
 import { NotasVentaService, SalesNoteItemRow } from '@/services/notasVentaService';
 import type { SalesNoteRecord } from '@/services/notasVentaService';
 
+// Configuración para Vercel: usar runtime Node.js y aumentar timeout
+export const runtime = 'nodejs';
+export const maxDuration = 60;
+
 export async function GET(
   request: NextRequest,
   context: { params: Promise<{ id: string }> }

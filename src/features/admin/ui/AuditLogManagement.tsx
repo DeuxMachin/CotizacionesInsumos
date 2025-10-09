@@ -301,7 +301,7 @@ export default function AuditLogManagement() {
           border: '1px solid var(--border-subtle)' 
         }}
       >
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-3 sm:mb-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-3 sm:mb-4">
           {/* Búsqueda */}
           <div>
             <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-primary)' }}>
@@ -358,7 +358,7 @@ export default function AuditLogManagement() {
           </div>
 
           {/* Acciones */}
-          <div className="flex items-end gap-2">
+          <div className="flex flex-col sm:flex-row items-end gap-2 sm:gap-2">
             <button
               onClick={handleSearch}
               className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
@@ -386,7 +386,7 @@ export default function AuditLogManagement() {
         }}
       >
         {/* Encabezado de la tabla */}
-        <div className="px-6 py-4 border-b" style={{ borderColor: 'var(--border-subtle)' }}>
+        <div className="px-3 sm:px-4 md:px-6 py-3 sm:py-4 border-b" style={{ borderColor: 'var(--border-subtle)' }}>
           <div className="flex items-center justify-between">
             <h3 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>
               Actividades del Sistema
@@ -398,7 +398,7 @@ export default function AuditLogManagement() {
         </div>
 
         {/* Contenido */}
-        <div className="p-3 sm:p-6">
+        <div className="p-2 sm:p-3 md:p-6">
           {loading ? (
             <div className="space-y-4">
               {Array.from({ length: 10 }).map((_, i) => (
@@ -447,7 +447,7 @@ export default function AuditLogManagement() {
                 return (
                   <li 
                     key={activity.id || idx} 
-                    className="py-4 flex items-start gap-4 hover:bg-gray-50 dark:hover:bg-gray-800/50 -mx-2 px-2 rounded-lg transition-colors"
+                    className="py-3 sm:py-4 flex items-start gap-3 sm:gap-4 hover:bg-gray-50 dark:hover:bg-gray-800/50 -mx-2 px-2 rounded-lg transition-colors"
                   >
                     {ICONS[iconType]}
                     <div className="flex-1 min-w-0">
@@ -483,7 +483,7 @@ export default function AuditLogManagement() {
 
         {/* Paginación */}
         {!loading && !error && pagination.totalPages > 1 && (
-          <div className="px-6 py-4 border-t flex items-center justify-between" style={{ borderColor: 'var(--border-subtle)' }}>
+          <div className="px-3 sm:px-4 md:px-6 py-3 sm:py-4 border-t flex items-center justify-between" style={{ borderColor: 'var(--border-subtle)' }}>
             <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>
               Página {pagination.currentPage} de {pagination.totalPages}
             </div>

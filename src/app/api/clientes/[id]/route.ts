@@ -49,6 +49,14 @@ export async function PUT(
     const id = await extractId(context.params);
     const body = await request.json()
 
+    console.log('🔍 PUT /api/clientes/[id] - ID:', id);
+    console.log('🔍 Headers recibidos:', {
+      'x-user-id': request.headers.get('x-user-id'),
+      'x-user-email': request.headers.get('x-user-email'),
+      'x-user-name': request.headers.get('x-user-name')
+    });
+    console.log('🔍 Body recibido:', body);
+
     if (id === null) {
       return NextResponse.json({
         success: false,
@@ -74,17 +82,22 @@ export async function PUT(
       name: request.headers.get('x-user-name') || 'Usuario'
     };
 
+    console.log('🔍 UserInfo para audit:', userInfo);
+
     const cliente = await ClientesService.update(id, body, userInfo)
+
+    console.log('🔍 Cliente actualizado exitosamente:', cliente);
 
     return NextResponse.json({
       success: true,
       data: cliente
     })
   } catch (error) {
-    console.error('Error updating cliente:', error)
+    console.error('🔍 Error updating cliente:', error)
+    const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
     return NextResponse.json({
       success: false,
-      error: 'Error al actualizar el cliente'
+      error: `Error al actualizar el cliente: ${errorMessage}`
     }, { status: 500 })
   }
 }
@@ -96,6 +109,13 @@ export async function DELETE(
 ): Promise<Response> {
   try {
     const id = await extractId(context.params);
+
+    console.log('🔍 DELETE /api/clientes/[id] - ID:', id);
+    console.log('🔍 Headers recibidos:', {
+      'x-user-id': request.headers.get('x-user-id'),
+      'x-user-email': request.headers.get('x-user-email'),
+      'x-user-name': request.headers.get('x-user-name')
+    });
 
     if (id === null) {
       return NextResponse.json({
@@ -111,17 +131,23 @@ export async function DELETE(
       name: request.headers.get('x-user-name') || 'Usuario'
     };
 
+    console.log('🔍 UserInfo para audit:', userInfo);
+
     const cliente = await ClientesService.delete(id, userInfo)
+
+    console.log('🔍 Cliente eliminado exitosamente:', cliente);
 
     return NextResponse.json({
       success: true,
       data: cliente
     })
   } catch (error) {
-    console.error('Error deleting cliente:', error)
+    console.error('🔍 Error deleting cliente:', error)
+    const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
     return NextResponse.json({
       success: false,
-      error: 'Error al eliminar el cliente'
+      error: `Error al eliminar el cliente: ${errorMessage}`
     }, { status: 500 })
   }
 }
+
