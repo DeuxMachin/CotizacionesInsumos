@@ -15,40 +15,6 @@ interface MonthlySalesData {
   fullDate?: string; // Fecha completa para tooltip
 }
 
-// Datos mock para las ventas diarias del mes
-const mockMonthlySalesData: MonthlySalesData[] = [
-  { day: 1, sales: 245000, label: 'D01', count: 3 },
-  { day: 2, sales: 320000, label: 'D02', count: 5 },
-  { day: 3, sales: 280000, label: 'D03', count: 4 },
-  { day: 4, sales: 390000, label: 'D04', count: 6 },
-  { day: 5, sales: 450000, label: 'D05', count: 7 },
-  { day: 6, sales: 380000, label: 'D06', count: 5 },
-  { day: 7, sales: 520000, label: 'D07', count: 8 },
-  { day: 8, sales: 480000, label: 'D08', count: 7 },
-  { day: 9, sales: 350000, label: 'D09', count: 5 },
-  { day: 10, sales: 420000, label: 'D10', count: 6 },
-  { day: 11, sales: 510000, label: 'D11', count: 8 },
-  { day: 12, sales: 579290, label: 'D12', count: 9 }, // Punto actual según imagen
-  { day: 13, sales: 490000, label: 'D13', count: 7 },
-  { day: 14, sales: 440000, label: 'D14', count: 6 },
-  { day: 15, sales: 380000, label: 'D15', count: 5 },
-  { day: 16, sales: 320000, label: 'D16', count: 4 },
-  { day: 17, sales: 290000, label: 'D17', count: 3 },
-  { day: 18, sales: 340000, label: 'D18', count: 5 },
-  { day: 19, sales: 410000, label: 'D19', count: 6 },
-  { day: 20, sales: 460000, label: 'D20', count: 7 },
-  { day: 21, sales: 520000, label: 'D21', count: 8 },
-  { day: 22, sales: 480000, label: 'D22', count: 7 },
-  { day: 23, sales: 390000, label: 'D23', count: 5 },
-  { day: 24, sales: 450000, label: 'D24', count: 7 },
-  { day: 25, sales: 510000, label: 'D25', count: 8 },
-  { day: 26, sales: 470000, label: 'D26', count: 7 },
-  { day: 27, sales: 420000, label: 'D27', count: 6 },
-  { day: 28, sales: 380000, label: 'D28', count: 5 },
-  { day: 29, sales: 340000, label: 'D29', count: 4 },
-  { day: 30, sales: 310000, label: 'D30', count: 4 }
-];
-
 export function MonthlySalesChart({ period }: MonthlySalesChartProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [hoveredPoint, setHoveredPoint] = useState<number | null>(null);
@@ -75,34 +41,20 @@ export function MonthlySalesChart({ period }: MonthlySalesChartProps) {
         setLoading(true);
         setError(null);
 
-        // Determinar el rango de fechas según el período seleccionado
+        // Solo mostrar el mes actual
         const now = new Date();
-        const startDate = new Date();
+        const startDate = new Date(now.getFullYear(), now.getMonth(), 1); // Primer día del mes actual
+
+        // Consultar directamente las ventas confirmadas del mes actual desde Supabase
+        // Solo incluir notas que tienen confirmed_at (que ya pasaron de cotización a venta)
+        const endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0); // Último día del mes actual
         
-        switch (period) {
-          case 'Último mes':
-            startDate.setMonth(now.getMonth() - 1);
-            break;
-          case 'Últimos 3 meses':
-            startDate.setMonth(now.getMonth() - 3);
-            break;
-          case 'Últimos 6 meses':
-            startDate.setMonth(now.getMonth() - 6);
-            break;
-          case 'Último año':
-            startDate.setFullYear(now.getFullYear() - 1);
-            break;
-          default:
-            startDate.setMonth(now.getMonth() - 6);
-        }
-
-        // Consultar directamente las ventas desde Supabase
-
-        // Usar la columna correcta 'total' en vez de 'total_final'
         const { data: notasVenta, error: notasError } = await supabase
           .from('notas_venta')
-          .select('created_at, total, id')
+          .select('created_at, total, id, confirmed_at')
           .gte('created_at', startDate.toISOString())
+          .lte('created_at', endDate.toISOString())
+          .not('confirmed_at', 'is', null)
           .order('created_at', { ascending: true });
 
         if (notasError) throw new Error(`Error al obtener datos: ${notasError.message}`);
@@ -181,24 +133,20 @@ export function MonthlySalesChart({ period }: MonthlySalesChartProps) {
           dayIndex++;
         });
 
-        if (dailySales.length > 0) {
-          setSalesData(dailySales);
-        } else {
-          // Si no hay datos, usar datos mock como fallback
-          setSalesData(mockMonthlySalesData);
-        }
+        // Establecer los datos reales (pueden estar vacíos si no hay ventas confirmadas)
+        setSalesData(dailySales);
       } catch (err) {
         console.error('Error cargando datos de ventas:', err);
         setError(err instanceof Error ? err.message : 'Error al cargar datos');
-        // Fallback a datos mock si hay error
-        setSalesData(mockMonthlySalesData);
+        // En caso de error, establecer datos vacíos
+        setSalesData([]);
       } finally {
         setLoading(false);
       }
     };
 
     loadSalesData();
-  }, [period]);
+  }, []); // Solo cargar una vez al montar, siempre muestra mes actual
 
   // Detectar tema oscuro
   useEffect(() => {
@@ -599,7 +547,7 @@ export function MonthlySalesChart({ period }: MonthlySalesChartProps) {
     // Ya no mostramos el tooltip en el canvas porque ahora tenemos 
     // la tarjeta de información completa debajo del gráfico
 
-  }, [period, isDark, hoveredPoint, clickedPoint, salesData, loading]);
+  }, [isDark, hoveredPoint, clickedPoint, salesData, loading]);
 
   if (loading) {
     return (
@@ -643,6 +591,44 @@ export function MonthlySalesChart({ period }: MonthlySalesChartProps) {
     );
   }
 
+  // Si no hay ventas confirmadas en el mes actual
+  if (salesData.length === 0) {
+    const now = new Date();
+    const currentMonth = now.toLocaleDateString('es-CL', { month: 'long', year: 'numeric' });
+    
+    return (
+      <div className="p-4 sm:p-6 rounded-xl border" style={{ 
+        backgroundColor: 'var(--bg-primary)',
+        borderColor: 'var(--border-subtle)'
+      }}>
+        <div className="mb-3 sm:mb-4">
+          <h3 className="text-base sm:text-lg font-semibold mb-1" style={{ color: 'var(--text-primary)' }}>
+            Ventas a lo largo del mes
+          </h3>
+          <p className="text-xs sm:text-sm" style={{ color: 'var(--text-secondary)' }}>
+            Evolución del monto vendido día a día - {currentMonth}
+          </p>
+        </div>
+        <div className="min-h-[250px] sm:min-h-[300px] flex flex-col items-center justify-center gap-3">
+          <svg className="w-16 h-16 opacity-30" style={{ color: 'var(--text-secondary)' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+          </svg>
+          <div className="text-center">
+            <p className="text-sm font-medium mb-1" style={{ color: 'var(--text-primary)' }}>
+              No hay ventas confirmadas este mes
+            </p>
+            <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+              Las cotizaciones deben ser confirmadas y convertidas a notas de venta para aparecer aquí
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const now = new Date();
+  const currentMonth = now.toLocaleDateString('es-CL', { month: 'long', year: 'numeric' });
+
   return (
     <div className="p-4 sm:p-6 rounded-xl border" style={{ 
       backgroundColor: 'var(--bg-primary)',
@@ -651,10 +637,10 @@ export function MonthlySalesChart({ period }: MonthlySalesChartProps) {
       <div className="mb-3 sm:mb-4 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-2 sm:gap-3">
         <div>
           <h3 className="text-base sm:text-lg font-semibold mb-1" style={{ color: 'var(--text-primary)' }}>
-            Ventas a lo largo del mes
+            Ventas del mes actual
           </h3>
           <p className="text-xs sm:text-sm" style={{ color: 'var(--text-secondary)' }}>
-            Evolución del monto vendido día a día - visualiza los ingresos reales
+            Evolución diaria de ventas confirmadas - {currentMonth}
           </p>
         </div>
         <div className="flex items-center gap-3 sm:gap-4 text-xs sm:text-sm flex-wrap">

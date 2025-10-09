@@ -36,12 +36,13 @@ export async function GET(request: NextRequest) {
         .gte('created_at', startDate.toISOString())
         .lte('created_at', now.toISOString()),
       
-      // Notas de venta del período (ventas reales)
+      // Notas de venta del período (solo ventas confirmadas - que pasaron de cotización a venta)
       supabase
         .from('notas_venta')
         .select('*')
         .gte('created_at', startDate.toISOString())
-        .lte('created_at', now.toISOString()),
+        .lte('created_at', now.toISOString())
+        .not('confirmed_at', 'is', null),
       
       // Clientes totales
       supabase
@@ -82,7 +83,8 @@ export async function GET(request: NextRequest) {
       .from('notas_venta')
       .select('total, subtotal_neto_post_desc, iva_monto')
       .gte('created_at', previousStartDate.toISOString())
-      .lte('created_at', previousEndDate.toISOString());
+      .lte('created_at', previousEndDate.toISOString())
+      .not('confirmed_at', 'is', null);
 
     const previousTotalVentas = (previousNotasVenta || []).reduce((sum, nota) => sum + (nota.total || 0), 0);
     const previousTotalNeto = (previousNotasVenta || []).reduce((sum, nota) => sum + (nota.subtotal_neto_post_desc || 0), 0);
