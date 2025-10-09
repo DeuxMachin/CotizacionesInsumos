@@ -377,6 +377,7 @@ export type Database = {
           estado: string
           activo: boolean
           created_at: string
+          updated_at: string
           tipo_id: number | null
           afecto_iva: boolean
           moneda: string | null
@@ -396,6 +397,7 @@ export type Database = {
           estado?: string
           activo?: boolean
           created_at?: string
+          updated_at?: string
           tipo_id?: number | null
           afecto_iva?: boolean
           moneda?: string | null
@@ -415,6 +417,7 @@ export type Database = {
           estado?: string
           activo?: boolean
           created_at?: string
+          updated_at?: string
           tipo_id?: number | null
           afecto_iva?: boolean
           moneda?: string | null

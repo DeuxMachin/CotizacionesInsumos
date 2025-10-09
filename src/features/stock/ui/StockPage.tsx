@@ -371,6 +371,15 @@ export default function StockPage() {
       Toast.success('Producto actualizado exitosamente');
       setShowEditModal(false);
       setEditingProduct(null);
+
+      // Recargar los datos para asegurar que la información de categoría esté actualizada
+      try {
+        const refreshedData = await getAllInventory();
+        setData(refreshedData);
+      } catch (error) {
+        console.error('Error recargando datos:', error);
+        // No mostrar error al usuario ya que la actualización fue exitosa
+      }
     } catch (error) {
       console.error('Error al actualizar producto:', error);
       Toast.error(error instanceof Error ? error.message : 'Error al actualizar el producto');
@@ -768,8 +777,7 @@ export default function StockPage() {
                         setDeletingProduct(false);
                       }
                     }}
-                    className="px-4 py-2 rounded-lg text-white"
-                    style={{ backgroundColor: 'var(--error-bg)' }}
+                    className="px-4 py-2 rounded-lg text-white bg-red-600 hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
                     disabled={deletingProduct}
                   >
                     {deletingProduct ? 'Eliminando...' : 'Eliminar'}
@@ -909,7 +917,7 @@ function ProductCard({ product, onEdit, onAskDelete, user, openRowMenuId, setOpe
                 </button>
                 {menuOpen && (
                   <div className="absolute right-0 mt-2 w-36 sm:w-44 rounded-lg border shadow-lg z-30 overflow-hidden" style={{ backgroundColor: 'var(--card-bg)', borderColor: 'var(--border)' }}>
-                    <button onClick={() => { setOpenRowMenuId(null); onAskDelete(product.id); }} className="block w-full text-left px-4 py-2 text-sm" style={{ color: 'var(--error-text)' }}>🗑️ Eliminar</button>
+                    <button onClick={() => { setOpenRowMenuId(null); onAskDelete(product.id); }} className="block w-full text-left px-4 py-2 text-sm text-white bg-red-600 hover:bg-red-700 transition-colors" style={{ borderColor: 'var(--border)' }}>🗑️ Eliminar</button>
                   </div>
                 )}
               </div>
@@ -1667,27 +1675,26 @@ function ProductEditModal({
               />
             </div>
           </div>
-        </form>
 
-        {/* Actions - Fixed at bottom */}
-        <div className="flex justify-end gap-3 p-6 border-t border-theme-border bg-theme-card flex-shrink-0">
-          <button
-            type="button"
-            onClick={onClose}
-            className="btn-secondary"
-            disabled={saving}
-          >
-            Cancelar
-          </button>
-          <button
-            type="button"
-            onClick={() => document.querySelector('form')?.requestSubmit()}
-            className="btn-primary"
-            disabled={saving}
-          >
-            {saving ? 'Guardando...' : 'Guardar Cambios'}
-          </button>
-        </div>
+          {/* Actions - Fixed at bottom */}
+          <div className="flex justify-end gap-3 pt-6 border-t border-theme-border bg-theme-card flex-shrink-0">
+            <button
+              type="button"
+              onClick={onClose}
+              className="btn-secondary"
+              disabled={saving}
+            >
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              className="btn-primary"
+              disabled={saving}
+            >
+              {saving ? 'Guardando...' : 'Guardar Cambios'}
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   );

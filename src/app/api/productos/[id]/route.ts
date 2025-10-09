@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { getCurrentUser } from '@/lib/auth-helpers';
 
 export async function PUT(
@@ -63,7 +63,7 @@ export async function PUT(
     };
 
     // Actualizar producto
-    const { data: product, error } = await supabase
+    const { data: product, error } = await supabaseAdmin
       .from('productos')
       .update(updateData)
       .eq('id', productId)
@@ -73,7 +73,7 @@ export async function PUT(
     if (error) {
       console.error('Error actualizando producto:', error);
       return NextResponse.json(
-        { error: 'Error al actualizar el producto' },
+        { error: 'Error al actualizar el producto', details: error.message },
         { status: 500 }
       );
     }
@@ -120,11 +120,15 @@ export async function DELETE(
       );
     }
 
-    // Eliminar producto
-    const { error } = await supabase
+    // Marcar producto como inactivo (soft delete)
+    const { data: deletedProduct, error } = await supabaseAdmin
       .from('productos')
-      .delete()
-      .eq('id', productId);
+      .update({ 
+        activo: false
+      })
+      .eq('id', productId)
+      .select()
+      .single();
 
     if (error) {
       console.error('Error eliminando producto:', error);
@@ -134,7 +138,10 @@ export async function DELETE(
       );
     }
 
-    return NextResponse.json({ message: 'Producto eliminado exitosamente' });
+    return NextResponse.json({ 
+      message: 'Producto eliminado exitosamente',
+      product: deletedProduct
+    });
 
   } catch (error) {
     console.error('Error en DELETE /api/productos/[id]:', error);

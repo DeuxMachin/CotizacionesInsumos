@@ -42,21 +42,21 @@ async function recalcSaldos(clienteId: number) {
   const pendiente = deudaDocumentos;
   const pagado = totalPagos;
 
-  // Snapshot existente (sin upsert por falta de unique constraint)
+  // Snapshot existente (buscar por cliente_id y snapshot_date)
+  const snapshotDate = new Date().toISOString().split('T')[0];
   const { data: existente, error: selErr } = await supabase
     .from('cliente_saldos')
     .select('id, dinero_cotizado')
     .eq('cliente_id', clienteId)
-    .single();
-  if (selErr && selErr.code !== 'PGRST116') throw selErr; // ignorar no rows
+    .eq('snapshot_date', snapshotDate)
+    .maybeSingle();
 
   const payload = {
     cliente_id: clienteId,
     pagado, // total pagos realizados
     pendiente, // total deuda de documentos
     vencido,
-    dinero_cotizado: existente?.dinero_cotizado || 0,
-    snapshot_date: new Date().toISOString().split('T')[0]
+    dinero_cotizado: existente?.dinero_cotizado || 0
   };
 
   console.log('[recalcSaldos] Calculando para cliente', clienteId, { 
@@ -73,12 +73,13 @@ async function recalcSaldos(clienteId: number) {
     const { error: updErr } = await supabase
       .from('cliente_saldos')
       .update(payload)
-      .eq('cliente_id', clienteId);
+      .eq('cliente_id', clienteId)
+      .eq('snapshot_date', snapshotDate);
     if (updErr) throw updErr;
   } else {
     const { error: insErr } = await supabase
       .from('cliente_saldos')
-      .insert(payload);
+      .insert({ ...payload, snapshot_date: snapshotDate });
     if (insErr) throw insErr;
   }
   return payload;

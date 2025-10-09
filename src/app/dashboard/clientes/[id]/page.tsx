@@ -510,6 +510,14 @@ function ClientDetailPage() {
     setEditing(true);
   };
 
+  const openPaymentModal = () => {
+    setShowPaymentModal(true);
+  };
+
+  const openLoanModal = () => {
+    setShowLoanModal(true);
+  };
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setForm(f => ({ ...f, [name]: name === 'linea_credito' || name === 'descuento_cliente_pct' ? Number(value) : value }));
@@ -1239,7 +1247,7 @@ function ClientDetailPage() {
                 )}
                 <div className="flex items-center gap-2 border-l border-gray-300 dark:border-gray-600 pl-3">
                   <button
-          
+                    onClick={openPaymentModal}
                     className="btn-success flex items-center gap-2 shadow-sm"
                     title="Registrar un pago recibido del cliente"
                   >
@@ -1247,7 +1255,7 @@ function ClientDetailPage() {
                     Registrar Pago
                   </button>
                   <button
-                
+                    onClick={openLoanModal}
                     className="btn-info flex items-center gap-2 shadow-sm"
                     title="Agregar un préstamo o deuda pendiente al cliente"
                   >
@@ -1280,7 +1288,7 @@ function ClientDetailPage() {
                 )}
                 <div className="flex items-center gap-1 border-l border-gray-300 dark:border-gray-600 pl-1">
                   <button
-                   
+                    onClick={openPaymentModal}
                     className="p-2 rounded-lg transition-colores shadow-sm"
                     style={{ backgroundColor: 'var(--success-bg)', color: 'var(--success-text)' }}
                     title="Registrar pago"
@@ -1288,7 +1296,7 @@ function ClientDetailPage() {
                     <FiCreditCard className="w-4 h-4" />
                   </button>
                   <button
-               
+                    onClick={openLoanModal}
                     className="p-2 rounded-lg transition-colores shadow-sm"
                     style={{ backgroundColor: 'var(--info-bg)', color: 'var(--info-text)' }}
                     title="Agregar préstamo"
