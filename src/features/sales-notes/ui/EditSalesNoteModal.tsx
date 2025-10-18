@@ -114,7 +114,7 @@ export function EditSalesNoteModal({ isOpen, onClose, salesNote, onSave }: EditS
         </div>
 
         {/* Form Content */}
-        <div className="space-y-6 max-h-[70vh] overflow-y-auto pr-2">
+        <div className="space-y-6">
           {/* Sección: Datos del Documento */}
           <div>
             <h3 className="text-lg font-semibold mb-4 flex items-center" style={{ color: 'var(--text-primary)' }}>
