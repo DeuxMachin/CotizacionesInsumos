@@ -49,7 +49,8 @@ export interface SalesNoteInput {
   ciudad_despacho?: string | null;
   costo_despacho?: number | null;
   fecha_estimada_entrega?: string | null;
-  estado?: 'creada' | 'factura_parcial' | 'facturada';
+  fecha_emision?: string;
+  estado?: 'creada' | 'factura_parcial' | 'facturada' | 'cancelada';
   confirmed_at?: string | null;
 }
 
@@ -413,7 +414,15 @@ export class NotasVentaService {
       .eq('id', notaVentaId)
       .select(this.SELECT_COLS)
       .single();
-    if (error) throw error;
+    
+    if (error) {
+      throw new Error(error.message || 'Error al actualizar la nota de venta');
+    }
+    
+    if (!data) {
+      throw new Error('No se pudo actualizar la nota de venta');
+    }
+    
     return data as unknown as SalesNoteRecord;
   }
 
@@ -601,6 +610,109 @@ export class NotasVentaService {
 
     if (error) throw error;
     return data as unknown as SalesNoteRecord[];
+  }
+
+  /**
+   * Edita una nota de venta permitiendo actualizar solo ciertos campos:
+   * - Numero_Serie / folio
+   * - fecha_emision
+   * - forma_pago_final
+   * - plazo_pago
+   * - Información del cliente (razon_social, rut, giro, dirección, comuna, ciudad)
+   * 
+   * Solo permite editar si el estado es 'creada' o 'borrador'
+   */
+  static async editSalesNote(
+    notaVentaId: number,
+    updates: {
+      numero_serie?: string | null;
+      folio?: string | null;
+      fecha_emision?: string;
+      forma_pago_final?: string | null;
+      plazo_pago?: string | null;
+      cliente_rut?: string | null;
+      cliente_razon_social?: string | null;
+      cliente_giro?: string | null;
+      cliente_direccion?: string | null;
+      cliente_comuna?: string | null;
+      cliente_ciudad?: string | null;
+    }
+  ): Promise<SalesNoteRecord> {
+    // Primero, obtener la nota actual para validar su estado
+    const currentNote = await this.getById(notaVentaId);
+    
+    // Solo permitir editar si está en estado 'creada' o 'borrador'
+    if (currentNote.estado && !['creada', 'borrador'].includes(currentNote.estado)) {
+      throw new Error(`No se puede editar una nota de venta con estado '${currentNote.estado}'. Solo se pueden editar notas en estado 'creada' o 'borrador'.`);
+    }
+
+    // Preparar los campos a actualizar (solo los permitidos)
+    const updatePayload: Partial<SalesNoteInput> = {};
+    
+    if (updates.numero_serie !== undefined) {
+      updatePayload.Numero_Serie = updates.numero_serie;
+    }
+    if (updates.folio !== undefined) {
+      updatePayload.folio = updates.folio;
+    }
+    if (updates.fecha_emision !== undefined) {
+      updatePayload.fecha_emision = updates.fecha_emision;
+    }
+    if (updates.forma_pago_final !== undefined) {
+      updatePayload.forma_pago_final = updates.forma_pago_final;
+    }
+    if (updates.plazo_pago !== undefined) {
+      updatePayload.plazo_pago = updates.plazo_pago;
+    }
+    if (updates.cliente_rut !== undefined) {
+      updatePayload.cliente_rut = updates.cliente_rut;
+    }
+    if (updates.cliente_razon_social !== undefined) {
+      updatePayload.cliente_razon_social = updates.cliente_razon_social;
+    }
+    if (updates.cliente_giro !== undefined) {
+      updatePayload.cliente_giro = updates.cliente_giro;
+    }
+    if (updates.cliente_direccion !== undefined) {
+      updatePayload.cliente_direccion = updates.cliente_direccion;
+    }
+    if (updates.cliente_comuna !== undefined) {
+      updatePayload.cliente_comuna = updates.cliente_comuna;
+    }
+    if (updates.cliente_ciudad !== undefined) {
+      updatePayload.cliente_ciudad = updates.cliente_ciudad;
+    }
+
+    return this.update(notaVentaId, updatePayload);
+  }
+
+  /**
+   * Cancela una nota de venta cambiando su estado a 'cancelada'
+   * Solo permite cancelar si el estado es 'creada' o 'borrador'
+   */
+  static async cancelSalesNote(notaVentaId: number): Promise<SalesNoteRecord> {
+    try {
+      // Obtener la nota actual para validar su estado
+      const currentNote = await this.getById(notaVentaId);
+      
+      if (!currentNote) {
+        throw new Error(`No se encontró la nota de venta con ID ${notaVentaId}`);
+      }
+      
+      // Solo permitir cancelar si está en estado 'creada' o 'borrador'
+      if (currentNote.estado && !['creada', 'borrador'].includes(currentNote.estado)) {
+        throw new Error(`No se puede cancelar una nota de venta con estado '${currentNote.estado}'. Solo se pueden cancelar notas en estado 'creada' o 'borrador'.`);
+      }
+
+      // Cambiar estado a 'cancelada'
+      return await this.update(notaVentaId, { estado: 'cancelada' });
+    } catch (error) {
+      // Re-lanzar el error con mejor contexto
+      if (error instanceof Error) {
+        throw new Error(`Error al cancelar nota de venta: ${error.message}`);
+      }
+      throw new Error('Error desconocido al cancelar la nota de venta');
+    }
   }
 }
 

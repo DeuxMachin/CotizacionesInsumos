@@ -2,15 +2,19 @@
 
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import {  FiEye, FiFileText, FiCalendar, FiDollarSign, FiUser, FiSearch, FiArrowLeft, FiDownload } from 'react-icons/fi';
+import {  FiEye, FiFileText, FiCalendar, FiDollarSign, FiUser, FiSearch, FiArrowLeft, FiDownload, FiEdit2, FiX } from 'react-icons/fi';
 import { NotasVentaService, SalesNoteRecord } from '@/services/notasVentaService';
 import { useQuotes } from '@/features/quotes/model/useQuotes';
 import { useAuth } from '@/contexts/AuthContext';
+import { useSalesNotes } from '@/features/sales-notes/hooks/useSalesNotes';
+import { EditSalesNoteModal } from '@/features/sales-notes/ui/EditSalesNoteModal';
+import { CancelSalesNoteModal } from '@/features/sales-notes/ui/CancelSalesNoteModal';
 
 export default function SalesNotesPage() {
   const router = useRouter();
   const { formatMoney } = useQuotes();
   const { user } = useAuth();
+  const { editSalesNote, cancelSalesNote } = useSalesNotes();
 
   const [salesNotes, setSalesNotes] = useState<SalesNoteRecord[]>([]);
   const [loading, setLoading] = useState(true);
@@ -18,6 +22,11 @@ export default function SalesNotesPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
+
+  // Modales
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [cancelModalOpen, setCancelModalOpen] = useState(false);
+  const [selectedNote, setSelectedNote] = useState<SalesNoteRecord | null>(null);
 
   // Cargar notas de venta
   useEffect(() => {
@@ -34,6 +43,44 @@ export default function SalesNotesPage() {
       setError(e instanceof Error ? e.message : 'Error desconocido');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleOpenEditModal = (note: SalesNoteRecord) => {
+    setSelectedNote(note);
+    setEditModalOpen(true);
+  };
+
+  const handleOpenCancelModal = (note: SalesNoteRecord) => {
+    setSelectedNote(note);
+    setCancelModalOpen(true);
+  };
+
+  const handleEditSave = async (updates: Parameters<typeof editSalesNote>[1]) => {
+    if (!selectedNote) return;
+    try {
+      await editSalesNote(selectedNote.id, updates);
+      // Recargar la lista
+      await loadSalesNotes();
+      setEditModalOpen(false);
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : 'Error desconocido';
+      setError(msg);
+      throw e;
+    }
+  };
+
+  const handleCancelNote = async () => {
+    if (!selectedNote) return;
+    try {
+      await cancelSalesNote(selectedNote.id);
+      // Recargar la lista
+      await loadSalesNotes();
+      setCancelModalOpen(false);
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : 'Error desconocido';
+      setError(msg);
+      throw e;
     }
   };
 
@@ -120,6 +167,19 @@ export default function SalesNotesPage() {
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto justify-end">
+              <button
+                onClick={() => router.push('/dashboard/notas-venta/crear')}
+                className="inline-flex items-center gap-1 sm:gap-2 px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium rounded-lg transition-all duration-200 shadow-sm hover:shadow-md border-2"
+                style={{
+                  backgroundColor: 'var(--primary)',
+                  color: 'white',
+                  borderColor: 'var(--primary)'
+                }}
+              >
+                <FiFileText className="w-3 h-3 sm:w-4 sm:h-4" />
+                <span className="hidden sm:inline">Crear Nota</span>
+                <span className="inline sm:hidden">Crear</span>
+              </button>
               <button
                 onClick={handleDownloadXLSX}
                 disabled={!user || !user.isAdmin}
@@ -287,21 +347,62 @@ export default function SalesNotesPage() {
                           </span>
                         </td>
                         <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-right">
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              router.push(`/dashboard/notas-venta/${note.id}`);
-                            }}
-                            className="px-2 sm:px-3 py-1 rounded-lg transition-colors text-xs sm:text-sm opacity-75 hover:opacity-100"
-                            style={{
-                              color: 'var(--primary)',
-                              border: '1px solid var(--primary)',
-                              backgroundColor: 'transparent'
-                            }}
-                          >
-                            <FiEye className="w-3 sm:w-4 h-3 sm:h-4 inline mr-1" />
-                            <span className="hidden xs:inline">Ver</span>
-                          </button>
+                          <div className="flex items-center justify-end gap-2">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                router.push(`/dashboard/notas-venta/${note.id}`);
+                              }}
+                              className="px-2 sm:px-3 py-1 rounded-lg transition-colors text-xs sm:text-sm opacity-75 hover:opacity-100"
+                              style={{
+                                color: 'var(--primary)',
+                                border: '1px solid var(--primary)',
+                                backgroundColor: 'transparent'
+                              }}
+                              title="Ver detalles"
+                            >
+                              <FiEye className="w-3 sm:w-4 h-3 sm:h-4 inline mr-1" />
+                              <span className="hidden xs:inline">Ver</span>
+                            </button>
+
+                            {note.estado && ['creada', 'borrador'].includes(note.estado) && (
+                              <>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleOpenEditModal(note);
+                                  }}
+                                  className="px-2 sm:px-3 py-1 rounded-lg transition-colors text-xs sm:text-sm"
+                                  style={{
+                                    color: 'white',
+                                    backgroundColor: 'var(--primary)',
+                                    border: '1px solid var(--primary)'
+                                  }}
+                                  title="Editar nota de venta"
+                                >
+                                  <FiEdit2 className="w-3 sm:w-4 h-3 sm:h-4 inline mr-1" />
+                                  <span className="hidden xs:inline">Editar</span>
+                                </button>
+
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleOpenCancelModal(note);
+                                  }}
+                                  className="px-2 sm:px-3 py-1 rounded-lg transition-colors text-xs sm:text-sm"
+                                  style={{
+                                    color: 'white',
+                                    backgroundColor: '#ff6b6b',
+                                    border: '1px solid #ff6b6b'
+                                  }}
+                                  title="Cancelar nota de venta"
+                                >
+                                  <FiX className="w-3 sm:w-4 h-3 sm:h-4 inline mr-1" />
+                                  <span className="hidden xs:inline">Cancelar</span>
+                                </button>
+                              </>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     );
@@ -399,6 +500,28 @@ export default function SalesNotesPage() {
           )}
         </div>
       </div>
+
+      {/* Edit Modal */}
+      <EditSalesNoteModal
+        isOpen={editModalOpen}
+        onClose={() => {
+          setEditModalOpen(false);
+          setSelectedNote(null);
+        }}
+        salesNote={selectedNote}
+        onSave={handleEditSave}
+      />
+
+      {/* Cancel Modal */}
+      <CancelSalesNoteModal
+        isOpen={cancelModalOpen}
+        onClose={() => {
+          setCancelModalOpen(false);
+          setSelectedNote(null);
+        }}
+        salesNote={selectedNote}
+        onConfirm={handleCancelNote}
+      />
     </div>
   );
 }

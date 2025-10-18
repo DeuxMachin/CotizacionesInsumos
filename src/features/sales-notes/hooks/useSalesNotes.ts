@@ -116,6 +116,51 @@ export function useSalesNotes() {
     }
   }, []);
 
+  const editSalesNote = useCallback(async (
+    notaVentaId: number,
+    updates: {
+      numero_serie?: string | null;
+      folio?: string | null;
+      fecha_emision?: string;
+      forma_pago_final?: string | null;
+      plazo_pago?: string | null;
+      cliente_rut?: string | null;
+      cliente_razon_social?: string | null;
+      cliente_giro?: string | null;
+      cliente_direccion?: string | null;
+      cliente_comuna?: string | null;
+      cliente_ciudad?: string | null;
+    }
+  ): Promise<SalesNoteRecord> => {
+    try {
+      setLoading(true);
+      setError(null);
+      const updatedNote = await NotasVentaService.editSalesNote(notaVentaId, updates);
+      return updatedNote;
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : 'Error desconocido';
+      setError(msg);
+      throw e;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const cancelSalesNote = useCallback(async (notaVentaId: number): Promise<SalesNoteRecord> => {
+    try {
+      setLoading(true);
+      setError(null);
+      const cancelledNote = await NotasVentaService.cancelSalesNote(notaVentaId);
+      return cancelledNote;
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : 'Error desconocido';
+      setError(msg);
+      throw e;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   return {
     loading,
     error,
@@ -126,6 +171,8 @@ export function useSalesNotes() {
     convertQuoteToSalesNote,
     confirmSalesNote,
     updateInvoicedItems,
+    editSalesNote,
+    cancelSalesNote,
     clearError: () => setError(null)
   };
 }

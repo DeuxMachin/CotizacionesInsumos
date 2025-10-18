@@ -1,8 +1,16 @@
 "use client";
-import { ReactNode } from "react";
+import { ReactNode, CSSProperties } from "react";
 import { createPortal } from "react-dom";
 
-export function Modal({ open, onClose, children }: { open: boolean; onClose: ()=>void; children: ReactNode; }) {
+type ModalProps = {
+  open: boolean;
+  onClose: () => void;
+  children: ReactNode;
+  // Optional styles to override the inner container (card) sizing/styling
+  contentStyle?: CSSProperties;
+};
+
+export function Modal({ open, onClose, children, contentStyle }: ModalProps) {
   if (typeof document === "undefined") return null;
   if (!open) return null;
   return createPortal(
@@ -18,7 +26,8 @@ export function Modal({ open, onClose, children }: { open: boolean; onClose: ()=
           border: '1px solid var(--border)',
           boxShadow: 'var(--shadow-md)',
           width: 'min(95vw, 1400px)',
-          maxHeight: '95vh'
+          maxHeight: '95vh',
+          ...contentStyle
         }}
         onClick={(e)=>e.stopPropagation()}
       >

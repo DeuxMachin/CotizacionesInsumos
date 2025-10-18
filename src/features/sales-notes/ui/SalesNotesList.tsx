@@ -1,14 +1,16 @@
 import React from 'react';
-import { FiEye, FiFileText, FiCalendar, FiDollarSign, FiUser } from 'react-icons/fi';
+import { FiEye, FiFileText, FiCalendar, FiDollarSign, FiUser, FiEdit2, FiX } from 'react-icons/fi';
 import { SalesNoteRecord } from '@/services/notasVentaService';
 
 interface SalesNotesListProps {
   salesNotes: SalesNoteRecord[];
   onViewNote: (noteId: number) => void;
+  onEditNote?: (noteId: number) => void;
+  onCancelNote?: (noteId: number) => void;
   formatMoney: (amount: number) => string;
 }
 
-export function SalesNotesList({ salesNotes, onViewNote, formatMoney }: SalesNotesListProps) {
+export function SalesNotesList({ salesNotes, onViewNote, onEditNote, onCancelNote, formatMoney }: SalesNotesListProps) {
   const getStatusColor = (estado: string) => {
     switch (estado) {
       case 'facturada':
@@ -17,12 +19,18 @@ export function SalesNotesList({ salesNotes, onViewNote, formatMoney }: SalesNot
         return { bg: '#FFF4E5', text: '#FF8C00' };
       case 'creada':
         return { bg: 'var(--warning-bg)', text: 'var(--warning-text)' };
-      case 'anulada':
+      case 'cancelada':
         return { bg: 'var(--error-bg)', text: 'var(--error-text)' };
+      case 'borrador':
+        return { bg: 'var(--bg-secondary)', text: 'var(--text-secondary)' };
       default:
         return { bg: 'var(--bg-secondary)', text: 'var(--text-secondary)' };
     }
   };
+
+  // Determina si se pueden editar o cancelar
+  const canEdit = (estado?: string) => estado && ['creada', 'borrador'].includes(estado);
+  const canCancel = (estado?: string) => estado && ['creada', 'borrador'].includes(estado);
 
   if (salesNotes.length === 0) {
     return (
@@ -120,18 +128,53 @@ export function SalesNotesList({ salesNotes, onViewNote, formatMoney }: SalesNot
                   </span>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-right">
-                  <button
-                    onClick={() => onViewNote(note.id)}
-                    className="px-3 py-1 rounded-lg transition-colors text-sm"
-                    style={{
-                      color: 'var(--primary)',
-                      border: '1px solid var(--primary)',
-                      backgroundColor: 'transparent'
-                    }}
-                  >
-                    <FiEye className="w-4 h-4 inline mr-1" />
-                    Ver
-                  </button>
+                  <div className="flex items-center justify-end gap-2">
+                    <button
+                      onClick={() => onViewNote(note.id)}
+                      className="px-3 py-1 rounded-lg transition-colors text-sm"
+                      style={{
+                        color: 'var(--primary)',
+                        border: '1px solid var(--primary)',
+                        backgroundColor: 'transparent'
+                      }}
+                      title="Ver detalles"
+                    >
+                      <FiEye className="w-4 h-4 inline mr-1" />
+                      Ver
+                    </button>
+
+                    {canEdit(note.estado) && onEditNote && (
+                      <button
+                        onClick={() => onEditNote(note.id)}
+                        className="px-3 py-1 rounded-lg transition-colors text-sm"
+                        style={{
+                          color: 'white',
+                          backgroundColor: 'var(--primary)',
+                          border: '1px solid var(--primary)'
+                        }}
+                        title="Editar nota de venta"
+                      >
+                        <FiEdit2 className="w-4 h-4 inline mr-1" />
+                        Editar
+                      </button>
+                    )}
+
+                    {canCancel(note.estado) && onCancelNote && (
+                      <button
+                        onClick={() => onCancelNote(note.id)}
+                        className="px-3 py-1 rounded-lg transition-colors text-sm"
+                        style={{
+                          color: 'white',
+                          backgroundColor: 'var(--error)',
+                          border: '1px solid var(--error)'
+                        }}
+                        title="Cancelar nota de venta"
+                      >
+                        <FiX className="w-2 h-4 inline mr-1" />
+                        Cancelar
+                      </button>
+                    )}
+                  </div>
                 </td>
               </tr>
             );

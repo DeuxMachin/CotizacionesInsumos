@@ -796,7 +796,7 @@ export type Database = {
           cliente_comuna: string | null
           cliente_ciudad: string | null
           fecha_emision: string
-          estado: string
+          estado: 'creada' | 'factura_parcial' | 'facturada' | 'cancelada'
           confirmed_at: string | null
           forma_pago_final: string | null
           plazo_pago: string | null
@@ -833,7 +833,7 @@ export type Database = {
           cliente_comuna?: string | null
           cliente_ciudad?: string | null
           fecha_emision?: string
-          estado?: string
+          estado?: 'creada' | 'factura_parcial' | 'facturada' | 'cancelada'
           confirmed_at?: string | null
           forma_pago_final?: string | null
           plazo_pago?: string | null
@@ -870,7 +870,7 @@ export type Database = {
           cliente_comuna?: string | null
           cliente_ciudad?: string | null
           fecha_emision?: string
-          estado?: string
+          estado?: 'creada' | 'factura_parcial' | 'facturada' | 'cancelada'
           confirmed_at?: string | null
           forma_pago_final?: string | null
           plazo_pago?: string | null
