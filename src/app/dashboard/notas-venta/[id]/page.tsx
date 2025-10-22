@@ -37,7 +37,7 @@ export default function SalesNoteDetailPage() {
   const numericId = parseInt(noteId);
 
   // Estados principales
-  const [salesNote, setSalesNote] = useState<SalesNoteRecord | null>(null);
+  const [salesNote, setSalesNote] = useState<SalesNoteRecord & { cotizaciones?: { id: number; folio: string | null; fecha_emision: string; estado: string } | null } | null>(null);
   const [noteItems, setNoteItems] = useState<SalesNoteItemRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -54,7 +54,7 @@ export default function SalesNoteDetailPage() {
 
     try {
       setLoading(true);
-      const note = await NotasVentaService.getById(numericId);
+      const note = await NotasVentaService.getByIdWithQuote(numericId);
       if (!note) {
         setError('Nota de venta no encontrada');
         return;
@@ -352,13 +352,29 @@ export default function SalesNoteDetailPage() {
                     <p className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>Forma de Pago</p>
                     <p style={{ color: 'var(--text-primary)' }}>{salesNote.forma_pago_final || 'N/A'}</p>
                   </div>
-                  {salesNote.cotizacion_id && (
-                    <div>
-                      <p className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>Cotización Origen</p>
-                      <p style={{ color: 'var(--text-primary)' }}>COT{salesNote.cotizacion_id.toString().padStart(6, '0')}</p>
-                    </div>
-                  )}
                 </div>
+                
+                {/* Referencia a Cotización */}
+                {salesNote.cotizaciones && (
+                  <div className="mt-4 pt-4 border-t" style={{ borderColor: 'var(--border)' }}>
+                    <h3 className="text-sm font-semibold mb-3 flex items-center" style={{ color: 'var(--text-primary)' }}>
+                      <FiFileText className="w-4 h-4 mr-2" />
+                      Referencia a Cotización
+                    </h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <p className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>Folio</p>
+                        <p className="font-medium" style={{ color: 'var(--primary)' }}>{salesNote.cotizaciones.folio || `COT${salesNote.cotizaciones.id.toString().padStart(6, '0')}`}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>Fecha Cotización</p>
+                        <p style={{ color: 'var(--text-primary)' }}>
+                          {new Date(salesNote.cotizaciones.fecha_emision).toLocaleDateString('es-CL')}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 

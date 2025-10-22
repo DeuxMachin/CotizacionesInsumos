@@ -71,7 +71,7 @@ export function EditSalesNoteModal({ isOpen, onClose, salesNote, onSave }: EditS
       setIsSubmitting(true);
       const updates = {
         numero_serie: formData.numero_serie || undefined,
-        folio: formData.folio || undefined,
+        // folio is not editable - removed from updates
         fecha_emision: formData.fecha_emision || undefined,
         forma_pago_final: formData.forma_pago_final || undefined,
         plazo_pago: formData.plazo_pago || undefined,
@@ -143,20 +143,21 @@ export function EditSalesNoteModal({ isOpen, onClose, salesNote, onSave }: EditS
 
               <div>
                 <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>
-                  Folio
+                  Folio (No editable)
                 </label>
                 <input
                   type="text"
                   name="folio"
                   value={formData.folio}
-                  onChange={handleChange}
-                  placeholder="Ej: NV-2025-001"
-                  className="w-full px-4 py-2 rounded-lg border transition-colors"
+                  disabled
+                  readOnly
+                  className="w-full px-4 py-2 rounded-lg border transition-colors cursor-not-allowed opacity-60"
                   style={{
-                    backgroundColor: 'var(--bg-primary)',
+                    backgroundColor: 'var(--bg-secondary)',
                     borderColor: 'var(--border)',
-                    color: 'var(--text-primary)'
+                    color: 'var(--text-secondary)'
                   }}
+                  title="El folio es correlativo y no puede ser editado"
                 />
               </div>
 

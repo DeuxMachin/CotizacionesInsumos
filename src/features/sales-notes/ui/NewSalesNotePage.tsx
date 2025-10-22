@@ -12,8 +12,9 @@ import {
   FiChevronRight,
   FiAlertCircle,
   FiChevronLeft,
-  FiPlus,
-  FiCopy
+  FiCopy,
+  FiX,
+  FiXCircle
 } from 'react-icons/fi';
 import { useQuotes } from '@/features/quotes/model/useQuotes';
 import { useAuthHeaders } from '@/hooks/useAuthHeaders';
@@ -44,6 +45,7 @@ interface FormData {
   despacho: Partial<DeliveryInfo>;
   condicionesComerciales: Partial<CommercialTerms>;
   numeroOrdenCompra?: string;
+  sinOrdenCompra?: boolean;
   observacionesComerciales?: string;
   estado: 'creada' | 'factura_parcial' | 'facturada' | 'cancelada';
 }
@@ -94,7 +96,7 @@ const STEPS: StepConfig[] = [
 export function NewSalesNotePage() {
   const router = useRouter();
   const { formatMoney } = useQuotes();
-  const { createHeaders } = useAuthHeaders();
+  const { } = useAuthHeaders();
   const { user } = useAuth();
 
   const [currentStep, setCurrentStep] = useState<FormStep>('client');
@@ -109,6 +111,7 @@ export function NewSalesNotePage() {
       garantia: '1 año'
     },
     numeroOrdenCompra: '',
+    sinOrdenCompra: false,
     observacionesComerciales: '',
     estado: 'creada'
   });
@@ -152,7 +155,7 @@ export function NewSalesNotePage() {
         if (formData.items.length === 0) stepErrors.push('Debe agregar al menos un producto');
         break;
       case 'commercial':
-        if (!formData.numeroOrdenCompra) stepErrors.push('Número de orden de compra es requerido');
+        if (!formData.sinOrdenCompra && !formData.numeroOrdenCompra) stepErrors.push('Número de orden de compra es requerido');
         if (!formData.condicionesComerciales.formaPago) stepErrors.push('Forma de pago es requerida');
         break;
       case 'summary':
@@ -208,9 +211,18 @@ export function NewSalesNotePage() {
   const handleCopyOrderNumber = (numero: string) => {
     setFormData(prev => ({
       ...prev,
-      numeroOrdenCompra: numero
+      numeroOrdenCompra: numero,
+      sinOrdenCompra: false
     }));
     setShowExistingOrdersModal(false);
+  };
+
+  const handleSinOrdenCompra = () => {
+    setFormData(prev => ({
+      ...prev,
+      numeroOrdenCompra: 'SIN OC',
+      sinOrdenCompra: true
+    }));
   };
 
   const handleCreateSalesNote = async () => {
@@ -309,31 +321,61 @@ export function NewSalesNotePage() {
                 <h3 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>
                   Número de Orden de Compra
                 </h3>
-                <button
-                  onClick={handleLoadExistingOrders}
-                  disabled={loadingOrders}
-                  className="flex items-center gap-2 px-3 py-2 rounded text-sm font-medium"
-                  style={{
-                    backgroundColor: 'var(--primary)',
-                    color: 'white'
-                  }}
-                >
-                  <FiCopy className="w-4 h-4" />
-                  {loadingOrders ? 'Cargando...' : 'Copiar Existente'}
-                </button>
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleSinOrdenCompra}
+                    className="flex items-center gap-2 px-3 py-2 rounded text-sm font-medium"
+                    style={{
+                      backgroundColor: formData.sinOrdenCompra ? 'var(--success)' : 'var(--warning)',
+                      color: 'white'
+                    }}
+                  >
+                    <FiX className="w-4 h-4" />
+                    Sin Orden de Compra
+                  </button>
+                  <button
+                    onClick={handleLoadExistingOrders}
+                    disabled={loadingOrders}
+                    className="flex items-center gap-2 px-3 py-2 rounded text-sm font-medium"
+                    style={{
+                      backgroundColor: 'var(--primary)',
+                      color: 'white'
+                    }}
+                  >
+                    <FiCopy className="w-4 h-4" />
+                    {loadingOrders ? 'Cargando...' : 'Copiar Existente'}
+                  </button>
+                </div>
               </div>
-              <input
-                type="text"
-                value={formData.numeroOrdenCompra || ''}
-                onChange={(e) => setFormData(prev => ({ ...prev, numeroOrdenCompra: e.target.value }))}
-                placeholder="Ej: OC-2025-001"
-                className="w-full px-4 py-2 rounded border"
-                style={{
-                  backgroundColor: 'var(--card-bg)',
-                  borderColor: 'var(--border)',
-                  color: 'var(--text-primary)'
-                }}
-              />
+              <div className="relative">
+                <input
+                  type="text"
+                  value={formData.numeroOrdenCompra || ''}
+                  onChange={(e) => setFormData(prev => ({ ...prev, numeroOrdenCompra: e.target.value, sinOrdenCompra: false }))}
+                  placeholder="Ej: OC-2025-001"
+                  className="w-full px-4 py-2 pr-10 rounded border"
+                  style={{
+                    backgroundColor: 'var(--card-bg)',
+                    borderColor: 'var(--border)',
+                    color: 'var(--text-primary)'
+                  }}
+                  disabled={formData.sinOrdenCompra}
+                />
+                {formData.numeroOrdenCompra && (
+                  <button
+                    onClick={() => setFormData(prev => ({ ...prev, numeroOrdenCompra: '', sinOrdenCompra: false }))}
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 p-1 hover:opacity-70 transition"
+                    style={{ color: 'var(--text-secondary)' }}
+                  >
+                    <FiXCircle className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
+              {formData.sinOrdenCompra && (
+                <p className="text-sm mt-2" style={{ color: 'var(--success)' }}>
+                  ✓ Se usará el formato estándar &quot;SIN OC&quot; para esta nota de venta
+                </p>
+              )}
             </div>
 
             {/* Condiciones Comerciales */}
@@ -544,7 +586,7 @@ export function NewSalesNotePage() {
                 </div>
                 <div className="border-t pt-3" style={{ borderColor: 'var(--border)' }}>
                   <div className="flex justify-between font-semibold text-lg">
-                    <span style={{ color: 'var(--text-primary)' }}>Total</span>
+                    <span style={{ color: 'var(--text-primary)' }}>&quot;Total&quot;</span>
                     <span style={{ color: 'var(--primary)' }}>{formatMoney(totals.total)}</span>
                   </div>
                 </div>

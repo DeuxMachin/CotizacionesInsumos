@@ -21,8 +21,8 @@ export async function GET(
     const { searchParams } = new URL(request.url);
     const preview = searchParams.get('preview') === 'true';
 
-    // Obtener la nota de venta desde la base de datos
-    const salesNote = await NotasVentaService.getById(parseInt(id));
+    // Obtener la nota de venta desde la base de datos con la cotización relacionada
+    const salesNote = await NotasVentaService.getByIdWithQuote(parseInt(id));
 
     if (!salesNote) {
       return NextResponse.json(
@@ -47,10 +47,11 @@ export async function GET(
 
     if (preview) {
       // Para previsualización en el navegador
-      headers.set('Content-Disposition', 'inline; filename="nota-venta.pdf"');
+      headers.set('Content-Disposition', 'inline; filename="Nota Venta preview.pdf"');
     } else {
       // Para descarga directa
-      headers.set('Content-Disposition', `attachment; filename="nota-venta-${salesNote.folio || id}.pdf"`);
+      const folioNumber = salesNote.folio || id;
+      headers.set('Content-Disposition', `attachment; filename="Nota Venta ${folioNumber}.pdf"`);
     }
 
     return new NextResponse(new Uint8Array(pdfBuffer), { headers });
@@ -65,11 +66,24 @@ export async function GET(
 }
 
 // Función para convertir el formato de nota de venta al formato Quote esperado por generatePDF
-async function convertSalesNoteToPDFData(salesNote: SalesNoteRecord, noteItems: (SalesNoteItemRow & { productos?: { ficha_tecnica: string | null } | null })[]) {
+async function convertSalesNoteToPDFData(
+  salesNote: SalesNoteRecord & { cotizaciones?: { id: number; folio: string | null; fecha_emision: string; estado: string } | null },
+  noteItems: (SalesNoteItemRow & { productos?: { ficha_tecnica: string | null } | null })[]
+) {
+  // Preparar información de referencia a cotización si existe
+  let referenciaInfo = undefined;
+  if (salesNote.cotizaciones) {
+    referenciaInfo = {
+      tipo: 'Cotización',
+      folio: salesNote.cotizaciones.folio || `COT${salesNote.cotizaciones.id.toString().padStart(6, '0')}`,
+      fecha: new Date(salesNote.cotizaciones.fecha_emision).toLocaleDateString('es-CL')
+    };
+  }
+
   // Adaptar la estructura de datos de nota de venta al formato Quote esperado por generatePDF
   const pdfData = {
     id: salesNote.id.toString(),
-    numero: salesNote.folio || `NV-${salesNote.id}`,
+    numero: salesNote.folio || `NV${salesNote.id.toString().padStart(6, '0')}`,
     cliente: {
       razonSocial: salesNote.cliente_razon_social || '',
       rut: salesNote.cliente_rut || '',
@@ -122,7 +136,8 @@ async function convertSalesNoteToPDFData(salesNote: SalesNoteRecord, noteItems: 
     iva: salesNote.iva_monto,
     total: salesNote.total,
     notas: salesNote.observaciones_comerciales || undefined,
-    fechaExpiracion: undefined
+    fechaExpiracion: undefined,
+    referencia: referenciaInfo // Agregar referencia a la cotización
   };
 
   return pdfData;

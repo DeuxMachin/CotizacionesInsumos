@@ -79,38 +79,79 @@ export class NotasVentaService {
     'subtotal','descuento_lineas_monto','descuento_global_monto','descuento_total','subtotal_neto_post_desc',
     'iva_pct','iva_monto','total','hash_documento','created_at','updated_at'
   ].join(',');
+
+  /**
+   * Extrae solo el número del folio (en caso de que tenga prefijo)
+   * Ya que ahora el folio se guarda solo como número, esto es principalmente
+   * por compatibilidad hacia atrás con folios que puedan tener prefijo
+   */
+  static extractFolioNumber(folio?: string | null): string {
+    if (!folio) return '';
+    const trimmed = folio.trim();
+    const matches = trimmed.match(/\d+/g);
+    if (!matches || matches.length === 0) return trimmed;
+    return matches[matches.length - 1];
+  }
+
+  private static sanitizeFolioValue(folio?: string | null): string | null {
+    const numeric = this.extractFolioNumber(folio);
+    return numeric ? numeric : null;
+  }
+
+  private static normalizeRecord<T extends { folio?: string | null; Numero_Serie?: string | null }>(record: T): T {
+    const sanitizedFolio = this.sanitizeFolioValue(record.folio ?? null);
+    const trimmedSerie = record.Numero_Serie?.trim() ?? null;
+    return {
+      ...record,
+      folio: sanitizedFolio,
+      Numero_Serie: trimmedSerie
+    };
+  }
+
   static async generateFolio() {
-    // Usar la tabla document_series para generar el numero_serie
+    // Generar folio correlativo para notas de venta (similar a cotizaciones)
+    // Formato: NV000001, NV000002, etc.
     const currentYear = new Date().getFullYear();
 
-    // Buscar la serie activa para notas de venta
-    const { data: series, error: seriesError } = await supabase
-      .from('document_series')
-      .select('*')
-      .eq('doc_tipo', 'nota_venta')
-      .eq('anio', currentYear)
-      .eq('activo', true)
-      .single();
+    try {
+      // Buscar o crear la serie activa para notas de venta
+      const { data: initialSeries, error: seriesError } = await supabase
+        .from('document_series')
+        .select('*')
+        .eq('doc_tipo', 'nota_venta')
+        .eq('anio', currentYear)
+        .eq('activo', true)
+        .maybeSingle();
 
-    if (seriesError || !series) {
-      throw new Error(`No se encontró una serie de documentos activa para notas de venta del año ${currentYear}`);
+      const series = initialSeries;
+
+      if (seriesError && seriesError.code !== 'PGRST116') {
+        throw seriesError;
+      }
+
+      
+
+      // Incrementar el último número de la serie
+      const seriesRow = series as DocumentSeriesRow;
+      const nextNumber = (seriesRow.ultimo_numero ?? 0) + 1;
+      // Solo guardar el número, sin prefijo
+      const numeroSerie = nextNumber.toString();
+
+      const { error: updateError } = await supabase
+        .from('document_series')
+        .update({ ultimo_numero: nextNumber })
+        .eq('id', seriesRow.id);
+
+      if (updateError) {
+        throw new Error(`Error al actualizar el contador de serie de documentos: ${updateError.message}`);
+      }
+
+      return numeroSerie;
+    } catch (error) {
+      // Si algo falla, usar fallback pero registrar el error
+      console.error('[NotasVentaService.generateFolio] Error generando folio desde document_series, usando fallback.', error);
+      return `${currentYear}${Date.now()}`;
     }
-
-  // Incrementar el último número
-  const seriesRow = series as DocumentSeriesRow;
-  const nextNumber = seriesRow.ultimo_numero + 1;
-  const numeroSerie = `${seriesRow.prefijo}${nextNumber.toString().padStart(seriesRow.largo, '0')}`;
-
-    // Actualizar el último número en la base de datos
-    const { error: updateError } = await supabase.from('document_series')
-      .update({ ultimo_numero: nextNumber })
-      .eq('id', seriesRow.id);
-
-    if (updateError) {
-      throw new Error(`Error al actualizar el contador de serie de documentos: ${updateError.message}`);
-    }
-
-    return numeroSerie;
   }
 
   /** Elimina una nota de venta y todos sus ítems */
@@ -149,9 +190,29 @@ export class NotasVentaService {
     const allowedKeys: (keyof SalesNoteInput | 'folio')[] = [
       'folio','Numero_Serie','cotizacion_id','vendedor_id','cliente_principal_id','obra_id','cliente_rut','cliente_razon_social','cliente_giro','cliente_direccion','cliente_comuna','cliente_ciudad','forma_pago_final','plazo_pago','observaciones_comerciales','direccion_despacho','comuna_despacho','ciudad_despacho','costo_despacho','fecha_estimada_entrega','subtotal','descuento_lineas_monto','descuento_global_monto','descuento_total','subtotal_neto_post_desc','iva_pct','iva_monto','total','estado'
     ];
-    const base: Partial<SalesNoteInput> & { folio: string | null } = {
+    
+    // Generar un folio único usando la serie de documentos
+    // El folio DEBE ser único (restricción en la BD), pero Numero_Serie (orden de compra) puede repetirse
+    let generatedFolio = nota.folio;
+    if (!generatedFolio || !this.sanitizeFolioValue(generatedFolio)) {
+      try {
+        generatedFolio = await this.generateFolio();
+        console.debug('[NotasVentaService.create] Folio generado:', generatedFolio);
+      } catch (e) {
+        console.error('[NotasVentaService.create] Error generando folio:', e);
+        throw e;
+      }
+    }
+
+    const sanitizedFolio = this.sanitizeFolioValue(generatedFolio);
+    if (!sanitizedFolio) {
+      throw new Error('No se pudo generar un folio numérico válido para la nota de venta.');
+    }
+    
+    const base: Partial<SalesNoteInput> & { folio: string | null; Numero_Serie?: string | null } = {
       ...nota,
-      folio: nota.folio || (nota.Numero_Serie ? `NV-${nota.Numero_Serie}` : `NV-${Date.now()}`)
+      folio: sanitizedFolio,
+      Numero_Serie: nota.Numero_Serie?.trim() ?? null
     };
     const insertPayload: Record<string, unknown> = {};
     for (const k of allowedKeys) {
@@ -213,7 +274,6 @@ export class NotasVentaService {
       const clienteId = (notaInsert as unknown as SalesNoteRow).cliente_principal_id as number | null;
       const total = (notaInsert as unknown as SalesNoteRow).total as number;
       const notaVentaId = (notaInsert as unknown as SalesNoteRow).id as number;
-      console.log('[NotasVentaService.create] Procesando CxC:', { clienteId, total, notaVentaId });
 
       if (clienteId && total && total > 0) {
         // Crear documento CxC para la nota de venta
@@ -227,7 +287,6 @@ export class NotasVentaService {
           fecha_emision: new Date().toISOString().split('T')[0],
           estado: 'pendiente'
         };
-        console.log('[NotasVentaService.create] Creando documento CxC:', cxcData);
 
         const { error: cxcError } = await supabase.from('cxc_documentos')
           .insert(cxcData);
@@ -236,7 +295,6 @@ export class NotasVentaService {
           throw new Error(`Fallo al crear documento CxC: ${cxcError.message}`);
         }
 
-        console.log('[NotasVentaService.create] Documento CxC creado exitosamente');
 
         // Actualizar dinero_cotizado en cliente_saldos
         const { data: saldoActual } = await supabase
@@ -247,20 +305,12 @@ export class NotasVentaService {
           .limit(1)
           .maybeSingle();
 
-        console.log('[NotasVentaService.create] Saldo actual del cliente:', saldoActual);
 
         if (saldoActual) {
           const saldoRow = saldoActual as ClienteSaldoRow;
           const nuevoCotizado = Math.max(0, (saldoRow.dinero_cotizado || 0) - total);
           const nuevoPendiente = (saldoRow.pendiente || 0) + total;
-          console.log('[NotasVentaService.create] Actualizando saldo existente:', {
-            id: saldoRow.id,
-            dineroCotizadoActual: saldoRow.dinero_cotizado,
-            nuevoCotizado,
-            pendienteActual: saldoRow.pendiente,
-            nuevoPendiente,
-            pagadoActual: saldoRow.pagado
-          });
+    
 
           const { error: saldoError } = await supabase.from('cliente_saldos')
             .update({
@@ -285,7 +335,6 @@ export class NotasVentaService {
             vencido: 0,
             dinero_cotizado: 0 // Ya no está cotizado
           };
-          console.log('[NotasVentaService.create] Creando nuevo registro en cliente_saldos:', nuevoSaldo);
 
           const { error: saldoError } = await supabase.from('cliente_saldos')
             .insert(nuevoSaldo);
@@ -301,7 +350,7 @@ export class NotasVentaService {
       console.error('[NotasVentaService.create] Error en integración CxC', e);
       throw e; // Re-throw to fail the creation if CxC fails
     }
-    return notaInsert as unknown as SalesNoteRecord;
+    return this.normalizeRecord(notaInsert as unknown as SalesNoteRecord);
   }
 
   static async getById(id: number) {
@@ -311,7 +360,28 @@ export class NotasVentaService {
       .eq('id', id)
       .single();
     if (error) throw error;
-    return data as unknown as SalesNoteRecord;
+    return this.normalizeRecord(data as unknown as SalesNoteRecord);
+  }
+
+  /**
+   * Obtiene una nota de venta por ID con información de la cotización relacionada (si existe)
+   */
+  static async getByIdWithQuote(id: number) {
+    const { data, error } = await supabase
+      .from('notas_venta')
+      .select(`
+        ${this.SELECT_COLS},
+        cotizaciones (
+          id,
+          folio,
+          fecha_emision,
+          estado
+        )
+      `)
+      .eq('id', id)
+      .single();
+    if (error) throw error;
+    return this.normalizeRecord(data as unknown as SalesNoteRecord & { cotizaciones?: { id: number; folio: string | null; fecha_emision: string; estado: string } | null });
   }
 
   static async getItems(notaVentaId: number) {
@@ -389,7 +459,8 @@ export class NotasVentaService {
       .eq('cotizacion_id', cotizacionId)
       .maybeSingle();
     if (error) throw error;
-    return data as unknown as SalesNoteRecord | null;
+    const record = data as unknown as SalesNoteRecord | null;
+    return record ? this.normalizeRecord(record) : null;
   }
 
   static async getByObraId(obraId: number): Promise<SalesNoteRecord[]> {
@@ -399,7 +470,8 @@ export class NotasVentaService {
       .eq('obra_id', obraId)
       .order('created_at', { ascending: false });
     if (error) throw error;
-    return data as unknown as SalesNoteRecord[];
+    const records = data as unknown as SalesNoteRecord[];
+    return records.map((record) => this.normalizeRecord(record));
   }
 
   static async update(notaVentaId: number, patch: Partial<SalesNoteInput>) {
@@ -423,7 +495,7 @@ export class NotasVentaService {
       throw new Error('No se pudo actualizar la nota de venta');
     }
     
-    return data as unknown as SalesNoteRecord;
+    return this.normalizeRecord(data as unknown as SalesNoteRecord);
   }
 
   static async invoice(notaVentaId: number) {
@@ -598,7 +670,8 @@ export class NotasVentaService {
       .order('created_at', { ascending: false });
 
     if (error) throw error;
-    return data as unknown as SalesNoteRecord[];
+    const records = data as unknown as SalesNoteRecord[];
+    return records.map((record) => this.normalizeRecord(record));
   }
 
   static async getByClient(clienteId: number): Promise<SalesNoteRecord[]> {
@@ -609,7 +682,8 @@ export class NotasVentaService {
       .order('created_at', { ascending: false });
 
     if (error) throw error;
-    return data as unknown as SalesNoteRecord[];
+    const records = data as unknown as SalesNoteRecord[];
+    return records.map((record) => this.normalizeRecord(record));
   }
 
   /**

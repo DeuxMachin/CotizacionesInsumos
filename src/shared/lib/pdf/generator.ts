@@ -74,8 +74,8 @@ export function generateQuoteHTML(quote: Quote, _backgroundImagePath?: string, o
 /**
  * Nueva plantilla condensada: todo cabe en una página A4.
  */
-function generateCondensedHTML(quote: Quote, quoteNumber: string, quoteDate: Date, options?: PDFGenerationOptions): string {
-  const { cliente, items, condicionesComerciales, notas, despacho } = quote;
+function generateCondensedHTML(quote: Quote & { referencia?: { tipo: string; folio: string; fecha: string } }, quoteNumber: string, quoteDate: Date, options?: PDFGenerationOptions): string {
+  const { cliente, items, condicionesComerciales, notas, despacho, referencia } = quote;
 
 
   // Ajuste dinámico de tamaño de fuente y altura de fila según número de items
@@ -251,7 +251,13 @@ function generateCondensedHTML(quote: Quote, quoteNumber: string, quoteDate: Dat
         <tr><td style="text-align:right;">IVA (19%):</td><td style="text-align:right;">${formatCLP(quote.iva)}</td></tr>
         <tr class="total"><td style="text-align:right;">Total:</td><td style="text-align:right;">${formatCLP(quote.total)}</td></tr>
       </table>
-  <div class="refs-box"><span class="label">Referencias:</span><br>${condicionesComerciales?.observaciones||'-'}</div>
+  <div class="refs-box">
+    <span class="label">Referencias:</span><br>
+    ${referencia 
+      ? `${referencia.tipo} N° ${referencia.folio} - Fecha: ${referencia.fecha}<br>${condicionesComerciales?.observaciones ? '<br>' + condicionesComerciales.observaciones : ''}`
+      : (condicionesComerciales?.observaciones || '-')
+    }
+  </div>
       <div class="notes-box"><span class="label">Observaciones generales:</span><br>${notesLines.length?notesLines.join('<br>'):'—'}</div>
       <div class="foot">Documento generado electrónicamente. Valores en CLP. Validez ${condicionesComerciales?.validezOferta||'-'} días.</div>
     </div></body></html>`;
