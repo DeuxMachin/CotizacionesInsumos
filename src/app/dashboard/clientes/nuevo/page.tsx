@@ -1,6 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import { ProtectedRoute } from "@/components/ProtectedRoute";
 
 const NewClientPage = dynamic(() => import("@/features/clients/ui/NewClientPage"), { 
   ssr: false,
@@ -44,5 +45,9 @@ const NewClientPage = dynamic(() => import("@/features/clients/ui/NewClientPage"
 });
 
 export default function NuevoClientePage() {
-  return <NewClientPage />;
+  return (
+    <ProtectedRoute resource="clients" action="create">
+      <NewClientPage />
+    </ProtectedRoute>
+  );
 }

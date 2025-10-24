@@ -634,7 +634,7 @@ export function MonthlySalesChart({ period }: MonthlySalesChartProps) {
       backgroundColor: 'var(--bg-primary)',
       borderColor: 'var(--border-subtle)'
     }}>
-      <div className="mb-3 sm:mb-4 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-2 sm:gap-3">
+      <div className="mb-3 sm:mb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3">
         <div>
           <h3 className="text-base sm:text-lg font-semibold mb-1" style={{ color: 'var(--text-primary)' }}>
             Ventas del mes actual
@@ -713,70 +713,68 @@ export function MonthlySalesChart({ period }: MonthlySalesChartProps) {
             boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
           }}
         >
-          <div className="flex items-center justify-between flex-wrap gap-4">
-            <div className="flex-1 min-w-[200px]">
-              <p className="text-xs font-medium mb-1" style={{ color: 'var(--text-tertiary)' }}>
-                📅 DÍA SELECCIONADO
-              </p>
-              <p className="text-lg sm:text-xl font-bold mb-1" style={{ color: 'var(--accent-text)' }}>
-                {salesData.find(d => d.day === clickedPoint)?.fullDate 
-                  ? new Date(salesData.find(d => d.day === clickedPoint)!.fullDate!).toLocaleDateString('es-CL', { 
-                      day: 'numeric', 
-                      month: 'long',
-                      year: 'numeric',
-                      weekday: 'long'
-                    })
-                  : salesData.find(d => d.day === clickedPoint)?.label
-                }
-              </p>
-            </div>
-            
-            <div className="flex gap-6 flex-wrap">
-              <div className="text-center">
+            <div className="flex items-center justify-between flex-wrap gap-4">
+              <div className="flex-1 min-w-[200px]">
                 <p className="text-xs font-medium mb-1" style={{ color: 'var(--text-tertiary)' }}>
-                  💰 MONTO VENDIDO
+                  📅 DÍA SELECCIONADO
                 </p>
-                <p className="text-xl sm:text-2xl font-bold" style={{ color: 'var(--success-text)' }}>
-                  {new Intl.NumberFormat('es-CL', {
-                    style: 'currency',
-                    currency: 'CLP',
-                    minimumFractionDigits: 0,
-                    maximumFractionDigits: 0
-                  }).format(salesData.find(d => d.day === clickedPoint)?.sales || 0)}
+                <p className="text-lg sm:text-xl font-bold mb-1" style={{ color: 'var(--accent-text)' }}>
+                  {salesData.find(d => d.day === clickedPoint)?.fullDate 
+                    ? new Date(salesData.find(d => d.day === clickedPoint)!.fullDate!).toLocaleDateString('es-CL', { 
+                        day: 'numeric', 
+                        month: 'long',
+                        year: 'numeric',
+                        weekday: 'long'
+                      })
+                    : salesData.find(d => d.day === clickedPoint)?.label
+                  }
                 </p>
               </div>
               
-              <div className="text-center">
-                <p className="text-xs font-medium mb-1" style={{ color: 'var(--text-tertiary)' }}>
-                  🛒 TRANSACCIONES
-                </p>
-                <p className="text-xl sm:text-2xl font-bold" style={{ color: 'var(--accent-text)' }}>
-                  {salesData.find(d => d.day === clickedPoint)?.count || 0}
-                </p>
-                <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
-                  {salesData.find(d => d.day === clickedPoint)?.count === 1 ? 'venta' : 'ventas'}
-                </p>
-              </div>
-              
-              <div className="text-center">
-                <p className="text-xs font-medium mb-1" style={{ color: 'var(--text-tertiary)' }}>
-                  📊 TICKET PROMEDIO
-                </p>
-                <p className="text-xl sm:text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>
-                  {new Intl.NumberFormat('es-CL', {
-                    style: 'currency',
-                    currency: 'CLP',
-                    minimumFractionDigits: 0,
-                    maximumFractionDigits: 0
-                  }).format(
-                    (salesData.find(d => d.day === clickedPoint)?.sales || 0) / 
-                    (salesData.find(d => d.day === clickedPoint)?.count || 1)
-                  )}
-                </p>
-              </div>
-            </div>
-            
-            <button
+              <div className="flex gap-4 sm:gap-6 flex-wrap">
+                <div className="text-center">
+                  <p className="text-xs font-medium mb-1" style={{ color: 'var(--text-tertiary)' }}>
+                    💰 MONTO VENDIDO
+                  </p>
+                  <p className="text-xl sm:text-2xl font-bold" style={{ color: 'var(--success-text)' }}>
+                    {new Intl.NumberFormat('es-CL', {
+                      style: 'currency',
+                      currency: 'CLP',
+                      minimumFractionDigits: 0,
+                      maximumFractionDigits: 0
+                    }).format(salesData.find(d => d.day === clickedPoint)?.sales || 0)}
+                  </p>
+                </div>
+                
+                <div className="text-center">
+                  <p className="text-xs font-medium mb-1" style={{ color: 'var(--text-tertiary)' }}>
+                    🛒 TRANSACCIONES
+                  </p>
+                  <p className="text-xl sm:text-2xl font-bold" style={{ color: 'var(--accent-text)' }}>
+                    {salesData.find(d => d.day === clickedPoint)?.count || 0}
+                  </p>
+                  <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+                    {salesData.find(d => d.day === clickedPoint)?.count === 1 ? 'venta' : 'ventas'}
+                  </p>
+                </div>
+                
+                <div className="text-center">
+                  <p className="text-xs font-medium mb-1" style={{ color: 'var(--text-tertiary)' }}>
+                    📊 TICKET PROMEDIO
+                  </p>
+                  <p className="text-xl sm:text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>
+                    {new Intl.NumberFormat('es-CL', {
+                      style: 'currency',
+                      currency: 'CLP',
+                      minimumFractionDigits: 0,
+                      maximumFractionDigits: 0
+                    }).format(
+                      (salesData.find(d => d.day === clickedPoint)?.sales || 0) / 
+                      (salesData.find(d => d.day === clickedPoint)?.count || 1)
+                    )}
+                  </p>
+                </div>
+              </div>            <button
               onClick={() => setClickedPoint(null)}
               className="px-3 py-1.5 rounded-lg text-xs font-medium transition-all hover:scale-105"
               style={{
@@ -793,7 +791,7 @@ export function MonthlySalesChart({ period }: MonthlySalesChartProps) {
 
       {/* Resumen estadístico mejorado */}
       <div className="mt-4 pt-4 border-t" style={{ borderColor: 'var(--border-subtle)' }}>
-        <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 text-center">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 text-center">
           <div>
             <p className="text-xs font-medium" style={{ color: 'var(--text-tertiary)' }}>
               TOTAL

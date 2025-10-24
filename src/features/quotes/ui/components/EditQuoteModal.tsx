@@ -1,16 +1,18 @@
 "use client";
 
 import React, { useState } from 'react';
-import { FiX, FiPlus, FiTrash2, FiPackage, FiTruck, FiSave, FiSearch } from 'react-icons/fi';
+import { FiX, FiPlus, FiTrash2, FiPackage, FiTruck, FiSave, FiSearch, FiUser } from 'react-icons/fi';
 import type { Quote, QuoteItem, DeliveryInfo } from '@/core/domain/quote/Quote';
 import { useProducts, Product } from '../../model/useProducts';
+import { VendedorSelector } from './VendedorSelector';
+import { useAuth } from '@/contexts/AuthContext';
 import { Toast } from '@/shared/ui/Toast';
 
 interface EditQuoteModalProps {
   isOpen: boolean;
   onClose: () => void;
   quote: Quote;
-  onSave: (items: QuoteItem[], despacho: DeliveryInfo) => Promise<boolean>;
+  onSave: (items: QuoteItem[], despacho: DeliveryInfo, vendedorId?: string, vendedorNombre?: string) => Promise<boolean>;
 }
 
 export function EditQuoteModal({
@@ -19,14 +21,17 @@ export function EditQuoteModal({
   quote,
   onSave
 }: EditQuoteModalProps) {
+  const { user } = useAuth();
   const [items, setItems] = useState<QuoteItem[]>(quote.items);
   const [despacho, setDespacho] = useState<DeliveryInfo>(quote.despacho || {
     direccion: '',
     ciudad: '',
     comuna: ''
   });
+  const [vendedorId, setVendedorId] = useState<string>(quote.vendedorId || '');
+  const [vendedorNombre, setVendedorNombre] = useState<string>(quote.vendedorNombre || '');
   const [saving, setSaving] = useState(false);
-  const [activeTab, setActiveTab] = useState<'productos' | 'despacho'>('productos');
+  const [activeTab, setActiveTab] = useState<'productos' | 'despacho' | 'vendedor'>('productos');
   const [showProductModal, setShowProductModal] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const { products, loading: loadingProducts } = useProducts();
@@ -72,7 +77,7 @@ export function EditQuoteModal({
   const handleSave = async () => {
     try {
       setSaving(true);
-      const success = await onSave(items, despacho);
+      const success = await onSave(items, despacho, vendedorId || undefined, vendedorNombre || undefined);
       if (success) {
         onClose();
       }
@@ -98,18 +103,19 @@ export function EditQuoteModal({
   const { subtotal, descuentoTotal } = calcularTotales();
 
   return (
-    <div className="fixed inset-0 z-[10000] flex items-center justify-center p-2 sm:p-4 animate-fadeIn">
-      {/* Overlay */}
+    <div className="fixed inset-0 z-[200000] flex items-center justify-center p-2 sm:p-4 animate-in fade-in duration-200" style={{ top: 0, left: 0, right: 0, bottom: 0 }}>
+      {/* Overlay con blur mejorado - encima del header */}
       <div 
-        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+        className="absolute inset-0 z-[200002] bg-black/70 backdrop-blur-md animate-in fade-in duration-200"
         onClick={onClose}
+        style={{ top: 0, left: 0, right: 0, bottom: 0 }}
       />
       
-      {/* Modal Container with proper scroll */}
-      <div className="relative w-full max-w-[95vw] sm:max-w-4xl lg:max-w-5xl max-h-[95vh] flex flex-col">
+      {/* Modal Container con mejor scroll */}
+      <div className="relative w-full max-w-[95vw] sm:max-w-4xl lg:max-w-5xl max-h-[95vh] flex flex-col z-[200003] overflow-hidden animate-in zoom-in-95 duration-200">
         {/* Modal */}
         <div 
-          className="relative w-full rounded-lg shadow-xl flex flex-col overflow-hidden"
+          className="relative w-full rounded-lg shadow-2xl flex flex-col overflow-hidden"
           style={{ 
             backgroundColor: 'var(--card-bg)', 
             border: '1px solid var(--border)',
@@ -160,6 +166,19 @@ export function EditQuoteModal({
             <FiTruck className="w-4 h-4" />
             Despacho
           </button>
+          {user?.isAdmin && (
+            <button
+              onClick={() => setActiveTab('vendedor')}
+              className={`flex items-center gap-2 px-6 py-3 font-medium transition-colors ${
+                activeTab === 'vendedor' 
+                  ? 'border-b-2 border-orange-500 text-orange-500' 
+                  : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
+              }`}
+            >
+              <FiUser className="w-4 h-4" />
+              Vendedor
+            </button>
+          )}
         </div>
 
         {/* Content */}
@@ -228,8 +247,12 @@ export function EditQuoteModal({
                         </label>
                         <input
                           type="number"
-                          value={item.precioUnitario}
-                          onChange={(e) => handleItemChange(index, 'precioUnitario', parseFloat(e.target.value) || 0)}
+                          value={item.precioUnitario === undefined || item.precioUnitario === null || item.precioUnitario === 0 ? '' : item.precioUnitario}
+                          onChange={(e) => {
+                            const raw = e.target.value;
+                            const parsed = raw === '' ? 0 : (parseFloat(raw) || 0);
+                            handleItemChange(index, 'precioUnitario', parsed);
+                          }}
                           className="w-full px-3 py-2 rounded-lg border-2 transition-all focus:border-orange-500 focus:ring-2 focus:ring-orange-200"
                           min="0"
                           step="1"
@@ -319,7 +342,7 @@ export function EditQuoteModal({
                 </div>
               </div>
             </div>
-          ) : (
+          ) : activeTab === 'despacho' ? (
             <div className="space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="sm:col-span-2">
@@ -416,7 +439,24 @@ export function EditQuoteModal({
                 </div>
               </div>
             </div>
-          )}
+          ) : activeTab === 'vendedor' && user?.isAdmin ? (
+            <div className="max-w-md space-y-4 p-4">
+              <div>
+                <h3 className="text-sm font-medium mb-3 flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
+                  <FiUser className="w-4 h-4" style={{ color: 'var(--accent-primary)' }} />
+                  Asignar Vendedor
+                </h3>
+                <VendedorSelector
+                  selectedVendedorId={vendedorId}
+                  selectedVendedorNombre={vendedorNombre}
+                  onVendedorChange={(id, nombre) => {
+                    setVendedorId(id);
+                    setVendedorNombre(nombre);
+                  }}
+                />
+              </div>
+            </div>
+          ) : null}
         </div>
 
         {/* Footer */}
@@ -453,9 +493,9 @@ export function EditQuoteModal({
 
       {/* Product Selector Modal */}
       {showProductModal && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4" onClick={() => setShowProductModal(false)}>
+        <div className="fixed inset-0 z-[200004] flex items-center justify-center p-4 animate-in fade-in duration-200" onClick={() => setShowProductModal(false)}>
           <div 
-            className="relative w-full max-w-4xl max-h-[80vh] rounded-lg shadow-2xl overflow-hidden"
+            className="relative w-full max-w-4xl max-h-[80vh] rounded-lg shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200"
             style={{ backgroundColor: 'var(--card-bg)', border: '1px solid var(--border)' }}
             onClick={(e) => e.stopPropagation()}
           >

@@ -655,6 +655,7 @@ type DespRow = Database['public']['Tables']['cotizacion_despachos']['Row'];
       if (typeof calculatedDescuento === 'number') updates.total_descuento = calculatedDescuento;
       if (typeof calculatedIva === 'number') updates.iva_monto = calculatedIva;
       if (typeof calculatedTotal === 'number') updates.total_final = calculatedTotal;
+      if (datosActualizados.vendedorId) updates.vendedor_id = datosActualizados.vendedorId;
 
       const { data: updatedQuote, error: updError } = await supabase
         .from('cotizaciones')

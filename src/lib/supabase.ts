@@ -382,6 +382,7 @@ export type Database = {
           afecto_iva: boolean
           moneda: string | null
           costo_unitario: number | null
+          margen_pct: number | null
           precio_neto: number | null
           precio_venta: number | null
           control_stock: boolean
@@ -402,6 +403,7 @@ export type Database = {
           afecto_iva?: boolean
           moneda?: string | null
           costo_unitario?: number | null
+          margen_pct?: number | null
           precio_neto?: number | null
           precio_venta?: number | null
           control_stock?: boolean
@@ -422,6 +424,7 @@ export type Database = {
           afecto_iva?: boolean
           moneda?: string | null
           costo_unitario?: number | null
+          margen_pct?: number | null
           precio_neto?: number | null
           precio_venta?: number | null
           control_stock?: boolean

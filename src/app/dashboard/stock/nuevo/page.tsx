@@ -27,6 +27,7 @@ export default function NuevoProductoPage() {
     afecto_iva: false,
     moneda: 'CLP',
     costo_unitario: null as number | null,
+    margen_pct: null as number | null,
     precio_neto: null as number | null,
     precio_venta: null as number | null,
     control_stock: false,
@@ -50,7 +51,28 @@ export default function NuevoProductoPage() {
   });
 
   const handleInputChange = (field: string, value: string | number | boolean | null) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    setFormData(prev => {
+      const newData = { ...prev, [field]: value };
+      
+      // Calcular automáticamente cuando cambian costo_unitario o margen_pct
+      if (field === 'costo_unitario' || field === 'margen_pct') {
+        const costoValue = newData.costo_unitario;
+        const margenValue = newData.margen_pct;
+        
+        if (costoValue && margenValue && margenValue > 0 && margenValue < 100) {
+          // precio_neto = costo_unitario / (1 - margen_pct/100)
+          newData.precio_neto = Math.round(costoValue / (1 - margenValue / 100));
+          // precio_venta = precio_neto * 1.19, redondeado a entero
+          newData.precio_venta = Math.round(newData.precio_neto * 1.19);
+        } else if (costoValue) {
+          // Si solo hay costo_unitario, precio_neto = costo_unitario, precio_venta = costo_unitario * 1.19
+          newData.precio_neto = costoValue;
+          newData.precio_venta = Math.round(costoValue * 1.19);
+        }
+      }
+      
+      return newData;
+    });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -78,6 +100,7 @@ export default function NuevoProductoPage() {
           descripcion: formData.descripcion || null,
           moneda: formData.moneda || null,
           costo_unitario: formData.costo_unitario || undefined,
+          margen_pct: formData.margen_pct || undefined,
           precio_neto: formData.precio_neto || undefined,
           precio_venta: formData.precio_venta || undefined,
           ficha_tecnica: formData.ficha_tecnica || null,
@@ -204,7 +227,7 @@ export default function NuevoProductoPage() {
                 />
                 <div className="flex justify-between items-center mt-2">
                   <p className="text-xs text-theme-text-muted">
-                    💡 <strong>Tip:</strong> Describe brevemente las características principales del producto. Máximo 200 caracteres para mantener la interfaz ordenada.
+                     <strong>Tip:</strong> Describe brevemente las características principales del producto. Máximo 200 caracteres para mantener la interfaz ordenada.
                   </p>
                   <span className="text-xs text-theme-text-muted">
                     {formData.descripcion.length}/200
@@ -217,9 +240,9 @@ export default function NuevoProductoPage() {
           {/* Información de precios */}
           <div>
             <h2 className="text-xl font-semibold text-theme-text-primary mb-6">
-              💰 Información de Precios
+               Información de Precios
             </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div>
                 <label className="block text-sm font-medium text-theme-text-primary mb-2">
                   Moneda
@@ -249,7 +272,26 @@ export default function NuevoProductoPage() {
                   placeholder="Costo de adquisición por unidad"
                 />
                 <p className="text-xs text-theme-text-muted mt-1">
-                  💡 Costo real de compra o producción por unidad del producto
+                  Costo real de compra o producción por unidad del producto.
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-theme-text-primary mb-2">
+                  Margen (%)
+                </label>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  max="99.99"
+                  className="form-input w-full"
+                  value={formData.margen_pct || ''}
+                  onChange={(e) => handleInputChange('margen_pct', e.target.value ? parseFloat(e.target.value) : null)}
+                  placeholder="Porcentaje de margen de ganancia"
+                />
+                <p className="text-xs text-theme-text-muted mt-1">
+                  Porcentaje de margen de ganancia. 
                 </p>
               </div>
 
@@ -260,19 +302,19 @@ export default function NuevoProductoPage() {
                 <input
                   type="number"
                   step="0.01"
-                  className="form-input w-full"
+                  className="form-input w-full bg-theme-bg-secondary"
                   value={formData.precio_neto || ''}
-                  onChange={(e) => handleInputChange('precio_neto', e.target.value ? parseFloat(e.target.value) : null)}
-                  placeholder="Precio base sin IVA"
+                  readOnly
+                  placeholder="Se calcula automáticamente"
                 />
                 <p className="text-xs text-theme-text-muted mt-1">
-                  Precio base del producto antes de aplicar IVA u otros impuestos
+                  Precio base del producto.
                 </p>
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-theme-text-primary mb-2">
-                  Precio Venta
+                  Precio de Venta
                 </label>
                 <input
                   type="number"
@@ -283,94 +325,31 @@ export default function NuevoProductoPage() {
                   placeholder="Precio final al cliente"
                 />
                 <p className="text-xs text-theme-text-muted mt-1">
-                  Precio al que se venderá el producto (incluye márgen de ganancia)
+                  Precio final al cliente con IVA incluido.
                 </p>
               </div>
             </div>
           </div>
 
-          {/* Configuración */}
+          {/* Ficha Técnica */}
           <div>
             <h2 className="text-xl font-semibold text-theme-text-primary mb-6 flex items-center gap-2">
-              ⚙️ Configuración
+               Ficha Técnica
             </h2>
-            <div className="space-y-6">
-              {/* Opciones de configuración en cards */}
-              <div className="space-y-4">
-                <div className="flex items-center gap-3">
-                  <input
-                    id="afecto_iva"
-                    type="checkbox"
-                    checked={formData.afecto_iva}
-                    onChange={e => setFormData(prev => ({ ...prev, afecto_iva: e.target.checked }))}
-                    className="form-checkbox h-5 w-5 text-theme-accent-primary border-theme-border focus:ring-theme-accent-primary"
-                  />
-                  <label htmlFor="afecto_iva" className="text-base text-theme-text-primary font-medium cursor-pointer">
-                    💰 Afecto a IVA
-                  </label>
-                  <span className="text-xs text-theme-text-muted">Incluye IVA en el precio</span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <input
-                    id="control_stock"
-                    type="checkbox"
-                    checked={formData.control_stock}
-                    onChange={e => setFormData(prev => ({ ...prev, control_stock: e.target.checked }))}
-                    className="form-checkbox h-5 w-5 text-theme-warning border-theme-border focus:ring-theme-warning"
-                  />
-                  <label htmlFor="control_stock" className="text-base text-theme-text-primary font-medium cursor-pointer">
-                    📦 Control de Stock
-                  </label>
-                  <span className="text-xs text-theme-text-muted">Monitorear inventario disponible</span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <input
-                    id="activo"
-                    type="checkbox"
-                    checked={formData.activo}
-                    onChange={e => setFormData(prev => ({ ...prev, activo: e.target.checked }))}
-                    className="form-checkbox h-5 w-5 text-theme-success border-theme-border focus:ring-theme-success"
-                  />
-                  <label htmlFor="activo" className="text-base text-theme-text-primary font-medium cursor-pointer">
-                    ✅ Producto Activo
-                  </label>
-                  <span className="text-xs text-theme-text-muted">Disponible para ventas y cotizaciones</span>
-                </div>
-              </div>
-
-              {/* Estado y Ficha Técnica */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-sm font-medium text-theme-text-primary mb-2">
-                    📊 Estado del Producto
-                  </label>
-                  <select
-                    className="form-input w-full"
-                    value={formData.estado}
-                    onChange={(e) => handleInputChange('estado', e.target.value)}
-                  >
-                    <option value="disponible">🟢 Disponible</option>
-                    <option value="no_disponible">🟡 No Disponible</option>
-                    <option value="agotado">🔴 Agotado</option>
-                  </select>
-                </div>
-
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-theme-text-primary mb-2">
-                    📋 Ficha Técnica
-                  </label>
-                  <textarea
-                    className="form-input w-full"
-                    rows={4}
-                    value={formData.ficha_tecnica}
-                    onChange={(e) => handleInputChange('ficha_tecnica', e.target.value)}
-                    placeholder="Ingrese el URL de la ficha técnica para que los usuarios puedan consultarla.(opcional)"
-                  />
-                  <p className="text-xs text-theme-text-muted mt-2">
-                    Se pueden hacer modificaciones en caso de que sea necesario.
-                  </p>
-                </div>
-              </div>
+            <div>
+              <label className="block text-sm font-medium text-theme-text-primary mb-2">
+                Ficha Técnica
+              </label>
+              <textarea
+                className="form-input w-full"
+                rows={4}
+                value={formData.ficha_tecnica}
+                onChange={(e) => handleInputChange('ficha_tecnica', e.target.value)}
+                placeholder="Ingrese el URL de la ficha técnica para que los usuarios puedan consultarla.(opcional)"
+              />
+              <p className="text-xs text-theme-text-muted mt-2">
+                Se pueden hacer modificaciones en caso de que sea necesario.
+              </p>
             </div>
           </div>
 

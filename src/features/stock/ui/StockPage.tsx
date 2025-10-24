@@ -336,6 +336,7 @@ export default function StockPage() {
         afecto_iva: nullifyUndefined(updatedProduct.afecto_iva) ?? false,
         moneda: nullifyUndefined(updatedProduct.moneda),
         costo_unitario: nullifyUndefined(updatedProduct.costo_unitario),
+        margen_pct: nullifyUndefined(updatedProduct.margen_pct),
         precio_neto: nullifyUndefined(updatedProduct.precio_neto),
         precio_venta: nullifyUndefined(updatedProduct.precio_venta),
         control_stock: nullifyUndefined(updatedProduct.control_stock) ?? false,
@@ -503,22 +504,22 @@ export default function StockPage() {
       </div>
 
       {/* Estadísticas simplificadas - responsive */}
-  <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6 mb-6 sm:mb-8 px-3 sm:px-0">
+  <div className="max-w-7xl mx-auto grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-3 gap-4 sm:gap-6 mb-6 sm:mb-8 px-3 sm:px-0">
         <div 
-          className="rounded-xl border-2 p-4 sm:p-6 text-center"
+          className="rounded-xl border-2 p-3 sm:p-4 text-center"
           style={{ 
             backgroundColor: 'var(--card-bg)', 
             borderColor: 'var(--border)' 
           }}
         >
           <div 
-            className="text-3xl sm:text-4xl font-bold mb-2"
+            className="text-xl sm:text-2xl font-bold mb-2"
             style={{ color: 'var(--accent-primary)' }}
           >
             {catalogStats.totalProducts}
           </div>
           <div 
-            className="text-base sm:text-lg font-medium"
+            className="text-sm sm:text-base font-medium"
             style={{ color: 'var(--text-secondary)' }}
           >
             Total de Productos
@@ -526,20 +527,20 @@ export default function StockPage() {
         </div>
 
         <div 
-          className="rounded-xl border-2 p-4 sm:p-6 text-center"
+          className="rounded-xl border-2 p-3 sm:p-4 text-center"
           style={{ 
             backgroundColor: 'var(--card-bg)', 
             borderColor: 'var(--border)' 
           }}
         >
           <div 
-            className="text-3xl sm:text-4xl font-bold mb-2"
+            className="text-xl sm:text-2xl font-bold mb-2"
             style={{ color: 'var(--success-text)' }}
           >
             {formatCLP(catalogStats.totalValue)}
           </div>
           <div 
-            className="text-base sm:text-lg font-medium"
+            className="text-sm sm:text-base font-medium"
             style={{ color: 'var(--text-secondary)' }}
           >
             Valor Total en Venta
@@ -547,20 +548,20 @@ export default function StockPage() {
         </div>
 
         <div 
-          className="rounded-xl border-2 p-4 sm:p-6 text-center"
+          className="rounded-xl border-2 p-3 sm:p-4 text-center"
           style={{ 
             backgroundColor: 'var(--card-bg)', 
             borderColor: 'var(--border)' 
           }}
         >
           <div 
-            className="text-3xl sm:text-4xl font-bold mb-2"
+            className="text-xl sm:text-2xl font-bold mb-2"
             style={{ color: 'var(--warning-text)' }}
           >
             {formatCLP(catalogStats.avgPrice)}
           </div>
           <div 
-            className="text-base sm:text-lg font-medium"
+            className="text-sm sm:text-base font-medium"
             style={{ color: 'var(--text-secondary)' }}
           >
             Precio Promedio
@@ -576,7 +577,7 @@ export default function StockPage() {
           borderColor: 'var(--border)' 
         }}
       >
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 items-end">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6 items-end">
           <div>
             <label className="block text-base sm:text-lg font-semibold mb-2 sm:mb-3" style={{ color: 'var(--text-primary)' }}>
               Buscar Productos
@@ -819,7 +820,7 @@ export default function StockPage() {
 }
 function ProductGrid({ products, onEdit, onAskDelete, user, openRowMenuId, setOpenRowMenuId }: { products: InventoryItem[]; onEdit: (product: InventoryItem) => void; onAskDelete: (id: number) => void; user: User | null; openRowMenuId: number | null; setOpenRowMenuId: (id: number | null) => void }) {
   return (
-    <div className="max-w-7xl mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 px-3 sm:px-0 items-stretch w-full">
+    <div className="max-w-7xl mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6 px-3 sm:px-0 items-stretch w-full">
       {products.map(product => (
         <ProductCard key={product.id} product={product} onEdit={onEdit} onAskDelete={onAskDelete} user={user} openRowMenuId={openRowMenuId} setOpenRowMenuId={setOpenRowMenuId} />
       ))}
@@ -844,7 +845,7 @@ function ProductCard({ product, onEdit, onAskDelete, user, openRowMenuId, setOpe
     >
       {/* Header con información principal - responsive */}
       <div 
-        className="p-4 sm:p-6 border-b bg-gradient-to-r"
+        className="p-3 sm:p-4 border-b bg-gradient-to-r"
         style={{ 
           borderColor: 'var(--border)', 
           background: 'linear-gradient(to right, var(--card-bg), var(--card-bg))' 
@@ -1391,42 +1392,39 @@ function ProductEditModal({
   onSave: (updatedProduct: Partial<InventoryItem>) => void;
   onClose: () => void;
 }) {
+  console.log('ProductEditModal - product:', product);
+  console.log('ProductEditModal - margen_pct:', product.margen_pct);
   const [formData, setFormData] = useState({
     nombre: product.nombre,
     sku: product.sku || '',
     descripcion: product.descripcion || '',
     unidad: product.unidad,
-    tipo_id: product.tipo_id || null,
-    afecto_iva: product.afecto_iva || false,
+    tipo_id: product.tipo_id ?? null,
     moneda: product.moneda || '',
-    costo_unitario: product.costo_unitario || null,
-    precio_neto: product.precio_neto || null,
-    precio_venta: product.precio_venta || null,
-    control_stock: product.control_stock || false,
+    costo_unitario: product.costo_unitario ?? null,
+    margen_pct: product.margen_pct ?? null,
+    precio_neto: product.precio_neto ?? null,
+    precio_venta: product.precio_venta ?? null,
     ficha_tecnica: product.ficha_tecnica || '',
-    estado: product.estado || 'disponible',
-    activo: product.activo || true
   });
 
   const [saving, setSaving] = useState(false);
 
   // Reset form data when product changes
   useEffect(() => {
+
     setFormData({
       nombre: product.nombre || '',
       sku: product.sku || '',
       descripcion: product.descripcion || '',
       unidad: product.unidad || '',
-      tipo_id: product.tipo_id || null,
-      afecto_iva: product.afecto_iva ?? false,
+      tipo_id: product.tipo_id ?? null,
       moneda: product.moneda || '',
-      costo_unitario: product.costo_unitario || null,
-      precio_neto: product.precio_neto || null,
-      precio_venta: product.precio_venta || null,
-      control_stock: product.control_stock ?? false,
+      costo_unitario: product.costo_unitario ?? null,
+      margen_pct: product.margen_pct ?? null,
+      precio_neto: product.precio_neto ?? null,
+      precio_venta: product.precio_venta ?? null,
       ficha_tecnica: product.ficha_tecnica || '',
-      estado: product.estado || 'disponible',
-      activo: product.activo || true
     });
   }, [product]);
 
@@ -1444,7 +1442,28 @@ function ProductEditModal({
   };
 
   const handleInputChange = (field: string, value: string | number | boolean | null) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    setFormData(prev => {
+      const newData = { ...prev, [field]: value };
+      
+      // Calcular automáticamente cuando cambian costo_unitario o margen_pct
+      if (field === 'costo_unitario' || field === 'margen_pct') {
+        const costoValue = newData.costo_unitario;
+        const margenValue = newData.margen_pct;
+        
+        if (costoValue && margenValue && margenValue > 0 && margenValue < 100) {
+          // precio_neto = costo_unitario / (1 - margen_pct/100)
+          newData.precio_neto = Math.round(costoValue / (1 - margenValue / 100));
+          // precio_venta = precio_neto * 1.19, redondeado a entero
+          newData.precio_venta = Math.round(newData.precio_neto * 1.19);
+        } else if (costoValue) {
+          // Si solo hay costo_unitario, precio_neto = costo_unitario, precio_venta = costo_unitario * 1.19
+          newData.precio_neto = costoValue;
+          newData.precio_venta = Math.round(costoValue * 1.19);
+        }
+      }
+      
+      return newData;
+    });
   };
 
   return (
@@ -1541,6 +1560,7 @@ function ProductEditModal({
                 ))}
               </select>
             </div>
+          </div>
 
             {/* Precios */}
             <div className="md:col-span-2">
@@ -1548,6 +1568,9 @@ function ProductEditModal({
                 Información de Precios
               </h3>
             </div>
+
+            <div className="md:col-span-2">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
 
             <div>
               <label className="block text-sm font-medium text-theme-text-primary mb-2">
@@ -1564,6 +1587,21 @@ function ProductEditModal({
 
             <div>
               <label className="block text-sm font-medium text-theme-text-primary mb-2">
+                Margen (%)
+              </label>
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                max="99.99"
+                className="form-input w-full"
+                value={formData.margen_pct || ''}
+                onChange={(e) => handleInputChange('margen_pct', e.target.value ? parseFloat(e.target.value) : null)}
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-theme-text-primary mb-2">
                 Costo Unitario
               </label>
               <input
@@ -1572,6 +1610,7 @@ function ProductEditModal({
                 className="form-input w-full"
                 value={formData.costo_unitario || ''}
                 onChange={(e) => handleInputChange('costo_unitario', e.target.value ? parseFloat(e.target.value) : null)}
+                placeholder="Costo de adquisición por unidad"
               />
             </div>
 
@@ -1582,9 +1621,10 @@ function ProductEditModal({
               <input
                 type="number"
                 step="0.01"
-                className="form-input w-full"
+                className="form-input w-full bg-theme-bg-secondary"
                 value={formData.precio_neto || ''}
-                onChange={(e) => handleInputChange('precio_neto', e.target.value ? parseFloat(e.target.value) : null)}
+                readOnly
+                placeholder="Se calcula automáticamente"
               />
             </div>
 
@@ -1600,66 +1640,6 @@ function ProductEditModal({
                 onChange={(e) => handleInputChange('precio_venta', e.target.value ? parseFloat(e.target.value) : null)}
               />
             </div>
-
-            {/* Configuración */}
-            <div className="md:col-span-2">
-              <h3 className="text-lg font-medium text-theme-text-primary mb-4">
-                Configuración
-              </h3>
-            </div>
-
-            <div className="flex items-center space-x-3">
-              <input
-                type="checkbox"
-                id="afecto_iva"
-                checked={formData.afecto_iva}
-                onChange={(e) => handleInputChange('afecto_iva', e.target.checked)}
-                className="rounded border-theme-border"
-              />
-              <label htmlFor="afecto_iva" className="text-sm text-theme-text-primary">
-                Afecto a IVA
-              </label>
-            </div>
-
-            <div className="flex items-center space-x-3">
-              <input
-                type="checkbox"
-                id="control_stock"
-                checked={formData.control_stock}
-                onChange={(e) => handleInputChange('control_stock', e.target.checked)}
-                className="rounded border-theme-border"
-              />
-              <label htmlFor="control_stock" className="text-sm text-theme-text-primary">
-                Control de Stock
-              </label>
-            </div>
-
-            <div className="flex items-center space-x-3">
-              <input
-                type="checkbox"
-                id="activo"
-                checked={formData.activo}
-                onChange={(e) => handleInputChange('activo', e.target.checked)}
-                className="rounded border-theme-border"
-              />
-              <label htmlFor="activo" className="text-sm text-theme-text-primary">
-                Producto Activo
-              </label>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-theme-text-primary mb-2">
-                Estado
-              </label>
-              <select
-                className="form-input w-full"
-                value={formData.estado}
-                onChange={(e) => handleInputChange('estado', e.target.value)}
-              >
-                <option value="disponible">Disponible</option>
-                <option value="no_disponible">No Disponible</option>
-                <option value="agotado">Agotado</option>
-              </select>
             </div>
 
             <div className="md:col-span-2">

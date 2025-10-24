@@ -1,5 +1,5 @@
 "use client";
-import { FiPlusCircle, FiUserPlus, FiBox, FiTrendingUp } from "react-icons/fi";
+import { FiPlusCircle, FiUserPlus, FiFileText, FiTrendingUp } from "react-icons/fi";
 import { useRouter } from "next/navigation";
 import { Toast } from "@/shared/ui/Toast";
 
@@ -18,10 +18,10 @@ const quickActions = [
     action: "go-clients",
   },
   {
-    icon: <FiBox className="w-7 h-7 text-orange-600" />,
-    title: "Gestionar Productos",
-    description: "Administrar catálogo de productos",
-    action: "go-catalog",
+    icon: <FiFileText className="w-7 h-7 text-orange-600" />,
+    title: "Nueva Nota de Venta",
+    description: "Crear una nueva nota de venta",
+    action: "create-sales-note",
   },
   {
     icon: <FiTrendingUp className="w-7 h-7 text-orange-600" />,
@@ -42,8 +42,8 @@ export function QuickActions() {
       case "go-clients":
         router.push("/dashboard/clientes");
         break;
-      case "go-catalog":
-        router.push("/dashboard/stock");
+      case "create-sales-note":
+        router.push("/dashboard/notas-venta/nueva");
         break;
       case "go-reports":
         router.push("/dashboard/reportes");
@@ -72,7 +72,7 @@ export function QuickActions() {
       </div>
 
       {/* Grid de acciones */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3 lg:gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2 sm:gap-3 lg:gap-4">
         {quickActions.map((a, idx) => (
           <button
             key={a.action}

@@ -251,7 +251,7 @@ export default function UnifiedAuditLog({
       
       if (response.ok) {
         const result = await response.json();
-        console.log('📊 API Result:', result);
+        
         if (result.success) {
           setActivities(result.data || []);
           if (mode === 'admin') {
@@ -467,7 +467,7 @@ export default function UnifiedAuditLog({
       {/* Encabezado */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-0">
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold mb-2" style={{ color: 'var(--text-primary)' }}>
+          <h1 className="text-lg sm:text-xl lg:text-2xl font-bold mb-2" style={{ color: 'var(--text-primary)' }}>
             {getTitle()}
           </h1>
           <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
@@ -494,7 +494,7 @@ export default function UnifiedAuditLog({
             border: '1px solid var(--border-subtle)' 
           }}
         >
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-4">
             {/* Búsqueda */}
             <div>
               <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-primary)' }}>

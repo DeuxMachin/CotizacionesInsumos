@@ -4,6 +4,7 @@ import React from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import type { ClientInfo, QuoteItem, DeliveryInfo, CommercialTerms, Quote } from '@/core/domain/quote/Quote';
 import { PDFDownloadButton } from '@/features/reports/ui/pdf/PDFDownloadButton';
+import { VendedorSelector } from './VendedorSelector';
 import { 
   FiDollarSign, 
   FiUser, 
@@ -42,9 +43,21 @@ interface QuoteSummaryProps {
   errors?: string[];
   onChangeGlobalDiscountPct?: (pct: number) => void;
   onChangeCommercialTerms?: (terms: Partial<CommercialTerms>) => void;
+  selectedVendedorId?: string;
+  selectedVendedorNombre?: string;
+  onVendedorChange?: (vendedorId: string, vendedorNombre: string) => void;
 }
 
-export function QuoteSummary({ formData, totals, formatMoney, onChangeGlobalDiscountPct, onChangeCommercialTerms }: QuoteSummaryProps) {
+export function QuoteSummary({ 
+  formData, 
+  totals, 
+  formatMoney, 
+  onChangeGlobalDiscountPct, 
+  onChangeCommercialTerms,
+  selectedVendedorId,
+  selectedVendedorNombre,
+  onVendedorChange
+}: QuoteSummaryProps) {
   const { user } = useAuth();
   const { cliente, items, despacho,  notas } = formData;
   const {
@@ -107,19 +120,19 @@ export function QuoteSummary({ formData, totals, formatMoney, onChangeGlobalDisc
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 xl:gap-6">
         {/* Columna izquierda - Información detallada */}
-        <div className="lg:col-span-2 space-y-6">
+        <div className="xl:col-span-2 space-y-4 xl:space-y-6">
           {/* Información del Cliente */}
           <div 
-            className="rounded-lg p-4 sm:p-6 border"
+            className="rounded-lg p-3 sm:p-4 xl:p-6 border"
             style={{ backgroundColor: 'var(--card-bg)', borderColor: 'var(--border)' }}
           >
-            <h3 className="text-lg font-semibold mb-4 flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
-              <FiUser className="w-5 h-5" style={{ color: 'var(--accent-primary)' }} />
+            <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4 flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
+              <FiUser className="w-4 h-4 sm:w-5 sm:h-5" style={{ color: 'var(--accent-primary)' }} />
               Información del Cliente
             </h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
               <div>
                 <label className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
                   Razón Social
@@ -386,19 +399,33 @@ export function QuoteSummary({ formData, totals, formatMoney, onChangeGlobalDisc
           )}
         </div>
 
-        
         {/* Nueva columna derecha sustituye a la anterior */}
-        <div className="space-y-6 min-w-0">
+        <div className="xl:col-span-1 space-y-4 xl:space-y-6 min-w-0">
+          {/* Asignación de Vendedor - Solo para Admin/Dueño */}
+          {user?.isAdmin && onVendedorChange && (
+            <div className="rounded-lg border p-3 sm:p-4" style={{ backgroundColor: 'var(--card-bg)', borderColor: 'var(--border)' }}>
+              <h3 className="text-sm font-medium mb-2 flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
+                <FiUser className="w-4 h-4" style={{ color: 'var(--accent-primary)' }} />
+                Asignar Vendedor
+              </h3>
+              <VendedorSelector
+                selectedVendedorId={selectedVendedorId}
+                selectedVendedorNombre={selectedVendedorNombre}
+                onVendedorChange={onVendedorChange}
+              />
+            </div>
+          )}
+
           <div
-            className="sticky top-4 rounded-lg border flex flex-col gap-4 p-4 sm:p-5"
+            className="sticky top-4 rounded-lg border flex flex-col gap-3 sm:gap-4 p-3 sm:p-4 xl:p-5"
             style={{ backgroundColor: 'var(--card-bg)', borderColor: 'var(--border)' }}
           >
-            <div className="flex items-center justify-between gap-3 flex-wrap">
-              <h3 className="text-lg font-semibold flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
-                <FiDollarSign className="w-5 h-5" style={{ color: 'var(--accent-primary)' }} />
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3 flex-wrap">
+              <h3 className="text-base sm:text-lg font-semibold flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
+                <FiDollarSign className="w-4 h-4 sm:w-5 sm:h-5" style={{ color: 'var(--accent-primary)' }} />
                 Resumen Financiero
               </h3>
-              <div className="flex items-center gap-2 ml-auto w-full xs:w-auto sm:w-auto">
+              <div className="flex items-center gap-2 w-full sm:w-auto">
                 <label className="text-xs font-medium whitespace-nowrap" style={{ color:'var(--text-secondary)' }} htmlFor="global-discount-input">Desc.Global (%)</label>
                 <input
                   id="global-discount-input"

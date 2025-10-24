@@ -107,14 +107,15 @@ export function Header() {
 
   return (
     <header 
-      className="sticky top-0 z-30 shadow-sm"
+      className="fixed top-0 left-0 right-0 z-[40] shadow-sm"
       style={{ 
         backgroundColor: 'var(--bg-primary)',
         borderBottom: '1px solid var(--border-subtle)',
         transform: shouldHideHeader ? 'translateY(-100%)' : 'translateY(0)',
         transition: 'transform 0.3s ease-in-out, box-shadow 0.3s ease-in-out',
         boxShadow: isAtTop ? 'none' : '0 2px 8px rgba(0, 0, 0, 0.1)',
-        willChange: 'transform'
+        willChange: 'transform',
+        height: 'auto'
       }}
     >
       <div className="flex items-center justify-between h-14 sm:h-16 px-3 sm:px-4 lg:px-6 max-w-7xl mx-auto">

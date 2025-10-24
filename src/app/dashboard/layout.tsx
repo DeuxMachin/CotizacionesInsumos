@@ -6,12 +6,32 @@ import { ToastHost } from "@/shared/ui/Toast";
 import { Breadcrumbs } from "@/components/navigation/Breadcrumbs";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from 'next/navigation';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import { useSection } from "@/features/navigation/model/useSection";
 
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, loading } = useAuth();
   const router = useRouter();
+  const { sidebarCollapsed } = useSection();
+  const [marginLeft, setMarginLeft] = useState('0');
+
+  useEffect(() => {
+    const updateMargin = () => {
+      if (typeof window !== 'undefined') {
+        if (window.innerWidth < 1024) {
+          setMarginLeft('0');
+        } else {
+          setMarginLeft(sidebarCollapsed ? '4rem' : '16rem');
+        }
+      }
+    };
+    updateMargin();
+    if (typeof window !== 'undefined') {
+      window.addEventListener('resize', updateMargin);
+      return () => window.removeEventListener('resize', updateMargin);
+    }
+  }, [sidebarCollapsed]);
 
   useEffect(() => {
     if (!loading && !isAuthenticated) {
@@ -37,20 +57,23 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   return (
     <div 
-      className="min-h-screen flex"
+      className="h-full flex"
       style={{ backgroundColor: 'var(--bg-secondary)' }}
     >
       {/* Navegación lateral */}
       <Sidebar />
       
       {/* Contenido principal */}
-      <div className="flex-1 flex flex-col min-h-screen ml-0 lg:ml-64 overflow-x-hidden">
+      <div 
+        className="flex-1 flex flex-col h-full overflow-x-hidden transition-all duration-300"
+        style={{ marginLeft }}
+      >
         {/* Header fijo en la parte superior */}
         <Header />
         
-        {/* Contenido scrolleable */}
+        {/* Contenido scrolleable - con padding-top para compensar header fixed */}
         <main 
-          className="flex-1 overflow-auto overflow-x-hidden"
+          className="flex-1 overflow-auto overflow-x-hidden h-full pt-14 sm:pt-16"
           style={{ backgroundColor: 'var(--bg-secondary)' }}
         >
           <div className="px-2 sm:px-4 lg:px-6 py-2 sm:py-4 lg:py-6">

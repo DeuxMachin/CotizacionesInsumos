@@ -54,6 +54,7 @@ export async function PUT(
       afecto_iva: data.afecto_iva ?? false,
       moneda: data.moneda || null,
       costo_unitario: data.costo_unitario || null,
+      margen_pct: data.margen_pct || null,
       precio_neto: data.precio_neto || null,
       precio_venta: data.precio_venta || null,
       control_stock: data.control_stock ?? false,

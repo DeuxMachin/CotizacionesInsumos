@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { FiUser, FiMapPin, FiPhone, FiMail, FiBriefcase, FiInfo, FiEdit3 } from 'react-icons/fi';
 import { ClientInfo } from '@/core/domain/quote/Quote';
 import { ClientAutocomplete } from './ClientAutocomplete';
+import { AddressAutocomplete } from './AddressAutocomplete';
 
 interface ClientFormProps {
   data: Partial<ClientInfo>;
@@ -67,6 +68,22 @@ export function ClientForm({ data, onChange }: ClientFormProps) {
   const handleRUTChange = (value: string) => {
     const formattedRUT = formatRUT(value);
     handleInputChange('rut', formattedRUT);
+  };
+
+  const handleAddressSelect = (addressData: {
+    direccion: string;
+    ciudad?: string;
+    comuna?: string;
+    region?: string;
+    lat?: number;
+    lng?: number;
+  }) => {
+    onChange({
+      ...data,
+      direccion: addressData.direccion,
+      ciudad: addressData.ciudad || data.ciudad,
+      comuna: addressData.comuna || data.comuna
+    });
   };
 
   return (
@@ -251,21 +268,21 @@ export function ClientForm({ data, onChange }: ClientFormProps) {
            </div>
          )}
          
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
           {/* Razón Social */}
-          <div className="md:col-span-2">
+          <div className="sm:col-span-2">
             <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>
               Razón Social <span style={{ color: 'var(--danger-text)' }}>*</span>
             </label>
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <FiBriefcase className="w-5 h-5" style={{ color: 'var(--text-muted)' }} />
+                <FiBriefcase className="w-4 h-4 sm:w-5 sm:h-5" style={{ color: 'var(--text-muted)' }} />
               </div>
               <input
                 type="text"
                 value={data.razonSocial || ''}
                 onChange={(e) => handleInputChange('razonSocial', e.target.value)}
-                className="w-full pl-10 pr-4 py-3 rounded-lg border transition-colors focus:ring-2 focus:ring-offset-2"
+                className="w-full pl-8 sm:pl-10 pr-4 py-2 sm:py-3 rounded-lg border transition-colors focus:ring-2 focus:ring-offset-2"
                 style={{
                   backgroundColor: 'var(--input-bg)',
                   borderColor: 'var(--border)',
@@ -285,7 +302,7 @@ export function ClientForm({ data, onChange }: ClientFormProps) {
               type="text"
               value={data.rut || ''}
               onChange={(e) => handleRUTChange(e.target.value)}
-              className="w-full px-4 py-3 rounded-lg border transition-colors focus:ring-2 focus:ring-offset-2"
+              className="w-full px-3 sm:px-4 py-2 sm:py-3 rounded-lg border transition-colors focus:ring-2 focus:ring-offset-2"
               style={{
                 backgroundColor: 'var(--input-bg)',
                 borderColor: 'var(--border)',
@@ -305,7 +322,7 @@ export function ClientForm({ data, onChange }: ClientFormProps) {
               type="text"
               value={data.nombreFantasia || ''}
               onChange={(e) => handleInputChange('nombreFantasia', e.target.value)}
-              className="w-full px-4 py-3 rounded-lg border transition-colors focus:ring-2 focus:ring-offset-2"
+              className="w-full px-3 sm:px-4 py-2 sm:py-3 rounded-lg border transition-colors focus:ring-2 focus:ring-offset-2"
               style={{
                 backgroundColor: 'var(--input-bg)',
                 borderColor: 'var(--border)',
@@ -316,7 +333,7 @@ export function ClientForm({ data, onChange }: ClientFormProps) {
           </div>
 
           {/* Giro Comercial */}
-          <div className="md:col-span-2">
+          <div className="sm:col-span-2">
             <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>
               Giro Comercial
             </label>
@@ -324,7 +341,7 @@ export function ClientForm({ data, onChange }: ClientFormProps) {
               type="text"
               value={data.giro || ''}
               onChange={(e) => handleInputChange('giro', e.target.value)}
-              className="w-full px-4 py-3 rounded-lg border transition-colors focus:ring-2 focus:ring-offset-2"
+              className="w-full px-3 sm:px-4 py-2 sm:py-3 rounded-lg border transition-colors focus:ring-2 focus:ring-offset-2"
               style={{
                 backgroundColor: 'var(--input-bg)',
                 borderColor: 'var(--border)',
@@ -335,27 +352,17 @@ export function ClientForm({ data, onChange }: ClientFormProps) {
           </div>
 
           {/* Dirección */}
-          <div className="md:col-span-2">
+          <div className="sm:col-span-2">
             <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>
               Dirección <span style={{ color: 'var(--danger-text)' }}>*</span>
             </label>
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <FiMapPin className="w-5 h-5" style={{ color: 'var(--text-muted)' }} />
-              </div>
-              <input
-                type="text"
-                value={data.direccion || ''}
-                onChange={(e) => handleInputChange('direccion', e.target.value)}
-                className="w-full pl-10 pr-4 py-3 rounded-lg border transition-colors focus:ring-2 focus:ring-offset-2"
-                style={{
-                  backgroundColor: 'var(--input-bg)',
-                  borderColor: 'var(--border)',
-                  color: 'var(--text-primary)'
-                }}
-                placeholder="Ej: Av. Providencia 1234, Oficina 567"
-              />
-            </div>
+            <AddressAutocomplete
+              value={data.direccion || ''}
+              onChange={(value) => handleInputChange('direccion', value)}
+              onAddressSelect={handleAddressSelect}
+              placeholder="Ej: Av. Providencia 1234, Oficina 567"
+              showCurrentLocation={true}
+            />
           </div>
 
           {/* Ciudad */}
@@ -367,7 +374,7 @@ export function ClientForm({ data, onChange }: ClientFormProps) {
               type="text"
               value={data.ciudad || ''}
               onChange={(e) => handleInputChange('ciudad', e.target.value)}
-              className="w-full px-4 py-3 rounded-lg border transition-colors focus:ring-2 focus:ring-offset-2"
+              className="w-full px-3 sm:px-4 py-2 sm:py-3 rounded-lg border transition-colors focus:ring-2 focus:ring-offset-2"
               style={{
                 backgroundColor: 'var(--input-bg)',
                 borderColor: 'var(--border)',
@@ -386,7 +393,7 @@ export function ClientForm({ data, onChange }: ClientFormProps) {
               type="text"
               value={data.comuna || ''}
               onChange={(e) => handleInputChange('comuna', e.target.value)}
-              className="w-full px-4 py-3 rounded-lg border transition-colors focus:ring-2 focus:ring-offset-2"
+              className="w-full px-3 sm:px-4 py-2 sm:py-3 rounded-lg border transition-colors focus:ring-2 focus:ring-offset-2"
               style={{
                 backgroundColor: 'var(--input-bg)',
                 borderColor: 'var(--border)',
@@ -412,7 +419,7 @@ export function ClientForm({ data, onChange }: ClientFormProps) {
               type="text"
               value={data.nombreContacto || ''}
               onChange={(e) => handleInputChange('nombreContacto', e.target.value)}
-              className="w-full px-4 py-3 rounded-lg border transition-colors focus:ring-2 focus:ring-offset-2"
+              className="w-full px-3 sm:px-4 py-2 sm:py-3 rounded-lg border transition-colors focus:ring-2 focus:ring-offset-2"
               style={{
                 backgroundColor: 'var(--input-bg)',
                 borderColor: 'var(--border)',
@@ -429,13 +436,13 @@ export function ClientForm({ data, onChange }: ClientFormProps) {
             </label>
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <FiPhone className="w-5 h-5" style={{ color: 'var(--text-muted)' }} />
+                <FiPhone className="w-4 h-4 sm:w-5 sm:h-5" style={{ color: 'var(--text-muted)' }} />
               </div>
               <input
                 type="tel"
                 value={data.telefonoContacto || ''}
                 onChange={(e) => handleInputChange('telefonoContacto', e.target.value)}
-                className="w-full pl-10 pr-4 py-3 rounded-lg border transition-colors focus:ring-2 focus:ring-offset-2"
+                className="w-full pl-8 sm:pl-10 pr-3 sm:pr-4 py-2 sm:py-3 rounded-lg border transition-colors focus:ring-2 focus:ring-offset-2"
                 style={{
                   backgroundColor: 'var(--input-bg)',
                   borderColor: 'var(--border)',
@@ -453,13 +460,13 @@ export function ClientForm({ data, onChange }: ClientFormProps) {
             </label>
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <FiPhone className="w-5 h-5" style={{ color: 'var(--text-muted)' }} />
+                <FiPhone className="w-4 h-4 sm:w-5 sm:h-5" style={{ color: 'var(--text-muted)' }} />
               </div>
               <input
                 type="tel"
                 value={data.telefono || ''}
                 onChange={(e) => handleInputChange('telefono', e.target.value)}
-                className="w-full pl-10 pr-4 py-3 rounded-lg border transition-colors focus:ring-2 focus:ring-offset-2"
+                className="w-full pl-8 sm:pl-10 pr-3 sm:pr-4 py-2 sm:py-3 rounded-lg border transition-colors focus:ring-2 focus:ring-offset-2"
                 style={{
                   backgroundColor: 'var(--input-bg)',
                   borderColor: 'var(--border)',
@@ -477,13 +484,13 @@ export function ClientForm({ data, onChange }: ClientFormProps) {
             </label>
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <FiMail className="w-5 h-5" style={{ color: 'var(--text-muted)' }} />
+                <FiMail className="w-4 h-4 sm:w-5 sm:h-5" style={{ color: 'var(--text-muted)' }} />
               </div>
               <input
                 type="email"
                 value={data.email || ''}
                 onChange={(e) => handleInputChange('email', e.target.value)}
-                className="w-full pl-10 pr-4 py-3 rounded-lg border transition-colors focus:ring-2 focus:ring-offset-2"
+                className="w-full pl-8 sm:pl-10 pr-3 sm:pr-4 py-2 sm:py-3 rounded-lg border transition-colors focus:ring-2 focus:ring-offset-2"
                 style={{
                   backgroundColor: 'var(--input-bg)',
                   borderColor: 'var(--border)',

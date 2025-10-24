@@ -21,6 +21,7 @@ import { useQuotes } from '../model/useQuotes';
 import { Quote, QuoteStatus, ClientInfo, QuoteItem, DeliveryInfo, CommercialTerms } from '@/core/domain/quote/Quote';
 import { useAuthHeaders } from '@/hooks/useAuthHeaders';
 import { useAuth } from '@/contexts/AuthContext';
+import { useVendedores } from '@/hooks/useVendedores';
 
 import dynamic from 'next/dynamic';
 
@@ -90,6 +91,7 @@ export function NewQuotePage() {
   const { crearCotizacion, formatMoney } = useQuotes();
   const { createHeaders } = useAuthHeaders();
   const { user } = useAuth(); // user.role (alias of DB rol) and user.name already normalized
+  const { vendedores } = useVendedores();
   
   const [currentStep, setCurrentStep] = useState<FormStep>('client');
   const [formData, setFormData] = useState<FormData>({
@@ -114,6 +116,27 @@ export function NewQuotePage() {
   const [sendEmailError, setSendEmailError] = useState('');
   const [sendingEmail, setSendingEmail] = useState(false);
   const [emailSent, setEmailSent] = useState(false);
+  
+  // Estado para asignación de vendedor
+  const [selectedVendedorId, setSelectedVendedorId] = useState<string>('');
+  const [selectedVendedorNombre, setSelectedVendedorNombre] = useState<string>('');
+
+  // Inicializar vendedor seleccionado con el usuario actual
+  React.useEffect(() => {
+    if (user && vendedores.length > 0) {
+      const currentUserAsVendedor = vendedores.find(v => v.id === user.id);
+      if (currentUserAsVendedor) {
+        setSelectedVendedorId(user.id);
+        setSelectedVendedorNombre(user.name || user.email);
+      }
+    }
+  }, [user, vendedores]);
+
+  // Handler para cambiar vendedor
+  const handleVendedorChange = (vendedorId: string, vendedorNombre: string) => {
+    setSelectedVendedorId(vendedorId);
+    setSelectedVendedorNombre(vendedorNombre);
+  };
 
   // Validación de pasos
   const validateStep = (step: FormStep): string[] => {
@@ -235,8 +258,8 @@ export function NewQuotePage() {
         despacho: Object.keys(formData.despacho).length > 0 ? formData.despacho as DeliveryInfo : undefined,
         condicionesComerciales: formData.condicionesComerciales as CommercialTerms,
   estado: status,
-  vendedorId: user?.id || 'desconocido',
-  vendedorNombre: user?.name || 'Usuario',
+  vendedorId: selectedVendedorId || user?.id || 'desconocido',
+  vendedorNombre: selectedVendedorNombre || user?.name || 'Usuario',
         subtotal,
         descuentoTotal,
         iva,
@@ -301,6 +324,11 @@ export function NewQuotePage() {
     }
   };
 
+  const handleMarkAsSent = async () => {
+    setShowSendModal(false);
+    await persistQuote('enviada');
+  };
+
   const sendQuoteByEmail = async () => {
     try {
       const { subtotal, descuentoTotal, iva, total } = calculateTotals();
@@ -314,8 +342,8 @@ export function NewQuotePage() {
         despacho: Object.keys(formData.despacho).length > 0 ? formData.despacho as DeliveryInfo : undefined,
         condicionesComerciales: formData.condicionesComerciales as CommercialTerms,
         estado: 'enviada',
-        vendedorId: user?.id || 'desconocido',
-  vendedorNombre: user?.name || 'Usuario',
+        vendedorId: selectedVendedorId || user?.id || 'desconocido',
+  vendedorNombre: selectedVendedorNombre || user?.name || 'Usuario',
         subtotal,
         descuentoTotal,
         iva,
@@ -425,6 +453,9 @@ export function NewQuotePage() {
             errors={errors.summary}
             onChangeGlobalDiscountPct={(pct:number)=> setFormData(prev=>({...prev, descuentoGlobalPct:pct}))}
             onChangeCommercialTerms={(terms: Partial<CommercialTerms>) => updateFormData('condicionesComerciales', terms)}
+            selectedVendedorId={selectedVendedorId}
+            selectedVendedorNombre={selectedVendedorNombre}
+            onVendedorChange={handleVendedorChange}
           />
         );
       default:
@@ -436,7 +467,7 @@ export function NewQuotePage() {
     <div className="min-h-screen" style={{ backgroundColor: 'var(--bg-primary)' }}>
       {/* Header Moderno */}
       <div className="shadow-sm border-b" style={{ backgroundColor: 'var(--card-bg)', borderColor: 'var(--border-subtle)' }}>
-        <div className="w-full max-w-none mx-auto px-3 sm:px-4 lg:px-6">
+        <div className="w-full max-w-none mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between h-auto sm:h-16 py-3 sm:py-0 gap-3 sm:gap-0">
             <div className="flex items-center gap-3 w-full sm:w-auto">
               <button
@@ -485,17 +516,17 @@ export function NewQuotePage() {
         </div>
       </div>
 
-      <div className="w-full max-w-none mx-auto px-3 sm:px-4 lg:px-6 py-6 sm:py-8">
+      <div className="w-full max-w-none mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
         {/* Progreso horizontal y compacto */}
-        <div>
+        <div className="px-1 sm:px-2">
           <div className="text-center mb-3">
             <h3 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>Pasos de cotización</h3>
             <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>Sigue el proceso para completar la cotización</p>
           </div>
 
-          <div className="rounded-xl shadow-sm p-2 sm:p-3 lg:p-4 mb-4 sm:mb-6" style={{ backgroundColor: 'var(--card-bg)', border: '1px solid var(--border-subtle)' }}>
+          <div className="rounded-xl shadow-sm p-3 sm:p-4 lg:p-5 mb-4 sm:mb-6" style={{ backgroundColor: 'var(--card-bg)', border: '1px solid var(--border-subtle)' }}>
             <div className="flex items-center justify-center">
-              <div className="flex items-center gap-2 sm:gap-3 lg:gap-4 overflow-x-auto max-w-full px-1 sm:px-2">
+              <div className="flex items-center gap-1 sm:gap-2 lg:gap-3 overflow-x-auto max-w-full px-1 sm:px-2 pb-2">
                 {STEPS.map((step, index) => {
                   const Icon = step.icon;
                   const isActive = currentStep === step.id;
@@ -512,7 +543,7 @@ export function NewQuotePage() {
                         title={step.description}
                       >
                         <div
-                          className={`flex items-center justify-center w-7 h-7 sm:w-8 sm:h-8 lg:w-9 lg:h-9 rounded-full border-2 transition-all ${
+                          className={`flex items-center justify-center w-6 h-6 sm:w-7 sm:h-7 lg:w-8 lg:h-8 xl:w-9 xl:h-9 rounded-full border-2 transition-all ${
                             isCompleted
                               ? 'bg-green-500 border-green-500 text-white'
                               : isActive
@@ -523,21 +554,21 @@ export function NewQuotePage() {
                           }`}
                         >
                           {isCompleted ? (
-                            <FiCheck className="w-3 h-3 sm:w-4 sm:h-4" />
+                            <FiCheck className="w-2 h-2 sm:w-3 sm:h-3 lg:w-4 lg:h-4" />
                           ) : hasErrors ? (
-                            <FiAlertCircle className="w-3 h-3 sm:w-4 sm:h-4" />
+                            <FiAlertCircle className="w-2 h-2 sm:w-3 sm:h-3 lg:w-4 lg:h-4" />
                           ) : (
-                            <Icon className="w-3 h-3 sm:w-4 sm:h-4" />
+                            <Icon className="w-2 h-2 sm:w-3 sm:h-3 lg:w-4 lg:h-4" />
                           )}
                         </div>
-                        <span className="mt-1 font-medium text-center leading-tight max-w-[60px] sm:max-w-none truncate" style={{ color: 'var(--text-primary)' }}>
+                        <span className="mt-1 font-medium text-center leading-tight max-w-[50px] sm:max-w-[60px] lg:max-w-none truncate text-xs sm:text-sm" style={{ color: 'var(--text-primary)' }}>
                           {step.label}
                         </span>
                       </button>
 
                       {/* Conector horizontal */}
                       {index < STEPS.length - 1 && (
-                        <div className="mx-1 sm:mx-2 lg:mx-3 h-0.5 w-4 sm:w-6 lg:w-10 rounded flex-shrink-0" style={{ backgroundColor: isStepCompleted(STEPS[index].id as FormStep) ? step.color : 'var(--border-subtle)' }} />
+                        <div className="mx-0.5 sm:mx-1 lg:mx-2 h-0.5 w-2 sm:w-4 lg:w-6 xl:w-8 rounded flex-shrink-0" style={{ backgroundColor: isStepCompleted(STEPS[index].id as FormStep) ? step.color : 'var(--border-subtle)' }} />
                       )}
                     </div>
                   );
@@ -547,10 +578,10 @@ export function NewQuotePage() {
           </div>
 
           {/* Contenido Principal (full width) */}
-          <div>
+          <div className="px-1 sm:px-2">
             <div className="rounded-xl shadow-sm overflow-hidden" style={{ backgroundColor: 'var(--card-bg)', border: '1px solid var(--border-subtle)' }}>
               {/* Header del paso actual */}
-              <div className="px-4 sm:px-6 py-3 sm:py-4" style={{ borderBottom: '1px solid var(--border-subtle)' }}>
+              <div className="px-5 sm:px-7 py-3 sm:py-4" style={{ borderBottom: '1px solid var(--border-subtle)' }}>
                 <div className="flex items-center gap-3 sm:gap-4">
                   <div
                     className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg flex items-center justify-center flex-shrink-0"
@@ -572,8 +603,8 @@ export function NewQuotePage() {
                 </div>
               </div>
 
-              {/* Contenido del formulario */}
-              <div className="p-4 sm:p-6">
+                {/* Contenido del formulario */}
+              <div className="min-h-[50vh] sm:min-h-[400px] px-1 sm:px-2">
                 {/* Mensajes de error */}
                 {visitedSteps.has(currentStep) && errors[currentStep] && errors[currentStep].length > 0 && (
                   <div className="mb-6 p-4 rounded-lg" style={{ backgroundColor: 'var(--danger-bg)', border: '1px solid var(--danger)' }}>
@@ -592,13 +623,13 @@ export function NewQuotePage() {
                 )}
 
                 {/* Contenido del paso */}
-                <div className="min-h-[400px]">
+                <div className="min-h-[40vh] sm:min-h-[300px]">
                   {renderStepContent()}
                 </div>
               </div>
 
               {/* Navegación inferior */}
-              <div className="px-4 sm:px-6 py-3 sm:py-4 border-t" style={{ backgroundColor: 'var(--bg-secondary)', borderColor: 'var(--border-subtle)' }}>
+              <div className="px-5 sm:px-7 py-3 sm:py-4 border-t" style={{ backgroundColor: 'var(--bg-secondary)', borderColor: 'var(--border-subtle)' }}>
                 <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 sm:gap-0">
                   <button
                     onClick={handlePrevious}
@@ -684,8 +715,8 @@ export function NewQuotePage() {
       </div>
       {/* Modal de envío */}
       {showSendModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-          <div className="w-full max-w-md rounded-xl shadow-xl p-6 mx-4" style={{ backgroundColor: 'var(--card-bg)', border: '1px solid var(--border-subtle)' }}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="w-full max-w-md rounded-xl shadow-xl p-5 sm:p-7 mx-4" style={{ backgroundColor: 'var(--card-bg)', border: '1px solid var(--border-subtle)' }}>
             <div className="flex items-center gap-3 mb-4">
               <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{ backgroundColor: 'var(--info-bg)' }}>
                 <FiSend className="w-5 h-5" style={{ color: 'var(--info-text)' }} />
@@ -743,7 +774,7 @@ export function NewQuotePage() {
               )}
             </div>
 
-            <div className="flex justify-end gap-3 mt-6">
+            <div className="flex justify-between gap-3 mt-6">
               <button
                 onClick={() => setShowSendModal(false)}
                 className="px-4 py-2 text-sm font-medium rounded-lg transition-colors"
@@ -755,23 +786,33 @@ export function NewQuotePage() {
               >
                 Cancelar
               </button>
-              <button
-                onClick={handleConfirmSend}
-                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors disabled:opacity-50"
-                disabled={sendingEmail || !sendEmail}
-              >
-                {sendingEmail ? (
-                  <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
-                    Enviando...
-                  </>
-                ) : (
-                  <>
-                    <FiSend className="w-4 h-4" />
-                    Enviar Cotización
-                  </>
-                )}
-              </button>
+              <div className="flex gap-3">
+                <button
+                  onClick={handleMarkAsSent}
+                  className="px-4 py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors disabled:opacity-50"
+                  disabled={sendingEmail}
+                >
+                  <FiCheck className="w-4 h-4" />
+                  Enviada Sin correo
+                </button>
+                <button
+                  onClick={handleConfirmSend}
+                  className="px-1 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors disabled:opacity-50"
+                  disabled={sendingEmail || !sendEmail}
+                >
+                  {sendingEmail ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+                      Enviando...
+                    </>
+                  ) : (
+                    <>
+                      <FiSend className="w-4 h-4" />
+                      Enviar Cotización
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
           </div>
         </div>

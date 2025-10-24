@@ -30,7 +30,7 @@ import {
 } from 'react-icons/fi';
 
 import { useQuotes } from '../model/useQuotes';
-import { Quote, QuoteStatus } from '@/core/domain/quote/Quote';
+import { Quote, QuoteStatus, QuoteItem, DeliveryInfo } from '@/core/domain/quote/Quote';
 import { useAuth } from '@/contexts/AuthContext';
 
 // Import the filters panel component
@@ -40,6 +40,7 @@ import { Toast } from '@/shared/ui/Toast';
 import { ConfirmDialog } from '@/shared/ui/ConfirmDialog';
 import { HelpGuide } from '@/shared/ui/HelpGuide';
 import { SendEmailModal } from './components/SendEmailModal';
+import { EditQuoteModal } from './components/EditQuoteModal';
 
 interface QuoteCardProps {
   quote: Quote;
@@ -93,6 +94,7 @@ export function QuotesPage() {
     duplicarCotizacion,
     cambiarEstado,
     cancelarCotizacion,
+    actualizarCotizacion,
     actualizarPrioridad,
     formatMoney,
     getStatusColor,
@@ -113,6 +115,7 @@ export function QuotesPage() {
   const [cancelDialog, setCancelDialog] = useState<{ isOpen: boolean; quoteId: string | null }>({ isOpen: false, quoteId: null });
   const [showHelpGuide, setShowHelpGuide] = useState(false);
   const [sendEmailModal, setSendEmailModal] = useState<{ isOpen: boolean; quote: Quote | null }>({ isOpen: false, quote: null });
+  const [editModal, setEditModal] = useState<{ isOpen: boolean; quote: Quote | null }>({ isOpen: false, quote: null });
 
   // Verificar si el usuario es vendedor (no admin)
   const isVendedor = user && !isAdmin && user.role?.toLowerCase() === 'vendedor';
@@ -156,8 +159,21 @@ export function QuotesPage() {
   };
 
   const handleEdit = (quote: Quote) => {
-    // Funcionalidad de edición será implementada después
-    alert('Funcionalidad de edición en desarrollo');
+    // Abrir modal de edición
+    setEditModal({ isOpen: true, quote });
+  };
+
+  const handleSaveEdit = async (items: QuoteItem[], despacho: DeliveryInfo, vendedorId?: string, vendedorNombre?: string) => {
+    if (!editModal.quote) return false;
+    const success = await actualizarCotizacion(editModal.quote.id, { items, despacho, vendedorId, vendedorNombre });
+    if (success) {
+      Toast.success('Cotización actualizada exitosamente');
+      setEditModal({ isOpen: false, quote: null });
+      return true;
+    } else {
+      Toast.error('No se pudo actualizar la cotización');
+      return false;
+    }
   };
 
   const handleDelete = async (id: string) => {
@@ -317,14 +333,6 @@ export function QuotesPage() {
             </p>
           </div>
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3">
-            <button
-              onClick={() => router.push('/dashboard/notas-venta')}
-              className="btn-secondary flex items-center justify-center gap-2 px-3 py-2 text-sm sm:text-base"
-            >
-              <FiShoppingCart className="w-4 h-4" />
-              <span className="hidden xs:inline">Ver notas de venta</span>
-              <span className="xs:hidden">Notas</span>
-            </button>
           <div className="flex flex-wrap items-center gap-2">
             <button
               onClick={() => setShowFilters(!showFilters)}
@@ -450,20 +458,20 @@ export function QuotesPage() {
       </div>
 
       {/* Estadísticas rápidas */}
-      <div className="grid grid-cols-2 lg:grid-cols-6 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4">
         <div 
-          className="p-4 rounded-lg"
+          className="p-3 sm:p-4 rounded-lg"
           style={{ backgroundColor: 'var(--card-bg)', border: '1px solid var(--border)' }}
         >
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
             <div 
               className="p-2 rounded"
               style={{ backgroundColor: 'var(--info-bg)', color: 'var(--info-text)' }}
             >
-              <FiFileText className="w-5 h-5" />
+              <FiFileText className="w-4 h-4 sm:w-5 sm:h-5" />
             </div>
             <div>
-              <div className="text-2xl font-semibold" style={{ color: 'var(--text-primary)' }}>
+              <div className="text-xl sm:text-2xl font-semibold" style={{ color: 'var(--text-primary)' }}>
                 {estadisticas.total}
               </div>
               <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>
@@ -474,18 +482,18 @@ export function QuotesPage() {
         </div>
 
         <div 
-          className="p-4 rounded-lg"
+          className="p-3 sm:p-4 rounded-lg"
           style={{ backgroundColor: 'var(--card-bg)', border: '1px solid var(--border)' }}
         >
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
             <div 
               className="p-2 rounded"
               style={{ backgroundColor: 'var(--warning-bg)', color: 'var(--warning-text)' }}
             >
-              <FiEdit2 className="w-5 h-5" />
+              <FiEdit2 className="w-4 h-4 sm:w-5 sm:h-5" />
             </div>
             <div>
-              <div className="text-2xl font-semibold" style={{ color: 'var(--text-primary)' }}>
+              <div className="text-xl sm:text-2xl font-semibold" style={{ color: 'var(--text-primary)' }}>
                 {estadisticas.borradores}
               </div>
               <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>
@@ -496,18 +504,18 @@ export function QuotesPage() {
         </div>
 
         <div 
-          className="p-4 rounded-lg"
+          className="p-3 sm:p-4 rounded-lg"
           style={{ backgroundColor: 'var(--card-bg)', border: '1px solid var(--border)' }}
         >
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
             <div 
               className="p-2 rounded"
               style={{ backgroundColor: 'var(--info-bg)', color: 'var(--info-text)' }}
             >
-              <FiSend className="w-5 h-5" />
+              <FiSend className="w-4 h-4 sm:w-5 sm:h-5" />
             </div>
             <div>
-              <div className="text-2xl font-semibold" style={{ color: 'var(--text-primary)' }}>
+              <div className="text-xl sm:text-2xl font-semibold" style={{ color: 'var(--text-primary)' }}>
                 {estadisticas.enviadas}
               </div>
               <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>
@@ -518,18 +526,18 @@ export function QuotesPage() {
         </div>
 
         <div 
-          className="p-4 rounded-lg"
+          className="p-3 sm:p-4 rounded-lg"
           style={{ backgroundColor: 'var(--card-bg)', border: '1px solid var(--border)' }}
         >
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
             <div 
               className="p-2 rounded"
               style={{ backgroundColor: 'var(--success-bg)', color: 'var(--success-text)' }}
             >
-              <FiTrendingUp className="w-5 h-5" />
+              <FiTrendingUp className="w-4 h-4 sm:w-5 sm:h-5" />
             </div>
             <div>
-              <div className="text-2xl font-semibold" style={{ color: 'var(--text-primary)' }}>
+              <div className="text-xl sm:text-2xl font-semibold" style={{ color: 'var(--text-primary)' }}>
                 {estadisticas.aceptadas}
               </div>
               <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>
@@ -540,18 +548,18 @@ export function QuotesPage() {
         </div>
 
         <div 
-          className="p-4 rounded-lg"
+          className="p-3 sm:p-4 rounded-lg"
           style={{ backgroundColor: 'var(--card-bg)', border: '1px solid var(--border)' }}
         >
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
             <div 
               className="p-2 rounded"
               style={{ backgroundColor: 'var(--danger-bg)', color: 'var(--danger-text)' }}
             >
-              <FiX className="w-5 h-5" />
+              <FiX className="w-4 h-4 sm:w-5 sm:h-5" />
             </div>
             <div>
-              <div className="text-2xl font-semibold" style={{ color: 'var(--text-primary)' }}>
+              <div className="text-xl sm:text-2xl font-semibold" style={{ color: 'var(--text-primary)' }}>
                 {estadisticas.rechazadas}
               </div>
               <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>
@@ -562,15 +570,15 @@ export function QuotesPage() {
         </div>
 
         <div 
-          className="p-4 rounded-lg"
+          className="p-3 sm:p-4 rounded-lg"
           style={{ backgroundColor: 'var(--card-bg)', border: '1px solid var(--border)' }}
         >
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
             <div 
               className="p-2 rounded"
               style={{ backgroundColor: 'var(--accent-bg)', color: 'var(--accent-text)' }}
             >
-              <FiDollarSign className="w-5 h-5" />
+              <FiDollarSign className="w-4 h-4 sm:w-5 sm:h-5" />
             </div>
             <div>
               <div className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>
@@ -753,6 +761,16 @@ export function QuotesPage() {
           onSend={handleSendEmail}
         />
       )}
+
+      {/* Modal de edición */}
+      {editModal.quote && (
+        <EditQuoteModal
+          isOpen={editModal.isOpen}
+          onClose={() => setEditModal({ isOpen: false, quote: null })}
+          quote={editModal.quote}
+          onSave={handleSaveEdit}
+        />
+      )}
     </div>
   );
 }
@@ -774,18 +792,15 @@ function QuoteCard({
   onConvert
 }: QuoteCardProps) {
   const statusColor = getStatusColor(quote.estado);
-  const [showActions, setShowActions] = useState(false);
 
   return (
     <div
       onClick={() => onView(quote)}
-      className="rounded-xl shadow-sm hover:shadow-md transition-all cursor-pointer relative"
+      className="rounded-xl shadow-sm hover:shadow-md transition-all cursor-pointer relative group"
       style={{ 
         backgroundColor: 'var(--card-bg)',
         border: '1px solid var(--border)'
       }}
-      onMouseEnter={() => setShowActions(true)}
-      onMouseLeave={() => setShowActions(false)}
     >
       <div className="p-6">
         {/* Header */}
@@ -862,18 +877,9 @@ function QuoteCard({
         </div>
 
         {/* Acciones */}
-        <div className={`flex items-center justify-between mt-4 pt-4 border-t transition-opacity ${showActions ? 'opacity-100' : 'opacity-0'}`} style={{ borderColor: 'var(--border)' }}>
+        <div className="flex items-center justify-between mt-4 pt-4 border-t opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity" style={{ borderColor: 'var(--border)' }}>
           <div className="flex items-center gap-2">
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onView(quote);
-              }}
-              className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
-              title="Ver detalle"
-            >
-              <FiEye className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />
-            </button>
+       
             <button
               onClick={(e) => {
                 e.stopPropagation();
@@ -1102,7 +1108,7 @@ function QuotesTable({
               <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>
                 Cliente
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>
+              <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider hidden sm:table-cell" style={{ color: 'var(--text-secondary)' }}>
                 Vendedor
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>
@@ -1111,7 +1117,7 @@ function QuotesTable({
               <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>
                 Total
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>
+              <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider hidden sm:table-cell" style={{ color: 'var(--text-secondary)' }}>
                 Fecha
               </th>
               <th className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>
@@ -1199,7 +1205,7 @@ function QuotesTable({
                       </div>
                     </div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm" style={{ color: 'var(--text-primary)' }}>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm hidden sm:table-cell" style={{ color: 'var(--text-primary)' }}>
                     {quote.vendedorNombre}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
@@ -1216,7 +1222,7 @@ function QuotesTable({
                   <td className="px-6 py-4 whitespace-nowrap font-medium" style={{ color: 'var(--text-primary)' }}>
                     {formatMoney(quote.total)}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm" style={{ color: 'var(--text-secondary)' }}>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm hidden sm:table-cell" style={{ color: 'var(--text-secondary)' }}>
                     {new Date(quote.fechaCreacion).toLocaleDateString('es-CL')}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">

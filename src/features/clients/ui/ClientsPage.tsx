@@ -569,20 +569,20 @@ export function ClientsPage() {
       </div>
 
       {/* Estadísticas */}
-      <div className="grid grid-cols-2 lg:grid-cols-6 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4">
         <div 
-          className="p-4 rounded-lg"
+          className="p-3 sm:p-4 rounded-lg"
           style={{ backgroundColor: 'var(--card-bg)', border: '1px solid var(--border)' }}
         >
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
             <div 
               className="p-2 rounded flex-shrink-0"
               style={{ backgroundColor: 'var(--info-bg)', color: 'var(--info-text)' }}
             >
-              <FiUsers className="w-5 h-5" />
+              <FiUsers className="w-4 h-4 sm:w-5 sm:h-5" />
             </div>
             <div className="min-w-0 w-full">
-              <div className="text-xl md:text-2xl font-semibold truncate" style={{ color: 'var(--text-primary)' }}>
+              <div className="text-xl sm:text-2xl font-semibold truncate" style={{ color: 'var(--text-primary)' }}>
                 {stats.total}
               </div>
               <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>
@@ -593,18 +593,18 @@ export function ClientsPage() {
         </div>
 
         <div 
-          className="p-4 rounded-lg"
+          className="p-3 sm:p-4 rounded-lg"
           style={{ backgroundColor: 'var(--card-bg)', border: '1px solid var(--border)' }}
         >
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
             <div 
               className="p-2 rounded flex-shrink-0"
               style={{ backgroundColor: 'var(--success-bg)', color: 'var(--success-text)' }}
             >
-              <FiActivity className="w-5 h-5" />
+              <FiActivity className="w-4 h-4 sm:w-5 sm:h-5" />
             </div>
             <div className="min-w-0 w-full">
-              <div className="text-xl md:text-2xl font-semibold truncate" style={{ color: 'var(--text-primary)' }}>
+              <div className="text-xl sm:text-2xl font-semibold truncate" style={{ color: 'var(--text-primary)' }}>
                 {stats.vigentes}
               </div>
               <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>
@@ -615,18 +615,18 @@ export function ClientsPage() {
         </div>
 
         <div 
-          className="p-4 rounded-lg"
+          className="p-3 sm:p-4 rounded-lg"
           style={{ backgroundColor: 'var(--card-bg)', border: '1px solid var(--border)' }}
         >
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
             <div 
               className="p-2 rounded flex-shrink-0"
               style={{ backgroundColor: 'var(--warning-bg)', color: 'var(--warning-text)' }}
             >
-              <FiClock className="w-5 h-5" />
+              <FiClock className="w-4 h-4 sm:w-5 sm:h-5" />
             </div>
             <div className="min-w-0 w-full">
-              <div className="text-xl md:text-2xl font-semibold truncate" style={{ color: 'var(--text-primary)' }}>
+              <div className="text-xl sm:text-2xl font-semibold truncate" style={{ color: 'var(--text-primary)' }}>
                 {stats.morosos}
               </div>
               <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>
@@ -637,18 +637,18 @@ export function ClientsPage() {
         </div>
 
         <div 
-          className="p-4 rounded-lg"
+          className="p-3 sm:p-4 rounded-lg"
           style={{ backgroundColor: 'var(--card-bg)', border: '1px solid var(--border)' }}
         >
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
             <div 
               className="p-2 rounded flex-shrink-0"
               style={{ backgroundColor: 'var(--neutral-bg)', color: 'var(--neutral-text)' }}
             >
-              <FiUsers className="w-5 h-5" />
+              <FiUsers className="w-4 h-4 sm:w-5 sm:h-5" />
             </div>
             <div className="min-w-0 w-full">
-              <div className="text-xl md:text-2xl font-semibold truncate" style={{ color: 'var(--text-primary)' }}>
+              <div className="text-xl sm:text-2xl font-semibold truncate" style={{ color: 'var(--text-primary)' }}>
                 {stats.inactivos}
               </div>
               <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>
@@ -659,21 +659,21 @@ export function ClientsPage() {
         </div>
 
         <div 
-          className="p-4 rounded-lg"
+          className="p-3 sm:p-4 rounded-lg"
           style={{ backgroundColor: 'var(--card-bg)', border: '1px solid var(--border)' }}
         >
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
             <div 
               className="p-2 rounded"
               style={{ backgroundColor: 'var(--accent-bg)', color: 'var(--accent-text)' }}
             >
-              <FiDollarSign className="w-5 h-5" />
+              <FiDollarSign className="w-4 h-4 sm:w-5 sm:h-5" />
             </div>
             <div>
               <div className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>
                 {formatCLP(stats.totalVendido)}
               </div>
-              <div className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+              <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>
                 Total Vendido
               </div>
             </div>
@@ -681,21 +681,21 @@ export function ClientsPage() {
         </div>
 
         <div 
-          className="p-4 rounded-lg"
+          className="p-3 sm:p-4 rounded-lg"
           style={{ backgroundColor: 'var(--card-bg)', border: '1px solid var(--border)' }}
         >
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
             <div 
               className="p-2 rounded"
               style={{ backgroundColor: 'var(--warning-bg)', color: 'var(--warning-text)' }}
             >
-              <FiTrendingUp className="w-5 h-5" />
+              <FiTrendingUp className="w-4 h-4 sm:w-5 sm:h-5" />
             </div>
             <div>
               <div className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>
                 {formatCLP(stats.totalPorCobrar)}
               </div>
-              <div className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+              <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>
                 Por Cobrar
               </div>
             </div>

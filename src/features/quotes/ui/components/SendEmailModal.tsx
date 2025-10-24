@@ -44,9 +44,9 @@ export function SendEmailModal({ isOpen, onClose, quote, onSend }: SendEmailModa
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black bg-opacity-50 overflow-y-auto">
+    <div className="fixed inset-0 z-[199999] flex items-center justify-center p-4 bg-black/70 backdrop-blur-md overflow-y-auto animate-in fade-in duration-200">
       <div 
-        className="relative w-full max-w-lg rounded-lg shadow-xl my-8"
+        className="relative w-full max-w-lg rounded-lg shadow-2xl my-8 animate-in zoom-in-95 duration-200"
         style={{ backgroundColor: 'var(--card-bg)' }}
       >
         {/* Header */}

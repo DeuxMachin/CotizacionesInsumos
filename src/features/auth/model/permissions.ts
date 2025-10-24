@@ -4,6 +4,7 @@
 export type Resource = 
   | 'dashboard'
   | 'quotes' 
+  | 'sales-notes'
   | 'clients'
   | 'obras'
   | 'targets'
@@ -33,6 +34,7 @@ export const ROLE_PERMISSIONS: Record<string, Permission[]> = {
     // Acceso total a todo, máximo privilegio
     { resource: 'dashboard', actions: ['read', 'manage'] },
     { resource: 'quotes', actions: ['create', 'read', 'update', 'delete', 'export', 'import'] },
+    { resource: 'sales-notes', actions: ['create', 'read', 'update', 'delete', 'export', 'import'] },
     { resource: 'clients', actions: ['create', 'read', 'update', 'delete', 'export', 'import'] },
     { resource: 'obras', actions: ['create', 'read', 'update', 'delete', 'manage', 'export'] },
     { resource: 'targets', actions: ['create', 'read', 'update', 'delete', 'manage'] },
@@ -46,6 +48,7 @@ export const ROLE_PERMISSIONS: Record<string, Permission[]> = {
     // Alias por si se guarda sin ñ
     { resource: 'dashboard', actions: ['read', 'manage'] },
     { resource: 'quotes', actions: ['create', 'read', 'update', 'delete', 'export', 'import'] },
+    { resource: 'sales-notes', actions: ['create', 'read', 'update', 'delete', 'export', 'import'] },
     { resource: 'clients', actions: ['create', 'read', 'update', 'delete', 'export', 'import'] },
     { resource: 'obras', actions: ['create', 'read', 'update', 'delete', 'manage', 'export'] },
     { resource: 'targets', actions: ['create', 'read', 'update', 'delete', 'manage'] },
@@ -59,6 +62,7 @@ export const ROLE_PERMISSIONS: Record<string, Permission[]> = {
     // Acceso total excepto crear usuarios admin/dueño
     { resource: 'dashboard', actions: ['read', 'manage'] },
     { resource: 'quotes', actions: ['create', 'read', 'update', 'delete', 'export', 'import'] },
+    { resource: 'sales-notes', actions: ['create', 'read', 'update', 'delete', 'export', 'import'] },
     { resource: 'clients', actions: ['create', 'read', 'update', 'delete', 'export', 'import'] },
     { resource: 'obras', actions: ['create', 'read', 'update', 'delete', 'manage', 'export'] },
     { resource: 'targets', actions: ['create', 'read', 'update', 'delete', 'manage'] },
@@ -73,7 +77,8 @@ export const ROLE_PERMISSIONS: Record<string, Permission[]> = {
     // Vendedor/Usuario estándar
     { resource: 'dashboard', actions: ['read'] },
     { resource: 'quotes', actions: ['create', 'read', 'update', 'export'] },
-    { resource: 'clients', actions: ['create', 'read', 'update'] },
+    { resource: 'sales-notes', actions: ['create', 'read', 'update', 'export'] },
+    { resource: 'clients', actions: ['read', 'update'] },
     { resource: 'obras', actions: ['create', 'read', 'update'] },
     { resource: 'targets', actions: ['create', 'read', 'update'] },
     { resource: 'stock', actions: ['read'] },
@@ -84,7 +89,8 @@ export const ROLE_PERMISSIONS: Record<string, Permission[]> = {
     // Vendedor/Usuario estándar (alias)
     { resource: 'dashboard', actions: ['read'] },
     { resource: 'quotes', actions: ['create', 'read', 'update', 'export'] },
-    { resource: 'clients', actions: ['create', 'read', 'update'] },
+    { resource: 'sales-notes', actions: ['create', 'read', 'update', 'export'] },
+    { resource: 'clients', actions: ['read', 'update'] },
     { resource: 'obras', actions: ['create', 'read', 'update'] },
     { resource: 'targets', actions: ['create', 'read', 'update'] },
     { resource: 'stock', actions: ['read'] },

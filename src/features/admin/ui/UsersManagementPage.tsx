@@ -5,7 +5,8 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { useUsuarios } from "@/hooks/useSupabase";
 import { supabase } from "@/lib/supabase";
-import { FiUsers, FiShield, FiEdit3, FiTrash2, FiPlus, FiMail, FiCalendar, FiUserCheck, FiUserX } from "react-icons/fi";
+import Link from "next/link";
+import { FiUsers, FiShield, FiEdit3, FiTrash2, FiPlus, FiMail, FiCalendar, FiUserCheck, FiUserX, FiArrowLeft } from "react-icons/fi";
 
 interface User {
   id: string;
@@ -139,9 +140,25 @@ export function UsersManagementPage() {
 
   return (
     <div className="space-y-4 sm:space-y-6 px-4 sm:px-6 lg:px-8">
+      {/* Breadcrumb */}
+      <div className="flex items-center gap-2 text-sm text-theme-text-muted">
+        <Link href="/admin" className="hover:text-theme-text-primary transition-colors">
+          Admin
+        </Link>
+        <span>/</span>
+        <span>Usuarios</span>
+      </div>
+
       {/* Header */}
-      <div className="flex flex-col sm:flex-row gap-4 md:gap-6 justify-between items-start">
-        <div>
+      <div className="flex items-center gap-4">
+        <Link
+          href="/admin"
+          className="btn-secondary p-2"
+          title="Volver al panel de administración"
+        >
+          <FiArrowLeft size={16} />
+        </Link>
+        <div className="flex-1">
           <h1 className="text-xl md:text-2xl font-bold flex items-center gap-2 md:gap-3" style={{ color: 'var(--text-primary)' }}>
             <div 
               className="p-1.5 md:p-2 rounded-lg"
@@ -327,7 +344,7 @@ export function UsersManagementPage() {
       </div>
 
       {/* Vista móvil - Cards */}
-      <div className="block sm:hidden space-y-3">
+      <div className="block md:hidden space-y-3">
         {users.map((user) => (
           <div
             key={user.id}
@@ -433,7 +450,7 @@ export function UsersManagementPage() {
 
       {/* Vista desktop - Tabla */}
       <div 
-        className="hidden sm:block rounded-lg overflow-hidden"
+        className="hidden md:block rounded-lg overflow-hidden"
         style={{ backgroundColor: 'var(--card-bg)', border: '1px solid var(--border)' }}
       >
         <div className="overflow-x-auto w-full" style={{ WebkitOverflowScrolling: 'touch' }}>
@@ -453,7 +470,7 @@ export function UsersManagementPage() {
                   Rol
                 </th>
                 <th 
-                  className="px-2 sm:px-2 md:px-4 py-2 md:py-3 text-left text-xs md:text-sm font-medium hidden sm:table-cell"
+                  className="px-2 sm:px-2 md:px-4 py-2 md:py-3 text-left text-xs md:text-sm font-medium hidden md:table-cell"
                   style={{ color: 'var(--text-secondary)' }}
                 >
                   Estado
@@ -512,7 +529,7 @@ export function UsersManagementPage() {
                       {getRoleDisplayName(user.role)}
                     </span>
                   </td>
-                  <td className="px-2 sm:px-2 md:px-4 py-2 md:py-3 hidden sm:table-cell">
+                  <td className="px-2 sm:px-2 md:px-4 py-2 md:py-3 hidden md:table-cell">
                     <span className={`badge ${user.isActive ? 'badge-green' : 'badge-gray'} text-xs`}>
                       {user.isActive ? 'Activo' : 'Inactivo'}
                     </span>
@@ -553,12 +570,12 @@ export function UsersManagementPage() {
                             {user.isActive ? (
                               <>
                                 <FiUserX className="w-3 h-3 md:w-4 md:h-4" />
-                                <span className="hidden sm:inline">Desactivar</span>
+                                <span className="hidden md:inline">Desactivar</span>
                               </>
                             ) : (
                               <>
                                 <FiUserCheck className="w-3 h-3 md:w-4 md:h-4" />
-                                <span className="hidden sm:inline">Activar</span>
+                                <span className="hidden md:inline">Activar</span>
                               </>
                             )}
                           </button>

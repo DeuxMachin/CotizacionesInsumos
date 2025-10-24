@@ -13,6 +13,7 @@ export interface InventoryItem {
   descripcion: string | null
   unidad: string
   costo_unitario: number | null
+  margen_pct: number | null
   precio_neto: number | null
   precio_venta: number | null
   moneda: string | null
@@ -251,6 +252,7 @@ export class StockService {
       descripcion: producto.descripcion,
       unidad: producto.unidad,
       costo_unitario: producto.costo_unitario,
+      margen_pct: producto.margen_pct,
       precio_neto: producto.precio_neto,
       precio_venta: producto.precio_venta,
       moneda: producto.moneda,

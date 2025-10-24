@@ -869,14 +869,14 @@ export function ProductsForm({ items, onChange }: ProductsFormProps) {
         </button>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 xl:gap-6">
         {/* Left Panel - Product Catalog */}
-        <div ref={leftPanelRef} className="lg:col-span-2 space-y-4">
+        <div ref={leftPanelRef} className="xl:col-span-2 space-y-4">
           {/* Search and Filters */}
-          <div className="flex flex-col sm:flex-row gap-4">
+          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
             <div className="flex-1 relative">
               <FiSearch
-                className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5"
+                className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5"
                 style={{ color: 'var(--text-muted)' }}
               />
               <input
@@ -884,7 +884,7 @@ export function ProductsForm({ items, onChange }: ProductsFormProps) {
                 placeholder="Buscar productos..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-3 rounded-xl border"
+                className="w-full pl-9 sm:pl-10 pr-4 py-2 sm:py-3 rounded-lg border transition-colors"
                 style={{
                   backgroundColor: 'var(--input-bg)',
                   borderColor: 'var(--border)',
@@ -1002,7 +1002,7 @@ export function ProductsForm({ items, onChange }: ProductsFormProps) {
                 </p>
               </div>
             ) : viewMode === 'grid' ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
                 {paginatedProducts.map(product => {
                   const isInCart = items.some(item =>
                     item.productId === product.id || item.codigo === (product.sku || `PROD-${product.id}`)
@@ -1080,16 +1080,18 @@ export function ProductsForm({ items, onChange }: ProductsFormProps) {
 
         {/* Right Panel - Cart */}
         <div
-          className="lg:col-span-1 mt-0 lg:mt-[var(--align-offset)]"
+          className="xl:col-span-1 mt-4 xl:mt-0"
           style={{ ['--align-offset' as string]: `${alignOffset}px` } as React.CSSProperties}
           
         >
           <div
-            className="border rounded-xl p-6"
+            className="border rounded-lg xl:rounded-xl p-3 sm:p-4 xl:p-6 sticky top-4"
             style={{
               backgroundColor: 'var(--card-bg)',
               borderColor: 'var(--border)',
-              boxShadow: '0 4px 12px rgba(0,0,0,0.05)'
+              boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
+              maxHeight: 'calc(100vh - 200px)',
+              overflowY: 'auto'
             }}
           >
             <div className="flex items-center gap-3 mb-6">

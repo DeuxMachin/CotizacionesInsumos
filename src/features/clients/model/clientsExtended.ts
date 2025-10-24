@@ -86,7 +86,6 @@ export function mapRowToClientExtended(row: ClienteRowWithType): ClientExtended 
     .slice()
     .sort((a, b) => new Date(b.snapshot_date).getTime() - new Date(a.snapshot_date).getTime())[0];
   
-  console.log('[mapRowToClientExtended] Cliente:', row.id, 'Saldos:', saldos.length, 'Latest:', latestSaldo);
   
   const paid = latestSaldo?.pagado ?? 0;
   const pending = latestSaldo?.pendiente ?? 0;
@@ -99,11 +98,7 @@ export function mapRowToClientExtended(row: ClienteRowWithType): ClientExtended 
   const contactoPago = contactosArray.find(c => c.tipo === 'pago' && c.activo);
   const contactosSecundarios = contactosArray.filter(c => c.tipo === 'secundario' && c.activo);
   
-  console.log('[mapRowToClientExtended] Cliente:', row.id, 'Contactos:', contactosArray.length, {
-    principal: !!contactoPrincipal,
-    pago: !!contactoPago,
-    secundarios: contactosSecundarios.length
-  });
+
   
   return {
     id: row.id,

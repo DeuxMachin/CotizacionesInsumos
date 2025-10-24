@@ -3,6 +3,7 @@
 import React from 'react';
 import { FiTruck, FiMapPin, FiCalendar, FiDollarSign } from 'react-icons/fi';
 import { DeliveryInfo } from '@/core/domain/quote/Quote';
+import { AddressAutocomplete } from './AddressAutocomplete';
 
 interface DeliveryFormProps {
   data: Partial<DeliveryInfo>;
@@ -15,6 +16,22 @@ export function DeliveryForm({ data, onChange }: DeliveryFormProps) {
     onChange({
       ...data,
       [field]: value
+    });
+  };
+
+  const handleAddressSelect = (addressData: {
+    direccion: string;
+    ciudad?: string;
+    comuna?: string;
+    region?: string;
+    lat?: number;
+    lng?: number;
+  }) => {
+    onChange({
+      ...data,
+      direccion: addressData.direccion,
+      ciudad: addressData.ciudad || data.ciudad,
+      comuna: addressData.comuna || data.comuna
     });
   };
 
@@ -59,28 +76,18 @@ export function DeliveryForm({ data, onChange }: DeliveryFormProps) {
           <h3 className="text-lg font-semibold mb-4" style={{ color: 'var(--text-primary)' }}>
             Dirección de Entrega
           </h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
-            <div className="md:col-span-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
+            <div className="sm:col-span-2">
               <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>
                 Dirección de Despacho
               </label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <FiMapPin className="w-5 h-5" style={{ color: 'var(--text-muted)' }} />
-                </div>
-                <input
-                  type="text"
-                  value={data.direccion || ''}
-                  onChange={(e) => handleInputChange('direccion', e.target.value)}
-                  className="w-full pl-10 pr-4 py-3 rounded-lg border transition-colors focus:ring-2 focus:ring-offset-2"
-                  style={{
-                    backgroundColor: 'var(--input-bg)',
-                    borderColor: 'var(--border)',
-                    color: 'var(--text-primary)'
-                  }}
-                  placeholder="Dirección completa de entrega (opcional)"
-                />
-              </div>
+              <AddressAutocomplete
+                value={data.direccion || ''}
+                onChange={(value) => handleInputChange('direccion', value)}
+                onAddressSelect={handleAddressSelect}
+                placeholder="Dirección completa de entrega (opcional)"
+                showCurrentLocation={true}
+              />
               <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
                 Si no se especifica, se utilizará la dirección del cliente
               </p>
@@ -94,7 +101,7 @@ export function DeliveryForm({ data, onChange }: DeliveryFormProps) {
                 type="text"
                 value={data.comuna || ''}
                 onChange={(e) => handleInputChange('comuna', e.target.value)}
-                className="w-full px-4 py-3 rounded-lg border transition-colors focus:ring-2 focus:ring-offset-2"
+                className="w-full px-3 sm:px-4 py-2 sm:py-3 rounded-lg border transition-colors focus:ring-2 focus:ring-offset-2"
                 style={{
                   backgroundColor: 'var(--input-bg)',
                   borderColor: 'var(--border)',
@@ -112,7 +119,7 @@ export function DeliveryForm({ data, onChange }: DeliveryFormProps) {
                 type="text"
                 value={data.ciudad || ''}
                 onChange={(e) => handleInputChange('ciudad', e.target.value)}
-                className="w-full px-4 py-3 rounded-lg border transition-colors focus:ring-2 focus:ring-offset-2"
+                className="w-full px-3 sm:px-4 py-2 sm:py-3 rounded-lg border transition-colors focus:ring-2 focus:ring-offset-2"
                 style={{
                   backgroundColor: 'var(--input-bg)',
                   borderColor: 'var(--border)',
@@ -132,21 +139,21 @@ export function DeliveryForm({ data, onChange }: DeliveryFormProps) {
           <h3 className="text-lg font-semibold mb-4" style={{ color: 'var(--text-primary)' }}>
             Detalles de Entrega
           </h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
             <div>
               <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>
                 Fecha Estimada de Entrega
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <FiCalendar className="w-5 h-5" style={{ color: 'var(--text-muted)' }} />
+                  <FiCalendar className="w-4 h-4 sm:w-5 sm:h-5" style={{ color: 'var(--text-muted)' }} />
                 </div>
                 <input
                   type="date"
                   value={data.fechaEstimada || ''}
                   min={getMinDate()}
                   onChange={(e) => handleInputChange('fechaEstimada', e.target.value)}
-                  className="w-full pl-10 pr-4 py-3 rounded-lg border transition-colors focus:ring-2 focus:ring-offset-2"
+                  className="w-full pl-8 sm:pl-10 pr-3 sm:pr-4 py-2 sm:py-3 rounded-lg border transition-colors focus:ring-2 focus:ring-offset-2"
                   style={{
                     backgroundColor: 'var(--input-bg)',
                     borderColor: 'var(--border)',
@@ -162,7 +169,7 @@ export function DeliveryForm({ data, onChange }: DeliveryFormProps) {
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <FiDollarSign className="w-5 h-5" style={{ color: 'var(--text-muted)' }} />
+                  <FiDollarSign className="w-4 h-4 sm:w-5 sm:h-5" style={{ color: 'var(--text-muted)' }} />
                 </div>
                 <input
                   type="number"
@@ -170,7 +177,7 @@ export function DeliveryForm({ data, onChange }: DeliveryFormProps) {
                   step="1000"
                   value={data.costoDespacho || ''}
                   onChange={(e) => handleInputChange('costoDespacho', parseFloat(e.target.value) || 0)}
-                  className="w-full pl-10 pr-4 py-3 rounded-lg border transition-colors focus:ring-2 focus:ring-offset-2"
+                  className="w-full pl-8 sm:pl-10 pr-3 sm:pr-4 py-2 sm:py-3 rounded-lg border transition-colors focus:ring-2 focus:ring-offset-2"
                   style={{
                     backgroundColor: 'var(--input-bg)',
                     borderColor: 'var(--border)',

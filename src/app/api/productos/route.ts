@@ -50,6 +50,7 @@ export async function POST(request: NextRequest) {
     if (data.tipo_id) productData.tipo_id = data.tipo_id;
     if (data.moneda) productData.moneda = data.moneda;
     if (data.costo_unitario !== null && data.costo_unitario !== undefined) productData.costo_unitario = data.costo_unitario;
+    if (data.margen_pct !== null && data.margen_pct !== undefined) productData.margen_pct = data.margen_pct;
     if (data.precio_neto !== null && data.precio_neto !== undefined) productData.precio_neto = data.precio_neto;
     if (data.precio_venta !== null && data.precio_venta !== undefined) productData.precio_venta = data.precio_venta;
     if (data.ficha_tecnica) productData.ficha_tecnica = data.ficha_tecnica;

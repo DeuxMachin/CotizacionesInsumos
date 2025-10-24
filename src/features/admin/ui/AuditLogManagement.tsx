@@ -282,26 +282,26 @@ export default function AuditLogManagement() {
   };
 
   return (
-    <div className="space-y-6 px-3 sm:px-4">
+    <div className="space-y-4 md:space-y-6 px-4 sm:px-6">
       {/* Encabezado */}
       <div>
-        <h1 className="text-2xl font-bold mb-2" style={{ color: 'var(--text-primary)' }}>
+        <h1 className="text-2xl md:text-3xl font-bold mb-2" style={{ color: 'var(--text-primary)' }}>
           Registro de Auditoría
         </h1>
-        <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+        <p className="text-sm md:text-base" style={{ color: 'var(--text-secondary)' }}>
           Visualiza y administra todas las actividades del sistema con acceso completo de administrador.
         </p>
       </div>
 
       {/* Filtros y búsqueda */}
       <div 
-        className="rounded-xl p-3 sm:p-6"
+        className="rounded-xl p-4 md:p-6 w-full overflow-hidden"
         style={{ 
           backgroundColor: 'var(--bg-primary)',
           border: '1px solid var(--border-subtle)' 
         }}
       >
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-3 sm:mb-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 mb-3 md:mb-4">
           {/* Búsqueda */}
           <div>
             <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-primary)' }}>
@@ -315,7 +315,7 @@ export default function AuditLogManagement() {
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
-                className="w-full pl-10 pr-4 py-2 border rounded-lg text-sm"
+                className="w-full pl-10 pr-4 py-2 border rounded-lg text-sm max-w-full"
                 style={{ 
                   backgroundColor: 'var(--bg-secondary)',
                   borderColor: 'var(--border-subtle)',
@@ -333,7 +333,7 @@ export default function AuditLogManagement() {
             <select
               value={selectedEventType}
               onChange={(e) => setSelectedEventType(e.target.value)}
-              className="form-select"
+              className="form-select w-full max-w-full"
             >
               {eventTypes.map(type => (
                 <option key={type.value} value={type.value}>{type.label}</option>
@@ -349,7 +349,7 @@ export default function AuditLogManagement() {
             <select
               value={selectedDateRange}
               onChange={(e) => setSelectedDateRange(e.target.value)}
-              className="form-select"
+              className="form-select w-full max-w-full"
             >
               {dateRanges.map(range => (
                 <option key={range.value} value={range.value}>{range.label}</option>
@@ -358,19 +358,19 @@ export default function AuditLogManagement() {
           </div>
 
           {/* Acciones */}
-          <div className="flex flex-col sm:flex-row items-end gap-2 sm:gap-2">
+          <div className="flex flex-col md:flex-row items-stretch md:items-end gap-2 md:gap-2 w-full">
             <button
               onClick={handleSearch}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
+              className="flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm w-full md:w-auto max-w-full"
             >
-              <FiSearch className="w-4 h-4" />
+              <FiSearch className="w-4 h-4 flex-shrink-0" />
               Buscar
             </button>
             <button
               onClick={handleExport}
-              className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm"
+              className="flex items-center justify-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm w-full md:w-auto max-w-full"
             >
-              <FiDownload className="w-4 h-4" />
+              <FiDownload className="w-4 h-4 flex-shrink-0" />
               Exportar
             </button>
           </div>
@@ -379,14 +379,14 @@ export default function AuditLogManagement() {
 
       {/* Lista de actividades */}
       <div 
-        className="rounded-xl overflow-hidden"
+        className="rounded-xl overflow-hidden w-full"
         style={{ 
           backgroundColor: 'var(--bg-primary)',
           border: '1px solid var(--border-subtle)' 
         }}
       >
         {/* Encabezado de la tabla */}
-        <div className="px-3 sm:px-4 md:px-6 py-3 sm:py-4 border-b" style={{ borderColor: 'var(--border-subtle)' }}>
+        <div className="px-4 sm:px-6 py-3 sm:py-4 border-b w-full" style={{ borderColor: 'var(--border-subtle)' }}>
           <div className="flex items-center justify-between">
             <h3 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>
               Actividades del Sistema
@@ -398,7 +398,7 @@ export default function AuditLogManagement() {
         </div>
 
         {/* Contenido */}
-        <div className="p-2 sm:p-3 md:p-6">
+        <div className="p-4 sm:p-6 w-full">
           {loading ? (
             <div className="space-y-4">
               {Array.from({ length: 10 }).map((_, i) => (
@@ -447,29 +447,29 @@ export default function AuditLogManagement() {
                 return (
                   <li 
                     key={activity.id || idx} 
-                    className="py-3 sm:py-4 flex items-start gap-3 sm:gap-4 hover:bg-gray-50 dark:hover:bg-gray-800/50 -mx-2 px-2 rounded-lg transition-colors"
+                    className="py-3 md:py-4 flex items-start gap-3 md:gap-4 hover:bg-gray-50 dark:hover:bg-gray-800/50 -mx-2 px-2 rounded-lg transition-colors"
                   >
                     {ICONS[iconType]}
                     <div className="flex-1 min-w-0">
-                      <div className="font-medium" style={{ color: 'var(--text-primary)' }}>
+                      <div className="font-medium break-words" style={{ color: 'var(--text-primary)' }}>
                         {description}
                       </div>
-                      <div className="flex items-center gap-2 text-xs mt-1" style={{ color: 'var(--text-secondary)' }}>
-                        <span>{formatRelativeTime(activity.created_at || new Date().toISOString())}</span>
+                      <div className="flex flex-wrap items-center gap-1 md:gap-2 text-xs mt-1" style={{ color: 'var(--text-secondary)' }}>
+                        <span className="whitespace-nowrap">{formatRelativeTime(activity.created_at || new Date().toISOString())}</span>
                         {userName && (
                           <>
-                            <span>•</span>
-                            <span>{userName}</span>
+                            <span className="hidden sm:inline">•</span>
+                            <span className="truncate max-w-[100px] sm:max-w-none">{userName}</span>
                           </>
                         )}
                         {typeof metadata?.folio === 'string' && (
                           <>
-                            <span>•</span>
-                            <span className="font-mono">{metadata.folio}</span>
+                            <span className="hidden sm:inline">•</span>
+                            <span className="font-mono truncate max-w-[80px] sm:max-w-none">{metadata.folio}</span>
                           </>
                         )}
-                        <span>•</span>
-                        <span className="font-mono text-xs px-2 py-1 rounded" style={{ backgroundColor: 'var(--bg-secondary)' }}>
+                        <span className="hidden sm:inline">•</span>
+                        <span className="font-mono text-xs px-1 md:px-2 py-1 rounded whitespace-nowrap" style={{ backgroundColor: 'var(--bg-secondary)' }}>
                           {eventType}
                         </span>
                       </div>
@@ -483,8 +483,8 @@ export default function AuditLogManagement() {
 
         {/* Paginación */}
         {!loading && !error && pagination.totalPages > 1 && (
-          <div className="px-3 sm:px-4 md:px-6 py-3 sm:py-4 border-t flex items-center justify-between" style={{ borderColor: 'var(--border-subtle)' }}>
-            <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+          <div className="px-4 sm:px-6 py-3 sm:py-4 border-t flex flex-col sm:flex-row items-center justify-between gap-2 sm:gap-0 w-full" style={{ borderColor: 'var(--border-subtle)' }}>
+            <div className="text-sm text-center sm:text-left" style={{ color: 'var(--text-secondary)' }}>
               Página {pagination.currentPage} de {pagination.totalPages}
             </div>
             <div className="flex items-center gap-2">
@@ -496,7 +496,7 @@ export default function AuditLogManagement() {
               >
                 <FiChevronLeft className="w-4 h-4" />
               </button>
-              <span className="px-3 py-1 text-sm" style={{ color: 'var(--text-primary)' }}>
+              <span className="px-3 py-1 text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
                 {pagination.currentPage}
               </span>
               <button

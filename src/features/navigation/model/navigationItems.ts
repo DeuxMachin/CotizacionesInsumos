@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { FiHome, FiFileText, FiUsers, FiPackage, FiBarChart2, FiMapPin, FiShield, FiTool } from "react-icons/fi";
+import { FiHome, FiFileText, FiUsers, FiPackage, FiBarChart2, FiMapPin, FiShield, FiTool, FiShoppingCart } from "react-icons/fi";
 import type { Section } from "./useSection";
 import { usePermissions, type Resource, type Action } from "@/features/auth/model/permissions";
 
@@ -22,6 +22,7 @@ export interface NavigationItem {
 export const NAVIGATION_ICONS = {
   dashboard: FiHome,
   cotizaciones: FiFileText,
+  'notas-venta': FiShoppingCart,
   clientes: FiUsers,
   obras: FiTool,
   reuniones: FiUsers,
@@ -47,6 +48,14 @@ export const ALL_NAVIGATION_ITEMS: NavigationItem[] = [
     label: "Cotizaciones",
     description: "Gestión de cotizaciones y presupuestos",
     resource: "quotes",
+    requiredActions: ["read"],
+  },
+  {
+    key: "notas-venta",
+    iconName: "notas-venta",
+    label: "Notas De Venta",
+    description: "Gestión de notas de venta",
+    resource: "sales-notes",
     requiredActions: ["read"],
   },
   {
@@ -85,7 +94,7 @@ export const ALL_NAVIGATION_ITEMS: NavigationItem[] = [
   {
     key: "stock",
     iconName: "stock",
-    label: "Stock",
+    label: "Productos",
     description: "Control de inventario",
     resource: "stock",
     requiredActions: ["read"],
