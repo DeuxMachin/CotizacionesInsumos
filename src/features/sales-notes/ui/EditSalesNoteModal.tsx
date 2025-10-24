@@ -193,19 +193,23 @@ export function EditSalesNoteModal({ isOpen, onClose, salesNote, onSave }: EditS
                 <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>
                   Forma de Pago
                 </label>
-                <input
-                  type="text"
+                <select
                   name="forma_pago_final"
                   value={formData.forma_pago_final}
                   onChange={handleChange}
-                  placeholder="Ej: Contado, Crédito 30 días"
                   className="w-full px-4 py-2 rounded-lg border transition-colors"
                   style={{
                     backgroundColor: 'var(--bg-primary)',
                     borderColor: 'var(--border)',
                     color: 'var(--text-primary)'
                   }}
-                />
+                >
+                  <option value="Transferencia bancaria">Transferencia bancaria</option>
+                  <option value="Efectivo">Efectivo</option>
+                  <option value="Crédito">Crédito</option>
+                  <option value="Crédito 45 días">Crédito 45 días</option>
+                  <option value="Cheque">Cheque</option>
+                </select>
               </div>
 
               <div>

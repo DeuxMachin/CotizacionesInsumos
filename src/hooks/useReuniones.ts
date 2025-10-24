@@ -2,6 +2,16 @@ import { useState, useEffect } from 'react';
 import { useAuthHeaders } from './useAuthHeaders';
 import { ReunionObra, FiltroReuniones } from '@/features/obras/types/obras';
 
+class ReunionError extends Error {
+  activeReunion?: ReunionObra | null;
+
+  constructor(message: string, activeReunion?: ReunionObra | null) {
+    super(message);
+    this.name = 'ReunionError';
+    this.activeReunion = activeReunion;
+  }
+}
+
 export function useReuniones(obraId?: number) {
   const [reuniones, setReuniones] = useState<ReunionObra[]>([]);
   const [loading, setLoading] = useState(false);
@@ -46,11 +56,23 @@ export function useReuniones(obraId?: number) {
       });
 
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Error al iniciar reunión');
+        console.log('❌ Response not OK:', response.status, response.statusText);
+        let errorData;
+        try {
+          errorData = await response.json();
+          console.log('❌ Error data:', errorData);
+        } catch (jsonError) {
+          console.log('❌ Failed to parse error JSON:', jsonError);
+          errorData = { error: `HTTP ${response.status}: ${response.statusText}` };
+        }
+        const error = new ReunionError(errorData.error || 'Error desconocido', errorData.activeReunion);
+        console.log('❌ Throwing error:', error.message, 'Active reunion:', error.activeReunion);
+        throw error;
       }
 
+      console.log('✅ Response OK, parsing JSON...');
       const reunion = await response.json();
+      console.log('✅ Reunion created:', reunion);
       setReuniones(prev => [reunion, ...prev]);
       return reunion;
     } catch (err) {
@@ -66,8 +88,14 @@ export function useReuniones(obraId?: number) {
       });
 
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Error al finalizar reunión');
+        let errorData;
+        try {
+          errorData = await response.json();
+        } catch {
+          errorData = { error: 'Error desconocido' };
+        }
+        const error = new ReunionError(errorData.error || 'Error desconocido', errorData.activeReunion);
+        throw error;
       }
 
       const reunion = await response.json();

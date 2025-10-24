@@ -24,20 +24,37 @@ export async function POST(
 
     const { location } = await request.json();
 
-    // Check if there's already an active reunion for this user and obra
-    const { data: existingReunion } = await supabase
+    // Check if there's already an active reunion for this user in any obra
+    const { data: existingReunions, error: checkError } = await supabase
       .from('obra_visitas')
-      .select('*')
-      .eq('obra_id', obraId)
+      .select(`
+        *,
+        obras!inner (
+          nombre
+        )
+      `)
       .eq('vendedor_id', payload.sub)
       .eq('estado', 'abierta')
-      .eq('tipo', 'reunion')
-      .single();
+      .eq('tipo', 'reunion');
 
-    if (existingReunion) {
+    if (checkError) {
+      console.error('Error checking existing reunions:', checkError);
+      return NextResponse.json({ error: 'Error al verificar reuniones activas' }, { status: 500 });
+    }
+
+    if (existingReunions && existingReunions.length > 0) {
+      const existingReunion = existingReunions[0];
       return NextResponse.json(
-        { error: 'Ya tienes una reunión activa en esta obra' },
-        { status: 400 }
+        {
+          error: 'Ya tienes una reunión activa',
+          activeReunion: {
+            id: existingReunion.id,
+            obraId: existingReunion.obra_id,
+            obraNombre: existingReunion.obras?.nombre || 'Obra sin nombre',
+            startTime: existingReunion.inicio_at
+          }
+        },
+        { status: 409 }
       );
     }
 

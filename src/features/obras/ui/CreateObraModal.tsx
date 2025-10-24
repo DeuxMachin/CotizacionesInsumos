@@ -149,7 +149,7 @@ export function CreateObraModal({
       };
       loadVendedores();
     }
-  }, [isAdmin, isOpen, currentUserId]);
+  }, [isAdmin, isOpen, currentUserId, selectedVendedorId]);
 
   const estadosObra: { value: EstadoObra; label: string; color: string }[] = [
     { value: 'planificacion', label: 'Planificación', color: 'var(--info-text)' },
@@ -339,11 +339,11 @@ export function CreateObraModal({
 
 
 
-    // Validación de 5 contactos: nombre obligatorio; si no existe, usar botón "No existe"
+    // Validación de 5 contactos: nombre obligatorio; si no existe, usar botón "Sin información"
     const contactosErrors: Record<number, { nombre?: string }> = {};
     contacts.forEach((c, i) => {
       if (!c.nombre || !c.nombre.trim()) {
-        contactosErrors[i] = { nombre: 'Nombre requerido o marque "No existe"' };
+        contactosErrors[i] = { nombre: 'Nombre requerido o presiona "Sin información"' };
       }
     });
     if (Object.keys(contactosErrors).length > 0) {
@@ -394,7 +394,7 @@ export function CreateObraModal({
     }
     if (step === 3) {
       contacts.forEach((c, i) => {
-        if (!c.nombre || !c.nombre.trim()) msgs.push(`• Contacto &quot;${REQUIRED_CARGOS[i]}&quot;: nombre requerido o marque "No existe"`);
+        if (!c.nombre || !c.nombre.trim()) msgs.push(`• Contacto &quot;${REQUIRED_CARGOS[i]}&quot;: nombre requerido o presiona "Sin información"`);
       });
     }
     if (step === 4) {
@@ -1162,34 +1162,41 @@ export function CreateObraModal({
                   </h3>
                   <div className="flex items-center justify-between mb-2">
                     <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                      Los cargos están fijos y no se pueden cambiar. Si un contacto no existe, presiona &quot;No existe&quot; para continuar.
+                      Los cargos están fijos y no se pueden cambiar. Si no hay información de un contacto, presiona &quot;Sin información&quot; para ese campo.
                     </p>
                     <span className="text-xs px-2 py-0.5 rounded-full" style={{ backgroundColor: 'var(--bg-secondary)', color: 'var(--text-secondary)', border: '1px solid var(--border)' }}>
                       {contacts.filter(c => (c.nombre || '').trim()).length}/5 completos
                     </span>
                   </div>
 
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     {contacts.map((c, idx) => (
-                      <div key={REQUIRED_CARGOS[idx]} className="p-3 rounded border" style={{ borderColor: 'var(--border)' }}>
-                        <div className="grid grid-cols-1 sm:grid-cols-5 gap-2 items-end">
-                          <div className="sm:col-span-2">
-                            <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>Cargo</label>
-                            <input type="text" value={REQUIRED_CARGOS[idx]} readOnly className="w-full px-3 py-2 rounded-lg border bg-[var(--bg-secondary)]" style={{ borderColor: 'var(--input-border)', color: 'var(--text-primary)' }} />
+                      <div key={REQUIRED_CARGOS[idx]} className="p-4 rounded-lg border" style={{ borderColor: 'var(--border)', backgroundColor: 'var(--card-bg)' }}>
+                        <div className="space-y-3">
+                          <div className="flex items-center gap-2 pb-2 border-b" style={{ borderColor: 'var(--border)' }}>
+                            <FiUser className="w-4 h-4" style={{ color: 'var(--accent-primary)' }} />
+                            <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{REQUIRED_CARGOS[idx]}</span>
+                            {idx === 0 && <span className="text-xs text-red-500">*</span>}
                           </div>
-                          <div className="sm:col-span-3">
-                            <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>Nombre {idx===0 ? '*' : ''}</label>
+                          
+                          <div>
+                            <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>Nombre</label>
                             <div className="flex gap-2">
                               <input
                                 type="text"
                                 value={c.nombre}
                                 onChange={(e) => setContacts(prev => prev.map((p, i) => i===idx ? { ...p, nombre: e.target.value } : p))}
                                 placeholder="Nombre del contacto"
-                                className="flex-1 px-3 py-2 rounded-lg border focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                className="flex-1 px-3 py-2 rounded-lg border focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
                                 style={{ backgroundColor: 'var(--input-bg)', borderColor: errors.contactos?.[idx]?.nombre ? 'var(--danger-border)' : 'var(--input-border)', color: 'var(--text-primary)' }}
                               />
-                              <button type="button" className="px-2 py-2 text-xs rounded border" onClick={() => setContacts(prev => prev.map((p, i) => i===idx ? { ...p, nombre: 'No existe', telefono: '', email: '' } : p))} style={{ borderColor: 'var(--border)', color: 'var(--text-secondary)' }}>
-                                No existe
+                              <button 
+                                type="button" 
+                                className="px-3 py-2 text-xs rounded-lg border transition-colors hover:bg-opacity-80 whitespace-nowrap"
+                                onClick={() => setContacts(prev => prev.map((p, i) => i===idx ? { ...p, nombre: 'Sin informacion del contacto', telefono: '', email: '' } : p))}
+                                style={{ borderColor: 'var(--border)', color: 'var(--text-secondary)', backgroundColor: 'var(--bg-secondary)' }}
+                              >
+                                Sin información
                               </button>
                             </div>
                             {errors.contactos?.[idx]?.nombre && (
@@ -1199,13 +1206,30 @@ export function CreateObraModal({
                               </span>
                             )}
                           </div>
-                          <div className="sm:col-span-2">
-                            <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>Teléfono</label>
-                            <input type="tel" value={c.telefono || ''} onChange={(e) => setContacts(prev => prev.map((p, i) => i===idx ? { ...p, telefono: e.target.value } : p))} placeholder="+56 9 1234 5678" className="w-full px-3 py-2 rounded-lg border" style={{ backgroundColor: 'var(--input-bg)', borderColor: 'var(--input-border)', color: 'var(--text-primary)' }} />
-                          </div>
-                          <div className="sm:col-span-3">
-                            <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>Email</label>
-                            <input type="email" value={c.email || ''} onChange={(e) => setContacts(prev => prev.map((p, i) => i===idx ? { ...p, email: e.target.value } : p))} placeholder="contacto@ejemplo.com" className="w-full px-3 py-2 rounded-lg border" style={{ backgroundColor: 'var(--input-bg)', borderColor: 'var(--input-border)', color: 'var(--text-primary)' }} />
+                          
+                          <div className="grid grid-cols-2 gap-3">
+                            <div>
+                              <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>Teléfono</label>
+                              <input 
+                                type="tel" 
+                                value={c.telefono || ''} 
+                                onChange={(e) => setContacts(prev => prev.map((p, i) => i===idx ? { ...p, telefono: e.target.value } : p))} 
+                                placeholder="+56 9 1234 5678" 
+                                className="w-full px-3 py-2 rounded-lg border text-sm" 
+                                style={{ backgroundColor: 'var(--input-bg)', borderColor: 'var(--input-border)', color: 'var(--text-primary)' }} 
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>Email</label>
+                              <input 
+                                type="email" 
+                                value={c.email || ''} 
+                                onChange={(e) => setContacts(prev => prev.map((p, i) => i===idx ? { ...p, email: e.target.value } : p))} 
+                                placeholder="contacto@ejemplo.com" 
+                                className="w-full px-3 py-2 rounded-lg border text-sm" 
+                                style={{ backgroundColor: 'var(--input-bg)', borderColor: 'var(--input-border)', color: 'var(--text-primary)' }} 
+                              />
+                            </div>
                           </div>
                         </div>
                       </div>

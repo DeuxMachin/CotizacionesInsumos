@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo, useEffect, useRef } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   FiPackage,
   FiPlus,
@@ -14,7 +14,10 @@ import {
   FiCheck,
   FiX,
   FiChevronUp,
-  FiChevronDown
+  FiChevronDown,
+  FiTrendingDown,
+  FiHash,
+  FiBox
 } from 'react-icons/fi';
 import { QuoteItem } from '@/core/domain/quote/Quote';
 import { useProducts, Product } from '../../model/useProducts';
@@ -332,173 +335,276 @@ const CartItem: React.FC<CartItemProps> = ({
 
   return (
     <div
-      className="border rounded-lg p-4 hover:shadow-sm transition-shadow"
+      className="group relative overflow-hidden rounded-xl border-2 transition-all duration-200 hover:shadow-lg hover:border-blue-400 hover:scale-[1.01] flex-shrink-0"
       style={{
         backgroundColor: 'var(--card-bg)',
-        borderColor: 'var(--border)'
+        borderColor: 'var(--border)',
+        boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+        width: '300px',
+        minWidth: '300px'
       }}
     >
-      <div className="flex items-start justify-between mb-3">
-        <div className="flex-1 min-w-0">
-          <h5 className="font-semibold text-sm truncate mb-1" style={{ color: 'var(--text-primary)' }}>
-            {item.descripcion}
-          </h5>
-          <p className="text-xs font-mono" style={{ color: 'var(--text-secondary)' }}>
-            {item.codigo}
-          </p>
-        </div>
+      {/* Subtle gradient overlay */}
+      <div
+        className="absolute inset-0 opacity-0 group-hover:opacity-3 transition-opacity duration-300 rounded-xl"
+        style={{
+          background: 'linear-gradient(135deg, var(--primary) 0%, var(--accent-primary) 100%)'
+        }}
+      />
 
-        <div className="flex gap-1 ml-2">
-          <button
-            onClick={() => onEdit(index)}
-            className="p-1.5 rounded transition-colors"
-            style={{ color: 'var(--info-text)' }}
-            title="Editar"
-          >
-            <FiEdit3 className="w-3.5 h-3.5" />
-          </button>
-          <button
-            onClick={() => onRemove(index)}
-            className="p-1.5 rounded transition-colors"
-            style={{ color: 'var(--danger-text)' }}
-            title="Eliminar"
-          >
-            <FiTrash2 className="w-3.5 h-3.5" />
-          </button>
-        </div>
-      </div>
+      {/* Main content container */}
+      <div className="relative p-5">
+        {/* Header section with product info and actions */}
+        <div className="flex items-start gap-3 mb-4">
+          {/* Product visual indicator */}
+          <div className="flex-shrink-0">
+            <div
+              className="w-12 h-12 rounded-lg flex items-center justify-center shadow-sm"
+              style={{
+                backgroundColor: 'var(--accent-bg)',
+                color: 'var(--accent-text)',
+                boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+              }}
+            >
+              <FiPackage className="w-6 h-6" />
+            </div>
+          </div>
 
-      <div className="space-y-3">
-        {/* Quantity Controls */}
-        <div className="flex items-center justify-between">
-          <span className="text-xs font-medium flex items-center gap-1" style={{ color: 'var(--text-secondary)' }}>
-            Cantidad
-            <span className="text-xs opacity-60" title="Haz click para editar"> </span>
-          </span>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => onUpdateQuantity(index, Math.max(1, item.cantidad - 1))}
-              className="w-7 h-7 rounded-full flex items-center justify-center border transition-colors hover:opacity-80"
-              style={{
-                borderColor: 'var(--border)',
-                backgroundColor: 'var(--bg-secondary)',
-                color: 'var(--text-primary)'
-              }}
-              title="Disminuir cantidad"
-            >
-              <FiMinus className="w-3 h-3" />
-            </button>
-            <input
-              type="number"
-              min="1"
-              step="1"
-              value={item.cantidad}
-              onChange={(e) => {
-                const value = e.target.value;
-                if (value === '') return; // Allow empty input temporarily
-                const newQuantity = parseInt(value);
-                if (!isNaN(newQuantity) && newQuantity >= 1) {
-                  onUpdateQuantity(index, newQuantity);
-                }
-              }}
-              onBlur={(e) => {
-                const value = e.target.value;
-                if (value === '' || parseInt(value) < 1) {
-                  onUpdateQuantity(index, 1); // Reset to 1 if invalid
-                }
-              }}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  (e.target as HTMLInputElement).blur(); // Trigger blur on Enter
-                }
-              }}
-              className="w-16 px-2 py-1 text-sm rounded border text-center font-semibold focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-              style={{
-                backgroundColor: 'var(--input-bg)',
-                borderColor: 'var(--border)',
-                color: 'var(--text-primary)'
-              }}
-              title="Cantidad (presiona Enter para confirmar)"
-              placeholder="1"
-            />
-            <button
-              onClick={() => onUpdateQuantity(index, item.cantidad + 1)}
-              className="w-7 h-7 rounded-full flex items-center justify-center border transition-colors hover:opacity-80"
-              style={{
-                borderColor: 'var(--border)',
-                backgroundColor: 'var(--bg-secondary)',
-                color: 'var(--text-primary)'
-              }}
-              title="Aumentar cantidad"
-            >
-              <FiPlus className="w-3 h-3" />
-            </button>
-            <span className="text-xs ml-2" style={{ color: 'var(--text-secondary)' }}>
-              {item.unidad}
-            </span>
+          {/* Product details */}
+          <div className="flex-1 min-w-0">
+            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
+              <div className="flex-1">
+                <h4
+                  className="text-lg font-bold leading-tight mb-2 line-clamp-2"
+                  style={{ color: 'var(--text-primary)' }}
+                  title={item.descripcion}
+                >
+                  {item.descripcion}
+                </h4>
+                <div className="flex flex-wrap items-center gap-2">
+                  <span
+                    className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium"
+                    style={{
+                      backgroundColor: 'var(--bg-secondary)',
+                      color: 'var(--text-secondary)',
+                      border: '1px solid var(--border)'
+                    }}
+                  >
+                    <FiHash className="w-3 h-3" />
+                    {item.codigo}
+                  </span>
+                  <span
+                    className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium"
+                    style={{
+                      backgroundColor: 'var(--primary)',
+                      color: 'var(--button-text)'
+                    }}
+                  >
+                    <FiBox className="w-3 h-3" />
+                    {item.unidad}
+                  </span>
+                </div>
+              </div>
+
+              {/* Action buttons */}
+              <div className="flex gap-1 self-start">
+                <button
+                  onClick={() => onEdit(index)}
+                  className="p-2 rounded-md transition-all hover:scale-110 hover:shadow-sm border"
+                  style={{
+                    color: 'var(--info-text)',
+                    backgroundColor: 'var(--bg-secondary)',
+                    borderColor: 'var(--border)'
+                  }}
+                  title="Editar producto"
+                >
+                  <FiEdit3 className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => onRemove(index)}
+                  className="p-2 rounded-md transition-all hover:scale-110 hover:shadow-sm border"
+                  style={{
+                    color: 'var(--danger-text)',
+                    backgroundColor: 'var(--bg-secondary)',
+                    borderColor: 'var(--border)'
+                  }}
+                  title="Eliminar producto"
+                >
+                  <FiTrash2 className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
           </div>
         </div>
 
-        {/* Discount */}
-        <div className="flex items-center justify-between">
-          <span className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
-            Descuento
-          </span>
-          <div className="flex items-center gap-2">
-            <input
-              type="number"
-              min="0"
-              max="100"
-              step="0.1"
-              value={item.descuento || ''}
-              placeholder="0"
-              onChange={(e) => {
-                const value = e.target.value;
-                if (value === '') {
-                  // If empty, set to 0
-                  onUpdateDiscount(index, 0);
-                } else {
-                  const numericValue = parseFloat(value);
-                  if (!isNaN(numericValue)) {
-                    // Ensure value is between 0 and 100
-                    const clampedValue = Math.max(0, Math.min(100, numericValue));
-                    onUpdateDiscount(index, clampedValue);
-                  }
-                }
-              }}
-              onBlur={(e) => {
-                // If field is empty on blur, ensure it's 0
-                if (e.target.value === '') {
-                  onUpdateDiscount(index, 0);
-                }
-              }}
-              onFocus={(e) => {
-                // If currently showing 0, clear it for easier editing
-                if (e.target.value === '0' || e.target.value === '') {
-                  e.target.value = '';
-                }
-              }}
-              className="w-16 px-2 py-1 text-xs rounded border text-center focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-              style={{
-                backgroundColor: 'var(--input-bg)',
-                borderColor: 'var(--border)',
-                color: 'var(--text-primary)'
-              }}
-              title="Descuento porcentual (0-100%)"
-            />
-            <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>%</span>
-          </div>
-        </div>
+        {/* Controls and pricing section */}
+        <div className="grid grid-cols-1 gap-4">
+          {/* Quantity and Discount Controls */}
+          <div className="space-y-3">
+            {/* Quantity Control */}
+            <div className="space-y-2">
+              <label className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--text-secondary)' }}>
+                Cantidad
+              </label>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => onUpdateQuantity(index, Math.max(1, item.cantidad - 1))}
+                  className="w-9 h-9 rounded-lg flex items-center justify-center border transition-all hover:scale-105 active:scale-95 text-sm font-bold"
+                  style={{
+                    borderColor: 'var(--border)',
+                    backgroundColor: 'var(--bg-secondary)',
+                    color: 'var(--text-primary)',
+                    boxShadow: '0 1px 2px rgba(0,0,0,0.1)'
+                  }}
+                  title="Disminuir cantidad"
+                >
+                  <FiMinus className="w-4 h-4" />
+                </button>
 
-        {/* Price Summary */}
-        <div className="pt-2 border-t" style={{ borderColor: 'var(--border)' }}>
-          <div className="flex justify-between items-center text-sm">
-            <span style={{ color: 'var(--text-secondary)' }}>
-              ${item.precioUnitario.toLocaleString('es-CL')} c/u
-            </span>
-            <span className="font-bold" style={{ color: 'var(--success-text)' }}>
-              ${subtotal.toLocaleString('es-CL')}
-            </span>
+                <input
+                  type="number"
+                  min="1"
+                  step="1"
+                  value={item.cantidad}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    if (value === '') return;
+                    const newQuantity = parseInt(value);
+                    if (!isNaN(newQuantity) && newQuantity >= 1) {
+                      onUpdateQuantity(index, newQuantity);
+                    }
+                  }}
+                  onBlur={(e) => {
+                    const value = e.target.value;
+                    if (value === '' || parseInt(value) < 1) {
+                      onUpdateQuantity(index, 1);
+                    }
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      (e.target as HTMLInputElement).blur();
+                    }
+                  }}
+                  className="flex-1 px-3 py-2 text-center font-semibold text-sm rounded-lg border focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                  style={{
+                    backgroundColor: 'var(--input-bg)',
+                    borderColor: 'var(--border)',
+                    color: 'var(--text-primary)',
+                    minWidth: '60px'
+                  }}
+                  title="Cantidad (presiona Enter para confirmar)"
+                  placeholder="1"
+                />
+
+                <button
+                  onClick={() => onUpdateQuantity(index, item.cantidad + 1)}
+                  className="w-9 h-9 rounded-lg flex items-center justify-center border transition-all hover:scale-105 active:scale-95 text-sm font-bold"
+                  style={{
+                    borderColor: 'var(--border)',
+                    backgroundColor: 'var(--bg-secondary)',
+                    color: 'var(--text-primary)',
+                    boxShadow: '0 1px 2px rgba(0,0,0,0.1)'
+                  }}
+                  title="Aumentar cantidad"
+                >
+                  <FiPlus className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+
+            {/* Discount Control */}
+            <div className="space-y-2">
+              <label className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>
+                Descuento
+              </label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="number"
+                  min="0"
+                  max="100"
+                  step="0.1"
+                  value={item.descuento || ''}
+                  placeholder="0"
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    if (value === '') {
+                      onUpdateDiscount(index, 0);
+                    } else {
+                      const numericValue = parseFloat(value);
+                      if (!isNaN(numericValue)) {
+                        const clampedValue = Math.max(0, Math.min(100, numericValue));
+                        onUpdateDiscount(index, clampedValue);
+                      }
+                    }
+                  }}
+                  onBlur={(e) => {
+                    if (e.target.value === '') {
+                      onUpdateDiscount(index, 0);
+                    }
+                  }}
+                  onFocus={(e) => {
+                    if (e.target.value === '' || e.target.value === '0') {
+                      e.target.value = '';
+                    }
+                  }}
+                  className="flex-1 px-3 py-2 text-center font-semibold text-sm rounded-lg border focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                  style={{
+                    backgroundColor: 'var(--input-bg)',
+                    borderColor: 'var(--border)',
+                    color: 'var(--text-primary)',
+                    minWidth: '60px'
+                  }}
+                  title="Descuento porcentual (0-100%)"
+                />
+                <span className="text-sm font-bold px-2" style={{ color: 'var(--text-secondary)' }}>%</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Price Summary Card */}
+          <div>
+            <div
+              className="rounded-lg p-4 border"
+              style={{
+                backgroundColor: 'var(--bg-secondary)',
+                borderColor: 'var(--border)',
+                boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
+              }}
+            >
+              <div className="space-y-3">
+                {/* Unit Price */}
+                <div className="text-center">
+                  <p className="text-xs font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>
+                    Precio Unitario
+                  </p>
+                  <p className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>
+                    ${item.precioUnitario.toLocaleString('es-CL')}
+                  </p>
+                </div>
+
+                {/* Subtotal */}
+                <div className="text-center border-t border-dashed pt-3" style={{ borderColor: 'var(--border)' }}>
+                  <p className="text-xs font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>
+                    Subtotal
+                  </p>
+                  <p className="text-lg font-bold" style={{ color: 'var(--success-text)' }}>
+                    ${subtotal.toLocaleString('es-CL')}
+                  </p>
+                </div>
+
+                {/* Savings indicator */}
+                {(item.descuento || 0) > 0 && (
+                  <div className="mt-3 p-2 rounded border border-dashed" style={{ borderColor: 'var(--success-text)', backgroundColor: 'rgba(34, 197, 94, 0.05)' }}>
+                    <div className="flex items-center justify-center gap-1">
+                      <FiTrendingDown className="w-3 h-3" style={{ color: 'var(--success-text)' }} />
+                      <span className="text-xs font-medium" style={{ color: 'var(--success-text)' }}>
+                        -${(item.cantidad * item.precioUnitario * ((item.descuento || 0) / 100)).toLocaleString('es-CL')}
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -608,43 +714,14 @@ export function ProductsForm({ items, onChange }: ProductsFormProps) {
   const [toasts, setToasts] = useState<Array<{ id: number; message: string; type: 'success' | 'error' | 'info' }>>([]);
   const [currentPage, setCurrentPage] = useState(1);
 
-  // Alignment refs and state (to align Cart top with Categories row)
-  const leftPanelRef = useRef<HTMLDivElement | null>(null);
-  const categoryAnchorRef = useRef<HTMLDivElement | null>(null);
-  const [alignOffset, setAlignOffset] = useState(0);
-
-  useEffect(() => {
-    const computeOffset = () => {
-      if (leftPanelRef.current && categoryAnchorRef.current) {
-        try {
-          const offset = categoryAnchorRef.current.offsetTop - leftPanelRef.current.offsetTop;
-          setAlignOffset(Math.max(0, offset));
-        } catch {
-          // no-op
-        }
-      }
-    };
-
-    // Compute on mount and when window resizes
-    computeOffset();
-    const onResize = () => computeOffset();
-    window.addEventListener('resize', onResize);
-    // Recompute shortly after mount to catch font/layout shifts
-    const t = setTimeout(computeOffset, 100);
-    return () => {
-      window.removeEventListener('resize', onResize);
-      clearTimeout(t);
-    };
-  }, []);
-
   // Form state for custom product
   const [newItem, setNewItem] = useState<Partial<QuoteItem>>({
     codigo: '',
     descripcion: '',
     unidad: 'Unidad',
     cantidad: 1,
-    precioUnitario: 0,
-    descuento: 0
+    precioUnitario: undefined,
+    descuento: undefined
   });
 
   // Pagination constants
@@ -768,8 +845,8 @@ export function ProductsForm({ items, onChange }: ProductsFormProps) {
       descripcion: '',
       unidad: 'Unidad',
       cantidad: 1,
-      precioUnitario: 0,
-      descuento: 0
+      precioUnitario: undefined,
+      descuento: undefined
     });
     setShowAddForm(false);
   };
@@ -869,9 +946,9 @@ export function ProductsForm({ items, onChange }: ProductsFormProps) {
         </button>
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 xl:gap-6">
-        {/* Left Panel - Product Catalog */}
-        <div ref={leftPanelRef} className="xl:col-span-2 space-y-4">
+      <div className="space-y-6">
+        {/* Product Catalog */}
+        <div className="space-y-4">
           {/* Search and Filters */}
           <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
             <div className="flex-1 relative">
@@ -893,10 +970,6 @@ export function ProductsForm({ items, onChange }: ProductsFormProps) {
               />
             </div>
           </div>
-
-          {/* Categories */}
-          {/* Anchor used to align the Cart top with the start of Categories */}
-          <div ref={categoryAnchorRef} />
 
           {/* Categories Header with Toggle */}
           <div className="flex items-center justify-between mb-4">
@@ -1078,20 +1151,14 @@ export function ProductsForm({ items, onChange }: ProductsFormProps) {
           </div>
         </div>
 
-        {/* Right Panel - Cart */}
-        <div
-          className="xl:col-span-1 mt-4 xl:mt-0"
-          style={{ ['--align-offset' as string]: `${alignOffset}px` } as React.CSSProperties}
-          
-        >
+        {/* Cart - Now below products */}
+        <div className="mt-8">
           <div
-            className="border rounded-lg xl:rounded-xl p-3 sm:p-4 xl:p-6 sticky top-4"
+            className="border rounded-lg p-4 sm:p-6"
             style={{
               backgroundColor: 'var(--card-bg)',
               borderColor: 'var(--border)',
-              boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
-              maxHeight: 'calc(100vh - 200px)',
-              overflowY: 'auto'
+              boxShadow: '0 4px 12px rgba(0,0,0,0.05)'
             }}
           >
             <div className="flex items-center gap-3 mb-6">
@@ -1125,18 +1192,20 @@ export function ProductsForm({ items, onChange }: ProductsFormProps) {
                 </p>
               </div>
             ) : (
-              <div className="space-y-4 max-h-96 overflow-y-auto">
-                {items.map((item, index) => (
-                  <CartItem
-                    key={item.id}
-                    item={item}
-                    index={index}
-                    onUpdateQuantity={updateItemQuantity}
-                    onUpdateDiscount={updateItemDiscount}
-                    onRemove={removeItem}
-                    onEdit={editItem}
-                  />
-                ))}
+              <div className="overflow-x-auto pb-2">
+                <div className="flex gap-4 min-w-max">
+                  {items.map((item, index) => (
+                    <CartItem
+                      key={item.id}
+                      item={item}
+                      index={index}
+                      onUpdateQuantity={updateItemQuantity}
+                      onUpdateDiscount={updateItemDiscount}
+                      onRemove={removeItem}
+                      onEdit={editItem}
+                    />
+                  ))}
+                </div>
               </div>
             )}
 
@@ -1177,8 +1246,8 @@ export function ProductsForm({ items, onChange }: ProductsFormProps) {
                     descripcion: '',
                     unidad: 'Unidad',
                     cantidad: 1,
-                    precioUnitario: 0,
-                    descuento: 0
+                    precioUnitario: undefined,
+                    descuento: undefined
                   });
                 }}
                 className="p-2 rounded-lg transition-colors"
@@ -1278,15 +1347,15 @@ export function ProductsForm({ items, onChange }: ProductsFormProps) {
                   <input
                     type="number"
                     min="0"
-                    value={newItem.precioUnitario || 0}
-                    onChange={(e) => setNewItem({...newItem, precioUnitario: parseFloat(e.target.value) || 0})}
+                    value={newItem.precioUnitario ?? ''}
+                    onChange={(e) => setNewItem({...newItem, precioUnitario: parseFloat(e.target.value) || undefined})}
                     className="w-full px-4 py-3 rounded-lg border"
                     style={{
                       backgroundColor: 'var(--input-bg)',
                       borderColor: 'var(--border)',
                       color: 'var(--text-primary)'
                     }}
-                    placeholder="0"
+                    placeholder="Precio unitario"
                   />
                 </div>
 
@@ -1298,15 +1367,15 @@ export function ProductsForm({ items, onChange }: ProductsFormProps) {
                     type="number"
                     min="0"
                     max="100"
-                    value={newItem.descuento || 0}
-                    onChange={(e) => setNewItem({...newItem, descuento: parseFloat(e.target.value) || 0})}
+                    value={newItem.descuento ?? ''}
+                    onChange={(e) => setNewItem({...newItem, descuento: parseFloat(e.target.value) || undefined})}
                     className="w-full px-4 py-3 rounded-lg border"
                     style={{
                       backgroundColor: 'var(--input-bg)',
                       borderColor: 'var(--border)',
                       color: 'var(--text-primary)'
                     }}
-                    placeholder="0"
+                    placeholder="Descuento (%)"
                   />
                 </div>
               </div>
@@ -1322,8 +1391,8 @@ export function ProductsForm({ items, onChange }: ProductsFormProps) {
                     descripcion: '',
                     unidad: 'Unidad',
                     cantidad: 1,
-                    precioUnitario: 0,
-                    descuento: 0
+                    precioUnitario: undefined,
+                    descuento: undefined
                   });
                 }}
                 className="flex-1 py-3 rounded-lg font-medium transition-colors"

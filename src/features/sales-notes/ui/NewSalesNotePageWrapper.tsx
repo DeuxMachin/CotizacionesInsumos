@@ -388,21 +388,25 @@ export function NewSalesNotePageWrapper() {
                   <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>
                     Forma de Pago
                   </label>
-                  <input
-                    type="text"
-                    value={formData.condicionesComerciales.formaPago || ''}
+                  <select
+                    value={formData.condicionesComerciales.formaPago || 'Transferencia bancaria'}
                     onChange={(e) => setFormData(prev => ({
                       ...prev,
                       condicionesComerciales: { ...prev.condicionesComerciales, formaPago: e.target.value }
                     }))}
-                    placeholder="Ej: Transferencia bancaria"
                     className="w-full px-4 py-2 rounded border"
                     style={{
                       backgroundColor: 'var(--card-bg)',
                       borderColor: 'var(--border)',
                       color: 'var(--text-primary)'
                     }}
-                  />
+                  >
+                    <option value="Transferencia bancaria">Transferencia bancaria</option>
+                    <option value="Efectivo">Efectivo</option>
+                    <option value="Crédito">Crédito</option>
+                    <option value="Crédito 45 días">Crédito 45 días</option>
+                    <option value="Cheque">Cheque</option>
+                  </select>
                 </div>
                 <div>
                   <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>

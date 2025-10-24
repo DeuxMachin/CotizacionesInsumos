@@ -955,8 +955,8 @@ function ProductCard({ product, onEdit, onAskDelete, user, openRowMenuId, setOpe
           </h4>
 
           <div className="space-y-3 flex-1 flex flex-col justify-between">
-            {/* Precio de venta - más destacado */}
-            {product.precio_venta && (
+            {/* Precio neto - más destacado */}
+            {product.precio_neto && (
               <div 
                 className="flex items-center justify-between p-3 rounded-lg border mb-auto"
                 style={{ 
@@ -964,22 +964,22 @@ function ProductCard({ product, onEdit, onAskDelete, user, openRowMenuId, setOpe
                   borderColor: 'var(--success-border)' 
                 }}
               >
-                <span className="text-lg font-bold" style={{ color: 'var(--success-text)' }}>Precio de Venta</span>
+                <span className="text-lg font-bold" style={{ color: 'var(--success-text)' }}>Precio Neto</span>
                 <span className="text-2xl font-bold text-right w-[100px] sm:w-[120px]" style={{ color: 'var(--success-text)' }}>
-                  {formatCLP(product.precio_venta)}
+                  {formatCLP(product.precio_neto)}
                 </span>
               </div>
             )}
 
-            {/* Precio neto */}
-            {product.precio_neto && (
+            {/* Precio de venta */}
+            {product.precio_venta && (
               <div 
                 className="flex items-center justify-between p-2 rounded mt-auto"
                 style={{ backgroundColor: 'var(--input-bg)' }}
               >
-                <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>Precio Neto</span>
+                <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>Precio de Venta</span>
                 <span className="text-lg font-semibold text-right w-[100px] sm:w-[120px]" style={{ color: 'var(--text-primary)' }}>
-                  {formatCLP(product.precio_neto)}
+                  {formatCLP(product.precio_venta)}
                 </span>
               </div>
             )}

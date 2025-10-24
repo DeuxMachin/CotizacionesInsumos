@@ -80,6 +80,9 @@ export interface Quote {
   /** Nombre del vendedor */
   vendedorNombre: string;
   
+  /** Apellido del vendedor (opcional) */
+  vendedorApellido?: string;
+  
   /** Items de la cotización */
   items: QuoteItem[];
   
@@ -113,6 +116,9 @@ export interface Quote {
   
   /** Fecha de expiración de la oferta */
   fechaExpiracion?: string;
+  
+  /** Número de orden de compra */
+  numeroOrdenCompra?: string;
   
   /** Prioridad asignada por el vendedor para organizar sus cotizaciones (1 = más prioritario) */
   prioridad?: number;

@@ -3,19 +3,15 @@
 import React from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import type { ClientInfo, QuoteItem, DeliveryInfo, CommercialTerms, Quote } from '@/core/domain/quote/Quote';
-import { PDFDownloadButton } from '@/features/reports/ui/pdf/PDFDownloadButton';
-import { VendedorSelector } from './VendedorSelector';
-import { 
-  FiDollarSign, 
-  FiUser, 
-  FiPackage, 
-  FiTruck, 
-  FiInfo, 
+import {
+  FiDollarSign,
+  FiUser,
+  FiPackage,
+  FiTruck,
+  FiInfo,
   FiFileText,
   FiCalendar,
-  FiMapPin,
-  FiPhone,
-  FiMail
+  FiMapPin
 } from 'react-icons/fi';
 
 interface FormData {
@@ -23,12 +19,12 @@ interface FormData {
   items: QuoteItem[];
   despacho: Partial<DeliveryInfo>;
   condicionesComerciales: Partial<CommercialTerms>;
-  notas?: string;
+  numeroOrdenCompra?: string;
+  observacionesComerciales?: string;
   estado: string;
-  descuentoGlobalPct?: number;
 }
 
-interface QuoteSummaryProps {
+interface SalesNoteSummaryProps {
   formData: FormData;
   totals: {
     subtotal: number;
@@ -41,70 +37,28 @@ interface QuoteSummaryProps {
   };
   formatMoney: (amount: number) => string;
   errors?: string[];
-  onChangeGlobalDiscountPct?: (pct: number) => void;
-  onChangeCommercialTerms?: (terms: Partial<CommercialTerms>) => void;
-  selectedVendedorId?: string;
-  selectedVendedorNombre?: string;
-  onVendedorChange?: (vendedorId: string, vendedorNombre: string) => void;
 }
 
-export function QuoteSummary({ 
-  formData, 
-  totals, 
-  formatMoney, 
-  onChangeGlobalDiscountPct, 
-  onChangeCommercialTerms,
-  selectedVendedorId,
-  selectedVendedorNombre,
-  onVendedorChange
-}: QuoteSummaryProps) {
+export function SalesNoteSummary({
+  formData,
+  totals,
+  formatMoney
+}: SalesNoteSummaryProps) {
   const { user } = useAuth();
-  const { cliente, items, despacho,  notas } = formData;
+  const { cliente, items, despacho } = formData;
   const {
     subtotal,
     descuentoTotal,
     iva,
     total,
     lineDiscountTotal = 0,
-    globalDiscountAmount = (descuentoTotal - lineDiscountTotal),
-    globalPct = formData.descuentoGlobalPct || totals.globalPct || 0
+    globalDiscountAmount = (descuentoTotal - lineDiscountTotal)
   } = totals;
-
-  // Función helper para crear un objeto Quote compatible con PDF generator
-  const createQuoteFromFormData = (
-    formData: FormData,
-    totalsCalc: { subtotal: number; descuentoTotal: number; iva: number; total: number; lineDiscountTotal?: number; globalDiscountAmount?: number }
-  ): Quote => {
-  const vendedorNombre = user?.name || user?.email || 'Usuario';
-    return {
-      id: 'preview',
-      numero: `PREV-${Date.now()}`,
-      fechaCreacion: new Date().toISOString(),
-      fechaModificacion: new Date().toISOString(),
-      fechaExpiracion: formData.condicionesComerciales.validezOferta ? 
-        new Date(Date.now() + formData.condicionesComerciales.validezOferta * 24 * 60 * 60 * 1000).toISOString() : 
-        undefined,
-      cliente: formData.cliente as ClientInfo,
-      items: formData.items,
-      despacho: Object.keys(formData.despacho).length > 0 ? formData.despacho as DeliveryInfo : undefined,
-      condicionesComerciales: formData.condicionesComerciales as CommercialTerms,
-      estado: formData.estado as Quote['estado'],
-  vendedorId: user?.id || 'desconocido',
-  vendedorNombre,
-      subtotal: totalsCalc.subtotal,
-      descuentoTotal: totalsCalc.descuentoTotal,
-      descuentoLineasMonto: totalsCalc.lineDiscountTotal ?? 0,
-      descuentoGlobalMonto: totalsCalc.globalDiscountAmount ?? (totalsCalc.descuentoTotal - (totalsCalc.lineDiscountTotal ?? 0)),
-      iva: totalsCalc.iva,
-      total: totalsCalc.total,
-      notas: formData.notas
-    };
-  };
 
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-3 mb-6">
-        <div 
+        <div
           className="p-3 rounded-lg"
           style={{ backgroundColor: 'var(--accent-bg)', color: 'var(--accent-text)' }}
         >
@@ -112,10 +66,10 @@ export function QuoteSummary({
         </div>
         <div>
           <h2 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>
-            Resumen de la Cotización
+            Resumen de la Nota de Venta
           </h2>
           <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-            Revise todos los detalles antes de guardar o enviar
+            Revise todos los detalles antes de crear la nota
           </p>
         </div>
       </div>
@@ -124,7 +78,7 @@ export function QuoteSummary({
         {/* Columna izquierda - Información detallada */}
         <div className="xl:col-span-2 space-y-4 xl:space-y-6">
           {/* Información del Cliente */}
-          <div 
+          <div
             className="rounded-lg p-3 sm:p-4 xl:p-6 border"
             style={{ backgroundColor: 'var(--card-bg)', borderColor: 'var(--border)' }}
           >
@@ -149,16 +103,6 @@ export function QuoteSummary({
                   {cliente.rut || 'No especificado'}
                 </p>
               </div>
-              {cliente.nombreFantasia && (
-                <div>
-                  <label className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
-                    Nombre Fantasía
-                  </label>
-                  <p className="mt-1" style={{ color: 'var(--text-primary)' }}>
-                    {cliente.nombreFantasia}
-                  </p>
-                </div>
-              )}
               <div>
                 <label className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
                   Giro
@@ -178,33 +122,11 @@ export function QuoteSummary({
                   {cliente.ciudad && `, ${cliente.ciudad}`}
                 </p>
               </div>
-              {(cliente.telefono || cliente.telefonoContacto) && (
-                <div>
-                  <label className="text-sm font-medium flex items-center gap-1" style={{ color: 'var(--text-secondary)' }}>
-                    <FiPhone className="w-4 h-4" />
-                    Teléfono
-                  </label>
-                  <p className="mt-1" style={{ color: 'var(--text-primary)' }}>
-                    {cliente.telefonoContacto || cliente.telefono}
-                  </p>
-                </div>
-              )}
-              {cliente.email && (
-                <div>
-                  <label className="text-sm font-medium flex items-center gap-1" style={{ color: 'var(--text-secondary)' }}>
-                    <FiMail className="w-4 h-4" />
-                    Email
-                  </label>
-                  <p className="mt-1" style={{ color: 'var(--text-primary)' }}>
-                    {cliente.email}
-                  </p>
-                </div>
-              )}
             </div>
           </div>
 
           {/* Productos */}
-          <div 
+          <div
             className="rounded-lg p-4 sm:p-6 border"
             style={{ backgroundColor: 'var(--card-bg)', borderColor: 'var(--border)' }}
           >
@@ -229,9 +151,6 @@ export function QuoteSummary({
                           <div>
                             <p className="font-medium" style={{ color: 'var(--text-primary)' }}>
                               {item.descripcion}
-                            </p>
-                            <p className="text-xs font-mono" style={{ color: 'var(--text-secondary)' }}>
-                              {item.codigo}
                             </p>
                             <div className="sm:hidden text-xs mt-1" style={{ color: 'var(--text-secondary)' }}>
                               {item.cantidad} {item.unidad} × {formatMoney(item.precioUnitario)}
@@ -264,7 +183,7 @@ export function QuoteSummary({
 
           {/* Información de Despacho */}
           {(despacho.direccion || despacho.costoDespacho || despacho.fechaEstimada || despacho.observaciones) && (
-            <div 
+            <div
               className="rounded-lg p-4 sm:p-6 border"
               style={{ backgroundColor: 'var(--card-bg)', borderColor: 'var(--border)' }}
             >
@@ -323,7 +242,7 @@ export function QuoteSummary({
           )}
 
           {/* Condiciones Comerciales */}
-          <div 
+          <div
             className="rounded-lg p-4 sm:p-6 border"
             style={{ backgroundColor: 'var(--card-bg)', borderColor: 'var(--border)' }}
           >
@@ -332,115 +251,87 @@ export function QuoteSummary({
               Condiciones Comerciales
             </h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {formData.numeroOrdenCompra && (
+                <div className="sm:col-span-2">
+                  <label className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
+                    Número de Orden de Compra
+                  </label>
+                  <p className="mt-1 font-medium" style={{ color: 'var(--text-primary)' }}>
+                    {formData.numeroOrdenCompra}
+                  </p>
+                </div>
+              )}
               <div>
-                <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>
-                  Validez de la Oferta
-                </label>
-                <select
-                  value={formData.condicionesComerciales.validezOferta || 30}
-                  onChange={(e) => onChangeCommercialTerms?.({ ...formData.condicionesComerciales, validezOferta: parseInt(e.target.value) })}
-                  className="form-select"
-                >
-                  <option value={15}>15 días</option>
-                  <option value={30}>30 días</option>
-                  <option value={45}>45 días</option>
-                  <option value={60}>60 días</option>
-                  <option value={90}>90 días</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>
+                <label className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
                   Forma de Pago
                 </label>
-                <select
-                  value={formData.condicionesComerciales.formaPago || 'Transferencia bancaria'}
-                  onChange={(e) => onChangeCommercialTerms?.({ ...formData.condicionesComerciales, formaPago: e.target.value })}
-                  className="form-select"
-                >
-                  <option value="Transferencia bancaria">Transferencia bancaria</option>
-                  <option value="Efectivo">Efectivo</option>
-                  <option value="Crédito">Crédito</option>
-                  <option value="Crédito 45 días">Crédito 45 días</option>
-                  <option value="Cheque">Cheque</option>
-                </select>
+                <p className="mt-1" style={{ color: 'var(--text-primary)' }}>
+                  {formData.condicionesComerciales.formaPago || 'Transferencia bancaria'}
+                </p>
               </div>
-              <div className="sm:col-span-2">
-                <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>
-                  Información de Despacho
+              <div>
+                <label className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
+                  Tiempo de Entrega
                 </label>
-                <textarea
-                  value={formData.condicionesComerciales.tiempoEntrega || ''}
-                  onChange={(e) => onChangeCommercialTerms?.({ ...formData.condicionesComerciales, tiempoEntrega: e.target.value })}
-                  placeholder="Ej: Despacho inmediato, sujeto a confirmación de stock..."
-                  rows={3}
-                  className="w-full px-3 py-2 rounded-lg border transition-colors focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
-                  style={{ 
-                    borderColor: 'var(--border-subtle)', 
-                    backgroundColor: 'var(--card-bg)', 
-                    color: 'var(--text-primary)' 
-                  }}
-                />
+                <p className="mt-1" style={{ color: 'var(--text-primary)' }}>
+                  {formData.condicionesComerciales.tiempoEntrega || '7 días hábiles'}
+                </p>
               </div>
+              <div>
+                <label className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
+                  Validez de la Oferta
+                </label>
+                <p className="mt-1" style={{ color: 'var(--text-primary)' }}>
+                  {formData.condicionesComerciales.validezOferta ? `${formData.condicionesComerciales.validezOferta} días` : '30 días'}
+                </p>
+              </div>
+              <div>
+                <label className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
+                  Garantía
+                </label>
+                <p className="mt-1" style={{ color: 'var(--text-primary)' }}>
+                  {formData.condicionesComerciales.garantia || '3 meses'}
+                </p>
+              </div>
+              {formData.condicionesComerciales.observaciones && (
+                <div className="sm:col-span-2">
+                  <label className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
+                    Observaciones
+                  </label>
+                  <p className="mt-1 whitespace-pre-wrap" style={{ color: 'var(--text-primary)' }}>
+                    {formData.condicionesComerciales.observaciones}
+                  </p>
+                </div>
+              )}
             </div>
           </div>
 
-          {/* Notas */}
-          {notas && (
-            <div 
+          {/* Observaciones Comerciales */}
+          {formData.observacionesComerciales && (
+            <div
               className="rounded-lg p-4 sm:p-6 border"
               style={{ backgroundColor: 'var(--card-bg)', borderColor: 'var(--border)' }}
             >
               <h3 className="text-lg font-semibold mb-3" style={{ color: 'var(--text-primary)' }}>
-                Notas de la Cotización
+                Observaciones Comerciales
               </h3>
               <p style={{ color: 'var(--text-primary)' }}>
-                {notas}
+                {formData.observacionesComerciales}
               </p>
             </div>
           )}
         </div>
 
-        {/* Nueva columna derecha sustituye a la anterior */}
+        {/* Columna derecha - Resumen Financiero */}
         <div className="xl:col-span-1 space-y-4 xl:space-y-6 min-w-0">
-          {/* Asignación de Vendedor - Solo para Admin/Dueño */}
-          {user?.isAdmin && onVendedorChange && (
-            <div className="rounded-lg border p-3 sm:p-4" style={{ backgroundColor: 'var(--card-bg)', borderColor: 'var(--border)' }}>
-              <h3 className="text-sm font-medium mb-2 flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
-                <FiUser className="w-4 h-4" style={{ color: 'var(--accent-primary)' }} />
-                Asignar Vendedor
-              </h3>
-              <VendedorSelector
-                selectedVendedorId={selectedVendedorId}
-                selectedVendedorNombre={selectedVendedorNombre}
-                onVendedorChange={onVendedorChange}
-              />
-            </div>
-          )}
-
           <div
             className="sticky top-4 rounded-lg border flex flex-col gap-3 sm:gap-4 p-3 sm:p-4 xl:p-5"
             style={{ backgroundColor: 'var(--card-bg)', borderColor: 'var(--border)' }}
           >
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3 flex-wrap">
-              <h3 className="text-base sm:text-lg font-semibold flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
-                <FiDollarSign className="w-4 h-4 sm:w-5 sm:h-5" style={{ color: 'var(--accent-primary)' }} />
-                Resumen Financiero
-              </h3>
-              <div className="flex items-center gap-2 w-full sm:w-auto">
-                <label className="text-xs font-medium whitespace-nowrap" style={{ color:'var(--text-secondary)' }} htmlFor="global-discount-input">Desc.Global (%)</label>
-                <input
-                  id="global-discount-input"
-                  aria-label="Descuento global"
-                  type="number"
-                  min={0}
-                  max={100}
-                  value={globalPct}
-                  onChange={e => onChangeGlobalDiscountPct && onChangeGlobalDiscountPct(Math.min(100, Math.max(0, parseFloat(e.target.value) || 0)))}
-                  className="px-2 py-1 rounded border text-right text-sm w-full max-w-[90px]"
-                  style={{ background:'var(--input-bg)', borderColor:'var(--border)', color:'var(--text-primary)' }}
-                />
-              </div>
-            </div>
+            <h3 className="text-base sm:text-lg font-semibold flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
+              <FiDollarSign className="w-4 h-4 sm:w-5 sm:h-5" style={{ color: 'var(--accent-primary)' }} />
+              Resumen Financiero
+            </h3>
             <div className="divide-y text-sm" style={{ borderColor: 'var(--border)' }}>
               <div className="flex justify-between py-2">
                 <span style={{ color:'var(--text-secondary)' }}>Subtotal</span>
@@ -473,20 +364,6 @@ export function QuoteSummary({
                 <span className="text-xl font-bold tracking-tight" style={{ color:'var(--accent-primary)' }}>{formatMoney(total)}</span>
               </div>
             </div>
-            <div className="flex flex-col sm:flex-row gap-2 w-full">
-              <PDFDownloadButton
-                quote={createQuoteFromFormData(formData, {
-                  subtotal,
-                  descuentoTotal,
-                  iva,
-                  total,
-                  lineDiscountTotal,
-                  globalDiscountAmount
-                })}
-                className="w-full flex-wrap"
-                showPreview={true}
-              />
-            </div>
             <div className="rounded-md border p-3 sm:p-4 flex flex-col gap-2" style={{ background:'var(--info-bg)', borderColor:'var(--info-border)' }}>
               <h4 className="text-xs font-semibold uppercase tracking-wide" style={{ color:'var(--info-text)' }}>Indicadores</h4>
               <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-[11px] sm:text-xs" style={{ color:'var(--info-text)' }}>
@@ -504,18 +381,6 @@ export function QuoteSummary({
                     <span className="font-medium" style={{ color:'var(--info-text)' }}>{Math.round((descuentoTotal / subtotal) * 100)}%</span>
                   </div>
                 )}
-                {lineDiscountTotal > 0 && (
-                  <div className="flex flex-col min-w-0">
-                    <span style={{ color:'var(--text-secondary)' }}>Desc. líneas</span>
-                    <span className="font-medium" style={{ color:'var(--danger-text)' }}>-{formatMoney(lineDiscountTotal)}</span>
-                  </div>
-                )}
-                {globalDiscountAmount > 0 && (
-                  <div className="flex flex-col min-w-0">
-                    <span style={{ color:'var(--text-secondary)' }}>Desc. global</span>
-                    <span className="font-medium" style={{ color:'var(--danger-text)' }}>-{formatMoney(globalDiscountAmount)}</span>
-                  </div>
-                )}
               </div>
             </div>
           </div>
@@ -525,4 +390,4 @@ export function QuoteSummary({
   );
 }
 
-export default QuoteSummary;
+export default SalesNoteSummary;

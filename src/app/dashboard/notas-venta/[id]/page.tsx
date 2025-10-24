@@ -15,7 +15,9 @@ import {
   FiClock,
   FiInfo,
   FiEdit2,
-  FiX
+  FiX,
+  FiChevronLeft,
+  FiChevronRight
 } from 'react-icons/fi';
 import { NotasVentaService, SalesNoteRecord, SalesNoteItemRow } from '@/services/notasVentaService';
 import { useQuotes } from '@/features/quotes/model/useQuotes';
@@ -37,12 +39,16 @@ export default function SalesNoteDetailPage() {
   const numericId = parseInt(noteId);
 
   // Estados principales
-  const [salesNote, setSalesNote] = useState<SalesNoteRecord & { cotizaciones?: { id: number; folio: string | null; fecha_emision: string; estado: string } | null } | null>(null);
+  const [salesNote, setSalesNote] = useState<SalesNoteRecord & { cotizaciones?: { id: number; folio: string | null; fecha_emision: string; estado: string } | null; usuarios?: { id: string; nombre: string | null; apellido: string | null; email: string | null } | null } | null>(null);
   const [noteItems, setNoteItems] = useState<SalesNoteItemRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
   const [showInvoiceModal, setShowInvoiceModal] = useState(false);
+
+  // Pagination state for products table
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 6;
 
   // Modales
   const [editModalOpen, setEditModalOpen] = useState(false);
@@ -74,6 +80,11 @@ export default function SalesNoteDetailPage() {
   useEffect(() => {
     loadSalesNote();
   }, [loadSalesNote]);
+
+  // Reset pagination when note changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [noteId]);
 
   // Función para exportar PDF
   const handleExportPDF = useCallback(async () => {
@@ -321,12 +332,12 @@ export default function SalesNoteDetailPage() {
                     <p className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>Folio</p>
                     <p className="font-medium" style={{ color: 'var(--text-primary)' }}>{salesNote.folio || 'N/A'}</p>
                   </div>
-                  {salesNote.Numero_Serie && (
-                    <div>
-                      <p className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>Número de orden de compra</p>
-                      <p className="font-medium" style={{ color: 'var(--text-primary)' }}>{salesNote.Numero_Serie}</p>
-                    </div>
-                  )}
+                  <div>
+                    <p className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>Número de orden de compra</p>
+                    <p className="font-medium" style={{ color: 'var(--text-primary)' }}>
+                      {salesNote.Numero_Serie || 'Sin número de orden de compra'}
+                    </p>
+                  </div>
                   <div>
                     <p className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>Fecha de Emisión</p>
                     <p style={{ color: 'var(--text-primary)' }}>
@@ -351,6 +362,14 @@ export default function SalesNoteDetailPage() {
                   <div>
                     <p className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>Forma de Pago</p>
                     <p style={{ color: 'var(--text-primary)' }}>{salesNote.forma_pago_final || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>Vendedor</p>
+                    <p style={{ color: 'var(--text-primary)' }}>
+                      {salesNote.usuarios?.nombre && salesNote.usuarios?.apellido
+                        ? `${salesNote.usuarios.nombre} ${salesNote.usuarios.apellido}`
+                        : salesNote.usuarios?.nombre || salesNote.usuarios?.email || 'N/A'}
+                    </p>
                   </div>
                 </div>
                 
@@ -421,51 +440,105 @@ export default function SalesNoteDetailPage() {
                 {noteItems.length === 0 ? (
                   <p style={{ color: 'var(--text-secondary)' }}>No hay productos en esta nota de venta.</p>
                 ) : (
-                  <div className="overflow-x-auto">
-                    <table className="w-full min-w-[500px]">
-                      <thead style={{ backgroundColor: 'var(--bg-secondary)' }}>
-                        <tr>
-                          <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>
-                            Producto
-                          </th>
-                          <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>
-                            Cantidad
-                          </th>
-                          <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>
-                            Precio Unit.
-                          </th>
-                          <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>
-                            Subtotal
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y" style={{ borderColor: 'var(--border)' }}>
-                        {noteItems.map((item) => (
-                          <tr key={item.id}>
-                            <td className="px-4 py-3">
-                              <div>
-                                <p className="font-medium" style={{ color: 'var(--text-primary)' }}>
-                                  {item.descripcion}
-                                </p>
-                                <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-                                  {item.unidad}
-                                </p>
+                  <>
+                    {/* Pagination logic */}
+                    {(() => {
+                      const totalPages = Math.ceil(noteItems.length / itemsPerPage);
+                      const startIndex = (currentPage - 1) * itemsPerPage;
+                      const endIndex = startIndex + itemsPerPage;
+                      const currentItems = noteItems.slice(startIndex, endIndex);
+
+                      return (
+                        <>
+                          <div className="overflow-x-auto">
+                            <table className="w-full min-w-[500px]">
+                              <thead style={{ backgroundColor: 'var(--bg-secondary)' }}>
+                                <tr>
+                                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>
+                                    Producto
+                                  </th>
+                                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>
+                                    Cantidad
+                                  </th>
+                                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>
+                                    Precio Unit.
+                                  </th>
+                                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>
+                                    Subtotal
+                                  </th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y" style={{ borderColor: 'var(--border)' }}>
+                                {currentItems.map((item) => (
+                                  <tr key={item.id}>
+                                    <td className="px-4 py-3">
+                                      <div>
+                                        <p className="font-medium" style={{ color: 'var(--text-primary)' }}>
+                                          {item.descripcion}
+                                        </p>
+                                        <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+                                          {item.unidad}
+                                        </p>
+                                      </div>
+                                    </td>
+                                    <td className="px-4 py-3 text-center" style={{ color: 'var(--text-primary)' }}>
+                                      {item.cantidad}
+                                    </td>
+                                    <td className="px-4 py-3 text-right" style={{ color: 'var(--text-primary)' }}>
+                                      {formatMoney(item.precio_unitario_neto)}
+                                    </td>
+                                    <td className="px-4 py-3 text-right font-medium" style={{ color: 'var(--primary)' }}>
+                                      {formatMoney(item.subtotal_neto)}
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+
+                          {/* Pagination */}
+                          {totalPages > 1 && (
+                            <div className="flex items-center justify-between mt-4 pt-4 border-t" style={{ borderColor: 'var(--border)' }}>
+                              <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+                                Mostrando {startIndex + 1}-{Math.min(endIndex, noteItems.length)} de {noteItems.length} productos
                               </div>
-                            </td>
-                            <td className="px-4 py-3 text-center" style={{ color: 'var(--text-primary)' }}>
-                              {item.cantidad}
-                            </td>
-                            <td className="px-4 py-3 text-right" style={{ color: 'var(--text-primary)' }}>
-                              {formatMoney(item.precio_unitario_neto)}
-                            </td>
-                            <td className="px-4 py-3 text-right font-medium" style={{ color: 'var(--primary)' }}>
-                              {formatMoney(item.subtotal_neto)}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+                              <div className="flex items-center gap-2">
+                                <button
+                                  onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                                  disabled={currentPage === 1}
+                                  className="p-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                  style={{
+                                    color: 'var(--primary)',
+                                    border: '1px solid var(--border)',
+                                    backgroundColor: 'var(--card-bg)'
+                                  }}
+                                  title="Página anterior"
+                                >
+                                  <FiChevronLeft className="w-4 h-4" />
+                                </button>
+                                <span className="text-sm px-3 py-1" style={{ color: 'var(--text-primary)' }}>
+                                  {currentPage} de {totalPages}
+                                </span>
+                                <button
+                                  onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                                  disabled={currentPage === totalPages}
+                                  className="p-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                  style={{
+                                    color: 'var(--primary)',
+                                    border: '1px solid var(--border)',
+                                    backgroundColor: 'var(--card-bg)'
+                                  }}
+                                  title="Página siguiente"
+                                >
+                                  <FiChevronRight className="w-4 h-4" />
+                                </button>
+                              </div>
+                            </div>
+                          )}
+                        </>
+                      );
+                    })()}
+                  </>
                 )}
               </div>
             </div>

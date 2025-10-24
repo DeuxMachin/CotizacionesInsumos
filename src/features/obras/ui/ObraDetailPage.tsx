@@ -33,10 +33,16 @@ import { useObraQuotes } from '@/hooks/useObraQuotes';
 import { PrestamoModal } from './payments/PrestamoModal';
 import { PagoModal } from './payments/PagoModal';
 import { ReunionPopup } from './components/ReunionPopup';
+import { ActiveReunionPopup } from './components/ActiveReunionPopup';
 import { useReuniones } from '@/hooks/useReuniones';
 import { useAuth } from '@/contexts/AuthContext';
 import { LocationData } from '@/lib/geolocation';
 import { supabase } from '@/lib/supabase';
+
+interface ReunionError extends Error {
+  activeReunion?: ReunionObra | null;
+  error?: string;
+}
 
 interface ObraDetailPageProps {
   obra: Obra;
@@ -75,7 +81,7 @@ export function ObraDetailPage({
 
   // Estados para edición de vendedor (solo admins)
   const [vendedores, setVendedores] = useState<Array<{id: string, nombre: string, apellido: string, email: string, rol: string}>>([]);
-  const [loadingVendedores, setLoadingVendedores] = useState(false);
+  const [loadingVendedores] = useState(false);
   const [selectedVendedorId, setSelectedVendedorId] = useState<string>('');
 
   // Estados para reuniones
@@ -84,16 +90,18 @@ export function ObraDetailPage({
   const [endingReunion, setEndingReunion] = useState(false);
   const [currentActiveReunion, setCurrentActiveReunion] = useState<ReunionObra | null>(null);
   const [checkingReunionStatus, setCheckingReunionStatus] = useState(true);
+  const [isActiveReunionPopupOpen, setIsActiveReunionPopupOpen] = useState(false);
+  const [activeReunionData, setActiveReunionData] = useState<{ id: number; obraId: number; obraNombre: string; startTime: string } | null>(null);
 
   // Hooks para reuniones y auth
   const { user } = useAuth();
-  const { checkin, checkout, reuniones } = useReuniones(obra.id);
+  const { checkin, checkout } = useReuniones(obra.id);
 
   // Verificar si el usuario es admin
   const isAdmin = ['admin', 'dueño', 'dueno'].includes(user?.role?.toLowerCase() || '');
 
   // Obtener cotizaciones y estadísticas de la obra
-  const { quotes,  stats, loading: quotesLoading, refetch: refetchObraData } = useObraQuotes(Number(obra.id));
+  const { quotes, salesNotes, stats, loading: quotesLoading, refetch: refetchObraData } = useObraQuotes(Number(obra.id));
   
   useEffect(() => {
     setEditedObra(obra);
@@ -145,30 +153,11 @@ export function ObraDetailPage({
     }
   }, [obra.vendedorAsignado, vendedores.length]);
 
-  // Función de prueba para verificar conectividad con la API
-  const testApiConnection = async () => {
-    try {
-      console.log('🧪 Probando conexión a API...');
-      const response = await fetch('/api/reuniones', {
-        credentials: 'include',
-      });
-      console.log('🧪 Respuesta de prueba:', response.status, response.ok);
-      if (response.ok) {
-        const data = await response.json();
-        console.log('🧪 Datos de prueba:', data);
-      } else {
-        const errorText = await response.text();
-        console.log('🧪 Error de prueba:', errorText);
-      }
-    } catch (error) {
-      console.error('🧪 Error en prueba de conexión:', error);
-    }
-  };
+
 
   // Función para verificar reunión activa directamente desde la API
   const checkActiveReunion = async () => {
     if (!user || !obra.id) {
-      console.log('❌ checkActiveReunion: faltan user u obra.id', { user: !!user, obraId: obra.id, userId: user?.id });
       return null;
     }
 
@@ -181,14 +170,10 @@ export function ObraDetailPage({
         status: 'active'
       });
 
-      console.log('🔍 Consultando reunión activa (sin userId):', `/api/reuniones?${params}`);
-      console.log('👤 User info:', { id: user.id, role: user.role, email: user.email });
-
       const response = await fetch(`/api/reuniones?${params}`, {
         credentials: 'include',
       });
 
-      console.log('📡 Respuesta checkActiveReunion:', response.status, response.ok);
 
       if (!response.ok) {
         console.error('❌ Error checking active reunion:', response.status);
@@ -196,29 +181,24 @@ export function ObraDetailPage({
         console.error('Error details:', errorText);
 
         // Si falla, intentar sin filtros para debug
-        console.log('🔄 Intentando consulta sin filtros...');
         const debugParams = new URLSearchParams({
           obraId: obra.id.toString()
         });
         const debugResponse = await fetch(`/api/reuniones?${debugParams}`, {
           credentials: 'include',
         });
-        console.log('📡 Respuesta debug:', debugResponse.status, debugResponse.ok);
         if (debugResponse.ok) {
-          const debugData = await debugResponse.json();
-          console.log('📋 Datos debug:', debugData);
+          // Debug response available but not used
         }
 
         return null;
       }
 
       const reuniones = await response.json();
-      console.log('📋 Reuniones activas encontradas:', reuniones.length, reuniones);
 
       // Si encontramos reuniones activas, tomar la primera (debería haber solo una activa por obra)
       const activeReunion = reuniones.length > 0 ? reuniones[0] : null;
       setCurrentActiveReunion(activeReunion);
-      console.log('✅ Active reunion set:', activeReunion);
       return activeReunion;
     } catch (error) {
       console.error('❌ Error checking active reunion:', error);
@@ -228,27 +208,8 @@ export function ObraDetailPage({
     }
   };
 
-  // Debug: mostrar cambios en el estado de reuniones
-  useEffect(() => {
-    console.log('🔄 currentActiveReunion cambió:', currentActiveReunion ? 'ACTIVA' : 'NINGUNA');
-  }, [currentActiveReunion]);
 
-  // Verificar reunión activa al cargar la página (con leve espera)
-  useEffect(() => {
-    console.log('🚀 useEffect checkActiveReunion triggered', { user: !!user, obraId: obra.id });
-    if (user && obra.id) {
-      // Pequeña espera para que la página cargue primero
-      const timer = setTimeout(() => {
-        console.log('⏰ Timer expired, calling functions');
-        testApiConnection(); // Probar conexión primero
-        checkActiveReunion();
-      }, 200); // 200ms de espera leve
-      return () => clearTimeout(timer);
-    } else {
-      console.log('❌ useEffect conditions not met', { user: !!user, obraId: obra.id });
-    }
-  }, [user, obra.id, checkActiveReunion]);
-
+  
   // Ref para controlar si ya se mostró el popup en esta sesión/vista
   // Esto asegura que el popup solo aparezca UNA VEZ al entrar al detalle de la obra
   // y no vuelva a aparecer hasta que se salga y se vuelva a entrar
@@ -484,9 +445,7 @@ export function ObraDetailPage({
 
     try {
       setIsStartingReunion(true);
-      console.log('▶️ Iniciando reunión en obra:', obra.nombreEmpresa);
       await checkin(obra.id, location ?? undefined);
-      console.log('✅ Reunión iniciada, verificando estado...');
       Toast.success('Reunión iniciada');
       
       // Actualizar estado local inmediatamente
@@ -495,12 +454,25 @@ export function ObraDetailPage({
       // Cerrar popup después de un breve delay
       setTimeout(() => {
         setIsReunionPopupOpen(false);
-        console.log('🔒 Popup cerrado');
       }, 100);
       
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('❌ Error starting reunion:', error);
-      Toast.error(error instanceof Error ? error.message : 'Error al iniciar reunión');
+
+      // Check if it's a conflict error (409) with active reunion data
+      if (error && typeof error === 'object' && 'activeReunion' in error) {
+        setActiveReunionData(error.activeReunion as { id: number; obraId: number; obraNombre: string; startTime: string } | null);
+        setIsActiveReunionPopupOpen(true);
+        setIsReunionPopupOpen(false); // Close the start popup
+        return;
+      }
+
+      const errorMessage = error && typeof error === 'object' && 'error' in error
+        ? (error as { error: string }).error
+        : error && typeof error === 'object' && 'message' in error
+        ? (error as { message: string }).message
+        : 'Error al iniciar reunión';
+      Toast.error(errorMessage);
     } finally {
       setIsStartingReunion(false);
     }
@@ -525,17 +497,13 @@ export function ObraDetailPage({
     }
   };
 
-  const handleForceEndReunion = async () => {
-    if (!user || !currentActiveReunion) return;
-
-    if (!confirm('¿Estás seguro de que quieres forzar la finalización de la reunión activa?')) {
-      return;
-    }
+  const handleEndActiveReunion = async () => {
+    if (!activeReunionData) return;
 
     try {
       setEndingReunion(true);
-      // Llamar directamente a la API de checkout
-      const response = await fetch(`/api/obras/${obra.id}/reuniones`, {
+      // Call checkout API for the obra where the active reunion is
+      const response = await fetch(`/api/obras/${activeReunionData.obraId}/reuniones`, {
         method: 'PUT',
         credentials: 'include',
       });
@@ -545,10 +513,17 @@ export function ObraDetailPage({
         throw new Error(error.error || 'Error al finalizar reunión');
       }
 
-      Toast.success('Reunión finalizada forzosamente');
+      Toast.success('Reunión finalizada');
+      
+      // Close the popup
+      setIsActiveReunionPopupOpen(false);
+      setActiveReunionData(null);
+      
+      // Refresh current obra status
       await checkActiveReunion();
+      
     } catch (error) {
-      console.error('Error force ending reunion:', error);
+      console.error('Error ending active reunion:', error);
       Toast.error(error instanceof Error ? error.message : 'Error al finalizar reunión');
     } finally {
       setEndingReunion(false);
@@ -557,7 +532,7 @@ export function ObraDetailPage({
 
   // Editor moderno: abrir/cerrar y guardar
   const openEditPanel = () => {
-  setActiveEditTab('datos');
+    setActiveEditTab('datos');
     setIsEditPanelOpen(true);
   };
   const closeEditPanel = () => {
@@ -643,7 +618,7 @@ export function ObraDetailPage({
                 </div>
               </div>
 
-              <div className="flex flex-col sm:flex-row items-center gap-2 flex-shrink-0 w-full sm:w-auto">
+              <div className="flex flex-col sm:flex-row sm:flex-wrap items-center gap-2 w-full sm:w-auto">
                 <button
                   onClick={handleBack}
                   className="text-sm px-4 py-2 min-h-[44px] flex items-center gap-2 rounded-md transition-all duration-200 font-semibold w-full sm:w-auto"
@@ -698,6 +673,17 @@ export function ObraDetailPage({
                 >
                   <FiDollarSign className="w-4 h-4" />
                   <span>Cotizar</span>
+                </button>
+                <button
+                  onClick={() => router.push(`/dashboard/obras/${obra.id}/nueva-nota-venta`)}
+                  className="text-sm px-4 py-2 min-h-[44px] flex items-center gap-2 rounded-md transition-all duration-200 font-semibold w-full sm:w-auto"
+                  style={{ backgroundColor: 'var(--success-bg)', color: 'var(--success-text)', border: '1px solid var(--success-text)' }}
+                  title="Crear nota de venta para esta obra"
+                  onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'var(--success-text)', e.currentTarget.style.color = 'white')}
+                  onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'var(--success-bg)', e.currentTarget.style.color = 'var(--success-text)')}
+                >
+                  <FiCheckCircle className="w-4 h-4" />
+                  <span>Nota de Venta</span>
                 </button>
                 <button
                   onClick={openEditPanel}
@@ -787,7 +773,7 @@ export function ObraDetailPage({
                   <FiDollarSign className="w-4 h-4" />
                 </div>
                 <div>
-                  <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Cotizaciones</p>
+                  <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Cotizaciones y Ventas</p>
                   <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>Historial y documentos</p>
                 </div>
               </button>
@@ -796,36 +782,36 @@ export function ObraDetailPage({
         </header>
 
         {/* Contenido principal: columna principal + sidebar sticky */}
-  <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
-          {/* Columna principal (2/3) */}
-          <main className="lg:col-span-2 space-y-4 sm:space-y-6 lg:space-y-8">
+  <div className="flex flex-col lg:flex-row gap-4 sm:gap-6 lg:gap-8">
+          {/* Columna principal (flex-1) */}
+          <main className="flex-1 min-w-0 space-y-4 sm:space-y-6 lg:space-y-8">
             {/* Resumen de la obra (KPI + finanzas) */}
             <section id="section-resumen" className="space-y-3 sm:space-y-4" aria-label="Resumen de la obra">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
               <div className="p-3 sm:p-4 rounded-lg" style={{ backgroundColor: 'var(--card-bg)', border: '1px solid var(--border)' }}>
-                  <div className="flex items-center justify-between">
-                  <div>
+                  <div className="flex items-center justify-between min-w-0">
+                  <div className="min-w-0 flex-1">
                     <p className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>Material Vendido</p>
                     <h3 className="text-base sm:text-lg md:text-xl font-bold mt-1 break-words" style={{ color: 'var(--text-primary)' }}>
                       {formatMoney(obra.materialVendido)}
                     </h3>
                     <p className="text-xs mt-1" style={{ color: 'var(--text-secondary)' }}>Monto confirmado de ventas</p>
                   </div>
-                  <div className="p-2 rounded-full" style={{ backgroundColor: 'var(--badge-success-bg)' }}>
+                  <div className="p-2 rounded-full flex-shrink-0" style={{ backgroundColor: 'var(--badge-success-bg)' }}>
                     <FiBox size={18} className="sm:text-lg md:text-xl" style={{ color: 'var(--badge-success-text)' }} />
                   </div>
                 </div>
               </div>
               <div className="p-3 sm:p-4 rounded-lg" style={{ backgroundColor: 'var(--card-bg)', border: '1px solid var(--border)' }}>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>Cotizaciones hechas</p>
+                <div className="flex items-center justify-between min-w-0">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>Documentos emitidos</p>
                     <h3 className="text-base sm:text-lg md:text-xl font-bold mt-1" style={{ color: 'var(--text-primary)' }}>
-                      {quotesLoading ? '...' : stats.totalQuotes}
+                      {quotesLoading ? '...' : stats.totalQuotes + salesNotes.length}
                     </h3>
-                    <p className="text-xs mt-1" style={{ color: 'var(--text-secondary)' }}>Documentos emitidos</p>
+                    <p className="text-xs mt-1" style={{ color: 'var(--text-secondary)' }}>Cotizaciones y notas de venta</p>
                   </div>
-                  <div className="p-2 rounded-full" style={{ backgroundColor: 'var(--badge-primary-bg)' }}>
+                  <div className="p-2 rounded-full flex-shrink-0" style={{ backgroundColor: 'var(--badge-primary-bg)' }}>
                     <FiFileText size={18} className="sm:text-lg md:text-xl" style={{ color: 'var(--badge-primary-text)' }} />
                   </div>
                 </div>
@@ -837,19 +823,19 @@ export function ObraDetailPage({
                   Resumen de cotizaciones
                 </h2>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
-                  <div className="p-3 rounded text-center" style={{ backgroundColor: 'var(--bg-secondary)' }}>
+                  <div className="p-3 rounded text-center min-w-0" style={{ backgroundColor: 'var(--bg-secondary)' }}>
                     <p className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>Total Cotizado</p>
                     <p className="text-lg sm:text-xl font-bold mt-1 break-words" style={{ color: 'var(--text-primary)' }}>
                       {quotesLoading ? '...' : formatMoney(stats.totalCotizado)}
                     </p>
                   </div>
-                  <div className="p-3 rounded text-center" style={{ backgroundColor: 'var(--bg-secondary)' }}>
+                  <div className="p-3 rounded text-center min-w-0" style={{ backgroundColor: 'var(--bg-secondary)' }}>
                     <p className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>Material Vendido</p>
                     <p className="text-lg sm:text-xl font-bold mt-1 break-words" style={{ color: 'var(--success-text)' }}>
                       {quotesLoading ? '...' : formatMoney(stats.materialVendido)}
                     </p>
                   </div>
-                  <div className="p-3 rounded text-center" style={{ backgroundColor: 'var(--bg-secondary)' }}>
+                  <div className="p-3 rounded text-center min-w-0" style={{ backgroundColor: 'var(--bg-secondary)' }}>
                     <div className="flex items-center justify-center gap-1 mb-1">
                       <p className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>Pendiente</p>
                       {stats.pendiente > 0 && (
@@ -867,7 +853,7 @@ export function ObraDetailPage({
                       </p>
                     )}
                   </div>
-                  <div className="p-3 rounded text-center" style={{ backgroundColor: 'var(--bg-secondary)' }}>
+                  <div className="p-3 rounded text-center min-w-0" style={{ backgroundColor: 'var(--bg-secondary)' }}>
                     <p className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>% Conversión</p>
                     <p className="text-lg sm:text-xl font-bold mt-1" style={{ color: 'var(--info-text)' }}>
                       {quotesLoading ? '...' : `${stats.conversionRate}%`}
@@ -918,22 +904,22 @@ export function ObraDetailPage({
                 Datos principales de ubicación, fechas y responsable.
               </p>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
-                <div>
+                <div className="min-w-0">
                   <label className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>Ubicación</label>
-                  <div className="mt-1 flex items-start gap-2">
-                    <FiMapPin className="w-4 h-4 mt-0.5" style={{ color: 'var(--text-muted)' }} />
-                    <div>
-                      <p className="text-sm" style={{ color: 'var(--text-primary)' }}>{obra.direccionObra}</p>
+                  <div className="mt-1 flex items-start gap-2 min-w-0">
+                    <FiMapPin className="w-4 h-4 mt-0.5 flex-shrink-0" style={{ color: 'var(--text-muted)' }} />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm break-words" style={{ color: 'var(--text-primary)' }}>{obra.direccionObra}</p>
                       {(obra.comuna || obra.ciudad) && (
-                        <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>{[obra.comuna, obra.ciudad].filter(Boolean).join(' — ')}</p>
+                        <p className="text-xs break-words" style={{ color: 'var(--text-secondary)' }}>{[obra.comuna, obra.ciudad].filter(Boolean).join(' — ')}</p>
                       )}
                     </div>
                   </div>
                 </div>
-                <div>
+                <div className="min-w-0">
                   <label className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>Constructora</label>
-                  <p className="mt-1 text-sm" style={{ color: 'var(--text-primary)' }}>{obra.constructora.nombre}</p>
-                  <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>RUT: {obra.constructora.rut}</p>
+                  <p className="mt-1 text-sm break-words" style={{ color: 'var(--text-primary)' }}>{obra.constructora.nombre}</p>
+                  <p className="text-xs mt-1 break-words" style={{ color: 'var(--text-muted)' }}>RUT: {obra.constructora.rut}</p>
                 </div>
                 <div>
                   <label className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>Fecha de inicio</label>
@@ -941,12 +927,12 @@ export function ObraDetailPage({
                 </div>
                 <div>
                   <label className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>Vendedor asignado</label>
-                  <p className="mt-1 text-sm" style={{ color: 'var(--text-primary)' }}>{obra.nombreVendedor}</p>
+                  <p className="mt-1 text-sm break-words" style={{ color: 'var(--text-primary)' }}>{obra.nombreVendedor}</p>
                 </div>
               </div>
-              <div className="mt-4">
+              <div className="mt-4 min-w-0">
                 <label className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>Descripción</label>
-                <p className="mt-1 text-sm leading-relaxed" style={{ color: 'var(--text-primary)' }}>{obra.descripcion || '—'}</p>
+                <p className="mt-1 text-sm leading-relaxed break-words" style={{ color: 'var(--text-primary)' }}>{obra.descripcion || '—'}</p>
               </div>
             </section>
 
@@ -980,19 +966,19 @@ export function ObraDetailPage({
                 const contacts = getContactsWithCargos(obra);
                 const c = contacts[contactCarouselIndex];
                 return (
-                  <div className="p-3 sm:p-4 rounded-lg" style={{ backgroundColor: 'var(--card-bg)', border: '1px solid var(--border)' }}>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
-                      <div>
+                  <div className="p-3 sm:p-4 rounded-lg min-w-0" style={{ backgroundColor: 'var(--card-bg)', border: '1px solid var(--border)' }}>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4 min-w-0">
+                      <div className="min-w-0">
                         <label className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>Nombre Completo</label>
-                        <p className="mt-1 text-sm" style={{ color: 'var(--text-primary)' }}>{c.nombre}</p>
+                        <p className="mt-1 text-sm break-words" style={{ color: 'var(--text-primary)' }}>{c.nombre}</p>
                       </div>
                       <div>
                         <label className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>Cargo</label>
-                        <p className="mt-1 text-sm" style={{ color: 'var(--text-primary)' }}>{c.cargo}</p>
+                        <p className="mt-1 text-sm break-words" style={{ color: 'var(--text-primary)' }}>{c.cargo}</p>
                       </div>
                     </div>
-                    <div className="mt-4 space-y-3">
-                      <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+                    <div className="mt-4 space-y-3 min-w-0">
+                      <div className="flex flex-wrap items-center gap-2 sm:gap-3 min-w-0">
                         <div className="flex items-center gap-2 flex-1 min-w-0">
                           <FiPhone className="w-4 h-4 flex-shrink-0" style={{ color: 'var(--text-muted)' }} />
                           <div className="min-w-0 w-full">
@@ -1013,7 +999,7 @@ export function ObraDetailPage({
                           </button>
                         )}
                       </div>
-                      <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+                      <div className="flex flex-wrap items-center gap-2 sm:gap-3 min-w-0">
                         <div className="flex items-center gap-2 flex-1 min-w-0">
                           <FiMail className="w-4 h-4 flex-shrink-0" style={{ color: 'var(--text-muted)' }} />
                           <div className="min-w-0 w-full">
@@ -1045,19 +1031,21 @@ export function ObraDetailPage({
 
             {/* Progreso de la obra (al final) */}
             <section id="section-progreso" className="p-3 sm:p-4 rounded-lg" style={{ backgroundColor: 'var(--card-bg)', border: '1px solid var(--border)' }}>
-              <div className="flex items-center justify-between mb-2">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-2 min-w-0">
                 <h2 className="text-base font-semibold flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
                   <FiActivity className="w-4 h-4" style={{ color: 'var(--accent-primary)' }} />
                   Progreso de la obra
                 </h2>
-                {obra.etapaActual === 'entrega' && obra.estado !== 'finalizada' && (
-                  <button onClick={handleConfirmEntrega} disabled={confirmingEntrega} className="text-xs px-3 py-1 rounded" style={{ backgroundColor: 'var(--success-bg)', color: 'var(--success-text)', border: '1px solid var(--success-text)' }}>
-                    {confirmingEntrega ? 'Confirmando...' : 'Confirmar entrega'}
-                  </button>
-                )}
-                {(JSON.stringify(savedState.etapasCompletadas) !== JSON.stringify(editedObra.etapasCompletadas) || savedState.etapaActual !== editedObra.etapaActual) && (
-                  <span className="text-xs px-2 py-1 rounded-full" style={{ backgroundColor: 'var(--warning-bg)', color: 'var(--warning-text)' }}>Cambios pendientes</span>
-                )}
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  {obra.etapaActual === 'entrega' && obra.estado !== 'finalizada' && (
+                    <button onClick={handleConfirmEntrega} disabled={confirmingEntrega} className="text-xs px-3 py-1 rounded flex-shrink-0" style={{ backgroundColor: 'var(--success-bg)', color: 'var(--success-text)', border: '1px solid var(--success-text)' }}>
+                      {confirmingEntrega ? 'Confirmando...' : 'Confirmar entrega'}
+                    </button>
+                  )}
+                  {(JSON.stringify(savedState.etapasCompletadas) !== JSON.stringify(editedObra.etapasCompletadas) || savedState.etapaActual !== editedObra.etapaActual) && (
+                    <span className="text-xs px-2 py-1 rounded-full flex-shrink-0" style={{ backgroundColor: 'var(--warning-bg)', color: 'var(--warning-text)' }}>Cambios pendientes</span>
+                  )}
+                </div>
               </div>
               <p className="text-xs mb-3" style={{ color: 'var(--text-secondary)' }}>
                 Marca la etapa actual para mantener un seguimiento claro del avance.
@@ -1075,8 +1063,8 @@ export function ObraDetailPage({
                   const isCurrent = editedObra.etapaActual === etapa;
                   const etapaColor = getEtapaColor(etapa);
                   return (
-                    <div key={etapa} className="flex items-start gap-3">
-                      <div className="flex flex-col items-center">
+                    <div key={etapa} className="flex items-start gap-3 min-w-0">
+                      <div className="flex flex-col items-center flex-shrink-0">
                         <div
                           className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-medium`}
                           style={{
@@ -1093,18 +1081,18 @@ export function ObraDetailPage({
                         )}
                       </div>
                       <div className="flex-1 pt-1 min-w-0">
-                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
-                          <h3 className="text-sm font-medium capitalize" style={{ color: isCompleted ? 'var(--success-text)' : isCurrent ? 'var(--text-primary)' : 'var(--text-secondary)' }}>
+                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 min-w-0">
+                          <h3 className="text-sm font-medium capitalize break-words" style={{ color: isCompleted ? 'var(--success-text)' : isCurrent ? 'var(--text-primary)' : 'var(--text-secondary)' }}>
                             {etapa.replace('_', ' ')}
                           </h3>
-                          <div className="flex items-center gap-2 flex-wrap">
+                          <div className="flex items-center gap-2 flex-wrap flex-shrink-0">
                             {isCompleted && (
-                              <span className="text-xs px-3 py-1 rounded" style={{ backgroundColor: 'var(--success-bg)', color: 'var(--success-text)' }}>Completado</span>
+                              <span className="text-xs px-3 py-1 rounded flex-shrink-0" style={{ backgroundColor: 'var(--success-bg)', color: 'var(--success-text)' }}>Completado</span>
                             )}
                             {isCurrent ? (
-                              <span className="text-xs px-3 py-1 rounded" style={{ backgroundColor: 'var(--accent-bg)', color: 'var(--accent-text)' }}>En progreso</span>
+                              <span className="text-xs px-3 py-1 rounded flex-shrink-0" style={{ backgroundColor: 'var(--accent-bg)', color: 'var(--accent-text)' }}>En progreso</span>
                             ) : (
-                              <button onClick={() => setCurrentStage(etapa)} className="text-xs px-3 py-1 rounded" style={{ backgroundColor: 'var(--bg-secondary)', color: 'var(--accent-primary)', border: '1px solid var(--accent-primary)' }}>
+                              <button onClick={() => setCurrentStage(etapa)} className="text-xs px-3 py-1 rounded flex-shrink-0" style={{ backgroundColor: 'var(--bg-secondary)', color: 'var(--accent-primary)', border: '1px solid var(--accent-primary)' }}>
                                 Establecer actual
                               </button>
                             )}
@@ -1132,20 +1120,31 @@ export function ObraDetailPage({
 
             {/* Historial de cotizaciones y notas de venta */}
             <section id="section-cotizaciones" className="p-3 sm:p-4 rounded-lg" style={{ backgroundColor: 'var(--card-bg)', border: '1px solid var(--border)' }}>
-              <div className="flex items-center justify-between mb-3 sm:mb-4">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-3 sm:mb-4 min-w-0">
                 <h2 className="text-base font-semibold flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
                   <FiFileText className="w-4 h-4" style={{ color: 'var(--accent-primary)' }} />
-                  Historial de cotizaciones
+                  Historial de cotizaciones y notas de venta
                 </h2>
-                <button
-                  onClick={() => router.push(`/dashboard/obras/${obra.id}/nueva-cotizacion`)}
-                  className="text-sm px-3 py-2 flex items-center gap-2 rounded-md transition-all duration-200 font-semibold text-white"
-                  style={{ backgroundColor: 'var(--accent-primary)' }}
-                  title="Crear nueva cotización"
-                >
-                  <FiPlus className="w-4 h-4" />
-                  <span>Nueva</span>
-                </button>
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  <button
+                    onClick={() => router.push(`/dashboard/obras/${obra.id}/nueva-nota-venta`)}
+                    className="text-sm px-3 py-2 flex items-center gap-2 rounded-md transition-all duration-200 font-semibold flex-shrink-0"
+                    style={{ backgroundColor: 'var(--success-bg)', color: 'var(--success-text)', border: '1px solid var(--success-text)' }}
+                    title="Crear nueva nota de venta"
+                  >
+                    <FiCheckCircle className="w-4 h-4" />
+                    <span>Nota de venta</span>
+                  </button>
+                  <button
+                    onClick={() => router.push(`/dashboard/obras/${obra.id}/nueva-cotizacion`)}
+                    className="text-sm px-3 py-2 flex items-center gap-2 rounded-md transition-all duration-200 font-semibold text-white flex-shrink-0"
+                    style={{ backgroundColor: 'var(--accent-primary)' }}
+                    title="Crear nueva cotización"
+                  >
+                    <FiPlus className="w-4 h-4" />
+                    <span>Cotización</span>
+                  </button>
+                </div>
               </div>
               <p className="text-xs mb-4" style={{ color: 'var(--text-secondary)' }}>
                 Historial completo de cotizaciones y notas de venta generadas para esta obra.
@@ -1154,19 +1153,28 @@ export function ObraDetailPage({
               {quotesLoading ? (
                 <div className="flex items-center justify-center py-8">
                   <div className="w-6 h-6 border-2 border-t-transparent border-current rounded-full animate-spin" style={{ color: 'var(--accent-primary)' }} />
-                  <span className="ml-2 text-sm" style={{ color: 'var(--text-secondary)' }}>Cargando cotizaciones...</span>
+                  <span className="ml-2 text-sm" style={{ color: 'var(--text-secondary)' }}>Cargando cotizaciones y notas de venta...</span>
                 </div>
-              ) : quotes.length === 0 ? (
+              ) : quotes.length === 0 && salesNotes.length === 0 ? (
                 <div className="text-center py-8">
                   <FiFileText className="w-12 h-12 mx-auto mb-3" style={{ color: 'var(--text-muted)' }} />
-                  <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>No hay cotizaciones para esta obra</p>
-                  <button
-                    onClick={() => router.push(`/dashboard/obras/${obra.id}/nueva-cotizacion`)}
-                    className="mt-3 text-sm px-4 py-2 rounded-md font-semibold text-white"
-                    style={{ backgroundColor: 'var(--accent-primary)' }}
-                  >
-                    Crear primera cotización
-                  </button>
+                  <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>No hay cotizaciones ni notas de venta para esta obra</p>
+                  <div className="flex items-center justify-center gap-3 mt-3">
+                    <button
+                      onClick={() => router.push(`/dashboard/obras/${obra.id}/nueva-cotizacion`)}
+                      className="text-sm px-4 py-2 rounded-md font-semibold text-white"
+                      style={{ backgroundColor: 'var(--accent-primary)' }}
+                    >
+                      Crear cotización
+                    </button>
+                    <button
+                      onClick={() => router.push(`/dashboard/obras/${obra.id}/nueva-nota-venta`)}
+                      className="text-sm px-4 py-2 rounded-md font-semibold"
+                      style={{ backgroundColor: 'var(--success-bg)', color: 'var(--success-text)', border: '1px solid var(--success-text)' }}
+                    >
+                      Crear nota de venta
+                    </button>
+                  </div>
                 </div>
               ) : (
                 <div className="space-y-3">
@@ -1224,26 +1232,29 @@ export function ObraDetailPage({
                     </div>
                   ))}
 
-                  {/* TODO: Implementar notas de venta independientes */}
-                  {/* {salesNotes.filter(note => !quotes.some(q => q.nota_venta_id === note.id)).map((note) => (
+                  {/* Notas de venta */}
+                  {salesNotes.filter(note => !quotes.some(q => q.nota_venta_id === note.id)).map((note) => (
                     <div key={`nota-${note.id}`} className="p-3 rounded-lg border" style={{ backgroundColor: 'var(--bg-secondary)', borderColor: 'var(--border)' }}>
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-2">
                             <FiCheckCircle className="w-4 h-4" style={{ color: 'var(--success-text)' }} />
                             <span className="font-medium text-sm" style={{ color: 'var(--text-primary)' }}>
-                              Nota de venta {note.folio}
+                              Nota de venta {note.folio || `#${note.id}`}
                             </span>
                             <span className="px-2 py-0.5 text-xs rounded-full bg-green-100 text-green-800">
                               Vendida
                             </span>
                           </div>
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs" style={{ color: 'var(--text-secondary)' }}>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 text-xs" style={{ color: 'var(--text-secondary)' }}>
                             <div>
-                              <span className="font-medium">Fecha:</span> {new Date(note.fecha_emision).toLocaleDateString('es-CL')}
+                              <span className="font-medium">Cliente:</span> {note.cliente_razon_social || 'N/A'}
                             </div>
                             <div>
-                              <span className="font-medium">Total:</span> {formatMoney(note.total_final)}
+                              <span className="font-medium">Fecha:</span> {note.fecha_emision ? new Date(note.fecha_emision).toLocaleDateString('es-CL') : 'N/A'}
+                            </div>
+                            <div>
+                              <span className="font-medium">Total:</span> {formatMoney(note.total || 0)}
                             </div>
                           </div>
                         </div>
@@ -1257,7 +1268,7 @@ export function ObraDetailPage({
                         </button>
                       </div>
                     </div>
-                  ))} */}
+                  ))}
                 </div>
               )}
             </section>
@@ -1271,13 +1282,13 @@ export function ObraDetailPage({
               <div className="flex items-center gap-2 flex-wrap justify-end">
                 <button className="btn-secondary text-xs sm:text-sm flex items-center gap-1 px-2 sm:px-3 py-1 sm:py-2">
                   <FiMessageSquare className="w-3 h-3" />
-                  <span className="hidden xs:inline">Agregar Nota</span>
-                  <span className="xs:hidden">Nota</span>
+                  <span className="hidden sm:inline">Agregar Nota</span>
+                  <span className="sm:hidden">Nota</span>
                 </button>
                 <button className="btn-secondary text-xs sm:text-sm flex items-center gap-1 px-2 sm:px-3 py-1 sm:py-2" onClick={() => scrollTo('section-informacion')}>
                   <FiHome className="w-3 h-3" />
-                  <span className="hidden xs:inline">Datos de Obra</span>
-                  <span className="xs:hidden">Datos</span>
+                  <span className="hidden sm:inline">Datos de Obra</span>
+                  <span className="sm:hidden">Datos</span>
                 </button>
                 <button className="btn-primary text-xs sm:text-sm flex items-center gap-1 px-2 sm:px-3 py-1 sm:py-2" onClick={() => scrollTo('section-contacto')}>
                   <FiPhone className="w-3 h-3" />
@@ -1288,8 +1299,8 @@ export function ObraDetailPage({
             </section>
           </main>
 
-          {/* Sidebar sticky (1/3) */}
-          <aside className="lg:col-span-1 lg:sticky lg:top-6 h-fit space-y-4">
+          {/* Sidebar (1/3) */}
+          <aside className="lg:flex-none lg:w-1/3 lg:sticky lg:top-20 h-fit space-y-4">
             <section className="p-4 rounded-lg" style={{ backgroundColor: 'var(--card-bg)', border: '1px solid var(--border)' }}>
               <h3 className="text-sm font-semibold mb-3" style={{ color: 'var(--text-primary)' }}>Resumen</h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
@@ -1359,7 +1370,7 @@ export function ObraDetailPage({
       {isEditPanelOpen && (
         <div className="fixed inset-0 z-40 flex items-center justify-center">
           <div className="absolute inset-0 bg-black/40" onClick={closeEditPanel} />
-          <div className="relative w-full h-full sm:h-auto sm:max-h-[90vh] sm:w-[640px] md:w-[760px] lg:w-[860px] rounded-none sm:rounded-xl overflow-hidden"
+          <div className="relative w-full h-full sm:h-auto sm:max-h-[90vh] sm:w-[90vw] md:w-[80vw] lg:w-[70vw] xl:w-[60vw] rounded-none sm:rounded-xl overflow-hidden"
                style={{ backgroundColor: 'var(--card-bg)', border: '1px solid var(--border)' }}>
             {/* Header */}
             <div className="p-4 border-b flex items-center justify-between sticky top-0 z-10" style={{ borderColor: 'var(--border)', backgroundColor: 'var(--card-bg)' }}>
@@ -1582,7 +1593,6 @@ export function ObraDetailPage({
         pendienteActual={stats.pendiente}
         onPrestamoAdded={async () => {
           // Refrescar datos de la obra y estadísticas
-          console.log('Préstamo agregado, refrescando datos');
           await refetchObraData();
         }}
       />
@@ -1593,8 +1603,6 @@ export function ObraDetailPage({
         obraId={obra.id.toString()}
         pendienteActual={stats.pendiente}
         onPagoAdded={async () => {
-          // Refrescar datos de la obra y estadísticas
-          console.log('Pago agregado, refrescando datos');
           await refetchObraData();
         }}
       />
@@ -1605,6 +1613,14 @@ export function ObraDetailPage({
         onStart={handleStartReunion}
         obraName={obra.nombreEmpresa}
         isLoading={isStartingReunion}
+      />
+
+      <ActiveReunionPopup
+        isOpen={isActiveReunionPopupOpen}
+        onClose={() => setIsActiveReunionPopupOpen(false)}
+        onEndReunion={handleEndActiveReunion}
+        activeReunion={activeReunionData}
+        isLoading={endingReunion}
       />
     </div>
   );

@@ -190,7 +190,8 @@ function generateCondensedHTML(quote: Quote & { referencia?: { tipo: string; fol
             <td><strong>F. Emisión:</strong></td><td>${formatDate(quoteDate)}</td>
           </tr>
           <tr>
-            <td><strong>Vendedor:</strong></td><td>${quote.vendedorNombre||'—'}</td>
+            <td><strong>Vendedor:</strong></td>
+            <td>${quote.vendedorNombre ? quote.vendedorNombre + (quote.vendedorApellido ? ' ' + quote.vendedorApellido : '') : '—'}</td>
             <td><strong>F. Entrega:</strong></td><td>${despacho?.fechaEstimada?formatDate(new Date(despacho.fechaEstimada)):'-'}</td>
           </tr>
           <tr>
@@ -204,6 +205,10 @@ function generateCondensedHTML(quote: Quote & { referencia?: { tipo: string; fol
         </table>
       </div>
       <div class="items-wrapper">
+        <div style="width:100%;display:block;margin-bottom:4px;font-size:${fontSize-1}px;color:#111;">
+          <div style="float:right;font-weight:600;text-align:right;">Orden de compra: ${quote.numeroOrdenCompra ? quote.numeroOrdenCompra : 'Sin orden de compra'}</div>
+          <div style="clear:both"></div>
+        </div>
         <table>
           <thead>
             <tr>

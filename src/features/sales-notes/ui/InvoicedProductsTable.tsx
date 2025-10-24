@@ -1,5 +1,5 @@
-import React from 'react';
-import { FiCheckCircle, FiClock, FiAlertCircle } from 'react-icons/fi';
+import React, { useState } from 'react';
+import { FiCheckCircle, FiClock, FiAlertCircle, FiChevronLeft, FiChevronRight } from 'react-icons/fi';
 import { SalesNoteItemRow } from '@/services/notasVentaService';
 
 interface InvoicedProductsTableProps {
@@ -11,6 +11,9 @@ export const InvoicedProductsTable: React.FC<InvoicedProductsTableProps> = ({
   items,
   formatMoney,
 }) => {
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 6;
+
   if (!items || items.length === 0) {
     return (
       <div className="rounded-lg shadow-sm border" style={{ backgroundColor: 'var(--card-bg)', borderColor: 'var(--border)' }}>
@@ -25,7 +28,13 @@ export const InvoicedProductsTable: React.FC<InvoicedProductsTableProps> = ({
     );
   }
 
-  // Calcular totales
+  // Pagination logic
+  const totalPages = Math.ceil(items.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const currentItems = items.slice(startIndex, endIndex);
+
+  // Calcular totales (usando todos los items, no solo la página actual)
   const totalCantidad = items.reduce((sum, item) => sum + item.cantidad, 0);
   const totalCantidadFacturada = items.reduce((sum, item) => sum + (item.cantidad_facturada || 0), 0);
   const totalCantidadPendiente = totalCantidad - totalCantidadFacturada;
@@ -122,7 +131,7 @@ export const InvoicedProductsTable: React.FC<InvoicedProductsTableProps> = ({
               </tr>
             </thead>
             <tbody className="divide-y" style={{ borderColor: 'var(--border)' }}>
-              {items.map((item) => {
+              {currentItems.map((item) => {
                 const cantidadFacturada = item.cantidad_facturada || 0;
                 const cantidadPendiente = item.cantidad - cantidadFacturada;
                 const montoFacturado = cantidadFacturada * item.precio_unitario_neto;
@@ -202,6 +211,46 @@ export const InvoicedProductsTable: React.FC<InvoicedProductsTableProps> = ({
             </tbody>
           </table>
         </div>
+
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between mt-4 pt-4 border-t" style={{ borderColor: 'var(--border)' }}>
+            <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+              Mostrando {startIndex + 1}-{Math.min(endIndex, items.length)} de {items.length} productos
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                disabled={currentPage === 1}
+                className="p-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                style={{
+                  color: 'var(--primary)',
+                  border: '1px solid var(--border)',
+                  backgroundColor: 'var(--card-bg)'
+                }}
+                title="Página anterior"
+              >
+                <FiChevronLeft className="w-4 h-4" />
+              </button>
+              <span className="text-sm px-3 py-1" style={{ color: 'var(--text-primary)' }}>
+                {currentPage} de {totalPages}
+              </span>
+              <button
+                onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                disabled={currentPage === totalPages}
+                className="p-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                style={{
+                  color: 'var(--primary)',
+                  border: '1px solid var(--border)',
+                  backgroundColor: 'var(--card-bg)'
+                }}
+                title="Página siguiente"
+              >
+                <FiChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Barra de Progreso General */}
         <div className="mt-6 pt-6 border-t" style={{ borderColor: 'var(--border)' }}>

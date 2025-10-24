@@ -67,7 +67,7 @@ export async function GET(
 
 // Función para convertir el formato de nota de venta al formato Quote esperado por generatePDF
 async function convertSalesNoteToPDFData(
-  salesNote: SalesNoteRecord & { cotizaciones?: { id: number; folio: string | null; fecha_emision: string; estado: string } | null },
+  salesNote: SalesNoteRecord & { cotizaciones?: { id: number; folio: string | null; fecha_emision: string; estado: string } | null; usuarios?: { id: string; nombre: string | null; apellido: string | null; email: string | null } | null },
   noteItems: (SalesNoteItemRow & { productos?: { ficha_tecnica: string | null } | null })[]
 ) {
   // Preparar información de referencia a cotización si existe
@@ -101,7 +101,12 @@ async function convertSalesNoteToPDFData(
     fechaModificacion: salesNote.updated_at || new Date().toISOString(),
     estado: mapSalesNoteStatus(salesNote.estado) || 'borrador',
     vendedorId: salesNote.vendedor_id || '',
-    vendedorNombre: 'Vendedor', // TODO: Obtener nombre real del vendedor
+    // Construir nombre completo del vendedor si está disponible
+    vendedorNombre: salesNote.usuarios?.nombre || salesNote.usuarios?.email || 'Vendedor',
+    // Nota: la plantilla puede pedir el apellido separado; pasar la información completa en caso de que exista
+    vendedorApellido: salesNote.usuarios?.apellido || undefined,
+    // Número de orden de compra (Numero_Serie) — puede ser null
+    numeroOrdenCompra: salesNote.Numero_Serie || undefined,
     items: noteItems.map((item) => ({
       id: item.id.toString(),
       productId: item.producto_id || undefined,

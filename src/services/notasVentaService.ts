@@ -376,12 +376,21 @@ export class NotasVentaService {
           folio,
           fecha_emision,
           estado
+        ),
+        usuarios!vendedor_id (
+          id,
+          nombre,
+          apellido,
+          email
         )
       `)
       .eq('id', id)
       .single();
     if (error) throw error;
-    return this.normalizeRecord(data as unknown as SalesNoteRecord & { cotizaciones?: { id: number; folio: string | null; fecha_emision: string; estado: string } | null });
+    return this.normalizeRecord(data as unknown as SalesNoteRecord & { 
+      cotizaciones?: { id: number; folio: string | null; fecha_emision: string; estado: string } | null;
+      usuarios?: { id: string; nombre: string | null; apellido: string | null; email: string | null } | null;
+    });
   }
 
   static async getItems(notaVentaId: number) {
