@@ -772,6 +772,7 @@ export class NotasVentaService {
   /**
    * Cancela una nota de venta cambiando su estado a 'cancelada'
    * Solo permite cancelar si el estado es 'creada' o 'borrador'
+   * También cancela la cotización relacionada si existe y está aceptada
    */
   static async cancelSalesNote(notaVentaId: number): Promise<SalesNoteRecord> {
     try {
@@ -785,6 +786,34 @@ export class NotasVentaService {
       // Solo permitir cancelar si está en estado 'creada' o 'borrador'
       if (currentNote.estado && !['creada', 'borrador'].includes(currentNote.estado)) {
         throw new Error(`No se puede cancelar una nota de venta con estado '${currentNote.estado}'. Solo se pueden cancelar notas en estado 'creada' o 'borrador'.`);
+      }
+
+      // Si hay una cotización relacionada, cancelarla también
+      if (currentNote.cotizacion_id) {
+        try {
+          // Buscar la cotización relacionada
+          const { data: cotizacion } = await supabase
+            .from('cotizaciones')
+            .select('id, estado')
+            .eq('id', currentNote.cotizacion_id)
+            .single();
+
+          if (cotizacion && cotizacion.estado === 'aceptada') {
+            // Cancelar la cotización relacionada
+            const { error: cotizacionError } = await supabase
+              .from('cotizaciones')
+              .update({ estado: 'rechazada' })
+              .eq('id', cotizacion.id);
+
+            if (cotizacionError) {
+              console.error('Error cancelando cotización relacionada:', cotizacionError);
+              // Continuar con la cancelación de la nota de venta aunque falle la cotización
+            }
+          }
+        } catch (error) {
+          console.error('Error buscando/cancelando cotización relacionada:', error);
+          // Continuar con la cancelación de la nota de venta aunque falle la cotización
+        }
       }
 
       // Cambiar estado a 'cancelada'

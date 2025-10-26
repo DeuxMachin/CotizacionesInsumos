@@ -838,10 +838,35 @@ type DespRow = Database['public']['Tables']['cotizacion_despachos']['Row'];
         return false;
       }
 
-      // No se puede cancelar una cotización ya aceptada
+      // Si la cotización está aceptada, buscar y cancelar la nota de venta relacionada
       if (cotizacion.estado === 'aceptada') {
-        console.error('No se puede cancelar una cotización aceptada');
-        return false;
+        try {
+          const numericId = parseInt(cotizacion.id);
+          if (!isNaN(numericId)) {
+            // Buscar nota de venta relacionada
+            const { data: salesNote } = await supabase
+              .from('notas_venta')
+              .select('id, estado')
+              .eq('cotizacion_id', numericId)
+              .single();
+
+            if (salesNote && salesNote.estado === 'creada') {
+              // Cancelar la nota de venta primero
+              const { error: salesNoteError } = await supabase
+                .from('notas_venta')
+                .update({ estado: 'cancelada' })
+                .eq('id', salesNote.id);
+
+              if (salesNoteError) {
+                console.error('Error cancelando nota de venta relacionada:', salesNoteError);
+                return false;
+              }
+            }
+          }
+        } catch (error) {
+          console.error('Error buscando/cancelando nota de venta relacionada:', error);
+          // Continuar con la cancelación de la cotización aunque falle la nota de venta
+        }
       }
 
       // Cambiar estado a rechazada (cancelar cotización)

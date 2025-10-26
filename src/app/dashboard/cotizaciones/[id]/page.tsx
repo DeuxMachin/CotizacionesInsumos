@@ -384,7 +384,7 @@ export default function QuoteDetailPage() {
                   <FiEdit2 className="inline w-4 h-4 mr-2" />
                   Editar
                 </button>
-                {isAdmin && quote?.estado !== 'aceptada' && quote?.estado !== 'rechazada' && (
+                {isAdmin && quote?.estado !== 'rechazada' && (
                   <button
                     onClick={() => {
                       setCancelDialog(true);
@@ -839,7 +839,7 @@ export default function QuoteDetailPage() {
             onClose={() => setCancelDialog(false)}
             onConfirm={handleCancelQuote}
             title="Cancelar Cotización"
-            message="¿Estás seguro de que deseas rechazar esta cotización? Una vez rechazada, no se podrá modificar ni eliminar. Esta acción es reversible solo por un administrador."
+            message={`¿Estás seguro de que deseas rechazar esta cotización?${quote?.estado === 'aceptada' && relatedSalesNote ? ' También se cancelará la nota de venta relacionada.' : ''} Una vez rechazada, no se podrá modificar ni eliminar. Esta acción es reversible solo por un administrador.`}
             confirmText="Cancelar Cotización"
             cancelText="Volver"
             type="warning"
