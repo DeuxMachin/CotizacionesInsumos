@@ -111,7 +111,7 @@ export const ALL_NAVIGATION_ITEMS: NavigationItem[] = [
     key: "admin",
     iconName: "admin",
     label: "Administración",
-    description: "Panel de administración",
+    description: "Configuración y gestión del sistema",
     resource: "admin",
     requiredActions: ["read"],
     adminOnly: true,
