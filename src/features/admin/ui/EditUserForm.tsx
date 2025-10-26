@@ -145,8 +145,11 @@ export function EditUserForm() {
       errors.lastName = 'El apellido debe tener al menos 2 caracteres';
     }
 
-    if (formData.password || formData.confirmPassword) {
-      if (!formData.password) {
+    // Solo validar contraseña si realmente hay contenido (no espacios vacíos)
+    const hasPasswordContent = (formData.password && formData.password.trim()) || (formData.confirmPassword && formData.confirmPassword.trim());
+    
+    if (hasPasswordContent) {
+      if (!formData.password || !formData.password.trim()) {
         errors.password = 'La contraseña es requerida';
       } else {
         const errorsList: string[] = [];
@@ -190,7 +193,7 @@ export function EditUserForm() {
         }
       }
 
-      if (formData.password !== formData.confirmPassword) {
+      if (formData.password.trim() !== formData.confirmPassword.trim()) {
         errors.confirmPassword = 'Las contraseñas no coinciden';
       }
     }
@@ -507,6 +510,7 @@ export function EditUserForm() {
                     value={formData.password}
                     onChange={(e) => handleInputChange('password', e.target.value)}
                     placeholder="Mínimo 8 caracteres"
+                    autoComplete="new-password"
                     className={`w-full px-4 py-3 pr-12 rounded-lg border-2 transition-all duration-200 focus:outline-none ${
                       formErrors.password ? 'border-red-400 focus:border-red-500' : 'focus:border-orange-500'
                     }`}
@@ -642,6 +646,7 @@ export function EditUserForm() {
                     value={formData.confirmPassword}
                     onChange={(e) => handleInputChange('confirmPassword', e.target.value)}
                     placeholder="Repite la contraseña"
+                    autoComplete="new-password"
                     className={`w-full px-4 py-3 pr-12 rounded-lg border-2 transition-all duration-200 focus:outline-none ${
                       formErrors.confirmPassword ? 'border-red-400 focus:border-red-500' : 'focus:border-orange-500'
                     }`}
