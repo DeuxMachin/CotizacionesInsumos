@@ -5,16 +5,18 @@ import { Header } from "@/features/navigation/ui/HeaderNew";
 import { ToastHost } from "@/shared/ui/Toast";
 import { Breadcrumbs } from "@/components/navigation/Breadcrumbs";
 import { useAuth } from "@/contexts/AuthContext";
-import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useRouter, usePathname } from 'next/navigation';
+import { useEffect, useState, useRef } from 'react';
 import { useSection } from "@/features/navigation/model/useSection";
 
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, loading } = useAuth();
   const router = useRouter();
+  const pathname = usePathname();
   const { sidebarCollapsed } = useSection();
   const [marginLeft, setMarginLeft] = useState('0');
+  const mainRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
     const updateMargin = () => {
@@ -32,6 +34,21 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       return () => window.removeEventListener('resize', updateMargin);
     }
   }, [sidebarCollapsed]);
+
+  // Reset scroll al cambiar de ruta
+  useEffect(() => {
+    // Usar setTimeout para asegurar que el DOM esté actualizado
+    const resetScroll = () => {
+      // Resetear scroll del contenedor principal
+      if (mainRef.current) {
+        mainRef.current.scrollTo({ top: 0, behavior: 'instant' });
+      }
+      // También resetear scroll del window por si acaso
+      window.scrollTo({ top: 0, behavior: 'instant' });
+    };
+    
+    setTimeout(resetScroll, 0);
+  }, [pathname]);
 
   useEffect(() => {
     if (!loading && !isAuthenticated) {
@@ -73,6 +90,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         
         {/* Contenido scrolleable - con padding-top para compensar header fixed */}
         <main 
+          ref={mainRef}
           className="flex-1 overflow-auto overflow-x-hidden h-full pt-14 sm:pt-16"
           style={{ backgroundColor: 'var(--bg-secondary)' }}
         >

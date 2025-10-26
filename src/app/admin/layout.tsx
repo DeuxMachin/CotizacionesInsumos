@@ -4,10 +4,11 @@ import { Sidebar } from "@/features/navigation/ui/Sidebar";
 import { Header } from "@/features/navigation/ui/HeaderNew";
 import { ToastHost } from "@/shared/ui/Toast";
 import { useAuth } from "@/contexts/AuthContext";
-import { useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useRouter, usePathname } from "next/navigation";
+import { useEffect, useState, useRef } from "react";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { Breadcrumbs } from "@/components/navigation/Breadcrumbs";
+import { useSection } from "@/features/navigation/model/useSection";
 
 // Loading fallback para mostrar mientras se resuelve la autenticación
 function AdminLoadingFallback() {
@@ -62,6 +63,42 @@ export default function AdminLayout({
   const { user } = useAuth();
   const isAuthenticated = !!user;
   const router = useRouter();
+  const pathname = usePathname();
+  const { sidebarCollapsed } = useSection();
+  const [marginLeft, setMarginLeft] = useState('0');
+  const mainRef = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    const updateMargin = () => {
+      if (typeof window !== 'undefined') {
+        if (window.innerWidth < 1024) {
+          setMarginLeft('0');
+        } else {
+          setMarginLeft(sidebarCollapsed ? '4rem' : '16rem');
+        }
+      }
+    };
+    updateMargin();
+    if (typeof window !== 'undefined') {
+      window.addEventListener('resize', updateMargin);
+      return () => window.removeEventListener('resize', updateMargin);
+    }
+  }, [sidebarCollapsed]);
+
+  // Reset scroll al cambiar de ruta
+  useEffect(() => {
+    // Usar setTimeout para asegurar que el DOM esté actualizado
+    const resetScroll = () => {
+      // Resetear scroll del contenedor principal
+      if (mainRef.current) {
+        mainRef.current.scrollTo({ top: 0, behavior: 'instant' });
+      }
+      // También resetear scroll del window por si acaso
+      window.scrollTo({ top: 0, behavior: 'instant' });
+    };
+    
+    setTimeout(resetScroll, 0);
+  }, [pathname]);
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -88,13 +125,17 @@ export default function AdminLayout({
         <Sidebar />
         
         {/* Contenido principal */}
-        <div className="flex-1 flex flex-col min-h-screen ml-0 lg:ml-64">
+        <div 
+          className="flex-1 flex flex-col min-h-screen transition-all duration-300"
+          style={{ marginLeft }}
+        >
           {/* Header fijo en la parte superior */}
           <Header />
           
-          {/* Contenido scrolleable */}
+          {/* Contenido scrolleable - con padding-top para compensar header fixed */}
           <main 
-            className="flex-1 overflow-auto"
+            ref={mainRef}
+            className="flex-1 overflow-auto pt-14 sm:pt-16"
             style={{ backgroundColor: 'var(--bg-secondary)' }}
           >
             <div className="p-3 sm:p-4 lg:p-6">
