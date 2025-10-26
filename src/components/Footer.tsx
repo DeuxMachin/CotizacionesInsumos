@@ -15,7 +15,9 @@ export function Footer() {
     const updateMargin = () => {
       if (typeof window !== 'undefined') {
         const isDashboard = pathname?.startsWith('/dashboard');
-        if (!isDashboard || window.innerWidth < 1024) {
+        const isAdmin = pathname?.startsWith('/admin');
+        
+        if ((!isDashboard && !isAdmin) || window.innerWidth < 1024) {
           setMarginLeft('0');
         } else {
           setMarginLeft(sidebarCollapsed ? '4rem' : '16rem');
@@ -31,12 +33,13 @@ export function Footer() {
 
   return (
     <footer
-      className="mt-auto border-t"
+      className="mt-auto border-t relative z-10"
       style={{
         backgroundColor: 'var(--bg-primary)',
         borderColor: 'var(--border-subtle)',
         color: 'var(--text-secondary)',
-        marginLeft
+        marginLeft,
+        transition: 'margin-left 0.3s ease-in-out'
       }}
     >
       <div className="w-full max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8 py-3 sm:py-4 md:py-5 lg:py-6">
