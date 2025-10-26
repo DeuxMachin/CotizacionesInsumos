@@ -46,7 +46,7 @@ export function Sidebar() {
       {/* Sidebar principal */}
       <aside 
         className={`
-          fixed inset-y-0 left-0 z-50 
+          fixed inset-y-0 left-0 z-50 lg:z-40
           flex flex-col
           overflow-y-auto
           transform transition-all duration-300 ease-out
