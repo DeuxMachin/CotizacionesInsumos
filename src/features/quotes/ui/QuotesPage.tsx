@@ -912,7 +912,7 @@ function QuoteCard({
                 <FiCopy className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />
               </button>
             )}
-            {canEdit(quote) && quote.estado !== 'aceptada' && (
+            {canEdit(quote) && (
               <button
                 onClick={(e) => {
                   e.stopPropagation();
@@ -1285,7 +1285,7 @@ function QuotesTable({
                               border: '1px solid var(--border)' 
                             }}
                           >
-                            {canEdit(quote) && quote.estado !== 'aceptada' && (
+                            {canEdit(quote) && (
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation();

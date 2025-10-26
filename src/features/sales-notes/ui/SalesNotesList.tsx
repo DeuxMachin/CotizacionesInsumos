@@ -29,7 +29,7 @@ export function SalesNotesList({ salesNotes, onViewNote, onEditNote, onCancelNot
   };
 
   // Determina si se pueden editar o cancelar
-  const canEdit = (estado?: string) => estado && ['creada', 'borrador'].includes(estado);
+  const canEdit = (estado?: string) => estado && ['creada'].includes(estado);
   const canCancel = (estado?: string) => estado && ['creada', 'borrador'].includes(estado);
 
   if (salesNotes.length === 0) {

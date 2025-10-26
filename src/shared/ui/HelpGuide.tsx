@@ -21,7 +21,7 @@ export function HelpGuide({ isOpen, onClose }: HelpGuideProps) {
     {
       icon: FiEdit2,
       title: "Editar",
-      description: "Modifica los productos y la información de despacho de la cotización. Solo disponible para cotizaciones no aceptadas ni rechazadas.",
+      description: "Modifica los productos y la información de despacho de la cotización. Disponible para cotizaciones en borrador y aceptadas. Los cambios en cotizaciones aceptadas se reflejarán en las notas de venta relacionadas.",
       color: "text-orange-500"
     },
     {
@@ -189,7 +189,8 @@ export function HelpGuide({ isOpen, onClose }: HelpGuideProps) {
               💡 Consejos Útiles
             </h3>
             <ul className="text-sm space-y-1" style={{ color: 'var(--info-text)' }}>
-              <li>• Las cotizaciones aceptadas no se pueden modificar ni eliminar</li>
+              <li>• Las cotizaciones aceptadas se pueden modificar pero no eliminar</li>
+              <li>• Los cambios en cotizaciones aceptadas se reflejan en las notas de venta</li>
               <li>• Las cotizaciones rechazadas no se pueden modificar ni eliminar</li>
               <li>• Usa &quot;Duplicar&quot; para crear nuevas cotizaciones basadas en anteriores</li>
               <li>• Descarga el PDF antes de enviar la cotización al cliente</li>

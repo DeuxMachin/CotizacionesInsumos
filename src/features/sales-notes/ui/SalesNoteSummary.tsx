@@ -11,7 +11,7 @@ interface SalesNoteSummaryProps {
 
 export function SalesNoteSummary({ salesNote, formatMoney, onEdit, onCancel }: SalesNoteSummaryProps) {
   // Determina si se pueden editar o cancelar
-  const canEdit = salesNote.estado && ['creada', 'borrador'].includes(salesNote.estado);
+  const canEdit = salesNote.estado && ['creada'].includes(salesNote.estado);
   const canCancel = salesNote.estado && ['creada', 'borrador'].includes(salesNote.estado);
 
   return (

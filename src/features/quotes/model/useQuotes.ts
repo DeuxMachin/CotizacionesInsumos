@@ -919,7 +919,8 @@ type DespRow = Database['public']['Tables']['cotizacion_despachos']['Row'];
   const canEdit = (cotizacion: Quote): boolean => {
     if (isAdmin) return true;
     if (user?.id !== cotizacion.vendedorId) return false;
-    return cotizacion.estado === 'borrador';
+    // Permitir editar cotizaciones en borrador y aceptadas
+    return cotizacion.estado === 'borrador' || cotizacion.estado === 'aceptada';
   };
 
   const canDelete = (cotizacion: Quote): boolean => {

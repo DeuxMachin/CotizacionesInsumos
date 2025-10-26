@@ -314,6 +314,17 @@ export default function QuoteDetailPage() {
             </div>
           </div>
         </div>
+
+        {/* Advertencia para cotizaciones aceptadas */}
+        {quote.estado === 'aceptada' && (
+          <div className="flex items-start gap-2 p-3 rounded-lg mt-4" style={{ backgroundColor: 'var(--warning-bg)', border: '1px solid var(--warning-text)' }}>
+            <FiAlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: 'var(--warning-text)' }} />
+            <div className="text-sm" style={{ color: 'var(--warning-text)' }}>
+              <strong>Cotización Aceptada:</strong> Los cambios que realices se reflejarán automáticamente en la nota de venta relacionada.
+            </div>
+          </div>
+        )}
+
         <div className="flex items-center gap-2 self-end sm:self-auto mt-2 sm:mt-0 flex-wrap">
           <button
             onClick={handleConvert}
@@ -366,7 +377,7 @@ export default function QuoteDetailPage() {
                     setEditModal(true);
                     setOpenActionsMenu(false);
                   }}
-                  disabled={quote?.estado === 'aceptada' || quote?.estado === 'rechazada'}
+                  disabled={quote?.estado === 'rechazada'}
                   className="block w-full text-left px-4 py-2 text-sm hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
                   style={{ color: 'var(--text-primary)' }}
                 >

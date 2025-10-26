@@ -240,6 +240,16 @@ export default function SalesNoteDetailPage() {
                     {salesNote.estado || 'creada'}
                   </span>
                 </div>
+
+                {/* Advertencia para notas de venta facturadas */}
+                {(salesNote.estado === 'facturada' || salesNote.estado === 'factura_parcial') && (
+                  <div className="flex items-start gap-2 p-3 rounded-lg mt-3" style={{ backgroundColor: 'var(--info-bg)', border: '1px solid var(--info-text)' }}>
+                    <FiInfo className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: 'var(--info-text)' }} />
+                    <div className="text-sm" style={{ color: 'var(--info-text)' }}>
+                      <strong>Nota de Venta {salesNote.estado === 'facturada' ? 'Facturada' : 'Parcialmente Facturada'}:</strong> Esta nota de venta no puede ser editada porque ya ha sido facturada{salesNote.estado === 'factura_parcial' ? ' parcialmente' : ''}.
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
             <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto justify-end">
