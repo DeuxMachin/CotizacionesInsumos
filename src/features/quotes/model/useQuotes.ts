@@ -80,7 +80,7 @@ interface UseQuotesReturn {
   isAdmin: boolean;
 }
 
-const ITEMS_PER_PAGE = 10;
+const ITEMS_PER_PAGE = 12;
 
 // Asegura que exista una serie activa para el tipo de documento y año indicado.
 // 1. Intenta buscar la serie activa.
@@ -405,7 +405,7 @@ type DespRow = Database['public']['Tables']['cotizacion_despachos']['Row'];
       // Insert cabecera
       const cabeceraPayload: Database['public']['Tables']['cotizaciones']['Insert'] = {
         estado: nuevaCotizacion.estado || 'borrador',
-        vendedor_id: user.id,
+        vendedor_id: nuevaCotizacion.vendedorId || user.id,
         cliente_principal_id: clientePrincipalId || null,
         obra_id: nuevaCotizacion.obraId || null,
         validez_dias: nuevaCotizacion.condicionesComerciales.validezOferta || 30,
@@ -438,7 +438,6 @@ type DespRow = Database['public']['Tables']['cotizacion_despachos']['Row'];
       // Actualizar dinero_cotizado en cliente_saldos
       if (clientePrincipalId && (cabecera.total_final ?? cabecera.total_neto ?? 0) > 0) {
         const monto = (cabecera.total_final ?? cabecera.total_neto ?? 0) as number;
-        console.log('🔄 Actualizando saldo para cotización:', { clienteId: clientePrincipalId, monto, total_final: cabecera.total_final, total_neto: cabecera.total_neto });
 
         // Obtener el saldo más reciente
         const { data: saldoActual } = await supabase
@@ -449,16 +448,13 @@ type DespRow = Database['public']['Tables']['cotizacion_despachos']['Row'];
           .limit(1)
           .maybeSingle();
 
-        console.log('Saldo actual:', saldoActual);
         if (saldoActual) {
           const nuevoDineroCotizado = (saldoActual.dinero_cotizado || 0) + monto;
-          console.log('Actualizando saldo existente:', { id: saldoActual.id, nuevoDineroCotizado });
           await supabase
             .from('cliente_saldos')
             .update({ dinero_cotizado: nuevoDineroCotizado })
             .eq('id', saldoActual.id);
         } else {
-          console.log('Insertando nuevo saldo:', { clienteId: clientePrincipalId, monto });
           await supabase
             .from('cliente_saldos')
             .insert({
@@ -547,19 +543,39 @@ type DespRow = Database['public']['Tables']['cotizacion_despachos']['Row'];
 
   const actualizarCotizacion = async (id: string, datosActualizados: Partial<Quote>): Promise<boolean> => {
     try {
-      // Encontrar registro por folio (id en dominio == folio)
-      const target = allQuotes.find(q => q.id === id);
-      if (!target) throw new Error('Cotización no encontrada');
+      
+      // Determinar si id es folio o COT-{id}
+      let numericId: number;
+      let folio: string | null = null;
+      
+      if (id.startsWith('COT-')) {
+        // Es COT-{id}, extraer el id numérico
+        const parts = id.split('-');
+        if (parts.length >= 2) {
+          numericId = parseInt(parts[1]);
+          if (isNaN(numericId)) throw new Error('ID inválido');
+        } else {
+          throw new Error('ID inválido');
+        }
+      } else {
+        // Es folio, buscar el id numérico
+        folio = id;
+        const { data: cotizacion, error: findError } = await supabase
+          .from('cotizaciones')
+          .select('id')
+          .eq('folio', folio)
+          .single();
+        if (findError || !cotizacion) throw new Error('Cotización no encontrada');
+        numericId = cotizacion.id;
+      }
 
       // Obtener datos actuales antes de actualizar
       const { data: oldQuote, error: oldError } = await supabase
         .from('cotizaciones')
         .select('id, cliente_principal_id, total_final, total_neto, estado')
-        .eq('folio', id)
+        .eq('id', numericId)
         .single();
       if (oldError) throw oldError;
-      
-      const numericId = oldQuote.id;
 
       // Si hay items, actualizarlos
       if (datosActualizados.items) {
@@ -657,13 +673,18 @@ type DespRow = Database['public']['Tables']['cotizacion_despachos']['Row'];
       if (typeof calculatedTotal === 'number') updates.total_final = calculatedTotal;
       if (datosActualizados.vendedorId) updates.vendedor_id = datosActualizados.vendedorId;
 
+      
       const { data: updatedQuote, error: updError } = await supabase
         .from('cotizaciones')
         .update(updates)
-        .eq('folio', id)
-        .select('cliente_principal_id, total_final, total_neto, estado')
+        .eq('id', numericId)
+        .select('cliente_principal_id, total_final, total_neto, estado, vendedor_id')
         .single();
-      if (updError) throw updError;
+      if (updError) {
+        console.error('Update error:', updError);
+        throw updError;
+      }
+      
 
       // Rehidratar datos después de actualizar
       await refetchQuotes();
@@ -719,15 +740,37 @@ type DespRow = Database['public']['Tables']['cotizacion_despachos']['Row'];
         return false;
       }
 
-      // 1. Obtener id numérico real por folio y datos para ajustar saldos
+      // Determinar si id es folio o COT-{id}
+      let numericId: number;
+      
+      if (id.startsWith('COT-')) {
+        // Es COT-{id}, extraer el id numérico
+        const parts = id.split('-');
+        if (parts.length >= 2) {
+          numericId = parseInt(parts[1]);
+          if (isNaN(numericId)) throw new Error('ID inválido');
+        } else {
+          throw new Error('ID inválido');
+        }
+      } else {
+        // Es folio, buscar el id numérico
+        const { data: cotizacion, error: findError } = await supabase
+          .from('cotizaciones')
+          .select('id')
+          .eq('folio', id)
+          .single();
+        if (findError || !cotizacion) throw new Error('Cotización no encontrada');
+        numericId = cotizacion.id;
+      }
+
+      // 1. Obtener datos para ajustar saldos
       const { data: cot, error: findErr } = await supabase
         .from('cotizaciones')
         .select('id, cliente_principal_id, total_final, total_neto, estado')
-        .eq('folio', id)
-        .maybeSingle();
+        .eq('id', numericId)
+        .single();
       if (findErr) throw findErr;
       if (!cot) throw new Error('Cotización no encontrada');
-      const numericId = cot.id;
 
       // Ajustar dinero_cotizado si la cotización no está aceptada
       if (cot.estado !== 'aceptada' && cot.cliente_principal_id) {

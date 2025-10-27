@@ -60,6 +60,10 @@ export default function StockPage() {
   const [deleteProductConfirmText, setDeleteProductConfirmText] = useState('');
   const [openRowMenuId, setOpenRowMenuId] = useState<number | null>(null);
 
+  // Selección múltiple de productos
+  const [selectedProducts, setSelectedProducts] = useState<number[]>([]);
+  const [showMultiSelect, setShowMultiSelect] = useState(false);
+
   // Cargar datos iniciales
   useEffect(() => {
     const loadInitialData = async () => {
@@ -167,6 +171,48 @@ export default function StockPage() {
   const handleEditProduct = (product: InventoryItem) => {
     setEditingProduct(product);
     setShowEditModal(true);
+  };
+
+  // Funciones para selección múltiple
+  const handleSelectProduct = (id: number, selected: boolean) => {
+    if (selected) {
+      setSelectedProducts(prev => [...prev, id]);
+    } else {
+      setSelectedProducts(prev => prev.filter(pid => pid !== id));
+    }
+  };
+
+  const handleSelectAll = (selected: boolean) => {
+    if (selected) {
+      setSelectedProducts(paginatedItems.map(p => p.id));
+    } else {
+      setSelectedProducts([]);
+    }
+  };
+
+  const handleDeleteSelected = async () => {
+    if (selectedProducts.length === 0) return;
+    const confirm = window.confirm(`¿Eliminar ${selectedProducts.length} productos seleccionados?`);
+    if (!confirm) return;
+    try {
+      setDeletingProduct(true);
+      for (const id of selectedProducts) {
+        await ProductosService.delete(id);
+      }
+      setData(prev => prev.filter(p => !selectedProducts.includes(p.id)));
+      setSelectedProducts([]);
+      setShowMultiSelect(false); // Salir del modo selección después de eliminar
+      Toast.success(`${selectedProducts.length} productos eliminados`);
+    } catch (error) {
+      console.error('Error eliminando productos:', error);
+      Toast.error('Error al eliminar productos');
+    } finally {
+      setDeletingProduct(false);
+    }
+  };
+
+  const handleClearSelection = () => {
+    setSelectedProducts([]);
   };
 
   // Estadísticas del catálogo
@@ -669,8 +715,52 @@ export default function StockPage() {
         </div>
       </div>
 
+      {/* Selección múltiple */}
+      {(['admin', 'dueño', 'dueno'].includes(user?.role?.toLowerCase() || '')) && (
+        <div className="max-w-7xl mx-auto mb-4 px-3 sm:px-0">
+          {!showMultiSelect ? (
+            <button
+              onClick={() => setShowMultiSelect(true)}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              Eliminar múltiples productos
+            </button>
+          ) : (
+            <div className="flex items-center justify-between bg-yellow-100 p-4 rounded-lg border" style={{ borderColor: 'var(--border)' }}>
+              <div className="flex items-center gap-4">
+                <span className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>
+                  {selectedProducts.length} productos seleccionados
+                </span>
+                <button
+                  onClick={handleClearSelection}
+                  className="px-3 py-1 bg-gray-500 text-white rounded hover:bg-gray-600 transition-colors text-sm"
+                >
+                  Limpiar productos seleccionados
+                </button>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => { setShowMultiSelect(false); setSelectedProducts([]); }}
+                  className="px-4 py-2 rounded-lg"
+                  style={{ backgroundColor: 'var(--button-secondary-bg)', color: 'var(--text-primary)' }}
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={handleDeleteSelected}
+                  disabled={deletingProduct || selectedProducts.length === 0}
+                  className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 transition-colors"
+                >
+                  {deletingProduct ? 'Eliminando...' : 'Eliminar Seleccionados'}
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Vista de productos - solo grid para simplicidad */}
-  <ProductGrid products={paginatedItems} onEdit={handleEditProduct} onAskDelete={(id) => setConfirmDeleteProductId(id)} user={user} openRowMenuId={openRowMenuId} setOpenRowMenuId={setOpenRowMenuId} />
+  <ProductGrid products={paginatedItems} onEdit={handleEditProduct} onAskDelete={(id) => setConfirmDeleteProductId(id)} user={user} openRowMenuId={openRowMenuId} setOpenRowMenuId={setOpenRowMenuId} selectedProducts={selectedProducts} onSelectProduct={handleSelectProduct} showMultiSelect={showMultiSelect} />
 
       {/* Paginación */}
       {totalPages > 1 && (
@@ -818,18 +908,18 @@ export default function StockPage() {
     </div>
   );
 }
-function ProductGrid({ products, onEdit, onAskDelete, user, openRowMenuId, setOpenRowMenuId }: { products: InventoryItem[]; onEdit: (product: InventoryItem) => void; onAskDelete: (id: number) => void; user: User | null; openRowMenuId: number | null; setOpenRowMenuId: (id: number | null) => void }) {
+function ProductGrid({ products, onEdit, onAskDelete, user, openRowMenuId, setOpenRowMenuId, selectedProducts, onSelectProduct, showMultiSelect }: { products: InventoryItem[]; onEdit: (product: InventoryItem) => void; onAskDelete: (id: number) => void; user: User | null; openRowMenuId: number | null; setOpenRowMenuId: (id: number | null) => void; selectedProducts: number[]; onSelectProduct: (id: number, selected: boolean) => void; showMultiSelect: boolean }) {
   return (
     <div className="max-w-7xl mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6 px-3 sm:px-0 items-stretch w-full">
       {products.map(product => (
-        <ProductCard key={product.id} product={product} onEdit={onEdit} onAskDelete={onAskDelete} user={user} openRowMenuId={openRowMenuId} setOpenRowMenuId={setOpenRowMenuId} />
+        <ProductCard key={product.id} product={product} onEdit={onEdit} onAskDelete={onAskDelete} user={user} openRowMenuId={openRowMenuId} setOpenRowMenuId={setOpenRowMenuId} selectedProducts={selectedProducts} onSelectProduct={onSelectProduct} showMultiSelect={showMultiSelect} />
       ))}
     </div>
   );
 }
 
 // Componente para tarjeta de producto mejorada para usuarios no técnicos
-function ProductCard({ product, onEdit, onAskDelete, user, openRowMenuId, setOpenRowMenuId }: { product: InventoryItem; onEdit: (product: InventoryItem) => void; onAskDelete: (id: number) => void; user: User | null; openRowMenuId: number | null; setOpenRowMenuId: (id: number | null) => void }) {
+function ProductCard({ product, onEdit, onAskDelete, user, openRowMenuId, setOpenRowMenuId, selectedProducts, onSelectProduct, showMultiSelect }: { product: InventoryItem; onEdit: (product: InventoryItem) => void; onAskDelete: (id: number) => void; user: User | null; openRowMenuId: number | null; setOpenRowMenuId: (id: number | null) => void; selectedProducts: number[]; onSelectProduct: (id: number, selected: boolean) => void; showMultiSelect: boolean }) {
   const menuOpen = openRowMenuId === product.id;
   const [expandedName, setExpandedName] = useState(false);
   const [expandedCategory, setExpandedCategory] = useState(false);
@@ -852,6 +942,19 @@ function ProductCard({ product, onEdit, onAskDelete, user, openRowMenuId, setOpe
         }}
       >
         <div className="flex items-start justify-between gap-4">
+          {/* Checkbox para selección múltiple - solo cuando esté activado el modo */}
+          {showMultiSelect && (['admin', 'dueño', 'dueno'].includes(user?.role?.toLowerCase() || '')) && (
+            <div className="flex items-center">
+              <input
+                type="checkbox"
+                checked={selectedProducts.includes(product.id)}
+                onChange={(e) => onSelectProduct(product.id, e.target.checked)}
+                className="w-4 h-4 rounded border-2 transition-colors"
+                style={{ borderColor: 'var(--border)', backgroundColor: 'var(--input-bg)' }}
+                title="Seleccionar producto"
+              />
+            </div>
+          )}
           <div className="flex-1 min-w-0 min-h-[100px] sm:min-h-[120px]">
             {/* Nombre del producto - responsive - altura fija para alineación */}
             <div className="h-12 sm:h-16 mb-2 sm:mb-3 flex items-start">
@@ -875,7 +978,13 @@ function ProductCard({ product, onEdit, onAskDelete, user, openRowMenuId, setOpe
                 >
                   📁 {product.tipo.nombre}
                 </span>
-              ) : null}
+              ) : (
+                <span 
+                  className="inline-flex items-center px-3 sm:px-4 py-1 sm:py-2 rounded-full text-xs sm:text-sm font-semibold bg-gray-100 text-gray-600"
+                >
+                  📁 Sin Categoría
+                </span>
+              )}
             </div>
 
             {/* Código (SKU) siempre visible con placeholder) */}

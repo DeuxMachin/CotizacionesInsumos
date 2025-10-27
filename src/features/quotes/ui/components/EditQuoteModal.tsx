@@ -7,6 +7,7 @@ import { useProducts, Product } from '../../model/useProducts';
 import { VendedorSelector } from './VendedorSelector';
 import { useAuth } from '@/contexts/AuthContext';
 import { Toast } from '@/shared/ui/Toast';
+import { Modal } from '@/shared/ui/Modal';
 
 interface EditQuoteModalProps {
   isOpen: boolean;
@@ -103,25 +104,8 @@ export function EditQuoteModal({
   const { subtotal, descuentoTotal } = calcularTotales();
 
   return (
-    <div className="fixed inset-0 z-[200000] flex items-center justify-center p-2 sm:p-4 animate-in fade-in duration-200" style={{ top: 0, left: 0, right: 0, bottom: 0 }}>
-      {/* Overlay con blur mejorado - encima del header */}
-      <div 
-        className="absolute inset-0 z-[200002] bg-black/70 backdrop-blur-md animate-in fade-in duration-200"
-        onClick={onClose}
-        style={{ top: 0, left: 0, right: 0, bottom: 0 }}
-      />
-      
-      {/* Modal Container con mejor scroll */}
-      <div className="relative w-full max-w-[95vw] sm:max-w-4xl lg:max-w-5xl max-h-[95vh] flex flex-col z-[200003] overflow-hidden animate-in zoom-in-95 duration-200">
-        {/* Modal */}
-        <div 
-          className="relative w-full rounded-lg shadow-2xl flex flex-col overflow-hidden"
-          style={{ 
-            backgroundColor: 'var(--card-bg)', 
-            border: '1px solid var(--border)',
-            maxHeight: 'calc(95vh - 1rem)'
-          }}
-        >
+    <Modal open={isOpen} onClose={onClose} contentStyle={{ width: 'min(95vw, 1400px)', maxHeight: '95vh', overflow: 'hidden' }}>
+      <div className="flex flex-col overflow-hidden" style={{ maxHeight: '95vh' }}>
         {/* Header */}
         <div className="flex items-center justify-between p-4 sm:p-6 border-b sticky top-0 z-10" 
           style={{ borderColor: 'var(--border)', backgroundColor: 'var(--card-bg)' }}>
@@ -130,15 +114,15 @@ export function EditQuoteModal({
               Editar Cotización {quote.numero}
             </h2>
             <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>
-              Modifica los productos y la información de despacho
+              Modifica los productos, despacho y asigna vendedor si es necesario
             </p>
           </div>
           <button
             onClick={onClose}
             className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-            disabled={saving}
+            title="Cerrar"
           >
-            <FiX className="w-5 h-5" style={{ color: 'var(--text-secondary)' }} />
+            <FiX className="w-5 h-5" style={{ color: 'var(--text-primary)' }} />
           </button>
         </div>
 
@@ -440,12 +424,18 @@ export function EditQuoteModal({
               </div>
             </div>
           ) : activeTab === 'vendedor' && user?.isAdmin ? (
-            <div className="max-w-md space-y-4 p-4">
-              <div>
-                <h3 className="text-sm font-medium mb-3 flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
-                  <FiUser className="w-4 h-4" style={{ color: 'var(--accent-primary)' }} />
+            <div className="space-y-6 p-6">
+              <div className="text-center">
+                <h3 className="text-lg font-semibold mb-2 flex items-center justify-center gap-2" style={{ color: 'var(--text-primary)' }}>
+                  <FiUser className="w-5 h-5" style={{ color: 'var(--accent-primary)' }} />
                   Asignar Vendedor
                 </h3>
+                <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+                  Selecciona el vendedor responsable de esta cotización
+                </p>
+              </div>
+
+              <div className="max-w-md mx-auto">
                 <VendedorSelector
                   selectedVendedorId={vendedorId}
                   selectedVendedorNombre={vendedorNombre}
@@ -455,6 +445,27 @@ export function EditQuoteModal({
                   }}
                 />
               </div>
+
+              {vendedorId && (
+                <div className="max-w-md mx-auto p-4 rounded-lg border" style={{ backgroundColor: 'var(--bg-secondary)', borderColor: 'var(--border)' }}>
+                  <h4 className="text-sm font-medium mb-2" style={{ color: 'var(--text-primary)' }}>
+                    Vendedor Asignado
+                  </h4>
+                  <div className="flex items-center gap-3">
+                    <div className="flex items-center justify-center w-8 h-8 rounded-full" style={{ backgroundColor: 'var(--accent-primary)', color: 'white' }}>
+                      <FiUser className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <div className="font-medium text-sm" style={{ color: 'var(--text-primary)' }}>
+                        {vendedorNombre}
+                      </div>
+                      <div className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+                        ID: {vendedorId}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           ) : null}
         </div>
@@ -488,8 +499,6 @@ export function EditQuoteModal({
             {saving ? 'Guardando...' : 'Guardar Cambios'}
           </button>
         </div>
-        </div>
-      </div>
 
       {/* Product Selector Modal */}
       {showProductModal && (
@@ -612,5 +621,6 @@ export function EditQuoteModal({
         </div>
       )}
     </div>
+    </Modal>
   );
 }

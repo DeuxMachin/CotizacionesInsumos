@@ -1,6 +1,7 @@
 import React from 'react';
 import { FiEye, FiFileText, FiCalendar, FiDollarSign, FiUser, FiEdit2, FiX } from 'react-icons/fi';
 import { SalesNoteRecord } from '@/services/notasVentaService';
+import { useActionAuthorization } from '@/middleware/AuthorizationMiddleware';
 
 interface SalesNotesListProps {
   salesNotes: SalesNoteRecord[];
@@ -11,6 +12,7 @@ interface SalesNotesListProps {
 }
 
 export function SalesNotesList({ salesNotes, onViewNote, onEditNote, onCancelNote, formatMoney }: SalesNotesListProps) {
+  const { canEdit: canEditResource, canDelete } = useActionAuthorization();
   const getStatusColor = (estado: string) => {
     switch (estado) {
       case 'facturada':
@@ -29,7 +31,7 @@ export function SalesNotesList({ salesNotes, onViewNote, onEditNote, onCancelNot
   };
 
   // Determina si se pueden editar o cancelar
-  const canEdit = (estado?: string) => estado && ['creada'].includes(estado);
+  const canEditNote = (estado?: string) => estado && ['creada'].includes(estado) && canEditResource('sales-notes');
   const canCancel = (estado?: string) => estado && ['creada', 'borrador'].includes(estado);
 
   if (salesNotes.length === 0) {
@@ -143,7 +145,7 @@ export function SalesNotesList({ salesNotes, onViewNote, onEditNote, onCancelNot
                       Ver
                     </button>
 
-                    {canEdit(note.estado) && onEditNote && (
+                    {canEditNote(note.estado) && onEditNote && (
                       <button
                         onClick={() => onEditNote(note.id)}
                         className="px-3 py-1 rounded-lg transition-colors text-sm"

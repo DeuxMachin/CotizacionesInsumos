@@ -27,6 +27,7 @@ import { useSalesNotes } from '@/features/sales-notes/hooks/useSalesNotes';
 import { EditSalesNoteModal } from '@/features/sales-notes/ui/EditSalesNoteModal';
 import { CancelSalesNoteModal } from '@/features/sales-notes/ui/CancelSalesNoteModal';
 import { InvoicedProductsTable } from '@/features/sales-notes/ui/InvoicedProductsTable';
+import { useActionAuthorization } from '@/middleware/AuthorizationMiddleware';
 
 
 export default function SalesNoteDetailPage() {
@@ -34,6 +35,7 @@ export default function SalesNoteDetailPage() {
   const router = useRouter();
   const { formatMoney } = useQuotes();
   const { editSalesNote, cancelSalesNote } = useSalesNotes();
+  const { canEdit } = useActionAuthorization();
 
   const noteId = params.id as string;
   const numericId = parseInt(noteId);
@@ -268,7 +270,7 @@ export default function SalesNoteDetailPage() {
                 <span className="inline sm:hidden">{exporting ? '...' : 'PDF'}</span>
               </button>
 
-              {(salesNote.estado === 'creada') && (
+              {(salesNote.estado === 'creada') && canEdit('sales-notes') && (
                 <>
                   <button
                     onClick={() => setEditModalOpen(true)}

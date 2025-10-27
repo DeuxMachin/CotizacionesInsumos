@@ -283,7 +283,6 @@ export function QuotesPage() {
   };
 
   const handleConvert = async (quote: Quote) => {
-    console.log('Convirtiendo cotización:', quote.id);
     router.push(`/dashboard/notas-venta/convertir?quoteId=${encodeURIComponent(quote.id)}`);
   };
 

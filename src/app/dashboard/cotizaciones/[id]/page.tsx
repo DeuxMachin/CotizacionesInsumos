@@ -118,11 +118,13 @@ export default function QuoteDetailPage() {
     }
   }, [quote, cancelarCotizacion]);
 
-  const handleSaveEdit = React.useCallback(async (items: QuoteItem[], despacho: DeliveryInfo) => {
+  const handleSaveEdit = React.useCallback(async (items: QuoteItem[], despacho: DeliveryInfo, vendedorId?: string, vendedorNombre?: string) => {
     if (!quote) return false;
-    const success = await actualizarCotizacion(quote.id, { items, despacho });
+    const success = await actualizarCotizacion(quote.id, { items, despacho, vendedorId, vendedorNombre });
     if (success) {
       Toast.success('Cotización actualizada exitosamente');
+      // Forzar recarga de la página para mostrar cambios
+      window.location.reload();
       return true;
     } else {
       Toast.error('No se pudo actualizar la cotización');

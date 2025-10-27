@@ -26,6 +26,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { NotasVentaService } from '@/services/notasVentaService';
 import { useObras } from '@/features/obras/model/useObras';
 import { Obra } from '@/features/obras/types/obras';
+import { useVendedores } from '@/hooks/useVendedores';
 import dynamic from 'next/dynamic';
 
 import { AddressAutocomplete } from '@/features/quotes/ui/components/AddressAutocomplete';
@@ -192,11 +193,33 @@ export function NewSalesNotePage({ obraId }: { obraId?: string } = {}) {
     fetchObra();
   }, [obraId, obtenerObra, router]);
 
+  const { vendedores } = useVendedores();
+
+  useEffect(() => {
+    if (user && vendedores.length > 0) {
+      const defaultVendedor = vendedores.find(v => v.id === user.id) || vendedores[0];
+      if (defaultVendedor) {
+        setSelectedVendedorId(defaultVendedor.id);
+        setSelectedVendedorNombre(defaultVendedor.name || defaultVendedor.email);
+      }
+    }
+  }, [user, vendedores]);
+
+  // Handler para cambiar vendedor
+  const handleVendedorChange = (vendedorId: string, vendedorNombre: string) => {
+    setSelectedVendedorId(vendedorId);
+    setSelectedVendedorNombre(vendedorNombre);
+  };
+
   // Estado para autocompletado de clientes
   const [isExistingClient, setIsExistingClient] = useState(false);
   const [showManualForm, setShowManualForm] = useState(false);
   const [rutSearch, setRutSearch] = useState('');
   const [razonSocialSearch, setRazonSocialSearch] = useState('');
+
+  // Estado para vendedor seleccionado
+  const [selectedVendedorId, setSelectedVendedorId] = useState<string>('');
+  const [selectedVendedorNombre, setSelectedVendedorNombre] = useState<string>('');
 
   // Calcular totales
   const calculateTotals = useCallback(() => {
@@ -404,7 +427,7 @@ export function NewSalesNotePage({ obraId }: { obraId?: string } = {}) {
         fecha_estimada_entrega: formData.despacho.fechaEstimada,
         fecha_emision: new Date().toISOString().split('T')[0],
         estado: formData.estado as 'creada' | 'factura_parcial' | 'facturada' | 'cancelada',
-        vendedor_id: user?.id,
+        vendedor_id: selectedVendedorId || user?.id,
         obra_id: obraId ? parseInt(obraId) : null,
         cotizacion_id: null
       };
@@ -1233,6 +1256,9 @@ export function NewSalesNotePage({ obraId }: { obraId?: string } = {}) {
             totals={totals}
             formatMoney={formatMoney}
             errors={errors.summary}
+            selectedVendedorId={selectedVendedorId}
+            selectedVendedorNombre={selectedVendedorNombre}
+            onVendedorChange={handleVendedorChange}
           />
         );
 

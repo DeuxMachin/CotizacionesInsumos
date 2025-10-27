@@ -9,12 +9,14 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useSalesNotes } from '@/features/sales-notes/hooks/useSalesNotes';
 import { EditSalesNoteModal } from '@/features/sales-notes/ui/EditSalesNoteModal';
 import { CancelSalesNoteModal } from '@/features/sales-notes/ui/CancelSalesNoteModal';
+import { useActionAuthorization } from '@/middleware/AuthorizationMiddleware';
 
 export default function SalesNotesPage() {
   const router = useRouter();
   const { formatMoney } = useQuotes();
   const { user } = useAuth();
   const { editSalesNote, cancelSalesNote } = useSalesNotes();
+  const { canEdit } = useActionAuthorization();
 
   const [salesNotes, setSalesNotes] = useState<SalesNoteRecord[]>([]);
   const [loading, setLoading] = useState(true);
@@ -365,7 +367,7 @@ export default function SalesNotesPage() {
                               <span className="hidden xs:inline">Ver</span>
                             </button>
 
-                            {note.estado && ['creada', 'borrador'].includes(note.estado) && (
+                            {note.estado && ['creada', 'borrador'].includes(note.estado) && canEdit('sales-notes') && (
                               <>
                                 <button
                                   onClick={(e) => {

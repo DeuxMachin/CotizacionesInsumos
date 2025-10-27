@@ -3,6 +3,7 @@
 import React from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import type { ClientInfo, QuoteItem, DeliveryInfo, CommercialTerms, Quote } from '@/core/domain/quote/Quote';
+import { VendedorSelector } from '@/features/quotes/ui/components/VendedorSelector';
 import {
   FiDollarSign,
   FiUser,
@@ -37,12 +38,18 @@ interface SalesNoteSummaryProps {
   };
   formatMoney: (amount: number) => string;
   errors?: string[];
+  selectedVendedorId?: string;
+  selectedVendedorNombre?: string;
+  onVendedorChange?: (vendedorId: string, vendedorNombre: string) => void;
 }
 
 export function SalesNoteSummary({
   formData,
   totals,
-  formatMoney
+  formatMoney,
+  selectedVendedorId,
+  selectedVendedorNombre,
+  onVendedorChange
 }: SalesNoteSummaryProps) {
   const { user } = useAuth();
   const { cliente, items, despacho } = formData;
@@ -324,6 +331,21 @@ export function SalesNoteSummary({
 
         {/* Columna derecha - Resumen Financiero */}
         <div className="xl:col-span-1 space-y-4 xl:space-y-6 min-w-0">
+          {/* Asignación de Vendedor - Solo para Admin/Dueño */}
+          {user?.isAdmin && onVendedorChange && (
+            <div className="rounded-lg border p-3 sm:p-4" style={{ backgroundColor: 'var(--card-bg)', borderColor: 'var(--border)' }}>
+              <h3 className="text-sm font-medium mb-2 flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
+                <FiUser className="w-4 h-4" style={{ color: 'var(--accent-primary)' }} />
+                Asignar Vendedor
+              </h3>
+              <VendedorSelector
+                selectedVendedorId={selectedVendedorId}
+                selectedVendedorNombre={selectedVendedorNombre}
+                onVendedorChange={onVendedorChange}
+              />
+            </div>
+          )}
+
           <div
             className="sticky top-4 rounded-lg border flex flex-col gap-3 sm:gap-4 p-3 sm:p-4 xl:p-5"
             style={{ backgroundColor: 'var(--card-bg)', borderColor: 'var(--border)' }}
