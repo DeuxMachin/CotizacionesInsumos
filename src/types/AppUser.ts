@@ -7,6 +7,7 @@ export interface AppUser {
   name?: string
   role?: string
   isAdmin?: boolean
+  isVendedor?: boolean
 }
 
 // Helper to build AppUser from a raw DB user or API payload
@@ -20,6 +21,7 @@ export function toAppUser(raw: unknown): AppUser {
     email: r.email as string,
     name,
     role,
-    isAdmin: ['admin', 'dueño', 'dueno'].includes(role?.toLowerCase() || '')
+    isAdmin: ['admin', 'dueño', 'dueno'].includes(role?.toLowerCase() || ''),
+    isVendedor: role?.toLowerCase() === 'vendedor'
   };
 }

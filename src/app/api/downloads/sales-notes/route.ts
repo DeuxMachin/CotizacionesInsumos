@@ -13,6 +13,7 @@ interface NotasVentaExportRow {
   producto: string;
   sku: string;
   categoria: string;
+  vendedorAsignado: string;
   cantidad: number;
   precioUnitario: number;
   totalLinea: number;
@@ -27,6 +28,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const userId = searchParams.get('userId');
     const isAdmin = searchParams.get('isAdmin') === 'true';
+    const isVendedor = searchParams.get('isVendedor') === 'true';
 
     if (!userId) {
       return NextResponse.json(
@@ -35,9 +37,9 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    if (!isAdmin) {
+    if (!isAdmin && !isVendedor) {
       return NextResponse.json(
-        { error: 'Solo los administradores pueden descargar el historial de notas de venta' },
+        { error: 'Solo los administradores y vendedores pueden descargar el historial de notas de venta' },
         { status: 403 }
       );
     }
@@ -64,6 +66,7 @@ export async function GET(request: NextRequest) {
         confirmed_at,
         cliente_rut,
         cliente_razon_social,
+        vendedor:usuarios!vendedor_id(id, nombre, apellido),
         clientes!notas_venta_cliente_principal_id_fkey(
           email_pago
         ),
@@ -72,7 +75,7 @@ export async function GET(request: NextRequest) {
           cantidad,
           precio_unitario_neto,
           total_neto,
-          productos(
+          productos!nota_venta_items_producto_id_fkey(
             sku,
             nombre,
             tipo_id
@@ -95,7 +98,7 @@ export async function GET(request: NextRequest) {
 
     // Obtener tipos de productos para mapear categorías
     const { data: tiposProductos } = await supabase
-      .from('tipos_productos')
+      .from('producto_tipos')
       .select('id, nombre');
 
     const tiposMap = new Map(tiposProductos?.map(t => [t.id, t.nombre]) || []);
@@ -107,6 +110,9 @@ export async function GET(request: NextRequest) {
     notasVentaData.forEach((notaVenta) => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const cliente = notaVenta.clientes as any;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const vendedor = notaVenta.vendedor as any;
+      const vendedorAsignado = vendedor?.nombre ? `${vendedor.nombre} ${vendedor.apellido || ''}`.trim() : 'N/A';
       const items = notaVenta.nota_venta_items || [];
 
       // Determinar fecha de facturación basada en el estado y updated_at
@@ -135,8 +141,9 @@ export async function GET(request: NextRequest) {
           clienteRazonSocial: notaVenta.cliente_razon_social || 'N/A',
           clienteEmail: cliente?.email_pago || 'No especeficiado',
           producto: item.descripcion || producto?.nombre || 'N/A',
-          sku: producto?.sku || 'N/A',
+          sku: producto?.sku || 'Sin asignar',
           categoria: categoria,
+          vendedorAsignado: vendedorAsignado,
           cantidad: item.cantidad || 0,
           precioUnitario: item.precio_unitario_neto || 0,
           totalLinea: item.total_neto || 0,
@@ -158,6 +165,7 @@ export async function GET(request: NextRequest) {
           producto: 'Sin productos',
           sku: 'N/A',
           categoria: 'N/A',
+          vendedorAsignado: vendedorAsignado,
           cantidad: 0,
           precioUnitario: 0,
           totalLinea: 0,
@@ -180,13 +188,14 @@ export async function GET(request: NextRequest) {
       { header: 'ID Nota Venta', key: 'idNotaVenta', width: 15 },
       { header: 'Folio', key: 'folio', width: 15 },
       { header: 'Estado', key: 'estado', width: 15 },
-      { header: 'Número de Cotización', key: 'numeroCotizacion', width: 20 },
+      { header: 'Cotización Referenciada', key: 'numeroCotizacion', width: 20 },
       { header: 'Cliente RUT', key: 'clienteRut', width: 15 },
       { header: 'Cliente Razón Social', key: 'clienteRazonSocial', width: 30 },
       { header: 'Cliente Email', key: 'clienteEmail', width: 30 },
       { header: 'Producto', key: 'producto', width: 35 },
       { header: 'SKU', key: 'sku', width: 15 },
       { header: 'Categoría', key: 'categoria', width: 20 },
+      { header: 'Vendedor asignado', key: 'vendedorAsignado', width: 25 },
       { header: 'Cantidad', key: 'cantidad', width: 12 },
       { header: 'Precio Unitario', key: 'precioUnitario', width: 15 },
       { header: 'Total Línea', key: 'totalLinea', width: 15 },
@@ -207,6 +216,7 @@ export async function GET(request: NextRequest) {
         producto: row.producto,
         sku: row.sku,
         categoria: row.categoria,
+        vendedorAsignado: row.vendedorAsignado,
         cantidad: row.cantidad,
         precioUnitario: row.precioUnitario,
         totalLinea: row.totalLinea,

@@ -12,6 +12,7 @@ export interface User {
   name?: string
   role?: string
   isAdmin?: boolean
+  isVendedor?: boolean
 }
 
 export interface AuthContextType {
@@ -53,7 +54,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               email: apiUser.email,
               name,
               role,
-              isAdmin: ['admin', 'dueño', 'dueno'].includes(role?.toLowerCase() || '')
+              isAdmin: ['admin', 'dueño', 'dueno'].includes(role?.toLowerCase() || ''),
+              isVendedor: role?.toLowerCase() === 'vendedor'
             };
             setUser(newUser);
             setLastActivity(Date.now());
