@@ -256,6 +256,7 @@ export function CreateObraModal({
   // Buscar direcciones con geocoding
   const onDireccionQueryChange = (value: string) => {
     setDireccionQuery(value);
+    setDireccionObra(value); // Permitir entrada manual si no hay resultados del geocoding
     setShowDireccionDropdown(true);
     if (direccionSearchTimeoutRef.current) clearTimeout(direccionSearchTimeoutRef.current);
     
@@ -790,6 +791,10 @@ export function CreateObraModal({
                       </div>
                     )}
                   </div>
+                  
+                  <p className="mt-1 text-xs" style={{ color: 'var(--text-muted)' }}>
+                    Si la dirección no aparece en las sugerencias, escríbela manualmente y se usará tal cual. El geocoding puede tener limitaciones para direcciones nuevas o rurales.
+                  </p>
                   
                   {/* Dropdown de resultados de geocoding */}
                   {showDireccionDropdown && direccionResults.length > 0 && (

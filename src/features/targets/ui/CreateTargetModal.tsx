@@ -82,7 +82,7 @@ export default function CreateTargetModal({ isOpen, onClose }: CreateTargetModal
   const isStepCompleted = (stepId: string) => {
     switch (stepId) {
       case 'location':
-        return !!selectedLocation;
+        return !!locationSearch.trim();
       case 'basic':
         return !!(formData.titulo && formData.descripcion);
       case 'contact':
@@ -133,7 +133,15 @@ export default function CreateTargetModal({ isOpen, onClose }: CreateTargetModal
 
   // Debounce search input
   useEffect(() => {
-    if (!locationSearch) return;
+    if (!locationSearch) {
+      setLocationSuggestions([]);
+      setShowSuggestions(false);
+      return;
+    }
+    
+    // Actualizar dirección manual cuando el usuario escribe
+    setFormData(prev => ({ ...prev, direccion: locationSearch }));
+    
     const h = setTimeout(() => searchLocation(locationSearch), 350);
     return () => clearTimeout(h);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -251,8 +259,8 @@ export default function CreateTargetModal({ isOpen, onClose }: CreateTargetModal
   };
 
   const handleSubmit = async () => {
-    if (!selectedLocation) {
-      alert("Por favor selecciona una ubicación");
+    if (!locationSearch.trim()) {
+      alert("Por favor ingresa una dirección");
       return;
     }
 
@@ -266,11 +274,11 @@ export default function CreateTargetModal({ isOpen, onClose }: CreateTargetModal
         titulo: formData.titulo,
         descripcion: formData.descripcion,
         direccion: formData.direccion,
-        lat: formData.lat,
-        lng: formData.lng,
-        ciudad: formData.ciudad,
-        region: formData.region,
-  comuna: formData.comuna,
+        lat: selectedLocation?.lat || 0,
+        lng: selectedLocation?.lng || 0,
+        ciudad: selectedLocation?.address_components.find(c => c.types.includes('locality'))?.long_name || formData.ciudad || '',
+        region: selectedLocation?.address_components.find(c => c.types.includes('administrative_area_level_1'))?.long_name || formData.region || '',
+        comuna: formData.comuna,
         contactoNombre: formData.contactoNombre,
         contactoTelefono: formData.contactoTelefono,
         contactoEmail: formData.contactoEmail,
@@ -451,6 +459,10 @@ export default function CreateTargetModal({ isOpen, onClose }: CreateTargetModal
                     )}
                   </div>
 
+                  <p className="mt-1 text-xs" style={{ color: 'var(--text-muted)' }}>
+                    Si la dirección no aparece en las sugerencias, escríbela manualmente y se usará tal cual. El geocoding puede tener limitaciones para direcciones nuevas o rurales.
+                  </p>
+
                   {/* Sugerencias de ubicación mejoradas */}
                   {showSuggestions && locationSuggestions.length > 0 && (
                     <div 
@@ -564,7 +576,7 @@ export default function CreateTargetModal({ isOpen, onClose }: CreateTargetModal
           )}
 
           {/* Paso 2: Información Básica */}
-          {currentStep === 'basic' && selectedLocation && (
+          {currentStep === 'basic' && isStepCompleted('location') && (
             <div className="space-y-6 sm:space-y-8">
               <div 
                 className="rounded-xl p-4 sm:p-6 lg:p-8"
@@ -686,7 +698,7 @@ export default function CreateTargetModal({ isOpen, onClose }: CreateTargetModal
           )}
 
           {/* Paso 3: Información de Contacto */}
-          {currentStep === 'contact' && selectedLocation && isStepCompleted('basic') && (
+          {currentStep === 'contact' && isStepCompleted('location') && isStepCompleted('basic') && (
             <div className="space-y-6 sm:space-y-8">
               <div 
                 className="rounded-xl p-4 sm:p-6 lg:p-8"
@@ -794,7 +806,7 @@ export default function CreateTargetModal({ isOpen, onClose }: CreateTargetModal
           )}
 
           {/* Paso 4: Información Adicional */}
-          {currentStep === 'additional' && selectedLocation && isStepCompleted('basic') && (
+          {currentStep === 'additional' && isStepCompleted('location') && isStepCompleted('basic') && (
             <div className="space-y-3 sm:space-y-4">
               <div 
                 className="rounded-xl p-3 sm:p-4"
@@ -848,7 +860,7 @@ export default function CreateTargetModal({ isOpen, onClose }: CreateTargetModal
                         <span className="font-medium text-xs sm:text-sm" style={{ color: 'var(--text-primary)' }}>Ubicación:</span>
                       </div>
                       <p className="text-xs ml-4" style={{ color: 'var(--text-secondary)' }}>
-                        {selectedLocation.formatted_address}
+                        {selectedLocation?.formatted_address || formData.direccion}
                       </p>
                       
                       {formData.titulo && (

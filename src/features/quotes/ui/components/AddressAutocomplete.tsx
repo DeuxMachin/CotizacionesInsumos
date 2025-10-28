@@ -126,6 +126,22 @@ export function AddressAutocomplete({
     return () => clearTimeout(timeoutId);
   }, [value]);
 
+  // Handle manual entry when user types and doesn't select
+  useEffect(() => {
+    if (value && !showSuggestions) {
+      // If user has typed something and suggestions are not showing (meaning they didn't select),
+      // treat it as manual entry
+      onAddressSelect?.({
+        direccion: value,
+        ciudad: undefined,
+        comuna: undefined,
+        region: undefined,
+        lat: undefined,
+        lng: undefined
+      });
+    }
+  }, [value, showSuggestions]);
+
   // Click outside to close suggestions
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -205,6 +221,10 @@ export function AddressAutocomplete({
           )}
         </div>
       </div>
+
+      <p className="mt-1 text-xs" style={{ color: 'var(--text-muted)' }}>
+        Si la dirección no aparece en las sugerencias, escríbela manualmente y se usará tal cual. El geocoding puede tener limitaciones para direcciones nuevas o rurales.
+      </p>
 
       {/* Suggestions dropdown */}
       {showSuggestions && suggestions.length > 0 && (
