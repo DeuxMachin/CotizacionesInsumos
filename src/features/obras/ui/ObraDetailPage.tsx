@@ -363,6 +363,16 @@ export function ObraDetailPage({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [locationSearch]);
 
+  // Permitir entrada manual cuando geocoding no encuentra resultados
+  useEffect(() => {
+    if (locationSearch && locationSearch.trim().length > 0) {
+      setEditedObra(prev => ({
+        ...prev,
+        direccionObra: locationSearch
+      }));
+    }
+  }, [locationSearch]);
+
   useEffect(() => {
     const onDocClick = (e: MouseEvent) => {
       if (
@@ -1414,7 +1424,7 @@ export function ObraDetailPage({
                         placeholder="Escribe calle y número..."
                         style={{ backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)' }}
                       />
-                      <p className="mt-1 text-[11px]" style={{ color: 'var(--text-muted)' }}>Selecciona una dirección.</p>
+                      <p className="mt-1 text-[11px]" style={{ color: 'var(--text-muted)' }}>Selecciona una dirección de la lista o escribe manualmente si no aparece. El geocoding tiene limitaciones para direcciones nuevas o rurales.</p>
                       {showSuggestions && (
                         <div className="absolute z-20 mt-1 w-full max-h-64 overflow-auto rounded-md border" style={{ backgroundColor: 'var(--card-bg)', borderColor: 'var(--border)', boxShadow: 'var(--shadow-lg)' }}>
                           {searchingLocation && (

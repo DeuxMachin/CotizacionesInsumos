@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { FiUser, FiMapPin, FiBriefcase, FiAlertCircle, FiHelpCircle } from 'react-icons/fi';
+import { AddressAutocomplete } from '@/features/quotes/ui/components/AddressAutocomplete';
 
 interface ClientInfoFormData {
   rut: string;
@@ -64,6 +65,23 @@ export function ClientInfoForm({
     handleInputChange('rut', formattedRUT);
   };
 
+  // Memoizar la función onAddressSelect para evitar re-renders infinitos
+  const handleAddressSelect = useCallback((addressData: {
+    direccion: string;
+    ciudad?: string;
+    comuna?: string;
+    region?: string;
+    lat?: number;
+    lng?: number;
+  }) => {
+    // Actualizar dirección y otros campos si están disponibles
+    onChange({
+      direccion: addressData.direccion,
+      ciudad: addressData.ciudad || data.ciudad,
+      comuna: addressData.comuna || data.comuna,
+    });
+  }, [data.ciudad, data.comuna, onChange]);
+
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-3 mb-6">
@@ -82,27 +100,6 @@ export function ClientInfoForm({
           </p>
         </div>
       </div>
-
-      {errors.length > 0 && (
-        <div 
-          className="p-4 rounded-lg border"
-          style={{ 
-            backgroundColor: 'var(--danger-bg)', 
-            borderColor: 'var(--danger-border)',
-            color: 'var(--danger-text)'
-          }}
-        >
-          <div className="flex items-center gap-2 mb-2">
-            <FiAlertCircle className="w-5 h-5" />
-            <span className="font-medium">Errores a corregir:</span>
-          </div>
-          <ul className="list-disc list-inside space-y-1 text-sm">
-            {errors.map((err, idx) => (
-              <li key={idx}>{err}</li>
-            ))}
-          </ul>
-        </div>
-      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* RUT */}
@@ -264,10 +261,10 @@ export function ClientInfoForm({
             <label className="form-label">
               Dirección*
             </label>
-            <input
-              type="text"
+            <AddressAutocomplete
               value={data.direccion}
-              onChange={(e) => handleInputChange('direccion', e.target.value)}
+              onChange={(value) => handleInputChange('direccion', value)}
+              onAddressSelect={handleAddressSelect}
               placeholder="Calle, número, departamento, oficina"
               className="form-input"
             />

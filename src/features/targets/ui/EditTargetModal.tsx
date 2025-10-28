@@ -168,6 +168,10 @@ export default function EditTargetModal({ isOpen, onClose, target, onUpdated }: 
   // Debounce search input
   useEffect(() => {
     if (!locationSearch) return;
+    
+    // Actualizar dirección manual cuando el usuario escribe
+    setFormData(prev => ({ ...prev, direccion: locationSearch }));
+    
     const h = setTimeout(() => searchLocation(locationSearch), 350);
     return () => clearTimeout(h);
   }, [locationSearch, searchLocation]);
@@ -375,6 +379,10 @@ export default function EditTargetModal({ isOpen, onClose, target, onUpdated }: 
                     />
                     {searchingLocation && <FiLoader className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5 animate-spin" />}
                   </div>
+
+                  <p className="mt-1 text-xs text-gray-500">
+                    Si la dirección no aparece en las sugerencias, escríbela manualmente y se usará tal cual. El geocoding puede tener limitaciones para direcciones nuevas o rurales.
+                  </p>
 
                   {showSuggestions && locationSuggestions.length > 0 && (
                     <div
