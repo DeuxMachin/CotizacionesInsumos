@@ -308,23 +308,28 @@ export function NewQuoteFromObraPage() {
   const handleSave = async (status: QuoteStatus = 'borrador') => {
     setLoading(true);
     try {
-      const finalErrors = validateStep('summary');
-      if (finalErrors.length > 0) {
-        setErrors({ summary: finalErrors });
-        setLoading(false);
-        return;
+      // Para borradores permitimos guardar con datos incompletos.
+      // Solo cuando se envía/guarda como "enviada" validamos todo el resumen.
+      if (status !== 'borrador') {
+        const finalErrors = validateStep('summary');
+        if (finalErrors.length > 0) {
+          setErrors({ summary: finalErrors });
+          setLoading(false);
+          return false;
+        }
       }
 
       const { subtotal, descuentoTotal, iva, total } = calculateTotals();
-      
+
       const newQuote: Omit<Quote, 'id' | 'numero' | 'fechaCreacion' | 'fechaModificacion'> = {
         cliente: formData.cliente as ClientInfo,
         items: formData.items,
         despacho: Object.keys(formData.despacho).length > 0 ? formData.despacho as DeliveryInfo : undefined,
         condicionesComerciales: formData.condicionesComerciales as CommercialTerms,
         estado: status,
-        vendedorId: 'USER001',
-        vendedorNombre: 'Usuario Actual',
+        // vendedorId y vendedorNombre se completan en useQuotes usando el usuario autenticado
+        vendedorId: '' as any,
+        vendedorNombre: '',
         subtotal,
         descuentoTotal,
         iva,
@@ -463,7 +468,12 @@ export function NewQuoteFromObraPage() {
 
             <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto justify-end">
               <button
-                onClick={() => handleSave('borrador')}
+                onClick={async () => {
+                  const ok = await handleSave('borrador');
+                  if (ok) {
+                    router.push(`/dashboard/obras/${obraId}`);
+                  }
+                }}
                 disabled={loading}
                 className="btn-secondary flex items-center gap-2 px-3 py-2 text-sm"
               >

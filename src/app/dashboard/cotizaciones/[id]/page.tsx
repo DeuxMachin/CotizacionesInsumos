@@ -32,16 +32,76 @@ import { NotasVentaService, SalesNoteRecord } from '@/services/notasVentaService
 import { ConfirmDialog } from '@/shared/ui/ConfirmDialog';
 import { EditQuoteModal, SendEmailModal } from '@/features/quotes/ui/components';
 import { Toast } from '@/shared/ui/Toast';
-import type { QuoteItem, DeliveryInfo } from '@/core/domain/quote/Quote';
+import type { Quote, QuoteItem, DeliveryInfo } from '@/core/domain/quote/Quote';
+import { supabase, type Database } from '@/lib/supabase';
+import { mapCotizacionToDomain, type CotizacionAggregate } from '@/features/quotes/model/adapters';
+
+type CotizacionRow = Database['public']['Tables']['cotizaciones']['Row'];
+type ItemRow = Database['public']['Tables']['cotizacion_items']['Row'];
+type ClienteRow = Database['public']['Tables']['clientes']['Row'];
+type UsuarioRow = Database['public']['Tables']['usuarios']['Row'];
+type DespRow = Database['public']['Tables']['cotizacion_despachos']['Row'];
 
 export default function QuoteDetailPage() {
   const params = useParams();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { getQuoteById, formatMoney, getStatusColor, loading, eliminarCotizacion, cancelarCotizacion, actualizarCotizacion, canDelete, isAdmin } = useQuotes();
+  const { getQuoteById, formatMoney, getStatusColor, loading: quotesLoading, eliminarCotizacion, cancelarCotizacion, actualizarCotizacion, canDelete, isAdmin } = useQuotes();
   
   const quoteFolio = params.id as string; // folio (ej: COT000002)
-  const quote = getQuoteById ? getQuoteById(quoteFolio) : null;
+  const initialQuote = getQuoteById ? getQuoteById(quoteFolio) : null;
+  const [quote, setQuote] = React.useState<Quote | null>(initialQuote);
+  const [loadingQuote, setLoadingQuote] = React.useState(!initialQuote);
+  const [fetchError, setFetchError] = React.useState<string | null>(null);
+  const isLoading = loadingQuote || quotesLoading;
+
+  React.useEffect(() => {
+    const fetchQuote = async () => {
+      try {
+        setFetchError(null);
+        setLoadingQuote(true);
+        const { data, error } = await supabase
+          .from('cotizaciones')
+          .select(`*,
+            cotizacion_items(*, productos(*)),
+            cotizacion_clientes(*, clientes(*)),
+            cotizacion_despachos(*),
+            clientes!cotizaciones_cliente_principal_id_fkey(*),
+            usuarios!cotizaciones_vendedor_id_fkey(*)
+          `)
+          .eq('folio', quoteFolio)
+          .maybeSingle();
+
+        if (error) throw error;
+
+        if (!data) {
+          setQuote(null);
+          setFetchError('Cotización no encontrada');
+          return;
+        }
+
+        const aggregate: CotizacionAggregate = {
+          cotizacion: data as CotizacionRow,
+          items: ((data as unknown as { cotizacion_items?: ItemRow[] }).cotizacion_items) || [],
+          clientes_adicionales: ((data as unknown as { cotizacion_clientes?: { clientes?: ClienteRow | null }[] }).cotizacion_clientes) || [],
+          despacho: ((data as unknown as { cotizacion_despachos?: DespRow[] }).cotizacion_despachos)?.[0] || null,
+          cliente_principal: (data as unknown as { clientes?: ClienteRow | null }).clientes || null,
+          vendedor: (data as unknown as { usuarios?: UsuarioRow | null }).usuarios || null
+        };
+
+        setQuote(mapCotizacionToDomain(aggregate));
+      } catch (err) {
+        console.error('Error fetching quote from Supabase:', err);
+        setFetchError('Error al cargar la cotización');
+      } finally {
+        setLoadingQuote(false);
+      }
+    };
+
+    if (quoteFolio) {
+      fetchQuote();
+    }
+  }, [quoteFolio]);
 
   // Estado para exportar PDF
   const [exporting, setExporting] = React.useState(false);
@@ -90,7 +150,7 @@ export default function QuoteDetailPage() {
 
   // Navegar a la nueva página de conversión (sin modal)
   const handleConvert = React.useCallback(() => {
-    if (!quote) return;
+    if (!quote || quote.estado === 'borrador') return;
     router.push(`/dashboard/notas-venta/convertir?quoteId=${encodeURIComponent(quote.id)}`);
   }, [quote, router]);
 
@@ -133,7 +193,7 @@ export default function QuoteDetailPage() {
   }, [quote, actualizarCotizacion]);
 
   const handleSendEmail = async (email: string, name: string, message?: string) => {
-    if (!quote) return;
+    if (!quote || quote.estado === 'borrador') return;
     try {
       const response = await fetch('/api/cotizaciones/send-email', {
         method: 'POST',
@@ -162,7 +222,7 @@ export default function QuoteDetailPage() {
   };
 
   // ===== RETURNS CONDICIONALES =====
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
@@ -184,7 +244,7 @@ export default function QuoteDetailPage() {
             Cotización no encontrada
           </h3>
           <p className="mb-6" style={{ color: 'var(--text-secondary)' }}>
-            La cotización que buscas no existe o ha sido eliminada.
+            {fetchError || 'La cotización que buscas no existe o ha sido eliminada.'}
           </p>
           <button 
             onClick={() => router.push('/dashboard/cotizaciones')}
@@ -197,6 +257,7 @@ export default function QuoteDetailPage() {
     );
   }
 
+  const isDraft = quote.estado === 'borrador';
   const statusColor = getStatusColor(quote.estado);
 
   // Calcular días restantes para expiración
@@ -221,7 +282,7 @@ export default function QuoteDetailPage() {
   };
 
   const handleExport = async () => {
-    if (!quote) return;
+    if (!quote || isDraft) return;
     try {
       setExporting(true);
       const response = await fetch('/api/pdf/cotizacion/generate', {
@@ -328,34 +389,38 @@ export default function QuoteDetailPage() {
         )}
 
         <div className="flex items-center gap-2 self-end sm:self-auto mt-2 sm:mt-0 flex-wrap">
-          <button
-            onClick={handleConvert}
-            disabled={quote?.estado === 'aceptada' || quote?.estado === 'rechazada'}
-            className="btn-primary flex items-center gap-2 px-3 sm:px-4 py-2 text-sm font-medium"
-            style={quote?.estado === 'aceptada' || quote?.estado === 'rechazada' ? { opacity: 0.5, cursor: 'not-allowed' } : {}}
-            title="Convertir cotización a nota de venta"
-          >
-            <FiShoppingCart className="w-4 h-4" />
-            <span>Pasar a Venta</span>
-          </button>
-          <button
-            onClick={handleExport}
-            disabled={exporting}
-            className="btn-secondary flex items-center gap-2 px-3 sm:px-4 py-2 text-sm font-medium"
-            style={exporting ? { opacity: .7, cursor: 'wait' } : {}}
-            title="Descargar PDF de la cotización"
-          >
-            <FiDownload className="w-4 h-4" />
-            <span>{exporting ? 'Descargando...' : 'Descargar PDF'}</span>
-          </button>
-          <button
-            onClick={() => setSendEmailModal(true)}
-            className="btn-secondary flex items-center gap-2 px-3 sm:px-4 py-2 text-sm font-medium"
-            title="Enviar cotización por email"
-          >
-            <FiSend className="w-4 h-4" />
-            <span>Enviar</span>
-          </button>
+          {!isDraft && (
+            <>
+              <button
+                onClick={handleConvert}
+                disabled={quote?.estado === 'aceptada' || quote?.estado === 'rechazada'}
+                className="btn-primary flex items-center gap-2 px-3 sm:px-4 py-2 text-sm font-medium"
+                style={quote?.estado === 'aceptada' || quote?.estado === 'rechazada' ? { opacity: 0.5, cursor: 'not-allowed' } : {}}
+                title="Convertir cotización a nota de venta"
+              >
+                <FiShoppingCart className="w-4 h-4" />
+                <span>Pasar a Venta</span>
+              </button>
+              <button
+                onClick={handleExport}
+                disabled={exporting}
+                className="btn-secondary flex items-center gap-2 px-3 sm:px-4 py-2 text-sm font-medium"
+                style={exporting ? { opacity: .7, cursor: 'wait' } : {}}
+                title="Descargar PDF de la cotización"
+              >
+                <FiDownload className="w-4 h-4" />
+                <span>{exporting ? 'Descargando...' : 'Descargar PDF'}</span>
+              </button>
+              <button
+                onClick={() => setSendEmailModal(true)}
+                className="btn-secondary flex items-center gap-2 px-3 sm:px-4 py-2 text-sm font-medium"
+                title="Enviar cotización por email"
+              >
+                <FiSend className="w-4 h-4" />
+                <span>Enviar</span>
+              </button>
+            </>
+          )}
           {/* Menú desplegable de Acciones */}
           <div className="relative actions-menu-container">
             <button
