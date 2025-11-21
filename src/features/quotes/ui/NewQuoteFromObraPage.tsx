@@ -328,7 +328,7 @@ export function NewQuoteFromObraPage() {
         condicionesComerciales: formData.condicionesComerciales as CommercialTerms,
         estado: status,
         // vendedorId y vendedorNombre se completan en useQuotes usando el usuario autenticado
-        vendedorId: '' as any,
+        vendedorId: '',
         vendedorNombre: '',
         subtotal,
         descuentoTotal,

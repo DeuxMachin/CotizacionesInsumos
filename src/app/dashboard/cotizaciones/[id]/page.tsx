@@ -38,6 +38,7 @@ import { mapCotizacionToDomain, type CotizacionAggregate } from '@/features/quot
 
 type CotizacionRow = Database['public']['Tables']['cotizaciones']['Row'];
 type ItemRow = Database['public']['Tables']['cotizacion_items']['Row'];
+type CotClienteRow = Database['public']['Tables']['cotizacion_clientes']['Row'];
 type ClienteRow = Database['public']['Tables']['clientes']['Row'];
 type UsuarioRow = Database['public']['Tables']['usuarios']['Row'];
 type DespRow = Database['public']['Tables']['cotizacion_despachos']['Row'];
@@ -83,7 +84,7 @@ export default function QuoteDetailPage() {
         const aggregate: CotizacionAggregate = {
           cotizacion: data as CotizacionRow,
           items: ((data as unknown as { cotizacion_items?: ItemRow[] }).cotizacion_items) || [],
-          clientes_adicionales: ((data as unknown as { cotizacion_clientes?: { clientes?: ClienteRow | null }[] }).cotizacion_clientes) || [],
+          clientes_adicionales: ((data as unknown as { cotizacion_clientes?: (CotClienteRow & { cliente?: ClienteRow | null })[] }).cotizacion_clientes) || [],
           despacho: ((data as unknown as { cotizacion_despachos?: DespRow[] }).cotizacion_despachos)?.[0] || null,
           cliente_principal: (data as unknown as { clientes?: ClienteRow | null }).clientes || null,
           vendedor: (data as unknown as { usuarios?: UsuarioRow | null }).usuarios || null
