@@ -878,43 +878,40 @@ function QuoteCard({
         {/* Acciones */}
         <div className="flex items-center justify-between mt-4 pt-4 border-t opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity" style={{ borderColor: 'var(--border)' }}>
           <div className="flex items-center gap-2">
-            {/* Para borradores solo mostramos Editar/Cancelar/Eliminar; ocultamos otras acciones */}
-            {quote.estado !== 'borrador' && (
-              <>
+            <>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onSendEmail(quote);
+                }}
+                className="p-2 rounded-lg hover:bg-blue-100 transition-colors"
+                title="Enviar por email"
+              >
+                <FiSend className="w-4 h-4 text-blue-500" />
+              </button>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onConvert(quote);
+                }}
+                className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
+                title="Convertir a nota de venta"
+              >
+                <FiShoppingCart className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />
+              </button>
+              {quote.estado !== 'aceptada' && (
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
-                    onSendEmail(quote);
-                  }}
-                  className="p-2 rounded-lg hover:bg-blue-100 transition-colors"
-                  title="Enviar por email"
-                >
-                  <FiSend className="w-4 h-4 text-blue-500" />
-                </button>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onConvert(quote);
+                    onDuplicate(quote.id);
                   }}
                   className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
-                  title="Convertir a nota de venta"
+                  title="Duplicar"
                 >
-                  <FiShoppingCart className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />
+                  <FiCopy className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />
                 </button>
-                {quote.estado !== 'aceptada' && (
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onDuplicate(quote.id);
-                    }}
-                    className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
-                    title="Duplicar"
-                  >
-                    <FiCopy className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />
-                  </button>
-                )}
-              </>
-            )}
+              )}
+            </>
             {canEdit(quote) && (
               <button
                 onClick={(e) => {
@@ -930,7 +927,7 @@ function QuoteCard({
           </div>
           <div className="flex items-center gap-2">
             {/* Aceptar solo para cotizaciones enviadas, no borradores */}
-            {quote.estado === 'enviada' && (
+            {(quote.estado === 'enviada' || quote.estado === 'borrador') && (
               <button
                 onClick={(e) => {
                   e.stopPropagation();
@@ -1226,45 +1223,42 @@ function QuotesTable({
                       >
                         <FiEye className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />
                       </button>
-                      {/* Para borradores solo Editar/Cancelar/Eliminar; otras acciones solo si no es borrador */}
-                      {quote.estado !== 'borrador' && (
-                        <>
+                      <>
+                        <button
+                          onClick={() => onSendEmail(quote)}
+                          className="p-1 rounded hover:bg-blue-100"
+                          title="Enviar por email"
+                        >
+                          <FiSend className="w-4 h-4 text-blue-500" />
+                        </button>
+                        <button
+                          onClick={() => onConvert(quote)}
+                          className="p-1 rounded hover:bg-gray-100"
+                          title="Convertir a nota de venta"
+                          disabled={quote.estado === 'aceptada'}
+                          style={quote.estado === 'aceptada' ? { opacity: 0.5, cursor: 'not-allowed' } : {}}
+                        >
+                          <FiShoppingCart className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />
+                        </button>
+                        {quote.estado !== 'aceptada' && (
                           <button
-                            onClick={() => onSendEmail(quote)}
-                            className="p-1 rounded hover:bg-blue-100"
-                            title="Enviar por email"
-                          >
-                            <FiSend className="w-4 h-4 text-blue-500" />
-                          </button>
-                          <button
-                            onClick={() => onConvert(quote)}
+                            onClick={() => onDuplicate(quote.id)}
                             className="p-1 rounded hover:bg-gray-100"
-                            title="Convertir a nota de venta"
-                            disabled={quote.estado === 'aceptada'}
-                            style={quote.estado === 'aceptada' ? { opacity: 0.5, cursor: 'not-allowed' } : {}}
+                            title="Duplicar"
                           >
-                            <FiShoppingCart className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />
+                            <FiCopy className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />
                           </button>
-                          {quote.estado !== 'aceptada' && (
-                            <button
-                              onClick={() => onDuplicate(quote.id)}
-                              className="p-1 rounded hover:bg-gray-100"
-                              title="Duplicar"
-                            >
-                              <FiCopy className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />
-                            </button>
-                          )}
-                          {quote.estado === 'enviada' && (
-                            <button
-                              onClick={() => onChangeStatus(quote.id, 'aceptada')}
-                              className="px-2 py-1 text-xs rounded bg-green-500 text-white hover:bg-green-600"
-                              title="Aceptar cotización y convertir a venta"
-                            >
-                              Aceptar
-                            </button>
-                          )}
-                        </>
-                      )}
+                        )}
+                        {(quote.estado === 'enviada' || quote.estado === 'borrador') && (
+                          <button
+                            onClick={() => onChangeStatus(quote.id, 'aceptada')}
+                            className="px-2 py-1 text-xs rounded bg-green-500 text-white hover:bg-green-600"
+                            title="Aceptar cotización y convertir a venta"
+                          >
+                            Aceptar
+                          </button>
+                        )}
+                      </>
                       {/* Menú desplegable de Acciones */}
                       <div className="relative actions-menu-container">
                         <button

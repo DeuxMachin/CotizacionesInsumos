@@ -1,4 +1,4 @@
-import { Quote, QuoteItem, ClientInfo, DeliveryInfo, CommercialTerms, QuoteStatus, QuoteAmountCalculator } from '@/core/domain/quote/Quote';
+import { Quote, QuoteItem, ClientInfo, DeliveryInfo, CommercialTerms, QuoteStatus, QuoteAmountCalculator, QuoteStatusValidator } from '@/core/domain/quote/Quote';
 import { Database } from '@/lib/supabase';
 
 type CotizacionRow = Database['public']['Tables']['cotizaciones']['Row'];
@@ -20,6 +20,8 @@ export interface CotizacionAggregate {
 
 export function mapCotizacionToDomain(data: CotizacionAggregate): Quote {
 	const { cotizacion, items, despacho, cliente_principal, vendedor } = data;
+
+	const estadoNormalizado = QuoteStatusValidator.normalize(cotizacion.estado);
 
 	const client: ClientInfo = cliente_principal ? {
 		razonSocial: cliente_principal.nombre_razon_social,
@@ -90,7 +92,7 @@ export function mapCotizacionToDomain(data: CotizacionAggregate): Quote {
 		cliente: client,
 		fechaCreacion: cotizacion.created_at.split('T')[0],
 		fechaModificacion: cotizacion.updated_at.split('T')[0],
-		estado: (cotizacion.estado as QuoteStatus),
+		estado: estadoNormalizado,
 		vendedorId: cotizacion.vendedor_id,
 		vendedorNombre: vendedor ? [vendedor.nombre, vendedor.apellido].filter(Boolean).join(' ') || vendedor.email : 'Vendedor',
 		items: quoteItems,

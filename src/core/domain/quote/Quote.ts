@@ -133,8 +133,24 @@ export interface Quote {
 export class QuoteStatusValidator {
   private static readonly VALID_STATUSES: QuoteStatus[] = ["borrador", "enviada", "aceptada", "rechazada", "expirada"];
   
-  static isValid(status: string): status is QuoteStatus {
-    return this.VALID_STATUSES.includes(status as QuoteStatus);
+  static isValid(status?: string | null): status is QuoteStatus {
+    if (!status) return false;
+    const normalized = status.toLowerCase() as QuoteStatus;
+    return this.VALID_STATUSES.includes(normalized);
+  }
+
+  static normalize(status?: string | null): QuoteStatus {
+    if (!status) return 'borrador';
+    const normalized = status.toLowerCase();
+    if (this.isValid(normalized)) return normalized as QuoteStatus;
+
+    const fallbacks: Record<string, QuoteStatus> = {
+      borrado: 'borrador',
+      eliminado: 'borrador',
+      vencida: 'expirada'
+    };
+
+    return fallbacks[normalized] || 'borrador';
   }
   
   static getDisplayName(status: QuoteStatus): string {
@@ -156,7 +172,7 @@ export class QuoteStatusValidator {
       rechazada: { bg: 'var(--danger-bg)', text: 'var(--danger-text)' },
       expirada: { bg: 'var(--neutral-bg)', text: 'var(--neutral-text)' }
     };
-    return colors[status];
+    return colors[status] || colors.borrador;
   }
 }
 

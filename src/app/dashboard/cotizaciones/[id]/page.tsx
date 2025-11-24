@@ -151,7 +151,7 @@ export default function QuoteDetailPage() {
 
   // Navegar a la nueva página de conversión (sin modal)
   const handleConvert = React.useCallback(() => {
-    if (!quote || quote.estado === 'borrador') return;
+    if (!quote) return;
     router.push(`/dashboard/notas-venta/convertir?quoteId=${encodeURIComponent(quote.id)}`);
   }, [quote, router]);
 
@@ -194,7 +194,7 @@ export default function QuoteDetailPage() {
   }, [quote, actualizarCotizacion]);
 
   const handleSendEmail = async (email: string, name: string, message?: string) => {
-    if (!quote || quote.estado === 'borrador') return;
+    if (!quote) return;
     try {
       const response = await fetch('/api/cotizaciones/send-email', {
         method: 'POST',
@@ -258,7 +258,6 @@ export default function QuoteDetailPage() {
     );
   }
 
-  const isDraft = quote.estado === 'borrador';
   const statusColor = getStatusColor(quote.estado);
 
   // Calcular días restantes para expiración
@@ -283,7 +282,7 @@ export default function QuoteDetailPage() {
   };
 
   const handleExport = async () => {
-    if (!quote || isDraft) return;
+    if (!quote) return;
     try {
       setExporting(true);
       const response = await fetch('/api/pdf/cotizacion/generate', {
@@ -390,38 +389,36 @@ export default function QuoteDetailPage() {
         )}
 
         <div className="flex items-center gap-2 self-end sm:self-auto mt-2 sm:mt-0 flex-wrap">
-          {!isDraft && (
-            <>
-              <button
-                onClick={handleConvert}
-                disabled={quote?.estado === 'aceptada' || quote?.estado === 'rechazada'}
-                className="btn-primary flex items-center gap-2 px-3 sm:px-4 py-2 text-sm font-medium"
-                style={quote?.estado === 'aceptada' || quote?.estado === 'rechazada' ? { opacity: 0.5, cursor: 'not-allowed' } : {}}
-                title="Convertir cotización a nota de venta"
-              >
-                <FiShoppingCart className="w-4 h-4" />
-                <span>Pasar a Venta</span>
-              </button>
-              <button
-                onClick={handleExport}
-                disabled={exporting}
-                className="btn-secondary flex items-center gap-2 px-3 sm:px-4 py-2 text-sm font-medium"
-                style={exporting ? { opacity: .7, cursor: 'wait' } : {}}
-                title="Descargar PDF de la cotización"
-              >
-                <FiDownload className="w-4 h-4" />
-                <span>{exporting ? 'Descargando...' : 'Descargar PDF'}</span>
-              </button>
-              <button
-                onClick={() => setSendEmailModal(true)}
-                className="btn-secondary flex items-center gap-2 px-3 sm:px-4 py-2 text-sm font-medium"
-                title="Enviar cotización por email"
-              >
-                <FiSend className="w-4 h-4" />
-                <span>Enviar</span>
-              </button>
-            </>
-          )}
+          <>
+            <button
+              onClick={handleConvert}
+              disabled={quote?.estado === 'aceptada' || quote?.estado === 'rechazada'}
+              className="btn-primary flex items-center gap-2 px-3 sm:px-4 py-2 text-sm font-medium"
+              style={quote?.estado === 'aceptada' || quote?.estado === 'rechazada' ? { opacity: 0.5, cursor: 'not-allowed' } : {}}
+              title="Convertir cotización a nota de venta"
+            >
+              <FiShoppingCart className="w-4 h-4" />
+              <span>Pasar a Venta</span>
+            </button>
+            <button
+              onClick={handleExport}
+              disabled={exporting}
+              className="btn-secondary flex items-center gap-2 px-3 sm:px-4 py-2 text-sm font-medium"
+              style={exporting ? { opacity: .7, cursor: 'wait' } : {}}
+              title="Descargar PDF de la cotización"
+            >
+              <FiDownload className="w-4 h-4" />
+              <span>{exporting ? 'Descargando...' : 'Descargar PDF'}</span>
+            </button>
+            <button
+              onClick={() => setSendEmailModal(true)}
+              className="btn-secondary flex items-center gap-2 px-3 sm:px-4 py-2 text-sm font-medium"
+              title="Enviar cotización por email"
+            >
+              <FiSend className="w-4 h-4" />
+              <span>Enviar</span>
+            </button>
+          </>
           {/* Menú desplegable de Acciones */}
           <div className="relative actions-menu-container">
             <button
