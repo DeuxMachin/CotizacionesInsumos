@@ -240,7 +240,7 @@ export function NewQuotePage() {
     return { subtotal, descuentoTotal, iva, total, lineDiscountTotal, globalDiscountAmount, globalPct };
   };
 
-  const persistQuote = async (status: QuoteStatus) => {
+  const persistQuote = async (status: QuoteStatus, options?: { redirect?: boolean }) => {
     setLoading(true);
     try {
       const finalErrors = validateStep('summary');
@@ -270,19 +270,24 @@ export function NewQuotePage() {
           undefined
       };
 
-      const success = await crearCotizacion(newQuote, {
+      const result = await crearCotizacion(newQuote, {
         globalDiscountPct: globalPct,
         globalDiscountAmount,
         lineDiscountTotal
       });
-      if (success) {
-        router.push('/dashboard/cotizaciones');
+      if (result.success) {
+        if (options?.redirect !== false) {
+          router.push('/dashboard/cotizaciones');
+        }
+        return result.folio || null;
       } else {
         alert('Error al crear la cotización');
+        return null;
       }
     } catch (error) {
       console.error('Error creating quote:', error);
       alert('Error al crear la cotización');
+      return null;
     } finally {
       setLoading(false);
     }
@@ -297,7 +302,7 @@ export function NewQuotePage() {
       setShowSendModal(true);
       return;
     }
-    await persistQuote(status);
+    await persistQuote(status, { redirect: true });
   };
 
   const handleConfirmSend = async () => {
@@ -312,10 +317,16 @@ export function NewQuotePage() {
     
     try {
       // Primero persistir la cotización como enviada
-      await persistQuote('enviada');
+      const folio = await persistQuote('enviada', { redirect: false });
+      if (!folio) {
+        throw new Error('No se pudo obtener el folio de la cotización');
+      }
       
       // Luego enviar por email
-      await sendQuoteByEmail();
+      await sendQuoteByEmail(folio);
+
+      // Finalmente redirigir al listado
+      router.push('/dashboard/cotizaciones');
       
     } catch (error) {
       console.error('Error en el proceso de envío:', error);
@@ -329,14 +340,14 @@ export function NewQuotePage() {
     await persistQuote('enviada');
   };
 
-  const sendQuoteByEmail = async () => {
+  const sendQuoteByEmail = async (folio: string) => {
     try {
       const { subtotal, descuentoTotal, iva, total } = calculateTotals();
       
       // Preparar los datos de la cotización para envío
       const quoteData: Quote = {
-        id: 'temp-' + Date.now(), // ID temporal
-        numero: `COT-${Date.now()}`, // Número temporal
+        id: folio,
+        numero: folio,
         cliente: formData.cliente as ClientInfo,
         items: formData.items,
         despacho: Object.keys(formData.despacho).length > 0 ? formData.despacho as DeliveryInfo : undefined,
@@ -408,14 +419,6 @@ export function NewQuotePage() {
   };
 
   const renderStepContent = () => {
-    // Diagnóstico detallado para cada componente (solo en desarrollo)
-    if (process.env.NODE_ENV === 'development') {
-      console.log('ClientForm type:', typeof ClientForm);
-      console.log('ProductsForm type:', typeof ProductsForm);
-      console.log('DeliveryForm type:', typeof DeliveryForm);
-      console.log('QuoteSummary type:', typeof QuoteSummary);
-    }
-
     // Nota: En Next.js (App Router) los Client Components pueden llegar como
     // referencias de cliente (objetos) durante el desarrollo. Evitamos bloquear
     // el render por el tipo y dejamos que React/Next maneje el client reference.

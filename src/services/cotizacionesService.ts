@@ -294,31 +294,52 @@ export class CotizacionesService {
 
   // Generar próximo folio
   static async generateFolio() {
-    const { data, error } = await supabase
+    const parseCotizacionFolioNumber = (folio: string): number | null => {
+      const trimmed = folio.trim();
+
+      // Formato actual esperado: COT000319
+      let match = trimmed.match(/^COT0*(\d+)$/);
+      if (match?.[1]) return Number.parseInt(match[1], 10);
+
+      // Formato legado: COT-0001
+      match = trimmed.match(/^COT-(\d+)$/);
+      if (match?.[1]) return Number.parseInt(match[1], 10);
+
+      // Formato alternativo visto en logs/mocks: COT-2025-0012
+      match = trimmed.match(/^COT-\d{4}-(\d+)$/);
+      if (match?.[1]) return Number.parseInt(match[1], 10);
+
+      return null;
+    };
+
+    // Preferir el mayor folio por orden lexicográfico (sirve bien para COT + 6 dígitos con padding)
+    const { data: folios, error: folioError } = await supabase
       .from('cotizaciones')
-      .select('folio')
+      .select('folio, id')
       .not('folio', 'is', null)
+      .order('folio', { ascending: false })
+      .order('id', { ascending: false })
+      .limit(1);
+
+    if (folioError) throw folioError;
+
+    const lastFolio = folios?.[0]?.folio ?? null;
+    const parsed = lastFolio ? parseCotizacionFolioNumber(lastFolio) : null;
+    if (parsed && Number.isFinite(parsed)) {
+      const nextNumber = parsed + 1;
+      return `COT${nextNumber.toString().padStart(6, '0')}`;
+    }
+
+    // Fallback: usar el último id como base (evita volver a 1 cuando el formato no calza)
+    const { data: lastRow, error: idError } = await supabase
+      .from('cotizaciones')
+      .select('id')
       .order('id', { ascending: false })
       .limit(1)
+      .maybeSingle();
+    if (idError) throw idError;
 
-    if (error) throw error
-
-    if (!data || data.length === 0) {
-      return 'COT-0001'
-    }
-
-    const lastFolio = data[0].folio
-    if (!lastFolio) {
-      return 'COT-0001'
-    }
-
-    // Extraer número del folio (formato: COT-XXXX)
-    const match = lastFolio.match(/COT-(\d+)/)
-    if (match) {
-      const nextNumber = parseInt(match[1]) + 1
-      return `COT-${nextNumber.toString().padStart(4, '0')}`
-    }
-
-    return 'COT-0001'
+    const nextFromId = ((lastRow?.id ?? 0) + 1);
+    return `COT${nextFromId.toString().padStart(6, '0')}`;
   }
 }

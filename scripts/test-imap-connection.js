@@ -2,13 +2,18 @@
 const Imap = require('imap');
 
 const imapConfig = {
-  user: 'contacto@miportalventas.cl',
-  password: 'aJ*PRge8',
-  host: 'us2.imap.mailhostbox.com',
-  port: 993,
+  user: process.env.IMAP_USER,
+  password: process.env.IMAP_PASSWORD,
+  host: process.env.IMAP_HOST || 'us2.imap.mailhostbox.com',
+  port: Number(process.env.IMAP_PORT || 993),
   tls: true,
   tlsOptions: { rejectUnauthorized: false }
 };
+
+if (!imapConfig.user || !imapConfig.password) {
+  console.error('❌ Faltan credenciales IMAP. Define IMAP_USER e IMAP_PASSWORD en variables de entorno.');
+  process.exit(1);
+}
 
 console.log('🔍 Probando conexión IMAP...');
 console.log('Host:', imapConfig.host);

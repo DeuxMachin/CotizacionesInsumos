@@ -138,7 +138,7 @@ export async function POST(request: NextRequest) {
     
     // Preparar el mensaje personalizado
     const clientName = recipientName || quote.cliente.razonSocial || quote.cliente.nombreFantasia || 'Cliente';
-    const quoteNumber = quote.numero || 'Nueva';
+    const quoteNumber = quote.numero || quote.id || 'Nueva';
 
     // Intentar cargar logo para inline CID
     const logoPngPath = path.join(process.cwd(), 'public', 'logo.png');

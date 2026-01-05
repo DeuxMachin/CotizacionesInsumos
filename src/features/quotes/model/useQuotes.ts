@@ -15,6 +15,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
 import { mapCotizacionToDomain, type CotizacionAggregate } from './adapters';
 import type { Database } from '@/lib/supabase';
+import type { PostgrestError } from '@supabase/supabase-js';
 
 // DB row aliases to avoid repeating long generic paths
 type CotizacionRow = Database['public']['Tables']['cotizaciones']['Row'];
@@ -59,7 +60,7 @@ interface UseQuotesReturn {
       globalDiscountAmount?: number; 
       lineDiscountTotal?: number; // monto de descuentos de línea (sin el global)
     }
-  ) => Promise<boolean>;
+  ) => Promise<{ success: boolean; folio?: string }>;
   actualizarCotizacion: (id: string, cotizacion: Partial<Quote>) => Promise<boolean>;
   eliminarCotizacion: (id: string) => Promise<boolean>;
   duplicarCotizacion: (id: string) => Promise<boolean>;
@@ -78,6 +79,39 @@ interface UseQuotesReturn {
   userId: string | null;
   userName: string | null;
   isAdmin: boolean;
+}
+
+async function generateNextCotizacionFolioClient(): Promise<string> {
+  const parseCotizacionFolioNumber = (folio: string): number | null => {
+    const trimmed = folio.trim();
+    let match = trimmed.match(/^COT0*(\d+)$/);
+    if (match?.[1]) return Number.parseInt(match[1], 10);
+    match = trimmed.match(/^COT-(\d+)$/);
+    if (match?.[1]) return Number.parseInt(match[1], 10);
+    match = trimmed.match(/^COT-\d{4}-(\d+)$/);
+    if (match?.[1]) return Number.parseInt(match[1], 10);
+    return null;
+  };
+
+  const { data: last, error } = await supabase
+    .from('cotizaciones')
+    .select('folio, id')
+    .not('folio', 'is', null)
+    .order('folio', { ascending: false })
+    .order('id', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) throw error;
+
+  const parsed = last?.folio ? parseCotizacionFolioNumber(last.folio) : null;
+  if (parsed && Number.isFinite(parsed)) {
+    const next = parsed + 1;
+    return `COT${next.toString().padStart(6, '0')}`;
+  }
+
+  const nextFromId = ((last?.id ?? 0) + 1);
+  return `COT${nextFromId.toString().padStart(6, '0')}`;
 }
 
 const ITEMS_PER_PAGE = 12;
@@ -319,7 +353,7 @@ type DespRow = Database['public']['Tables']['cotizacion_despachos']['Row'];
   const crearCotizacion = async (
     nuevaCotizacion: Omit<Quote, 'id' | 'numero' | 'fechaCreacion' | 'fechaModificacion'>,
     extras?: { globalDiscountPct?: number; globalDiscountAmount?: number; lineDiscountTotal?: number }
-  ): Promise<boolean> => {
+  ): Promise<{ success: boolean; folio?: string }> => {
     try {
       if (!user) throw new Error('Usuario no autenticado');
       // Validar que el usuario existe en tabla usuarios (FK vendedor_id)
@@ -404,6 +438,7 @@ type DespRow = Database['public']['Tables']['cotizacion_despachos']['Row'];
       }
       // Insert cabecera
       const cabeceraPayload: Database['public']['Tables']['cotizaciones']['Insert'] = {
+        folio: await generateNextCotizacionFolioClient(),
         estado: nuevaCotizacion.estado || 'borrador',
         vendedor_id: nuevaCotizacion.vendedorId || user.id,
         cliente_principal_id: clientePrincipalId || null,
@@ -424,16 +459,54 @@ type DespRow = Database['public']['Tables']['cotizacion_despachos']['Row'];
         fecha_vencimiento: fechaVencimiento
       };
       console.debug('Insert cotizacion payload', cabeceraPayload);
-      const { data: cabeceraArr, error: insertError } = await supabase.from('cotizaciones')
-        .insert([cabeceraPayload])
-        .select('*');
+
+      // Retry ante conflicto de folio (puede pasar por concurrencia o por contador desincronizado en BD)
+      let cabeceraArr: CotizacionRow[] | null = null;
+      let insertError: PostgrestError | null = null;
+      for (let attempt = 0; attempt < 3; attempt++) {
+        const { data: inserted, error } = await supabase
+          .from('cotizaciones')
+          .insert([cabeceraPayload])
+          .select('*');
+
+        if (!error) {
+          cabeceraArr = (inserted as CotizacionRow[] | null);
+          insertError = null;
+          break;
+        }
+
+        insertError = error;
+
+        const isFolioConflict =
+          error.code === '23505' &&
+          (error.message?.includes('cotizaciones_folio_key') ||
+            error.details?.includes('Key (folio)=('));
+
+        if (isFolioConflict) {
+          console.warn('Conflicto de folio al crear cotización; regenerando y reintentando...', {
+            attempt,
+            folio: (cabeceraPayload as { folio?: string }).folio,
+            message: error.message,
+            details: error.details
+          });
+          (cabeceraPayload as { folio?: string }).folio = await generateNextCotizacionFolioClient();
+          continue;
+        }
+
+        console.error('Insert cotizacion error detail:', error?.message, error);
+        throw error;
+      }
+
       if (insertError) {
         console.error('Insert cotizacion error detail:', insertError?.message, insertError);
         throw insertError;
       }
+
       const cabecera = cabeceraArr?.[0];
-      if (insertError) throw insertError;
-      const cotizacionId = cabecera!.id;
+      if (!cabecera) {
+        throw new Error('No se pudo crear la cotización (sin datos de cabecera)');
+      }
+      const cotizacionId = cabecera.id;
 
       // Actualizar dinero_cotizado en cliente_saldos
       if (clientePrincipalId && (cabecera.total_final ?? cabecera.total_neto ?? 0) > 0) {
@@ -534,10 +607,10 @@ type DespRow = Database['public']['Tables']['cotizacion_despachos']['Row'];
         vendedor: (row as unknown as { usuarios?: UsuarioRow }).usuarios
       } as CotizacionAggregate));
       setAllQuotes(mapped);
-      return true;
+      return { success: true, folio: (cabecera as { folio?: string | null } | null)?.folio ?? undefined };
     } catch (error: unknown) {
       console.error('Error creating quote:', error);
-      return false;
+      return { success: false };
     }
   };
 
@@ -855,7 +928,8 @@ type DespRow = Database['public']['Tables']['cotizacion_despachos']['Row'];
         notas: original.notas,
         fechaExpiracion: original.fechaExpiracion
       };
-      return await crearCotizacion(nueva);
+      const result = await crearCotizacion(nueva);
+      return result.success;
     } catch (error) {
       console.error('Error duplicating quote:', error);
       return false;

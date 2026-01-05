@@ -341,8 +341,8 @@ export function NewQuoteFromObraPage() {
           undefined
       };
 
-      const success = await crearCotizacion(newQuote);
-      if (success) {
+      const result = await crearCotizacion(newQuote);
+      if (result.success) {
         return true;
       } else {
         alert('Error al crear la cotización');
