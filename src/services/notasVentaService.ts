@@ -108,49 +108,144 @@ export class NotasVentaService {
     };
   }
 
-  static async generateFolio() {
-    // Generar folio correlativo para notas de venta (similar a cotizaciones)
-    // Formato: NV000001, NV000002, etc.
+  // Rango válido para folios correlativod (1 a 10000 para evitar outliers como 1111111)
+  private static readonly MAX_CORRELATIVE_FOLIO = 10000;
+
+  private static isTimestampLikeFolio(numericStr: string): boolean {
+    // Fallback histórico: `${currentYear}${Date.now()}` => muy largo y comienza con el año.
+    // Cualquier valor excesivamente largo lo tratamos como "no correlativo".
+    const yearPrefix = String(new Date().getFullYear());
+    return numericStr.length >= 8 && numericStr.startsWith(yearPrefix);
+  }
+
+  private static isOutOfRangeCorrelativeFolio(numericStr: string): boolean {
+    const parsed = Number.parseInt(numericStr, 10);
+    if (!Number.isFinite(parsed)) return true;
+    // En este proyecto el folio de NV es un correlativo simple (ej: 186, 187, 188).
+    // Valores grandes tipo 201901 suelen ser errores históricos y rompen la correlatividad.
+    return parsed <= 0 || parsed > this.MAX_CORRELATIVE_FOLIO;
+  }
+
+  private static async getMaxValidExistingFolio(): Promise<number> {
+    // Fuente de verdad: el mayor folio correlativo "razonable" en notas_venta.
+    // Solo acepta números positivos, rechazando patrones de timestamp o año (ej: 201901, 2019xx)
+    const { data, error } = await supabase
+      .from('notas_venta')
+      .select('folio');
+
+    if (error) throw error;
+
+    let max = 0;
+    
+    for (const row of (data ?? []) as Array<{ folio: string | null }>) {
+      if (!row.folio) continue;
+      
+      const numericStr = this.extractFolioNumber(row.folio);
+      if (!numericStr) continue;
+      
+      const parsed = Number.parseInt(numericStr, 10);
+      if (!Number.isFinite(parsed)) continue;
+      
+      // Solo aceptar números positivos dentro del rango correlativo válido
+      if (parsed < 1 || parsed > this.MAX_CORRELATIVE_FOLIO) continue;
+      
+      // Rechazar patrones de año (ej: 2019xx, 2020xx, etc.)
+      if (this.isTimestampLikeFolio(numericStr)) continue;
+      
+      if (parsed > max) max = parsed;
+    }
+    
+    return max;
+  }
+
+  private static async folioExists(folioNumeric: number): Promise<boolean> {
+    const { data, error } = await supabase
+      .from('notas_venta')
+      .select('id')
+      .eq('folio', folioNumeric.toString())
+      .limit(1)
+      .maybeSingle();
+
+    if (error && error.code !== 'PGRST116') throw error;
+    return !!data;
+  }
+
+  private static async ensureAndSyncSeriesAfterInsert(folioNumeric: number): Promise<void> {
     const currentYear = new Date().getFullYear();
 
-    try {
-      // Buscar o crear la serie activa para notas de venta
-      const { data: initialSeries, error: seriesError } = await supabase
-        .from('document_series')
-        .select('*')
-        .eq('doc_tipo', 'nota_venta')
-        .eq('anio', currentYear)
-        .eq('activo', true)
-        .maybeSingle();
+    // Intentar obtener serie activa; si no existe, reactivar/crear.
+    const { data: active, error: activeErr } = await supabase
+      .from('document_series')
+      .select('*')
+      .eq('doc_tipo', 'nota_venta')
+      .eq('anio', currentYear)
+      .eq('activo', true)
+      .maybeSingle();
 
-      const series = initialSeries;
+    if (activeErr && activeErr.code !== 'PGRST116') throw activeErr;
 
-      if (seriesError && seriesError.code !== 'PGRST116') {
-        throw seriesError;
+    if (active) {
+      const currentUltimo = (active as DocumentSeriesRow).ultimo_numero ?? 0;
+      if (currentUltimo !== folioNumeric) {
+        const { error: updErr } = await supabase
+          .from('document_series')
+          .update({ ultimo_numero: folioNumeric })
+          .eq('id', (active as DocumentSeriesRow).id);
+        if (updErr) {
+          console.warn('[NotasVentaService] No se pudo sincronizar document_series (nota_venta):', updErr.message);
+        }
       }
+      return;
+    }
 
-      
+    const { data: anyRow, error: anyErr } = await supabase
+      .from('document_series')
+      .select('*')
+      .eq('doc_tipo', 'nota_venta')
+      .eq('anio', currentYear)
+      .maybeSingle();
 
-      // Incrementar el último número de la serie
-      const seriesRow = series as DocumentSeriesRow;
-      const nextNumber = (seriesRow.ultimo_numero ?? 0) + 1;
-      // Solo guardar el número, sin prefijo
-      const numeroSerie = nextNumber.toString();
+    if (anyErr && anyErr.code !== 'PGRST116') throw anyErr;
 
-      const { error: updateError } = await supabase
+    if (anyRow) {
+      const { error: reactErr } = await supabase
         .from('document_series')
-        .update({ ultimo_numero: nextNumber })
-        .eq('id', seriesRow.id);
-
-      if (updateError) {
-        throw new Error(`Error al actualizar el contador de serie de documentos: ${updateError.message}`);
+        .update({ activo: true, ultimo_numero: folioNumeric })
+        .eq('id', (anyRow as DocumentSeriesRow).id);
+      if (reactErr) {
+        console.warn('[NotasVentaService] No se pudo reactivar/sincronizar document_series (nota_venta):', reactErr.message);
       }
+      return;
+    }
 
-      return numeroSerie;
-    } catch (error) {
-      // Si algo falla, usar fallback pero registrar el error
-      console.error('[NotasVentaService.generateFolio] Error generando folio desde document_series, usando fallback.', error);
-      return `${currentYear}${Date.now()}`;
+    const { error: insErr } = await supabase
+      .from('document_series')
+      .insert({
+        doc_tipo: 'nota_venta',
+        anio: currentYear,
+        prefijo: 'NV',
+        largo: 6,
+        activo: true,
+        ultimo_numero: folioNumeric,
+      });
+
+    if (insErr) {
+      console.warn('[NotasVentaService] No se pudo crear document_series (nota_venta):', insErr.message);
+    }
+  }
+
+  static async generateFolio() {
+    // Regla pedida: tomar el ÚLTIMO folio válido registrado en BD y sumar 1.
+    // (Ignora folios "timestamp" que se generaron por error.)
+    const last = await this.getMaxValidExistingFolio();
+    let candidate = last + 1;
+
+    // Sin límites: buscar el próximo folio disponible
+    while (true) {
+      // eslint-disable-next-line no-await-in-loop
+      const exists = await this.folioExists(candidate);
+      if (!exists) return candidate.toString();
+      candidate += 1;
     }
   }
 
@@ -191,24 +286,20 @@ export class NotasVentaService {
       'folio','Numero_Serie','cotizacion_id','vendedor_id','cliente_principal_id','obra_id','cliente_rut','cliente_razon_social','cliente_giro','cliente_direccion','cliente_comuna','cliente_ciudad','forma_pago_final','plazo_pago','observaciones_comerciales','direccion_despacho','comuna_despacho','ciudad_despacho','costo_despacho','fecha_estimada_entrega','subtotal','descuento_lineas_monto','descuento_global_monto','descuento_total','subtotal_neto_post_desc','iva_pct','iva_monto','total','estado'
     ];
     
-    // Generar un folio único usando la serie de documentos
-    // El folio DEBE ser único (restricción en la BD), pero Numero_Serie (orden de compra) puede repetirse
-    let generatedFolio = nota.folio;
-    if (!generatedFolio || !this.sanitizeFolioValue(generatedFolio)) {
-      try {
-        generatedFolio = await this.generateFolio();
-        console.debug('[NotasVentaService.create] Folio generado:', generatedFolio);
-      } catch (e) {
-        console.error('[NotasVentaService.create] Error generando folio:', e);
-        throw e;
-      }
+    // El folio DEBE ser correlativo y controlado por backend. Ignorar cualquier folio entrante.
+    // (En el pasado se aceptaban fallbacks aleatorios y se perdió correlatividad.)
+    let generatedFolio: string;
+    try {
+      generatedFolio = await this.generateFolio();
+      console.debug('[NotasVentaService.create] Folio generado:', generatedFolio);
+    } catch (e) {
+      console.error('[NotasVentaService.create] Error generando folio:', e);
+      throw e;
     }
 
     const sanitizedFolio = this.sanitizeFolioValue(generatedFolio);
-    if (!sanitizedFolio) {
-      throw new Error('No se pudo generar un folio numérico válido para la nota de venta.');
-    }
-    
+    if (!sanitizedFolio) throw new Error('No se pudo generar un folio numérico válido para la nota de venta.');
+
     const base: Partial<SalesNoteInput> & { folio: string | null; Numero_Serie?: string | null } = {
       ...nota,
       folio: sanitizedFolio,
@@ -224,16 +315,73 @@ export class NotasVentaService {
     }
     if (!insertPayload.estado) insertPayload.estado = 'borrador';
     console.debug('[NotasVentaService.create] insertPayload', insertPayload);
-    const { data: notaInsert, error: notaError } = await supabase.from('notas_venta')
-      .insert(insertPayload)
-      .select('id, folio, Numero_Serie, cotizacion_id, vendedor_id, cliente_principal_id, estado, created_at')
-      .single();
-    if (notaError) {
-      console.error('[NotasVentaService.create] Error insert notas_venta', notaError);
-      const errMsg = (notaError as unknown as { message?: string; details?: string }).message || (notaError as unknown as { details?: string }).details || 'Fallo al insertar nota de venta';
+
+    let notaInsert: unknown = null;
+    let lastInsertError: unknown = null;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      // eslint-disable-next-line no-await-in-loop
+      const { data, error } = await supabase.from('notas_venta')
+        .insert(insertPayload)
+        .select('id, folio, Numero_Serie, cotizacion_id, vendedor_id, cliente_principal_id, estado, created_at')
+        .single();
+
+      if (!error) {
+        notaInsert = data;
+        lastInsertError = null;
+        break;
+      }
+
+      console.error('[NotasVentaService.create] Error insert notas_venta', error);
+      lastInsertError = error;
+
+      const msg = (error as unknown as { message?: string; details?: string }).message || (error as unknown as { details?: string }).details || '';
+      const isDuplicateFolio = msg.toLowerCase().includes('duplicate') && msg.toLowerCase().includes('folio');
+
+      if (attempt < 2 && isDuplicateFolio) {
+        // Re-generar folio y reintentar
+        // eslint-disable-next-line no-await-in-loop
+        const retryFolio = await this.generateFolio();
+        const retrySanitized = this.sanitizeFolioValue(retryFolio);
+        if (!retrySanitized) break;
+        insertPayload.folio = retrySanitized;
+        continue;
+      }
+      break;
+    }
+
+    if (lastInsertError) {
+      const errMsg = (lastInsertError as unknown as { message?: string; details?: string }).message || (lastInsertError as unknown as { details?: string }).details || 'Fallo al insertar nota de venta';
       throw new Error(errMsg);
     }
     if (!notaInsert) throw new Error('No se pudo insertar nota de venta');
+
+    // Si existe un trigger/default que sobreescribe el folio (p.ej. 201901/201902),
+    // forzamos el folio correlativo generado por la app.
+    const insertedId = (notaInsert as unknown as SalesNoteRow).id as number;
+    const insertedFolio = this.sanitizeFolioValue((notaInsert as { folio?: string | null }).folio ?? null);
+    if (insertedId && sanitizedFolio && insertedFolio !== sanitizedFolio) {
+      const { data: forced, error: forceErr } = await supabase
+        .from('notas_venta')
+        .update({ folio: sanitizedFolio })
+        .eq('id', insertedId)
+        .select('id, folio, Numero_Serie, cotizacion_id, vendedor_id, cliente_principal_id, estado, created_at')
+        .single();
+
+      if (forceErr) {
+        console.warn('[NotasVentaService.create] No se pudo forzar folio correlativo tras insert:', forceErr.message);
+      } else if (forced) {
+        notaInsert = forced;
+      }
+    }
+
+    // Sincronizar document_series con el folio correlativo final (best-effort)
+    const finalFolio = this.sanitizeFolioValue((notaInsert as { folio?: string | null }).folio ?? null);
+    if (finalFolio) {
+      const numericFinal = Number.parseInt(finalFolio, 10);
+      if (Number.isFinite(numericFinal) && numericFinal > 0 && !this.isOutOfRangeCorrelativeFolio(finalFolio)) {
+        await this.ensureAndSyncSeriesAfterInsert(numericFinal);
+      }
+    }
 
     // Si hay cotizacion_id, actualizar el estado de la cotización a 'aceptada'
     if (insertPayload.cotizacion_id) {
