@@ -21,6 +21,23 @@ export function useObras() {
   const [data, setData] = useState<Obra[]>([]);
   const service = useMemo(() => getObrasService(), []);
 
+  // La búsqueda textual se aplica en cliente para evitar refetch/"reload" en cada tecla.
+  const serverFiltros = useMemo<FiltroObras>(() => {
+    return {
+      estado: filtros.estado,
+      etapa: filtros.etapa,
+      vendedor: filtros.vendedor,
+      fechaDesde: filtros.fechaDesde,
+      fechaHasta: filtros.fechaHasta,
+    };
+  }, [
+    filtros.estado,
+    filtros.etapa,
+    filtros.vendedor,
+    filtros.fechaDesde,
+    filtros.fechaHasta,
+  ]);
+
   // Obtener obras según el rol del usuario
   const isAdmin = ['admin', 'dueño', 'dueno'].includes(user?.role?.toLowerCase() || '');
 
@@ -33,7 +50,7 @@ export function useObras() {
       }
       setLoading(true);
       try {
-        const obras = await service.getObras(filtros, user.id, isAdmin);
+        const obras = await service.getObras(serverFiltros, user.id, isAdmin);
         if (active) setData(obras);
       } catch (e) {
         console.error('Error cargando obras:', e);
@@ -46,7 +63,7 @@ export function useObras() {
     return () => {
       active = false;
     };
-  }, [service, user, filtros, isAdmin]);
+  }, [service, user, serverFiltros, isAdmin]);
 
   // Aplicar filtros a las obras
   const obrasFiltradas = useMemo(() => {
@@ -204,7 +221,7 @@ export function useObras() {
       const ok = await service.crearObra(nuevaObra, user?.id);
       if (ok) {
         // recargar lista para reflejar BD
-        const obras = await service.getObras(filtros, user?.id, isAdmin);
+        const obras = await service.getObras(serverFiltros, user?.id, isAdmin);
         setData(obras);
       }
       return ok;
@@ -223,7 +240,7 @@ export function useObras() {
     } finally {
       setLoading(false);
     }
-  }, [service, user?.id, filtros, isAdmin]);
+  }, [service, user?.id, serverFiltros, isAdmin]);
 
   const actualizarObra = useCallback(async (obra: Obra): Promise<boolean> => {
     setLoading(true);

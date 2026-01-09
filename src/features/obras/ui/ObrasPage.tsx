@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { 
@@ -91,14 +91,24 @@ export function ObrasPage() {
   const [showHelp, setShowHelp] = useState(false);
   const [isCategoryManagerOpen, setIsCategoryManagerOpen] = useState(false);
 
-  // Aplicar filtros
-  useMemo(() => {
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
+
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm);
+    }, 200);
+
+    return () => clearTimeout(timeoutId);
+  }, [searchTerm]);
+
+  // Aplicar filtros (sin side-effects en render)
+  useEffect(() => {
     setFiltros({
-      busqueda: searchTerm || undefined,
+      busqueda: debouncedSearchTerm || undefined,
       estado: selectedEstados.length > 0 ? selectedEstados : undefined,
       etapa: selectedEtapas.length > 0 ? selectedEtapas : undefined
     });
-  }, [searchTerm, selectedEstados, selectedEtapas, setFiltros]);
+  }, [debouncedSearchTerm, selectedEstados, selectedEtapas, setFiltros]);
 
   // Contar filtros activos
   const filtrosActivos = useMemo(() => {
@@ -332,23 +342,25 @@ export function ObrasPage() {
 
         {/* Búsqueda */}
         <div className="flex flex-col sm:flex-row gap-4">
-          <div className="flex-1 relative">
-            <FiSearch 
-              className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4" 
-              style={{ color: 'var(--text-muted)' }}
-            />
-            <input
-              type="text"
-              placeholder="Buscar por nombre, constructora, RUT o dirección..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 rounded-lg border transition-colors"
-              style={{
-                backgroundColor: 'var(--bg-primary)',
-                borderColor: 'var(--border)',
-                color: 'var(--text-primary)'
-              }}
-            />
+          <div className="flex-1">
+            <div className="relative">
+              <FiSearch
+                className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4"
+                style={{ color: 'var(--text-muted)' }}
+              />
+              <input
+                type="text"
+                placeholder="Buscar por nombre, constructora, RUT o dirección..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-10 pr-4 py-2 rounded-lg border transition-colors"
+                style={{
+                  backgroundColor: 'var(--bg-primary)',
+                  borderColor: 'var(--border)',
+                  color: 'var(--text-primary)'
+                }}
+              />
+            </div>
             <div className="mt-1 text-xs" style={{ color: 'var(--text-muted)' }}>
               Consejo: escribe al menos 3 letras para mejores resultados.
             </div>

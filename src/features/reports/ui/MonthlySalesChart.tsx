@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
 import { ReportPeriod } from '@/app/dashboard/reportes/page';
-import { reportesService, ReportData } from '@/services/reportesService';
 import { supabase } from '@/lib/supabase';
 
 interface MonthlySalesChartProps {
@@ -15,7 +14,13 @@ interface MonthlySalesData {
   fullDate?: string; // Fecha completa para tooltip
 }
 
-export function MonthlySalesChart({ period }: MonthlySalesChartProps) {
+type NotaVentaRow = {
+  fecha_emision: string | null;
+  total: number | null;
+  id: number;
+};
+
+export function MonthlySalesChart({ period: _period }: MonthlySalesChartProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [hoveredPoint, setHoveredPoint] = useState<number | null>(null);
   const [clickedPoint, setClickedPoint] = useState<number | null>(null);
@@ -47,24 +52,22 @@ export function MonthlySalesChart({ period }: MonthlySalesChartProps) {
 
         // Consultar directamente las ventas confirmadas del mes actual desde Supabase
         // Solo incluir notas que tienen confirmed_at (que ya pasaron de cotización a venta)
-        const endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0); // Último día del mes actual
+        // Usar rango [inicioMes, inicioMesSiguiente) para evitar cortar el último día a medianoche.
+        const nextMonthStart = new Date(now.getFullYear(), now.getMonth() + 1, 1);
         
         const { data: notasVenta, error: notasError } = await supabase
           .from('notas_venta')
-          .select('created_at, total, id, confirmed_at')
-          .gte('created_at', startDate.toISOString())
-          .lte('created_at', endDate.toISOString())
+          .select('fecha_emision, total, id')
+          .gte('fecha_emision', startDate.toISOString())
+          .lt('fecha_emision', nextMonthStart.toISOString())
           .not('confirmed_at', 'is', null)
-          .order('created_at', { ascending: true });
+          .order('fecha_emision', { ascending: true });
 
         if (notasError) throw new Error(`Error al obtener datos: ${notasError.message}`);
 
         // Convertir los datos al formato esperado
         const dailySales: MonthlySalesData[] = [];
         const salesByDay: Map<string, { total: number; count: number; dateObj: Date }> = new Map();
-
-        // Calcular días reales entre las fechas
-        const daysToShow = Math.ceil((now.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
 
         // Inicializar todos los días en el rango desde startDate hasta now
         const datesArray: string[] = [];
@@ -81,18 +84,25 @@ export function MonthlySalesChart({ period }: MonthlySalesChartProps) {
           currentDate.setDate(currentDate.getDate() + 1);
         }
 
+        const rows = (notasVenta || []) as NotaVentaRow[];
+
         // Sumar las ventas por día y contar transacciones
-        (notasVenta || []).forEach(nota => {
-          // Crear fecha desde el timestamp de la base de datos
-          const dbDate = new Date(nota.created_at);
-          
-          // Ajustar a hora de Chile manualmente
-          const chileOffset = -3; // UTC-3 para horario de verano de Chile
-          const chileDate = new Date(dbDate.getTime() + (chileOffset * 60 * 60 * 1000));
-          
-          const year = chileDate.getUTCFullYear();
-          const month = String(chileDate.getUTCMonth() + 1).padStart(2, '0');
-          const day = String(chileDate.getUTCDate()).padStart(2, '0');
+        rows.forEach((nota) => {
+          const raw = nota.fecha_emision || undefined;
+          if (!raw) return;
+
+          // fecha_emision suele ser una fecha (YYYY-MM-DD) o timestamp; evitar shifts por timezone.
+          let localDate: Date;
+          if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
+            const [y, m, d] = raw.split('-').map(Number);
+            localDate = new Date(y, m - 1, d);
+          } else {
+            localDate = new Date(raw);
+          }
+
+          const year = localDate.getFullYear();
+          const month = String(localDate.getMonth() + 1).padStart(2, '0');
+          const day = String(localDate.getDate()).padStart(2, '0');
           const dateStr = `${year}-${month}-${day}`;
           
           const existing = salesByDay.get(dateStr);
@@ -102,21 +112,10 @@ export function MonthlySalesChart({ period }: MonthlySalesChartProps) {
           }
         });
 
-        // Convertir a array para el gráfico en el orden correcto, pero solo días con datos
-        const salesDataWithValues = datesArray
-          .map((dateKey) => {
-            const data = salesByDay.get(dateKey)!;
-            return {
-              dateKey,
-              data,
-              hasData: data.count > 0
-            };
-          })
-          .filter(item => item.hasData); // Solo días con ventas
-
+        // Convertir a array para el gráfico en el orden correcto (incluye días sin ventas)
         let dayIndex = 1;
-        salesDataWithValues.forEach((item) => {
-          const data = item.data;
+        datesArray.forEach((dateKey) => {
+          const data = salesByDay.get(dateKey)!;
           const dateObj = data.dateObj;
           
           // Crear etiqueta con mes para evitar confusión
@@ -128,7 +127,7 @@ export function MonthlySalesChart({ period }: MonthlySalesChartProps) {
             sales: data.total,
             count: data.count,
             label: `${dayNum}/${monthShort}`, // Formato: 05/OCT, 24/SEP
-            fullDate: item.dateKey
+            fullDate: dateKey
           });
           dayIndex++;
         });
@@ -197,8 +196,10 @@ export function MonthlySalesChart({ period }: MonthlySalesChartProps) {
       let minDistance = Infinity;
       const detectionRadius = isMobile ? 30 : 20; // Radio más grande en móvil
       
+      const xDenom = Math.max(1, salesData.length - 1);
+
       for (const data of salesData) {
-        const pointX = margin.left + chartWidth - (data.day - 1) * (chartWidth / (salesData.length - 1));
+        const pointX = margin.left + chartWidth - (data.day - 1) * (chartWidth / xDenom);
         const pointY = margin.top + chartHeight - ((data.sales - minSales) / salesRange) * chartHeight;
         
         const distance = Math.sqrt((x - pointX) ** 2 + (y - pointY) ** 2);
@@ -271,8 +272,10 @@ export function MonthlySalesChart({ period }: MonthlySalesChartProps) {
       let minDistance = Infinity;
       const detectionRadius = 40; // Radio más grande para touch
       
+      const xDenom = Math.max(1, salesData.length - 1);
+
       for (const data of salesData) {
-        const pointX = margin.left + chartWidth - (data.day - 1) * (chartWidth / (salesData.length - 1));
+        const pointX = margin.left + chartWidth - (data.day - 1) * (chartWidth / xDenom);
         const pointY = margin.top + chartHeight - ((data.sales - minSales) / salesRange) * chartHeight;
         
         const distance = Math.sqrt((x - pointX) ** 2 + (y - pointY) ** 2);
@@ -374,7 +377,8 @@ export function MonthlySalesChart({ period }: MonthlySalesChartProps) {
     const minSales = 0; // Siempre comenzar desde 0 para mejor visualización
     const salesRange = maxSales - minSales;
     
-    const xScale = (day: number) => margin.left + chartWidth - (day - 1) * (chartWidth / (salesData.length - 1));
+    const xDenom = Math.max(1, salesData.length - 1);
+    const xScale = (day: number) => margin.left + chartWidth - (day - 1) * (chartWidth / xDenom);
     const yScale = (sales: number) => margin.top + chartHeight - ((sales - minSales) / salesRange) * chartHeight;
 
     // Líneas de cuadrícula horizontal
@@ -464,7 +468,7 @@ export function MonthlySalesChart({ period }: MonthlySalesChartProps) {
     ctx.shadowBlur = 0;
 
     // Puntos de datos con interactividad
-    salesData.forEach((data, index) => {
+    salesData.forEach((data) => {
       const x = xScale(data.day);
       const y = yScale(data.sales);
       
@@ -592,7 +596,7 @@ export function MonthlySalesChart({ period }: MonthlySalesChartProps) {
   }
 
   // Si no hay ventas confirmadas en el mes actual
-  if (salesData.length === 0) {
+  if (salesData.length === 0 || salesData.every(d => d.count === 0)) {
     const now = new Date();
     const currentMonth = now.toLocaleDateString('es-CL', { month: 'long', year: 'numeric' });
     

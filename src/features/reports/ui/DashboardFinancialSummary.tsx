@@ -1,9 +1,10 @@
 import { useState, useEffect } from "react";
 import { FiDollarSign, FiTrendingUp, FiTrendingDown, FiPercent, FiFileText } from "react-icons/fi";
+import { ReportPeriod } from "@/app/dashboard/reportes/page";
 import { reportesService, ReportData } from "@/services/reportesService";
 
 interface DashboardFinancialSummaryProps {
-  period: string;
+  period: ReportPeriod;
 }
 
 interface FinancialKPIData {
@@ -21,13 +22,17 @@ export function DashboardFinancialSummary({ period }: DashboardFinancialSummaryP
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const formatTrend = (trend: number) => {
+    if (!Number.isFinite(trend)) return '0.0%';
+    return `${Math.abs(trend).toFixed(1)}%`;
+  };
+
   useEffect(() => {
     const loadReportData = async () => {
       try {
         setLoading(true);
         setError(null);
-        // Siempre usar "Último mes" para el dashboard
-        const data = await reportesService.getReportData("Último mes");
+        const data = await reportesService.getReportData(period);
         setReportData(data);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Error al cargar datos');
@@ -37,7 +42,7 @@ export function DashboardFinancialSummary({ period }: DashboardFinancialSummaryP
     };
 
     loadReportData();
-  }, []);
+  }, [period]);
 
   if (loading) {
     return (
@@ -55,7 +60,7 @@ export function DashboardFinancialSummary({ period }: DashboardFinancialSummaryP
             backgroundColor: 'var(--accent-bg)', 
             color: 'var(--accent-text)' 
           }}>
-            Último mes
+            {period}
           </div>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
@@ -95,7 +100,7 @@ export function DashboardFinancialSummary({ period }: DashboardFinancialSummaryP
             backgroundColor: 'var(--accent-bg)', 
             color: 'var(--accent-text)' 
           }}>
-            Último mes
+            {period}
           </div>
         </div>
         <div 
@@ -155,13 +160,13 @@ export function DashboardFinancialSummary({ period }: DashboardFinancialSummaryP
       subValue: `${reportData.kpis.ticketPromedio.transacciones || 0} cotizaciones del mes`
     },
     {
-      id: "growth",
-      title: "CRECIMIENTO",
-      value: `${reportData.kpis.crecimientoMensual.value >= 0 ? '+' : ''}${reportesService.formatPercentage(reportData.kpis.crecimientoMensual.value)}`,
-      trend: reportData.kpis.crecimientoMensual.trend,
-      icon: FiTrendingUp,
-      description: "vs mes anterior",
-      subValue: `Meta: +${reportData.kpis.crecimientoMensual.meta || 12}%`
+      id: "conversion",
+      title: "CONVERSIÓN",
+      value: reportesService.formatPercentage(reportData.kpis.tasaConversion.value),
+      trend: reportData.kpis.tasaConversion.trend,
+      icon: FiPercent,
+      description: "Cotizaciones aceptadas vs total",
+      subValue: `${reportData.estadisticas.cotizacionesAceptadas || 0}/${reportData.estadisticas.totalCotizaciones || 0} cotizaciones`
     }
   ];
   return (
@@ -189,7 +194,8 @@ export function DashboardFinancialSummary({ period }: DashboardFinancialSummaryP
         {dashboardKPIs.map((kpi) => {
           const Icon = kpi.icon;
           const isPositiveTrend = kpi.trend > 0;
-          const TrendIcon = isPositiveTrend ? FiTrendingUp : FiTrendingDown;
+          const isNeutralTrend = kpi.trend === 0;
+          const TrendIcon = kpi.trend >= 0 ? FiTrendingUp : FiTrendingDown;
           
           return (
             <div
@@ -205,7 +211,7 @@ export function DashboardFinancialSummary({ period }: DashboardFinancialSummaryP
                 <div 
                   className="p-2 rounded-lg"
                   style={{ 
-                    backgroundColor: kpi.id === 'total_sales' || kpi.id === 'growth' ? 'var(--accent-bg)' : 
+                    backgroundColor: kpi.id === 'total_sales' || kpi.id === 'conversion' ? 'var(--accent-bg)' : 
                                    kpi.id === 'net' ? 'var(--green-bg)' : 
                                    'var(--orange-bg)'
                   }}
@@ -213,7 +219,7 @@ export function DashboardFinancialSummary({ period }: DashboardFinancialSummaryP
                   <Icon 
                     className="w-3 h-3 sm:w-4 sm:h-4"
                     style={{
-                      color: kpi.id === 'total_sales' || kpi.id === 'growth' ? 'var(--accent-text)' : 
+                      color: kpi.id === 'total_sales' || kpi.id === 'conversion' ? 'var(--accent-text)' : 
                             kpi.id === 'net' ? 'var(--green-color)' : 
                             'var(--orange-color)'
                     }}
@@ -221,10 +227,10 @@ export function DashboardFinancialSummary({ period }: DashboardFinancialSummaryP
                 </div>
                 
                 <div style={{
-                  color: isPositiveTrend ? 'var(--green-color)' : 'var(--red-color)'
+                  color: isNeutralTrend ? 'var(--text-tertiary)' : (isPositiveTrend ? 'var(--green-color)' : 'var(--red-color)')
                 }} className="flex items-center gap-1 text-xs font-medium">
                   <TrendIcon className="w-3 h-3" />
-                  {Math.abs(kpi.trend)}%
+                  {formatTrend(kpi.trend)}
                 </div>
               </div>
 
