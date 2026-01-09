@@ -34,6 +34,7 @@ import { PrestamoModal } from './payments/PrestamoModal';
 import { PagoModal } from './payments/PagoModal';
 import { ReunionPopup } from './components/ReunionPopup';
 import { ActiveReunionPopup } from './components/ActiveReunionPopup';
+import { ObraNotesModal } from './components/ObraNotesModal';
 import { useReuniones } from '@/hooks/useReuniones';
 import { useAuth } from '@/contexts/AuthContext';
 import { LocationData } from '@/lib/geolocation';
@@ -75,6 +76,9 @@ export function ObraDetailPage({
     {etapasCompletadas: [...obra.etapasCompletadas], etapaActual: obra.etapaActual}
   );
 
+  // Notas de obra (comentarios)
+  const [isNotesModalOpen, setIsNotesModalOpen] = useState(false);
+
   // Estados para modales de pagos
   const [isPrestamoModalOpen, setIsPrestamoModalOpen] = useState(false);
   const [isPagoModalOpen, setIsPagoModalOpen] = useState(false);
@@ -113,6 +117,18 @@ export function ObraDetailPage({
     });
     
   }, [obra]);
+
+  const saveObraNotes = async (value: string): Promise<boolean> => {
+    const updated: Obra = { ...obra, notas: value.trim() ? value : undefined };
+    const ok = await onUpdate(updated);
+    if (ok) {
+      Toast.success('Nota guardada');
+      setIsNotesModalOpen(false);
+    } else {
+      Toast.error('No se pudo guardar la nota');
+    }
+    return ok;
+  };
 
   // Abrir editor automáticamente cuando venimos desde la lista con ?edit=1
   useEffect(() => {
@@ -1290,9 +1306,13 @@ export function ObraDetailPage({
                 <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>Actualizado: {formatDate(obra.fechaActualizacion)}</span>
               </div>
               <div className="flex items-center gap-2 flex-wrap justify-end">
-                <button className="btn-secondary text-xs sm:text-sm flex items-center gap-1 px-2 sm:px-3 py-1 sm:py-2">
+                <button
+                  className="btn-secondary text-xs sm:text-sm flex items-center gap-1 px-2 sm:px-3 py-1 sm:py-2"
+                  onClick={() => setIsNotesModalOpen(true)}
+                  title={obra.notas?.trim() ? 'Ver/editar nota de la obra' : 'Agregar nota a la obra'}
+                >
                   <FiMessageSquare className="w-3 h-3" />
-                  <span className="hidden sm:inline">Agregar Nota</span>
+                  <span className="hidden sm:inline">{obra.notas?.trim() ? 'Ver Nota' : 'Agregar Nota'}</span>
                   <span className="sm:hidden">Nota</span>
                 </button>
                 <button className="btn-secondary text-xs sm:text-sm flex items-center gap-1 px-2 sm:px-3 py-1 sm:py-2" onClick={() => scrollTo('section-informacion')}>
@@ -1373,6 +1393,36 @@ export function ObraDetailPage({
                 </div>
               </div>
             </section>
+
+            {/* Nota / Recordatorio */}
+            <section className="p-4 rounded-lg" style={{ backgroundColor: 'var(--card-bg)', border: '1px solid var(--border)' }}>
+              <div className="flex items-center justify-between gap-3 mb-3">
+                <h3 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Nota</h3>
+                <button
+                  onClick={() => setIsNotesModalOpen(true)}
+                  className="text-xs px-2 py-1 rounded font-medium transition-colors"
+                  style={{ backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)', border: '1px solid var(--border)' }}
+                  title={obra.notas?.trim() ? 'Editar nota' : 'Agregar nota'}
+                >
+                  {obra.notas?.trim() ? 'Editar' : 'Agregar'}
+                </button>
+              </div>
+
+              {obra.notas?.trim() ? (
+                <div className="p-3 rounded-lg" style={{ backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border)' }}>
+                  <div className="flex items-start gap-2">
+                    <FiMessageSquare className="w-4 h-4 mt-0.5 flex-shrink-0" style={{ color: 'var(--text-muted)' }} />
+                    <p className="text-xs whitespace-pre-wrap break-words" style={{ color: 'var(--text-primary)' }}>
+                      {obra.notas}
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+                  Sin nota. Úsala como recordatorio para esta obra.
+                </p>
+              )}
+            </section>
           </aside>
         </div>
       </div>
@@ -1412,6 +1462,17 @@ export function ObraDetailPage({
             <div className="max-h-[calc(100%-112px)] sm:max-h-[60vh] overflow-auto p-4 space-y-4">
                  {activeEditTab === 'datos' && (
                   <div className="grid grid-cols-1 gap-3">
+                    <div>
+                      <label className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>Nombre de la obra</label>
+                      <input
+                        type="text"
+                        value={editedObra.nombreEmpresa}
+                        onChange={(e) => setEditedObra({ ...editedObra, nombreEmpresa: e.target.value })}
+                        className="mt-1 w-full px-2 py-2 rounded text-sm"
+                        style={{ backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)' }}
+                        placeholder="Nombre..."
+                      />
+                    </div>
                     <div className="relative" ref={suggestionsRef}>
                       <label className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>Dirección (autocompletar)</label>
                       <input
@@ -1594,6 +1655,14 @@ export function ObraDetailPage({
           </div>
         </div>
       )}
+
+      <ObraNotesModal
+        isOpen={isNotesModalOpen}
+        obraName={obra.nombreEmpresa}
+        initialValue={obra.notas || ''}
+        onClose={() => setIsNotesModalOpen(false)}
+        onSave={saveObraNotes}
+      />
 
       {/* Modales de pagos */}
       <PrestamoModal
